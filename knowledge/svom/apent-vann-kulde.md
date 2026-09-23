@@ -1,29 +1,42 @@
-# Åpent vann og kulde (Norge / Lofoten)
+# Åpent vann og kulde — Norge / Lofoten
 
-Race: **1,9 km havn Svolvær** — kaldt vann mulig; wetsuit sannsynlig.
+## Temperatur og utstyr
 
-## Sikkerhet (obligatorisk kunnskap)
+| Vann | Tiltak |
+|------|--------|
+| >16 °C | Wetsuit ofte anbefalt OWS |
+| 10–16 °C | Full wetsuit, neopren hansker/sokker vurder |
+| <10 °C | Kort eksponering; sikkerhet først |
 
-- **Aldri** hopp uti — gå sakte inn (reduser cold water shock).
-- Pust kontrollert før du svømmer ut; våt ansikt/hals først.
-- **Svøm med makker**, synlighet (bøye/tow float), kjenn exit.
-- RNLI: [open water swimming tips](https://rnli.org/safety/choose-your-activity/open-water-swimming/top-tips-open-water-swimming-for-beginners)
+## Inngang (cold shock)
 
-## Akklimatisering
+1. Våt ansikt/hals  
+2. Sakte inn til midje  
+3. Kontrollert pust — ikke svøm før rolig  
+4. Aldri hoppe fra brygge ukker
 
-- Ofte **1–3×/uke** kort eksponering, gradvis lengde — ikke tid-mål på tvang (Outdoor Swimming Society / Massey).
-- «Afterdrop»: varm gradvis etter bad — ikke het dusj med en gang.
-- Varme hus/bad kan motvirke akklimatisering — balanse med bassengtrening.
+## Treningssesong Trondheim
 
-## Wetsuit
+- Vår: korte OWS, øk lengde  
+- Sommer: 1×/uke OWS minimum i build  
+- Høst: behold eksponering til det blir kaldt  
+- Vinter: basseng + evt. kaldtvann **kort** med sikkerhet
 
-- Under ~16 °C: wetsuit anbefales sterkt for de fleste (se MSO PDF i `external/`).
-- Øv i **samme** drakt som race.
+## Sighting og navigasjon
 
-## Sighting
+- Høy sighting i sjø (6 tak)  
+- Havn: landemerker (fjell, brygge)  
+- Øv med 5–10 venner mass start
 
-- Hver 6–10 tak i trening; i race i havn — finn landemerker.
+## Afterdrop
 
-## Nedlastet referanse
+- Kle av våt drakt raskt  
+- Lag på lag, varm drikke  
+- Unngå umiddelbar het dusj 10–15 min
 
-- `knowledge/external/mso-open-water-swimming-safety.pdf`
+## Nød
+
+- Svøm med buddy, tow float i trening  
+- RNLI: float to live
+
+PDF: `external/mso-open-water-swimming-safety.pdf`

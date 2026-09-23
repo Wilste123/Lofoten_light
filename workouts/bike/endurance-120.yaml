@@ -1,0 +1,16 @@
+name: Endurance 120
+description: Base aerobic — 2h Z2
+sport: bike
+phase: base
+duration_min: 120
+tss_estimate: 75
+steps:
+  - duration_min: 15
+    power_pct_ftp: 55
+    note: Warm-up + 3x30s fast pedals
+  - duration_min: 90
+    power_pct_ftp: 70
+    note: Z2 — start fueling at 20 min
+  - duration_min: 15
+    power_pct_ftp: 45
+    note: Cool-down

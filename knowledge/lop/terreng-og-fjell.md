@@ -1,16 +1,41 @@
-# Løp — terreng og fjell
+# Terreng og fjell — Tjeldbergtind-forberedelse
 
-Half Extreme løp: **asfalt, grus, sti**, **367 m topp** på siste runde.
+## Hvorfor det betyr noe
 
-## Trening i Trøndelag
+Half Extreme løp: **21 km** med **grus/sti** og **367 m** på slutten — etter 100 km sykkel. Flat halvmaraton-trening er **ikke** nok.
 
-- Bymarka, Estenstadmarka, lokale «topper» — trail easy + bakkeintervaller.
-- Nedoverbakke: eksentrisk belastning — øk gradvis (DOMS).
+## Ukentlig terreng (build+)
+
+- Minst **1×/uke** trail eller grus  
+- 60–100 min RPE 5–6  
+- Inkluder 10–20 min total opp
+
+## Bakkeøkter
+
+| Økt | Struktur |
+|-----|----------|
+| Korte | 10×60 s opp, jog ned |
+| Lange | 6×3 min opp @ RPE 7 |
+| Hike | 30 min kontinuerlig stigning power-hike |
+
+## Nedoverbakke
+
+- Eccentric load — ikke første gang på race day  
+- 4×3 min ned kontrollert i build
 
 ## Sko
 
-- Trail/grus-sko med grep for mudder; ikke konkurrer i utslitte road shoes på sti.
+- Trail med grep; test på våt grus  
+- Roter med road shoes
 
-## Race strategi (kunnskap)
+## Brick-spesifikt
 
-- Spar ben på første runde hvis to runder; power hike bratte partier i trening.
+- Siste 3 km løp etter sykkel på sti hvis mulig  
+- Tredemølle 6 % 5×3 min hvis is
+
+## Race strategi Tjeldbergtind
+
+- Power-hike bratte partier — øv i trening  
+- Ikke sprint toppen om T2-bein er tomme
+
+Trondheim: Bymarka, Estenstadmarka, Rotvoll kyst — bruk lokalt.

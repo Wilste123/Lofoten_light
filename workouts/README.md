@@ -1,31 +1,43 @@
-# Workout YAML format
+# Øktbibliotek
 
-```yaml
-name: Tuesday Threshold
-description: 2x20 min at FTP
-sport: bike
-steps:
-  - duration_min: 15
-    power_pct_ftp: 55
-    note: Warm-up
-  - duration_min: 20
-    power_pct_ftp: 95
-    note: Threshold 1
-  - duration_min: 10
-    power_pct_ftp: 50
-    note: Recovery
-  - duration_min: 20
-    power_pct_ftp: 95
-    note: Threshold 2
-  - duration_min: 10
-    power_pct_ftp: 45
-    note: Cool-down
-```
+Strukturerte økter for William (Half Extreme 2027). **Sykkel** = YAML → ZWO. **Svøm, løp, styrke, brick** = markdown med YAML frontmatter (TrainingPeaks-beskrivelse / TrainingDojo).
 
-Generate ZWO:
+## Katalog
+
+Se **[index.md](index.md)** — søkbar oversikt med fase, varighet og formål.
+
+## Sykkel (YAML)
 
 ```bash
-python3 scripts/export_zwo.py workouts/example-threshold.yaml
+python3 scripts/export_zwo.py workouts/bike/sweet-spot-2x20.yaml
+python3 scripts/export_all_zwo.sh   # alle sykkel-YAML
 ```
 
-Output: `workouts/generated/<name>.zwo`
+Felter:
+
+| Felt | Beskrivelse |
+|------|-------------|
+| `sport` | `bike` |
+| `phase` | `re-etablering`, `base`, `build`, `spesifikk`, `recovery` |
+| `duration_min` | Ca. total |
+| `tss_estimate` | Veiledende (krever riktig FTP i TP) |
+| `steps` | `duration_min`, `power_pct_ftp`, `note` |
+
+## Svøm / løp / styrke / brick (Markdown)
+
+Filen starter med frontmatter (`---`). Resten er **coach-tekst** du limer i TP eller TrainingDojo `description`.
+
+Importer til kalender: agent eller `docs/trainingpeaks/import-workouts.md`.
+
+## Fase-veiledning
+
+| Fase | Sykkel | Svøm | Løp |
+|------|--------|------|-----|
+| Re-etablering | recovery, endurance 60–90 | teknikk, aerob kort | easy, strides |
+| Base | endurance 120–180, SS | aerob, CSS intro | long easy, tempo lett |
+| Build | SS, THR, VO2, lang 240+ | CSS, 1500+ | intervaller, bakke |
+| Spesifikk | race sim, surges | 1900, OWS | brick-løp, terreng |
+
+## Soner
+
+Bruk **gjeldende FTP / CSS / LTHR** fra `docs/athlete/profile.md` — ikke 2019-FTP.

@@ -1,0 +1,16 @@
+name: Endurance 300
+description: 5h Z2 — race nutrition practice
+sport: bike
+phase: build
+duration_min: 300
+tss_estimate: 200
+steps:
+  - duration_min: 20
+    power_pct_ftp: 55
+    note: Warm-up
+  - duration_min: 260
+    power_pct_ftp: 67
+    note: Z2 — race fueling 60-90g CHO/h
+  - duration_min: 20
+    power_pct_ftp: 45
+    note: Cool-down

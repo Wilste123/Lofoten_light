@@ -1,0 +1,16 @@
+name: Recovery Spin 45
+description: Active recovery — high cadence, low metabolic load
+sport: bike
+phase: recovery
+duration_min: 45
+tss_estimate: 28
+steps:
+  - duration_min: 5
+    power_pct_ftp: 45
+    note: Very easy start
+  - duration_min: 35
+    power_pct_ftp: 50
+    note: Z1 — cadence 90–100
+  - duration_min: 5
+    power_pct_ftp: 40
+    note: Cool-down

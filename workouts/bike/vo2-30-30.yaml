@@ -1,0 +1,73 @@
+name: VO2 30-30 x10
+description: Micro intervals — neuromuscular + aerobic
+sport: bike
+phase: build
+duration_min: 65
+tss_estimate: 72
+steps:
+  - duration_min: 15
+    power_pct_ftp: 55
+    note: Warm-up
+  - duration_min: 1
+    power_pct_ftp: 130
+    note: On 1
+  - duration_min: 1
+    power_pct_ftp: 50
+    note: Off 1
+  - duration_min: 1
+    power_pct_ftp: 130
+    note: On 2
+  - duration_min: 1
+    power_pct_ftp: 50
+    note: Off 2
+  - duration_min: 1
+    power_pct_ftp: 130
+    note: On 3
+  - duration_min: 1
+    power_pct_ftp: 50
+    note: Off 3
+  - duration_min: 1
+    power_pct_ftp: 130
+    note: On 4
+  - duration_min: 1
+    power_pct_ftp: 50
+    note: Off 4
+  - duration_min: 1
+    power_pct_ftp: 130
+    note: On 5
+  - duration_min: 1
+    power_pct_ftp: 50
+    note: Off 5
+  - duration_min: 1
+    power_pct_ftp: 130
+    note: On 6
+  - duration_min: 1
+    power_pct_ftp: 50
+    note: Off 6
+  - duration_min: 1
+    power_pct_ftp: 130
+    note: On 7
+  - duration_min: 1
+    power_pct_ftp: 50
+    note: Off 7
+  - duration_min: 1
+    power_pct_ftp: 130
+    note: On 8
+  - duration_min: 1
+    power_pct_ftp: 50
+    note: Off 8
+  - duration_min: 1
+    power_pct_ftp: 130
+    note: On 9
+  - duration_min: 1
+    power_pct_ftp: 50
+    note: Off 9
+  - duration_min: 1
+    power_pct_ftp: 130
+    note: On 10
+  - duration_min: 1
+    power_pct_ftp: 50
+    note: Off 10
+  - duration_min: 10
+    power_pct_ftp: 45
+    note: Cool-down

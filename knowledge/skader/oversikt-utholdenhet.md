@@ -1,25 +1,43 @@
-# Skader i utholdenhet — oversikt
+# Skader i utholdenhet — coach-handbok
 
-## Hovedbudskap
+## Epidemiologi (praktisk)
 
-- De fleste skader i løp/tri er **overbelastning** — for mye, for fort, for lite restitusjon.
-- William er **ikke** ny på sykkel mentalt, men **kroppen** har ikke 2019-toleranse — behandle som strukturert comeback.
+| Disiplin | Skaderate per 1000 t (indikativ) | William-risiko |
+|----------|----------------------------------|----------------|
+| Løp | Høyest | **Høy** — comeback + motivasjon |
+| Svøm | Skulder | **Medium** — ny volum |
+| Sykkel | Lav (sadel/rygg) | Lav–medium ved høyt innendørs |
+| Tri kombinasjon | Overbelastning > akutt | **Høy** hvis volumsprang |
 
-## Risikofaktorer (agent sjekkliste)
+## Smerte-skala (bruk i planer)
 
-- [ ] ACWR > 1,5 eller stor uke-til-uke økning
-- [ ] Søvn < 7 t gjentatt
-- [ ] Sykdom returnert for raskt til full volum
-- [ ] Kun én disiplin dominert (kun sykkel → svak løp/svøm + ubalanse)
-- [ ] Ignorerte «yellow flags» (smerte som endrer teknikk)
+| 0–10 | Handling |
+|------|----------|
+| 0–2 | Normal DOMS — ok å trene easy |
+| 3–4 | Monitor; ingen hard samme ben |
+| 5+ | Stopp hard økt; vurder fysio |
+| Lokaliserbar én side | Ikke «løp gjennom» |
 
-## Tri-spesifikt
+## Return-to-play (løp)
 
-- **Svøm**: skulder — øk lengde på svøm forsiktig (max ~10 % ukevis på svømtid tidlig fase).
-- **Sykkel**: lav skaderate, men sadel-/ryggplager ved høyt innendørs volum — bike fit.
-- **Løp**: høyest skaderisiko per time for de fleste — prioriter forebygging.
+| Fravær | Uke 1 retur |
+|--------|-------------|
+| 3 dager plager | 50 % plan |
+| 1 uke | 3×20 min easy |
+| 2 uker | Som re-etablering fase 1 |
 
-## Dokumentasjon i repo
+## Tri-konflikter
 
-- Logg niggles i `docs/athlete/profile.md` under Begrensninger.
-- Ved skade: reduser **den** disiplinen som provoserer, ikke nødvendigvis alt.
+- Hard løp + hard sykkel samme dag → unngå i base
+- Svøm skulder + mye pull → reduser pull
+- Brick for tidlig → knær/fot
+
+## Dokumentasjon
+
+Logg i `profile.md` Begrensninger: side, dato, hva som provoserte.
+
+## Agent
+
+Ved planlegging: **én** risikosetning per uke («denne uken er løp-km +12 % — hold onsdag sykkel easy»).
+
+Se `belastningsstyring-acwr.md`, `lop-skadeprofiler.md`, `forebygging-styrke-mobilitet.md`.

@@ -1,25 +1,59 @@
-# Ernæring — triatlon og race day (Half Extreme)
+# Race week og race day — Half Extreme
 
-## Før start
+## T−7 til T−3
 
-- Frokost 3–4 t før: kjent mat, karbohydrat, moderat protein, lav fiber hvis mage er sensitiv.
-- 1,9 km svøm: ikke over-spis; lett snack om lang ventetid.
+- Normal karbo (5–7 g/kg), ikke ekstrem load først
+- Reduser fiber om mage sensitiv
+- Hydrering jevn
 
-## Svøm
+## T−2
 
-- Vanligvis ingen inntak; fokus på hydrering før.
+- Øk karbo til 7–10 g/kg (moderat «load»)
+- Familiar foods only
+- Tidlig middag
 
-## Sykkel (100 km, 5 t cut-off)
+## T−1
 
-- Plan for **60–90 g CHO/time** i build (tren opp).
-- 500–750 ml fluid/time avhengig av temperatur (Lofoten kan være kald — mindre svette, men fortsatt fuel).
-- Arrangør food stations — øv på gels/bar du tåler.
+- Lett trening eller rest; 6–8 g/kg karbo
+- Pakk utstyr, gels, electrolyte
+- Søvn prioritet
 
-## Løp (21 km, terreng + bakke)
+## Race morgen (start ~12:00 — Lofoten typisk)
 
-- Mindre CHO/time enn sykkel ofte mulig; jevn inntak fra T2.
-- Gator/gels hver 20–30 min hvis tolerert.
+| Tid før start | Inntak |
+|---------------|--------|
+| 3–4 t | Frokost: havregryn/ris, lite fett/fiber |
+| 90 min | Snack banan |
+| 60 min | Vann |
+| 30 min | Valgfritt gel hvis lang ventetid |
 
-## William
+## Svøm 1,9 km
 
-- Erfaren syklist kjenner sannsynligvis sykkel-fueling — **overfør ikke** automatisk samme strategi til løp etter 100 km uten brick-trening.
+- Ingen underveis
+- Post-svøm i T1: vann, ikke stor mat
+
+## Sykkel 100 km
+
+| Tid | CHO |
+|-----|-----|
+| 0–30 min | 30–40 g |
+| Resten | 60–90 g/h |
+| Siste 30 min | Gel før T2 |
+
+**Kaldt:** drikk mindre, karbo fortsatt.
+
+## Løp 21 km
+
+- Gel hver 25–30 min eller ved stasjon
+- Første 3 km rolig — mage etter sykkel
+
+## Etter mål
+
+- Protein + karbo innen 1 t
+- Varm gradvis (OWS/kulde etterdrop)
+
+## Feil
+
+- Ny gel merke race day
+- Fastende morgen «fordi nervøs»
+- For mye fiber T−1

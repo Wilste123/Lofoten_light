@@ -1,0 +1,22 @@
+name: Progressive Long 240
+description: 4h — finish last hour upper Z2
+sport: bike
+phase: build
+duration_min: 240
+tss_estimate: 165
+steps:
+  - duration_min: 20
+    power_pct_ftp: 55
+    note: Warm-up
+  - duration_min: 120
+    power_pct_ftp: 65
+    note: Z2 low — fuel early
+  - duration_min: 60
+    power_pct_ftp: 72
+    note: Z2 high / tempo feel
+  - duration_min: 30
+    power_pct_ftp: 65
+    note: Settle
+  - duration_min: 10
+    power_pct_ftp: 45
+    note: Cool-down

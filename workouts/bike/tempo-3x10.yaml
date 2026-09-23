@@ -1,0 +1,28 @@
+name: Tempo 3x10
+description: Muscular endurance — upper Z3
+sport: bike
+phase: base
+duration_min: 70
+tss_estimate: 68
+steps:
+  - duration_min: 15
+    power_pct_ftp: 55
+    note: Warm-up
+  - duration_min: 10
+    power_pct_ftp: 82
+    note: Tempo 1
+  - duration_min: 5
+    power_pct_ftp: 55
+    note: Easy
+  - duration_min: 10
+    power_pct_ftp: 82
+    note: Tempo 2
+  - duration_min: 5
+    power_pct_ftp: 55
+    note: Easy
+  - duration_min: 10
+    power_pct_ftp: 82
+    note: Tempo 3
+  - duration_min: 15
+    power_pct_ftp: 45
+    note: Cool-down

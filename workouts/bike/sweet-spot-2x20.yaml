@@ -1,0 +1,22 @@
+name: Sweet Spot 2x20
+description: Time-efficient threshold development
+sport: bike
+phase: base
+duration_min: 75
+tss_estimate: 75
+steps:
+  - duration_min: 15
+    power_pct_ftp: 55
+    note: Warm-up
+  - duration_min: 20
+    power_pct_ftp: 90
+    note: Sweet spot block 1
+  - duration_min: 5
+    power_pct_ftp: 50
+    note: Recovery
+  - duration_min: 20
+    power_pct_ftp: 90
+    note: Sweet spot block 2
+  - duration_min: 15
+    power_pct_ftp: 45
+    note: Cool-down

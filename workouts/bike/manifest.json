@@ -725,5 +725,57 @@
         "message": "Cool-down"
       }
     ]
+  },
+  {
+    "id": "ftp-ramp-test",
+    "name": "FTP Ramp Test",
+    "description": "Conservative ramp — note best 1 min power; update profile",
+    "steps": [
+      {
+        "duration_s": 900,
+        "ftp_fraction": 0.55,
+        "message": "Warm-up 15 min — inkl 3×30 s fast pedal"
+      },
+      {
+        "duration_s": 300,
+        "ftp_fraction": 0.55,
+        "message": "Ramp step 1 (~55% FTP)"
+      },
+      {
+        "duration_s": 300,
+        "ftp_fraction": 0.65,
+        "message": "Ramp step 2"
+      },
+      {
+        "duration_s": 300,
+        "ftp_fraction": 0.75,
+        "message": "Ramp step 3"
+      },
+      {
+        "duration_s": 300,
+        "ftp_fraction": 0.85,
+        "message": "Ramp step 4"
+      },
+      {
+        "duration_s": 300,
+        "ftp_fraction": 0.95,
+        "message": "Ramp step 5"
+      },
+      {
+        "duration_s": 300,
+        "ftp_fraction": 1.05,
+        "message": "Ramp step 6 — RPE 8+"
+      },
+      {
+        "duration_s": 300,
+        "ftp_fraction": 1.15,
+        "message": "Ramp step 7 — stop if form breaks"
+      },
+      {
+        "duration_s": 600,
+        "ftp_fraction": 0.45,
+        "message": "Cool-down 10 min — kun Z1 neste 48 t"
+      }
+    ]
   }
 ]

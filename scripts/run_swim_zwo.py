@@ -137,12 +137,33 @@ def export_run_swim_zwo() -> None:
             "Lett bevegelse RPE 2–4.",
             [(2100, "300 + 6×50 + 4×100 pull + 200 lett", "swim_easy")],
         ),
+        (
+            "S03b-aerob-3x400",
+            "SVØM S03b Aerob 3×400",
+            "Plan B for S03 — RPE 5–6.",
+            [
+                (600, "400 oppvarming + 4×50", "swim_wu"),
+                (1920, "3×400 jevn 20 s hvile", "swim_aerob"),
+                (300, "200 avslutning", "swim_easy"),
+            ],
+        ),
+        (
+            "S10-breath-control",
+            "SVØM S10 Pust/frekvens",
+            "Teknikk — ikke meter-hero.",
+            [
+                (300, "300 lett", "swim_wu"),
+                (1200, "6×50 pust 3/5/7 + 4×100 rolig", "swim_drill"),
+                (600, "6×25 avslappet + 100 CD", "swim_easy"),
+            ],
+        ),
     ]
     for stem, name, desc, blocks in swims:
         _write(swim_dir / f"{stem}.zwo", name, desc, SWIM_NOTE, blocks)
 
     runs = [
         ("R01-easy-40", "LØP R01 Lett 40", "Sone 2, samtaletempo.", [(2400, "Lett løp RPE 4–5", "run_z2")]),
+        ("R14-recovery-30", "LØP R14 Recovery 30", "Recovery — RPE 3–4.", [(1800, "Lett 30 min eller powerwalk", "run_z2")]),
         (
             "R02-easy-55-strides",
             "LØP R02 Lett + strides",

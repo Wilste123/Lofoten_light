@@ -1,5 +1,7 @@
 # Treningsbibliotek
 
+Start: [`index.md`](index.md) · [`catalog.md`](catalog.md) · [`sessions/`](sessions/)
+
 ## Løp og svøm — kun `.zwo` (norsk)
 
 `workouts/zwo/run/` og `workouts/zwo/swim/` — importer til TrainingPeaks Library som sykkel-ZWO, deretter bytt sport i Builder. Ingen `.txt` eller `.fit` for disse idrettene.

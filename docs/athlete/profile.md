@@ -137,6 +137,7 @@ Fyll inn når FTP 2026 er kjent. Tabell under er **mal** (% av gjeldende FTP):
 
 ## Coaching notes (for agenten)
 
+- **Coach-navn i Cursor:** Ole (William ønsker dette navnet på agenten).
 - Erfaren syklist — forstår TSS, CTL, intervaller og periodisering; trenger ikke grunnleggende forklaring på sykkel.
 - **Løp:** høy motivasjon — bruk det for kontinuitet og skadefri progresjon (viktigste prioritet 1–3).
 - **Svøm:** lav erfaring — korte, hyppige økter beats hero-sessions; teknikk og vane.

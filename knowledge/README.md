@@ -4,7 +4,7 @@ Referanse for **topp-coach**-agenten. Alt skal kunne brukes til **konkrete ukepl
 
 ## Start her (agent)
 
-1. `coach/coach-filosofi.md` — tone, beslutningsregler, kvalitetskrav  
+1. `coach/coach-filosofi.md` + `coach/ole-grenser.md` — tone, grenser, kvalitetskrav  
 2. `docs/athlete/profile.md` + `goals.md`  
 3. `coach/ukemaler.md` — fasebaserte uker  
 4. `triathlon/periodisering-mot-2027.md` + `lofoten-half-extreme.md`

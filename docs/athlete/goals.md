@@ -41,15 +41,18 @@ Agenten skal aktivt **dempe** Norseman/full-Extreme-logikk (ultra-spesifisitet, 
 
 Grov maskin: [`plans/2026-2027-12mnd-periodisering.md`](../plans/2026-2027-12mnd-periodisering.md) (sep 2026 → Half Extreme aug 2027 + 750–800 t).
 
-## Denne blokken (4–8 uker) — utfyll med agent
+## Denne blokken (4–8 uker) — 28. sep – 22. nov 2026 (Ole)
 
-- **Primærfokus:** TBD (f.eks. løpefrekvens + sykkel Z2 + 2× svøm/uke)
-- **Ukemål timer:** TBD nå → bygg mot **~14,5–15,5 t/uke snitt** over 12 mnd (750–800 t totalt); 2026 &gt;50 t hittil er lav base — ikke 2019-volum (~20 t/uke) før kroppen tåler det
-- **Non-negotiables:** Skadefrihet, gradvis progresjon (prioritet 2–3)
+- **Primærfokus:** **Svøm 3×/uke vane** (teknikk + aerob), **sykkel kun Z2/recovery** (ingen threshold før FTP-test), **løp easy** med cap — maks RPE 5, strides kun R02.
+- **Ukemål timer:** Uke 1 ~5,5 t → uke 2–3 ~7,5–8 t → uke 4 recovery ~4,5 t → uke 5+ bygg mot **8–9 t** stabil før du jakter 12 t. Årsmål 750–800 t uendret.
+- **Non-negotiables:** ST01 2×/uke (tor + recovery ST03 uke 4), ingen hard løp/sykkel Q, FTP-test **B17** tidligst uke 6–8 etter stabil sykkel.
 
 ## Suksesskriterier
 
-- TBD (f.eks. X av Y planlagte økter, ingen skadeopptrapping, svømmevaner etablert)
+- **≥11 av 14** planlagte økter fullført i første 4-ukers blokk (uke 4 recovery teller med kortere økter).
+- **Svøm:** minst **2×/uke** gjennomsnitt over 4 uker (mål 3× uke 1–3).
+- **Ingen** smerte som endrer løp/svøm-teknikk; ved niggle → Plan B samme dag.
+- **FTP-test booket** (dato i profile når du har valgt) — ikke gjennomført uten dato er OK, utsett er bedre enn gjetting.
 - CTL-/belastningstrend: moderat ramp — agenten skal flagge aggressiv økning
 
 ## Utenfor scope nå

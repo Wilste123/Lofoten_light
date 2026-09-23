@@ -9,7 +9,7 @@ Erstatt watt med % **gjeldende FTP** fra profile. Oppvarming standard: **15 min*
 - **Fraksjonert terskel** (f.eks. **5×10 min @ ~98 % FTP**): flere kortere boutar vs. 2×20 — høy tid nær MLSS med kortere recovery enn én 50 min blokk (Billat et al. — kort vs lang intervall; anvendt i sykkelcoaching som «5×10 FTP»).
 - **VO2max:** 3–5 min reps @ 106–120 % FTP (Midgley et al. 2006 — interval duration and intensity).
 
-Roter **én** hard sykkeløkt/uke i re-etablering, **1–2** i build. Se `workouts/index.md` B06–B11, **B15–B16**.
+Roter **én** hard sykkeløkt/uke i re-etablering, **1–2** i build. Full ID-liste: `workouts/catalog.md` (B06–B11, **B15–B16**, test **B17**).
 
 ---
 

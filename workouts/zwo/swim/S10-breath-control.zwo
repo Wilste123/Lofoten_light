@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>SVØM S10 Pust/frekvens</name>
+  <description>Teknikk — ikke meter-hero. — IMPORT: TP godtar kun sykkel-ZWO — filen er sportType=bike for import. Etter import: åpne økt → Bygg → sett sport til Svøm → intensitet % T-pace (CSS). Power ≈ % av svøm-T-pace (lett ~89 %, CSS 100 %). Sett bassenglengde under Utstyr.</description>
+  <sportType>bike</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="300" Power="0.9000" pace="0">
+      <textevent message="300 lett" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="1200" Power="0.8800" pace="0">
+      <textevent message="6×50 pust 3/5/7 + 4×100 rolig" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0.8900" pace="0">
+      <textevent message="6×25 avslappet + 100 CD" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

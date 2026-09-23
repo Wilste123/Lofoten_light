@@ -1,8 +1,8 @@
 name: ST01 Styrke A base
 sport: strength
-description: Grunnstyrke tri — 35 min.
+description: Grunnstyrke tri — 35 min. Se workouts/sessions/strength.md
 tp_intensity: Styrke → TrainingPeaks Strength Builder (ikke ZWO/FIT)
 duration_min: 35
 trainingpeaks: Se docs/trainingpeaks/styrke-import.md og workouts/strength/trainingpeaks/
 steps:
-  - 35:00 | Goblet squat 3×10, split squat 3×8/side, planke, band-row, calf, dead bug
+  - 35:00 | WU 5 min | Goblet/split squat 3×8-10 | RDL lett 3×8 | calf 3×12/bein | sideplanke 3×30s | band row 3×15 | dead bug 3×8/side | stretch

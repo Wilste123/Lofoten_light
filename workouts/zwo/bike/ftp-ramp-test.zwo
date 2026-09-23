@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>FTP Ramp Test</name>
+  <description>Conservative ramp — note best 1 min power; update profile — Power = andel av sykkel-FTP. Sett FTP under TrainingPeaks Innstillinger → Soner.</description>
+  <sportType>bike</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="900" Power="0.5500" pace="0">
+      <textevent message="Warm-up 15 min — inkl 3×30 s fast pedal" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="300" Power="0.5500" pace="0">
+      <textevent message="Ramp step 1 (~55% FTP)" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="300" Power="0.6500" pace="0">
+      <textevent message="Ramp step 2" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="300" Power="0.7500" pace="0">
+      <textevent message="Ramp step 3" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="300" Power="0.8500" pace="0">
+      <textevent message="Ramp step 4" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="300" Power="0.9500" pace="0">
+      <textevent message="Ramp step 5" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="300" Power="1.0500" pace="0">
+      <textevent message="Ramp step 6 — RPE 8+" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="300" Power="1.1500" pace="0">
+      <textevent message="Ramp step 7 — stop if form breaks" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0.4500" pace="0">
+      <textevent message="Cool-down 10 min — kun Z1 neste 48 t" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

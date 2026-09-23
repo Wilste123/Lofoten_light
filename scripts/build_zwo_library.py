@@ -62,8 +62,8 @@ def main() -> None:
     write_strength(
         PLANNED / "ST01-base.txt",
         "ST01 Styrke A base",
-        "Grunnstyrke tri — 35 min.",
-        "Goblet squat 3×10, split squat 3×8/side, planke, band-row, calf, dead bug",
+        "Grunnstyrke tri — 35 min. Se workouts/sessions/strength.md",
+        "WU 5 min | Goblet/split squat 3×8-10 | RDL lett 3×8 | calf 3×12/bein | sideplanke 3×30s | band row 3×15 | dead bug 3×8/side | stretch",
         35,
     )
     write_strength(

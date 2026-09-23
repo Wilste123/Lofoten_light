@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>Threshold 2x20</name>
+  <description>Classic FTP intervals — Power = andel av sykkel-FTP. Sett FTP under TrainingPeaks Innstillinger → Soner.</description>
+  <sportType>bike</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="900" Power="0.5500" pace="0">
+      <textevent message="Warm-up incl 3x30s openers" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="1200" Power="0.9700" pace="0">
+      <textevent message="Threshold 1" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0.5000" pace="0">
+      <textevent message="Recovery spin" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="1200" Power="0.9700" pace="0">
+      <textevent message="Threshold 2" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0.4500" pace="0">
+      <textevent message="Cool-down" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

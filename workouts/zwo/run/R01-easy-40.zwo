@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>LØP R01 Lett 40</name>
+  <description>Sone 2, samtaletempo. — IMPORT: TP godtar kun sykkel-ZWO — filen er sportType=bike for import. Etter import: åpne økt → Bygg → sett sport til Løp → intensitet % terskel-pace (samme %-tall). Power ≈ % av løpsterskel (lett ~78 %, terskel 100 %). Ikke sykkel-FTP på kalender.</description>
+  <sportType>bike</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="2400" Power="0.7800" pace="0">
+      <textevent message="Lett løp RPE 4–5" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

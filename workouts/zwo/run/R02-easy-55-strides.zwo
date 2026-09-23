@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>LØP R02 Lett + strides</name>
+  <description>50 min + 6×15 s strides. — IMPORT: TP godtar kun sykkel-ZWO — filen er sportType=bike for import. Etter import: åpne økt → Bygg → sett sport til Løp → intensitet % terskel-pace (samme %-tall). Power ≈ % av løpsterskel (lett ~78 %, terskel 100 %). Ikke sykkel-FTP på kalender.</description>
+  <sportType>bike</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="900" Power="0.7800" pace="0">
+      <textevent message="Lett 15 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="1800" Power="0.7800" pace="0">
+      <textevent message="Lett 30 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="180" Power="1.1200" pace="0">
+      <textevent message="6×15 s strides / 60 s" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="300" Power="0.7800" pace="0">
+      <textevent message="Avslutning" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

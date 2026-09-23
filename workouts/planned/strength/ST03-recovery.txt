@@ -1,0 +1,8 @@
+name: ST03 Styrke recovery
+sport: strength
+description: Mobilitet lett — 25 min.
+tp_intensity: Styrke → TrainingPeaks Strength Builder (ikke ZWO/FIT)
+duration_min: 25
+trainingpeaks: Se docs/trainingpeaks/styrke-import.md og workouts/strength/trainingpeaks/
+steps:
+  - 25:00 | Band walks, glute bridge, bird dog, stretching

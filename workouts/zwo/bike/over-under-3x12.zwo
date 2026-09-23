@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>Over-Under 3x12</name>
+  <description>Lactate tolerance — Power = andel av sykkel-FTP. Sett FTP under TrainingPeaks Innstillinger → Soner.</description>
+  <sportType>bike</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="900" Power="0.5500" pace="0">
+      <textevent message="Warm-up" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="240" Power="0.9500" pace="0">
+      <textevent message="OU block 1 — under" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="240" Power="1.0500" pace="0">
+      <textevent message="OU block 1 — over" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="240" Power="0.9500" pace="0">
+      <textevent message="OU block 1 — under" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="240" Power="1.0500" pace="0">
+      <textevent message="OU block 1 — over" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="300" Power="0.5000" pace="0">
+      <textevent message="Set recovery" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="720" Power="1.0000" pace="0">
+      <textevent message="OU block 2 — alternate 2u/2o mentally" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="300" Power="0.5000" pace="0">
+      <textevent message="Recovery" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="720" Power="1.0000" pace="0">
+      <textevent message="OU block 3" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="900" Power="0.4500" pace="0">
+      <textevent message="Cool-down" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

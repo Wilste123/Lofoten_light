@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>LØP R08 Bakke 8×90</name>
+  <description>Forberedelse Tjeldbergtind. — IMPORT: TP godtar kun sykkel-ZWO — filen er sportType=bike for import. Etter import: åpne økt → Bygg → sett sport til Løp → intensitet % terskel-pace (samme %-tall). Power ≈ % av løpsterskel (lett ~78 %, terskel 100 %). Ikke sykkel-FTP på kalender.</description>
+  <sportType>bike</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="900" Power="0.7200" pace="0">
+      <textevent message="Oppvarming" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="90" Power="1.0800" pace="0">
+      <textevent message="Bakke 90 s #1 RPE 7–8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.6500" pace="0">
+      <textevent message="Jogg ned" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="90" Power="1.0800" pace="0">
+      <textevent message="Bakke 90 s #2 RPE 7–8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.6500" pace="0">
+      <textevent message="Jogg ned" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="90" Power="1.0800" pace="0">
+      <textevent message="Bakke 90 s #3 RPE 7–8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.6500" pace="0">
+      <textevent message="Jogg ned" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="90" Power="1.0800" pace="0">
+      <textevent message="Bakke 90 s #4 RPE 7–8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.6500" pace="0">
+      <textevent message="Jogg ned" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="90" Power="1.0800" pace="0">
+      <textevent message="Bakke 90 s #5 RPE 7–8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.6500" pace="0">
+      <textevent message="Jogg ned" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="90" Power="1.0800" pace="0">
+      <textevent message="Bakke 90 s #6 RPE 7–8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.6500" pace="0">
+      <textevent message="Jogg ned" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="90" Power="1.0800" pace="0">
+      <textevent message="Bakke 90 s #7 RPE 7–8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.6500" pace="0">
+      <textevent message="Jogg ned" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="90" Power="1.0800" pace="0">
+      <textevent message="Bakke 90 s #8 RPE 7–8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.6500" pace="0">
+      <textevent message="Jogg ned" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="900" Power="0.7800" pace="0">
+      <textevent message="Avslutning" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>LØP R10 Progressiv 90</name>
+  <description>30+30+20 min oppbygging. — IMPORT: TP godtar kun sykkel-ZWO — filen er sportType=bike for import. Etter import: åpne økt → Bygg → sett sport til Løp → intensitet % terskel-pace (samme %-tall). Power ≈ % av løpsterskel (lett ~78 %, terskel 100 %). Ikke sykkel-FTP på kalender.</description>
+  <sportType>bike</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="1800" Power="0.7800" pace="0">
+      <textevent message="S2 30 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="1800" Power="0.9100" pace="0">
+      <textevent message="Moderat 30 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="1200" Power="1.0000" pace="0">
+      <textevent message="HM-tempo 20 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0.7800" pace="0">
+      <textevent message="Lett 10 min" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

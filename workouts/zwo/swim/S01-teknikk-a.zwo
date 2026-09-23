@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>SVØM S01 Teknikk A</name>
+  <description>Drill og aerob. RPE 3–5. — IMPORT: TP godtar kun sykkel-ZWO — filen er sportType=bike for import. Etter import: åpne økt → Bygg → sett sport til Svøm → intensitet % T-pace (CSS). Power ≈ % av svøm-T-pace (lett ~89 %, CSS 100 %). Sett bassenglengde under Utstyr.</description>
+  <sportType>bike</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="600" Power="0.9000" pace="0">
+      <textevent message="Oppvarming 200 mix + 4×50 drill" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="1200" Power="0.8800" pace="0">
+      <textevent message="8×50 drill/svøm 15 s + 4×100 lett 20 s" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0.8900" pace="0">
+      <textevent message="8×25 spark + 100 avslutning" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

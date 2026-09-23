@@ -1,0 +1,729 @@
+[
+  {
+    "id": "endurance-120",
+    "name": "Endurance 120",
+    "description": "Base aerobic",
+    "steps": [
+      {
+        "duration_s": 900,
+        "ftp_fraction": 0.55,
+        "message": "Warm-up + 3x30s fast pedals"
+      },
+      {
+        "duration_s": 5400,
+        "ftp_fraction": 0.7,
+        "message": "Z2 — start fueling at 20 min"
+      },
+      {
+        "duration_s": 900,
+        "ftp_fraction": 0.45,
+        "message": "Cool-down"
+      }
+    ]
+  },
+  {
+    "id": "endurance-180",
+    "name": "Endurance 180",
+    "description": "Long aerobic",
+    "steps": [
+      {
+        "duration_s": 900,
+        "ftp_fraction": 0.55,
+        "message": "Warm-up"
+      },
+      {
+        "duration_s": 9000,
+        "ftp_fraction": 0.68,
+        "message": "Z2 — 60g CHO/h from 30 min"
+      },
+      {
+        "duration_s": 900,
+        "ftp_fraction": 0.45,
+        "message": "Cool-down"
+      }
+    ]
+  },
+  {
+    "id": "endurance-300",
+    "name": "Endurance 300",
+    "description": "5h Z2",
+    "steps": [
+      {
+        "duration_s": 1200,
+        "ftp_fraction": 0.55,
+        "message": "Warm-up"
+      },
+      {
+        "duration_s": 15600,
+        "ftp_fraction": 0.67,
+        "message": "Z2 — race fueling 60-90g CHO/h"
+      },
+      {
+        "duration_s": 1200,
+        "ftp_fraction": 0.45,
+        "message": "Cool-down"
+      }
+    ]
+  },
+  {
+    "id": "endurance-90",
+    "name": "Endurance 90",
+    "description": "Aerobic foundation",
+    "steps": [
+      {
+        "duration_s": 600,
+        "ftp_fraction": 0.5,
+        "message": "Warm-up"
+      },
+      {
+        "duration_s": 4200,
+        "ftp_fraction": 0.68,
+        "message": "Z2 steady — fuel if >75 min total habit"
+      },
+      {
+        "duration_s": 600,
+        "ftp_fraction": 0.45,
+        "message": "Cool-down"
+      }
+    ]
+  },
+  {
+    "id": "over-under-3x12",
+    "name": "Over-Under 3x12",
+    "description": "Lactate tolerance",
+    "steps": [
+      {
+        "duration_s": 900,
+        "ftp_fraction": 0.55,
+        "message": "Warm-up"
+      },
+      {
+        "duration_s": 240,
+        "ftp_fraction": 0.95,
+        "message": "OU block 1 — under"
+      },
+      {
+        "duration_s": 240,
+        "ftp_fraction": 1.05,
+        "message": "OU block 1 — over"
+      },
+      {
+        "duration_s": 240,
+        "ftp_fraction": 0.95,
+        "message": "OU block 1 — under"
+      },
+      {
+        "duration_s": 240,
+        "ftp_fraction": 1.05,
+        "message": "OU block 1 — over"
+      },
+      {
+        "duration_s": 300,
+        "ftp_fraction": 0.5,
+        "message": "Set recovery"
+      },
+      {
+        "duration_s": 720,
+        "ftp_fraction": 1.0,
+        "message": "OU block 2 — alternate 2u/2o mentally"
+      },
+      {
+        "duration_s": 300,
+        "ftp_fraction": 0.5,
+        "message": "Recovery"
+      },
+      {
+        "duration_s": 720,
+        "ftp_fraction": 1.0,
+        "message": "OU block 3"
+      },
+      {
+        "duration_s": 900,
+        "ftp_fraction": 0.45,
+        "message": "Cool-down"
+      }
+    ]
+  },
+  {
+    "id": "progressive-long-240",
+    "name": "Progressive Long 240",
+    "description": "4h",
+    "steps": [
+      {
+        "duration_s": 1200,
+        "ftp_fraction": 0.55,
+        "message": "Warm-up"
+      },
+      {
+        "duration_s": 7200,
+        "ftp_fraction": 0.65,
+        "message": "Z2 low — fuel early"
+      },
+      {
+        "duration_s": 3600,
+        "ftp_fraction": 0.72,
+        "message": "Z2 high / tempo feel"
+      },
+      {
+        "duration_s": 1800,
+        "ftp_fraction": 0.65,
+        "message": "Settle"
+      },
+      {
+        "duration_s": 600,
+        "ftp_fraction": 0.45,
+        "message": "Cool-down"
+      }
+    ]
+  },
+  {
+    "id": "race-surges-long-270",
+    "name": "Race Surges Long 270",
+    "description": "4.5h Z2 with 5 min surges every 30 min",
+    "steps": [
+      {
+        "duration_s": 1200,
+        "ftp_fraction": 0.55,
+        "message": "Warm-up"
+      },
+      {
+        "duration_s": 1500,
+        "ftp_fraction": 0.68,
+        "message": "Block 1"
+      },
+      {
+        "duration_s": 300,
+        "ftp_fraction": 0.8,
+        "message": "Surge 1"
+      },
+      {
+        "duration_s": 1500,
+        "ftp_fraction": 0.68,
+        "message": "Block 2"
+      },
+      {
+        "duration_s": 300,
+        "ftp_fraction": 0.8,
+        "message": "Surge 2"
+      },
+      {
+        "duration_s": 1500,
+        "ftp_fraction": 0.68,
+        "message": "Block 3"
+      },
+      {
+        "duration_s": 300,
+        "ftp_fraction": 0.8,
+        "message": "Surge 3"
+      },
+      {
+        "duration_s": 1500,
+        "ftp_fraction": 0.68,
+        "message": "Block 4"
+      },
+      {
+        "duration_s": 300,
+        "ftp_fraction": 0.8,
+        "message": "Surge 4"
+      },
+      {
+        "duration_s": 1500,
+        "ftp_fraction": 0.68,
+        "message": "Block 5"
+      },
+      {
+        "duration_s": 300,
+        "ftp_fraction": 0.8,
+        "message": "Surge 5"
+      },
+      {
+        "duration_s": 1500,
+        "ftp_fraction": 0.68,
+        "message": "Block 6"
+      },
+      {
+        "duration_s": 300,
+        "ftp_fraction": 0.8,
+        "message": "Surge 6"
+      },
+      {
+        "duration_s": 1500,
+        "ftp_fraction": 0.68,
+        "message": "Block 7"
+      },
+      {
+        "duration_s": 300,
+        "ftp_fraction": 0.8,
+        "message": "Surge 7"
+      },
+      {
+        "duration_s": 1200,
+        "ftp_fraction": 0.45,
+        "message": "Cool-down"
+      }
+    ]
+  },
+  {
+    "id": "recovery-spin-45",
+    "name": "Recovery Spin 45",
+    "description": "Active recovery",
+    "steps": [
+      {
+        "duration_s": 300,
+        "ftp_fraction": 0.45,
+        "message": "Very easy start"
+      },
+      {
+        "duration_s": 2100,
+        "ftp_fraction": 0.5,
+        "message": "Z1 — cadence 90–100"
+      },
+      {
+        "duration_s": 300,
+        "ftp_fraction": 0.4,
+        "message": "Cool-down"
+      }
+    ]
+  },
+  {
+    "id": "sweet-spot-2x20",
+    "name": "Sweet Spot 2x20",
+    "description": "Time-efficient threshold development",
+    "steps": [
+      {
+        "duration_s": 900,
+        "ftp_fraction": 0.55,
+        "message": "Warm-up"
+      },
+      {
+        "duration_s": 1200,
+        "ftp_fraction": 0.9,
+        "message": "Sweet spot block 1"
+      },
+      {
+        "duration_s": 300,
+        "ftp_fraction": 0.5,
+        "message": "Recovery"
+      },
+      {
+        "duration_s": 1200,
+        "ftp_fraction": 0.9,
+        "message": "Sweet spot block 2"
+      },
+      {
+        "duration_s": 900,
+        "ftp_fraction": 0.45,
+        "message": "Cool-down"
+      }
+    ]
+  },
+  {
+    "id": "sweet-spot-3x15",
+    "name": "Sweet Spot 3x15",
+    "description": "Sustained sub-threshold",
+    "steps": [
+      {
+        "duration_s": 900,
+        "ftp_fraction": 0.55,
+        "message": "Warm-up"
+      },
+      {
+        "duration_s": 900,
+        "ftp_fraction": 0.91,
+        "message": "SS 1"
+      },
+      {
+        "duration_s": 300,
+        "ftp_fraction": 0.5,
+        "message": "Easy"
+      },
+      {
+        "duration_s": 900,
+        "ftp_fraction": 0.91,
+        "message": "SS 2"
+      },
+      {
+        "duration_s": 300,
+        "ftp_fraction": 0.5,
+        "message": "Easy"
+      },
+      {
+        "duration_s": 900,
+        "ftp_fraction": 0.91,
+        "message": "SS 3"
+      },
+      {
+        "duration_s": 600,
+        "ftp_fraction": 0.45,
+        "message": "Cool-down"
+      }
+    ]
+  },
+  {
+    "id": "tempo-3x10",
+    "name": "Tempo 3x10",
+    "description": "Muscular endurance",
+    "steps": [
+      {
+        "duration_s": 900,
+        "ftp_fraction": 0.55,
+        "message": "Warm-up"
+      },
+      {
+        "duration_s": 600,
+        "ftp_fraction": 0.82,
+        "message": "Tempo 1"
+      },
+      {
+        "duration_s": 300,
+        "ftp_fraction": 0.55,
+        "message": "Easy"
+      },
+      {
+        "duration_s": 600,
+        "ftp_fraction": 0.82,
+        "message": "Tempo 2"
+      },
+      {
+        "duration_s": 300,
+        "ftp_fraction": 0.55,
+        "message": "Easy"
+      },
+      {
+        "duration_s": 600,
+        "ftp_fraction": 0.82,
+        "message": "Tempo 3"
+      },
+      {
+        "duration_s": 900,
+        "ftp_fraction": 0.45,
+        "message": "Cool-down"
+      }
+    ]
+  },
+  {
+    "id": "threshold-2x20",
+    "name": "Threshold 2x20",
+    "description": "Classic FTP intervals",
+    "steps": [
+      {
+        "duration_s": 900,
+        "ftp_fraction": 0.55,
+        "message": "Warm-up incl 3x30s openers"
+      },
+      {
+        "duration_s": 1200,
+        "ftp_fraction": 0.97,
+        "message": "Threshold 1"
+      },
+      {
+        "duration_s": 600,
+        "ftp_fraction": 0.5,
+        "message": "Recovery spin"
+      },
+      {
+        "duration_s": 1200,
+        "ftp_fraction": 0.97,
+        "message": "Threshold 2"
+      },
+      {
+        "duration_s": 600,
+        "ftp_fraction": 0.45,
+        "message": "Cool-down"
+      }
+    ]
+  },
+  {
+    "id": "threshold-4x12",
+    "name": "Threshold 4x12",
+    "description": "Longer sub-threshold blocks",
+    "steps": [
+      {
+        "duration_s": 900,
+        "ftp_fraction": 0.55,
+        "message": "Warm-up"
+      },
+      {
+        "duration_s": 720,
+        "ftp_fraction": 0.96,
+        "message": "Block 1"
+      },
+      {
+        "duration_s": 240,
+        "ftp_fraction": 0.5,
+        "message": "Recovery"
+      },
+      {
+        "duration_s": 720,
+        "ftp_fraction": 0.96,
+        "message": "Block 2"
+      },
+      {
+        "duration_s": 240,
+        "ftp_fraction": 0.5,
+        "message": "Recovery"
+      },
+      {
+        "duration_s": 720,
+        "ftp_fraction": 0.96,
+        "message": "Block 3"
+      },
+      {
+        "duration_s": 240,
+        "ftp_fraction": 0.5,
+        "message": "Recovery"
+      },
+      {
+        "duration_s": 720,
+        "ftp_fraction": 0.96,
+        "message": "Block 4"
+      },
+      {
+        "duration_s": 900,
+        "ftp_fraction": 0.45,
+        "message": "Cool-down"
+      }
+    ]
+  },
+  {
+    "id": "threshold-5x10",
+    "name": "Threshold 5x10",
+    "description": "Repeated threshold bouts",
+    "steps": [
+      {
+        "duration_s": 900,
+        "ftp_fraction": 0.55,
+        "message": "Warm-up + 3x30s openers @ 110%"
+      },
+      {
+        "duration_s": 600,
+        "ftp_fraction": 0.98,
+        "message": "Threshold 1 — steady cadence"
+      },
+      {
+        "duration_s": 300,
+        "ftp_fraction": 0.5,
+        "message": "Recovery spin"
+      },
+      {
+        "duration_s": 600,
+        "ftp_fraction": 0.98,
+        "message": "Threshold 2"
+      },
+      {
+        "duration_s": 300,
+        "ftp_fraction": 0.5,
+        "message": "Recovery"
+      },
+      {
+        "duration_s": 600,
+        "ftp_fraction": 0.98,
+        "message": "Threshold 3"
+      },
+      {
+        "duration_s": 300,
+        "ftp_fraction": 0.5,
+        "message": "Recovery"
+      },
+      {
+        "duration_s": 600,
+        "ftp_fraction": 0.98,
+        "message": "Threshold 4"
+      },
+      {
+        "duration_s": 300,
+        "ftp_fraction": 0.5,
+        "message": "Recovery"
+      },
+      {
+        "duration_s": 600,
+        "ftp_fraction": 0.98,
+        "message": "Threshold 5 — hold form"
+      },
+      {
+        "duration_s": 600,
+        "ftp_fraction": 0.45,
+        "message": "Cool-down"
+      }
+    ]
+  },
+  {
+    "id": "vo2-30-30-x10",
+    "name": "VO2 30-30 x10",
+    "description": "Micro intervals",
+    "steps": [
+      {
+        "duration_s": 900,
+        "ftp_fraction": 0.55,
+        "message": "Warm-up"
+      },
+      {
+        "duration_s": 60,
+        "ftp_fraction": 1.3,
+        "message": "On 1"
+      },
+      {
+        "duration_s": 60,
+        "ftp_fraction": 0.5,
+        "message": "Off 1"
+      },
+      {
+        "duration_s": 60,
+        "ftp_fraction": 1.3,
+        "message": "On 2"
+      },
+      {
+        "duration_s": 60,
+        "ftp_fraction": 0.5,
+        "message": "Off 2"
+      },
+      {
+        "duration_s": 60,
+        "ftp_fraction": 1.3,
+        "message": "On 3"
+      },
+      {
+        "duration_s": 60,
+        "ftp_fraction": 0.5,
+        "message": "Off 3"
+      },
+      {
+        "duration_s": 60,
+        "ftp_fraction": 1.3,
+        "message": "On 4"
+      },
+      {
+        "duration_s": 60,
+        "ftp_fraction": 0.5,
+        "message": "Off 4"
+      },
+      {
+        "duration_s": 60,
+        "ftp_fraction": 1.3,
+        "message": "On 5"
+      },
+      {
+        "duration_s": 60,
+        "ftp_fraction": 0.5,
+        "message": "Off 5"
+      },
+      {
+        "duration_s": 60,
+        "ftp_fraction": 1.3,
+        "message": "On 6"
+      },
+      {
+        "duration_s": 60,
+        "ftp_fraction": 0.5,
+        "message": "Off 6"
+      },
+      {
+        "duration_s": 60,
+        "ftp_fraction": 1.3,
+        "message": "On 7"
+      },
+      {
+        "duration_s": 60,
+        "ftp_fraction": 0.5,
+        "message": "Off 7"
+      },
+      {
+        "duration_s": 60,
+        "ftp_fraction": 1.3,
+        "message": "On 8"
+      },
+      {
+        "duration_s": 60,
+        "ftp_fraction": 0.5,
+        "message": "Off 8"
+      },
+      {
+        "duration_s": 60,
+        "ftp_fraction": 1.3,
+        "message": "On 9"
+      },
+      {
+        "duration_s": 60,
+        "ftp_fraction": 0.5,
+        "message": "Off 9"
+      },
+      {
+        "duration_s": 60,
+        "ftp_fraction": 1.3,
+        "message": "On 10"
+      },
+      {
+        "duration_s": 60,
+        "ftp_fraction": 0.5,
+        "message": "Off 10"
+      },
+      {
+        "duration_s": 600,
+        "ftp_fraction": 0.45,
+        "message": "Cool-down"
+      }
+    ]
+  },
+  {
+    "id": "vo2-5x3",
+    "name": "VO2 5x3",
+    "description": "Short VO2max intervals",
+    "steps": [
+      {
+        "duration_s": 900,
+        "ftp_fraction": 0.55,
+        "message": "Warm-up"
+      },
+      {
+        "duration_s": 180,
+        "ftp_fraction": 1.18,
+        "message": "VO2 1"
+      },
+      {
+        "duration_s": 180,
+        "ftp_fraction": 0.5,
+        "message": "Recovery"
+      },
+      {
+        "duration_s": 180,
+        "ftp_fraction": 1.18,
+        "message": "VO2 2"
+      },
+      {
+        "duration_s": 180,
+        "ftp_fraction": 0.5,
+        "message": "Recovery"
+      },
+      {
+        "duration_s": 180,
+        "ftp_fraction": 1.18,
+        "message": "VO2 3"
+      },
+      {
+        "duration_s": 180,
+        "ftp_fraction": 0.5,
+        "message": "Recovery"
+      },
+      {
+        "duration_s": 180,
+        "ftp_fraction": 1.18,
+        "message": "VO2 4"
+      },
+      {
+        "duration_s": 180,
+        "ftp_fraction": 0.5,
+        "message": "Recovery"
+      },
+      {
+        "duration_s": 180,
+        "ftp_fraction": 1.18,
+        "message": "VO2 5"
+      },
+      {
+        "duration_s": 600,
+        "ftp_fraction": 0.45,
+        "message": "Cool-down"
+      }
+    ]
+  }
+]

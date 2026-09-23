@@ -38,7 +38,10 @@ TrainingDojo trenger **ditt** TP bearer token (samme type tilgang som nettlesere
 
 ### 4. Etter import
 
-- **Sykkel:** beskrivelsen sier Z2; for **struktur på rulle** importer ZWO separat (se B under) og knytt til samme dag, eller kjør ZWO i Zwift og la aktivitet synce til TP.  
+- **Sykkel med watt:** TrainingDojo gir **ikke** power-trinn. Bruk **hybrid** (anbefalt):
+  1. Importer `trainingdojo-4uker-uten-sykkel.csv` til TrainingDojo **eller** slett sykkeløkter fra full import  
+  2. Følg **[sykkel-watt-zwo.md](sykkel-watt-zwo.md)** + `plans/csv/sykkel-zwo-kalender-4uker.csv`  
+  3. ZWO fra `workouts/generated/` → TP Workout Library → dra på kalenderdag  
 - **Styrke:** TP viser ofte som «Other» / styrke — detaljer står i `description`.  
 - **TSS** i CSV er estimat; juster i TP når du har FTP i profile.
 

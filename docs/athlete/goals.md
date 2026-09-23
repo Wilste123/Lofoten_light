@@ -37,6 +37,10 @@ Agenten skal aktivt **dempe** Norseman/full-Extreme-logikk (ultra-spesifisitet, 
 2. Bygge aerob kapasitet og MSK-toleranse på alle tre ben  
 3. Øke spesifisitet mot Lofoten når grunnmur er på plass  
 
+## 12-måneders plan
+
+Grov maskin: [`plans/2026-2027-12mnd-periodisering.md`](../plans/2026-2027-12mnd-periodisering.md) (sep 2026 → Half Extreme aug 2027 + 750–800 t).
+
 ## Denne blokken (4–8 uker) — utfyll med agent
 
 - **Primærfokus:** TBD (f.eks. løpefrekvens + sykkel Z2 + 2× svøm/uke)

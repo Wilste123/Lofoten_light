@@ -1,30 +1,57 @@
-# Utstyr — triatlon grunnpakke
+# Utstyr — komplett tri-pakke (Half Extreme)
 
-## Svøm
+## Race day checklist
 
-- Wetsuit (OWS/race), svømbriller (mørk + lys), caps, evt. neopren hansker/sokker vinter trening
-- Pull buoy, paddles (moderat bruk), pull buoy
+### Svøm
+- [ ] Wetsuit (testet min 8×)
+- [ ] Goggles (mørk + klar backup)
+- [ ] Cap (evt. under race cap)
+- [ ] Body glide / anti-chafe
+- [ ] Tow float **trening** OWS
 
-## Sykkel
+### T1
+- [ ] Tri-drakt eller singlet under wetsuit
+- [ ] Hjelm på før sykkel
+- [ ] Sykkelsko, solbriller
+- [ ] Håndkle (valgfritt)
 
-- Landeveissykkel (tilpasset fit), hjelm, lys for nordisk mørke
-- Powermeter eller smart trainer (sterkt anbefalt for William historisk)
-- Flaske, ramme/belte, reservedekk, CO2 eller pumpe
+### Sykkel
+- [ ] Sykkel serviced
+- [ ] 2 flasker, gels/bar
+- [ ] Reservedekk, CO2/pumpe, multitool
+- [ ] Lag: vest, armløse, regn
 
-## Løp
+### T2
+- [ ] Løpesko med snøring eller elastisk
+- [ ] Race belt, cap
+- [ ] Mer gels
 
-- 2 par løpesko (rotasjon), evt. trail
-- Race: singlet, cap, race belt med nr
+### Løp
+- [ ] Trail-lignende sko hvis sti våt
+- [ ] Chafe cream innerlår
 
-## Transisjon
+## Trening vs race
 
-- Tri-drakt eller separat — øv T1/T2 i trening
+| Item | Trening | Race |
+|------|---------|------|
+| Wetsuit | OWS | Påkrevd kaldt |
+| Powermeter | Ja | Ja |
+| HR | Ja | Ja (pacing backup) |
 
-## Elektronikk
+## Budget-prioritet (William erfaren)
 
-- Sportsur (Garmin etc.) → TrainingPeaks sync
-- HR bånd for svøm/løp når puls på håndledd svak
+1. Powermeter / smart trainer
+2. Wetsuit som passer
+3. Bike fit
+4. Løpesko roterende 2 par
+5. Aerobars comfort for 100 km
 
-## Vedlikehold
+## Vedlikeholdskalender
 
-- Sykkel service 2×/år ved høyt volum; kjede, dekk, bremseklosser
+| Intervall | Oppgave |
+|-----------|---------|
+| Ukentlig | Kjede, dekk, flasker rengjort |
+| Månedlig | Bolt check, bremse |
+| 6 mnd | Service hos sykkelbutikk |
+
+Se `sykkel.md`, `svom-wetsuit.md`, `vinter-tromdelag.md`.

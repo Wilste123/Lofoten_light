@@ -1,41 +1,36 @@
-# Kunnskapsbase — treningscoach
+# Kunnskapsbase — treningscoach (utvidet)
 
-Strukturert referanse for agenten og William. Innholdet er **sammendrag og anvendt kunnskap** med kildehenvisninger — ikke erstatning for lege/fysioterapeut ved skade.
+Referanse for **topp-coach**-agenten. Alt skal kunne brukes til **konkrete ukeplaner** for William (Half Extreme 2027, 750–800 t/år, comeback-MSK).
+
+## Start her (agent)
+
+1. `coach/coach-filosofi.md` — tone, beslutningsregler, kvalitetskrav  
+2. `docs/athlete/profile.md` + `goals.md`  
+3. `coach/ukemaler.md` — fasebaserte uker  
+4. `triathlon/periodisering-mot-2027.md` + `lofoten-half-extreme.md`
 
 ## Indeks
 
 | Mappe | Innhold |
 |-------|---------|
-| [ernaring/](ernaring/) | Daglig ernæring, fueling, tri-spesifikke situasjoner |
-| [skader/](skader/) | Belastning, ACWR, forebygging, løp/sykkel/svøm |
-| [svom/](svom/) | Teknikk, volum, svak svømmer → tri, åpent vann/kulde |
-| [sykkel/](sykkel/) | Zoner, intervaller, rulle, landevei, terreng |
-| [lop/](lop/) | Oppbygging, skadefri volum, intervaller, fjell |
-| [utstyr/](utstyr/) | Tri-pakke, sykkel, våtdrakt, Trøndelag/vinter |
-| [triathlon/](triathlon/) | Brick, Lofoten Half Extreme, periodisering mot 2027 |
-| [restitusjon/](restitusjon/) | Søvn, stress, recovery |
-| [mental/](mental/) | Kontinuitet, motivasjon (sykkel vs løp) |
-| [kilder/](kilder/) | Lenker og nedlastede arkiv |
-| [load-and-intensity.md](load-and-intensity.md) | TSS, soner, ukestruktur (eksisterende) |
+| **[coach/](coach/)** | Filosofi, ukemaler, typiske feil |
+| [ernaring/](ernaring/) | Daglig, fueling, race |
+| [skader/](skader/) | ACWR, styrkeprogram, løp, oversikt |
+| [svom/](svom/) | Faser 0–3, øktbibliotek, OWS/kulde |
+| [sykkel/](sykkel/) | Langtur, motivasjon, intervall-presets |
+| [lop/](lop/) | Oppbygging, intervallbibliotek, terreng |
+| [utstyr/](utstyr/) | Race checklist, sykkel, vinter |
+| [triathlon/](triathlon/) | Brick, Lofoten, periodisering |
+| [restitusjon/](restitusjon/) | Søvn, sykdom, stress |
+| [mental/](mental/) | Kontinuitet, motivasjon |
+| [kilder/](kilder/) | Lenker + PDF |
+| [load-and-intensity.md](load-and-intensity.md) | TSS, soner, CTL |
 
-## Nedlastede arkiv (`external/`)
+## PDF-arkiv
 
-| Fil | Kilde |
-|-----|--------|
-| `ioc-load-injury-consensus-2016.pdf` | IOC/BJSM — belastning og skaderisiko |
-| `mso-open-water-swimming-safety.pdf` | Masters Swimming Ontario — OWS sikkerhet |
+`external/` — IOC belastning/skade, OWS sikkerhet.  
+`./scripts/fetch_knowledge_archives.sh`
 
-Oppdater arkiv:
+## Vedlikehold
 
-```bash
-./scripts/fetch_knowledge_archives.sh
-```
-
-## Hvordan agenten skal bruke dette
-
-1. Ved **planlegging**: `triathlon/periodisering-mot-2027.md` + `load-and-intensity.md` + `docs/athlete/profile.md`
-2. Ved **svøm**: `svom/` + `triathlon/lofoten-half-extreme.md` (1,9 km havn)
-3. Ved **skadefrihet**: `skader/belastningsstyring-acwr.md` før volumøkning mot 750–800 t/år
-4. Ved **utstyr/kulde**: `utstyr/` + `svom/apent-vann-kulde.md`
-
-William: Half Extreme **2027** — bruk Lofoten-dokumentet som **distansespesifikasjon**, ikke nødvendigvis årets dato.
+Når William får nye tester eller skader: oppdater `docs/athlete/profile.md` **og** ev. ett avsnitt i relevant `knowledge/`-fil hvis det endrer standard anbefalinger.

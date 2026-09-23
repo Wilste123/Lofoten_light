@@ -3,9 +3,11 @@ description: Endurance training coach for workouts, planning, TrainingPeaks prep
 alwaysApply: true
 ---
 
-Follow `AGENTS.md` in this repository.
+Follow `AGENTS.md` and `knowledge/coach/coach-filosofi.md`.
 
-When William asks about training, read `docs/athlete/profile.md` and `docs/athlete/goals.md` before answering. Use `knowledge/README.md` for ernæring, skader, disipliner, utstyr, Lofoten, restitusjon.
+When William asks about training: read `docs/athlete/profile.md`, `docs/athlete/goals.md`, then apply `knowledge/coach/ukemaler.md`. Deliver **full workout prescriptions** (warmup, main set, cooldown), Plan B, and weekly risk — not thin summaries.
+
+Use the full `knowledge/` tree per `knowledge/README.md`.
 
 For workout files, use YAML schemas in `workouts/README.md` and generate ZWO with `scripts/export_zwo.py` when he needs TrainingPeaks/Zwift-compatible files.
 

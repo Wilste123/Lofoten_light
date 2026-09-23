@@ -1,27 +1,66 @@
-# Løp — oppbygging etter pause
+# Løp — oppbygging (comeback med høy motivasjon)
 
-William: **middels nylig volum**, **høy motivasjon** — flaskehals er belastningstoleranse, ikke vilje.
+William **vil** løpe — coachen **kanaliserer** til skadefri volum.
 
-## Startpunkt
+## Fase 1 — Kontinuitet (uke 1–6)
 
-- 3–4 løp/uke ofte bedre enn 2 store (kontinuitet).
-- Mange starter med **20–40 min** easy; øk total uketid forsiktig.
+| Parameter | Verdi |
+|-----------|--------|
+| Økter/uke | 3–4 |
+| Lang økt | 50–70 min max |
+| Hard | 0–1 (strides only) |
+| Overflate | Myk der mulig |
 
-## Walk-run (hvis nødvendig)
+**Eksempeluke:**
 
-- Ved plager: 9 min løp / 1 min gange — kortvarig bro, ikke mål i seg selv for erfaren løper med god historikk.
+- Man 40 min easy
+- Ons 45 min easy + 6×15 s strides
+- Fre 35 min easy
+- Søn 65 min trail easy
 
-## Langløp
+**Km/uke:** ikke obsess — 25–40 km kan være nok.
 
-- Bygg mot **16–18 km** terreng før race-spesifikk fase.
-- Lofoten 21 km **etter sykkel** — peak long run i build kan være 18–20 km fresh, ikke 30 km.
+## Fase 2 — Volum (uke 7–16)
 
-## Pacing
+- Lang økt → 75–90 min
+- +1 medium dag 55 min
+- **Km-økning:** ~5–8 %/uke eller +10 min langløp
 
-- Easy = samtale; hard = intervaller 1–2×/uke maks tidlig fase.
+**Cap:** ikke over 55 km/uke før 8 uker uten plager.
 
-## Kobling til prioriteringer
+## Fase 3 — Kvalitet (etter stabil 45 km/uke)
 
-1. Kontinuitet → faste løpedager  
-2. Skadefrihet → ACWR, styrke (`skader/`)  
-3. Gradvis progresjon → ikke jage km fordi løp er gøy
+Introduksjon **1 Q/uke:**
+
+| Økt | Innhold |
+|-----|---------|
+| Tempo | 20–30 min @ halvmaraton-følelse (RPE 7) |
+| Intervaller | 5×1 km @ 10k effort, 90 s jog |
+| Bakke | 8×60 s opp, jog ned |
+
+## Fase 4 — Halvmaraton-spesifikk (build/spesifikk)
+
+- Langløp **16–18 km** fresh
+- **Etter sykkel:** 8–12 km (brick) før 15 km fresh
+
+## Pacing — easy definition
+
+- **Maffetone-stil (valgfritt):** 180−alder ≈ 156 — mange comeback-løpere holder under dette først
+- **Samtale-test:** full setning uten å hive
+- William er erfaren — hjerte kan lure; **bein** er flaskehals
+
+## Løp vs sykkel-timer
+
+15 min løp ≠ 15 min sykkel for MSK. Ved total timer-cap: **kutt sykkel før løp** hvis løp er prioritet for motivasjon **og** skadefri.
+
+## Røde flagg
+
+- Skarpt smerte punkt (f.eks. achilles)
+- Bare ett ben — stopp, 3 dager easy eller sykkel
+
+## Tredemølle (Trondheim vinter)
+
+- 1 % incline for å matche utendørs kost
+- Bakke: 4–6 % 3×3 min @ RPE 7
+
+Se `intervaller-og-fart.md`, `terreng-og-fjell.md`.

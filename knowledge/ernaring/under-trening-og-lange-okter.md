@@ -1,33 +1,54 @@
-# Fueling under trening og lange økter
+# Fueling under trening — praktisk guide
 
-Kritisk for **100 km sykkel** og brick mot Lofoten.
+## Mage-trening (obligatorisk for William)
 
-## Karbohydrat per time (sykkel/løp)
+Magen er en muskel. **Uke 1:** 30 g CHO/h på 2 h sykkel. **Uke 4:** 60 g/h. **Build:** 75–90 g/h på 4 h+.
 
-| Intensitet / varighet | Ca. CHO/time |
-|----------------------|--------------|
-| Z1–Z2 < 90 min | Ofte ikke nødvendig ekstra |
-| Z2 2–3 t | 30–60 g/time |
-| Hard / 3+ t | 60–90 g/time (tren mage gradvis) |
-| Løp | Ofte 30–60 g/time på lange løp; mindre toleranse enn sykkel |
+Symptomer ved for mye for tidlig: kvalme — **reduser 20 g**, ikke dropp fueling.
 
-## Praktisk
+## Sykkel — time table (3–5 h økt)
 
-- Start fueling **tidlig** (etter 20–30 min på lange økter).
-- Bland **glukose + fruktose** (ca. 2:1) for høyere opptak når > 60 g/time.
-- **Salt**: 300–600 mg/time ved svette (mer på varme/long).
+| Tid | CHO | Fluid |
+|-----|-----|-------|
+| 0:00 | Start flaske med elektrolytt | 500 ml |
+| 0:20 | Første gel/bite (25 g) | Drikk |
+| 0:40 | 25–30 g | |
+| Hver 20–25 min | 25–30 g til 60–90 g/h totalt | 500–750 ml/h |
 
-## Halv ironman-spesifikt (trening)
+**Produktmix:** gels + fast food (banan, bar) på lange turer.
 
-- Øv **race nutrition** på økter > 3 t sykkel minst månedlig i build/spesifikk.
-- Brick: spis som på sykkel, lett løp mage etter.
+## Løp
 
-## Etter økt
+- 30–60 g/h på 90 min+
+- Gels med vann ved stasjon
+- Mindre toleranse enn sykkel — øv på brick
 
-- 20–40 g protein + karbohydrat innen 1–2 t (måltid eller shake).
-- Ikke «fasting» etter 5 t sykkel — restitusjon for neste uke teller mot 750–800 t.
+## Svøm
 
-## Kilder
+- Vanligvis ingen under 1,9 km
+- Pre: lett snack 90 min før
 
-- ACSM / ISSN position stands on endurance nutrition (generelle anbefalinger)
-- TrainingPeaks / Precision Fueling — praktiske guider (supplement til dette dokument)
+## Elektrolytter
+
+- Svette test (vekt før/etter): hvert kg tapt ≈ 1 L + salt
+- Kaldt vær Lofoten: fortsatt fuel — mindre væske, ikke null karbo på sykkel
+
+## Fastende trening
+
+- Ok **sjelden** 60 min Z1 morgen for metabolsk eksperiment — **ikke** standard i build
+- Hard økt fastende = dårlig kvalitet + høy skaderisiko løp
+
+## Post-økt (innen 2 t)
+
+| Øktstype | Mål |
+|----------|-----|
+| <60 min easy | Normal måltid |
+| 2–3 h | 60–80 g karbo + 25 g protein |
+| 5 h | Stor måltid + snack senere |
+| Brick | Prioritet høy — glykogen for neste dag |
+
+## Race day preview
+
+Øv **nøyaktig** produkter og timing på 2× race sim sykkel.
+
+Se `triatlon-spesifikt.md`.

@@ -1,52 +1,73 @@
-# Lofoten Triathlon — Half Extreme
+# Lofoten Triathlon — Half Extreme (race-bibel)
 
-**William’s hovedmål (2027).** Spesifisitet i trening skal speile denne distansen — ikke full Extreme (4/181/42) eller Norseman-logikk.
+**William hovedmål 2027.** Bruk dette dokumentet når du vurderer om trening er «on target».
 
-## Offisiell distanse (Race Manual)
+## Distanser og cut-offs
 
-Kilde: [The Arctic Triple — Half Extreme Race Manual](https://thearctictriple.no/lofoten-triathlon-half-extreme-race-manual)
+| Ben | Distans | Cut-off | Coach-note |
+|-----|---------|---------|------------|
+| Svøm | **1,9 km** | **1 t 15 min** | ~2:00/100 m = komfort; margin for gruppesvøm |
+| Sykkel | **100 km** | 5 t fra start | ~20 km/h snitt inkl. stopp = tett; sikt 22–28+ km/h effektiv |
+| Løp | **21 km** | 9 t totalt | Tjeldbergtinden sent i løpet — bevare bein |
 
-| Ben | Distans | Merknader |
-|-----|---------|-----------|
-| Svøm | **1,9 km** | Vannstart, inner side av pir, relativt beskyttet |
-| Sykkel | **100 km** | E10 mot Fiskebøl, Pollveien/Midnattsolveien via Laukvik, tilbake E10 til Svolvær |
-| Løp | **21 km** | To runder Svolvær-området; **grus/sti**; avslutning over **Tjeldbergtinden (367 m)** |
+**Høydemeter:** ~2000 m totalt (arrangør) — **bakke er reell**, ikke flat halv iron.
 
-Total ~123 km. Ca. **2000 m høydemeter** totalt (ca. 1200 sykkel + 800 løp — oppgitt av arrangør).
+## Rute-forståelse (treningsmapping)
 
-## Cut-offs (planlegg race pacing)
+### Svøm — Svolvær havn
+- Beskyttet side av pir — men **kaldt**, wetsuit, mass start
+- Trening: OWS + mass start sim (gruppe)
 
-| Ben | Cut-off |
-|-----|---------|
-| Svøm | 1 t 15 min — svømmere i vannet etter dette plukkes opp |
-| Sykkel | 5 t etter start |
-| Løp | Maks **9 t** etter start totalt |
+### Sykkel — 100 km
+- E10 + scenic nord på Austvågøy (Laukvik matstasjon)
+- **Vind** kan dominere — tren sidevind ute
+- 3–5 t økter med **steady power**, ikke bare rulle ERG
 
-## Treningsimplikasjoner for William
+### Løp — 21 km, 2 runder
+- Asfalt, grus, sti
+- **Tjeldbergtind 367 m** på siste runde — tren bakkeintervaller og power-hike
+- Brick: forvent tungt ben første 2 km etter T2
 
-### Svøm (svakeste ben)
+## Race execution (coach-plan)
 
-- Mål: komfortabel **1,9 km kontinuerlig** i lignende forhold (sjø, kaldt, wetsuit).
-- Bygg frekvens før hero-lengder; teknikk + pacing i første halvdel av løpet.
+### Uke før
+- −40 % volum, kort skarphet
+- Karbo-load 48 t (moderat økning)
+- Utstyr sjekkliste `utstyr/triatlon-grunnpakke.md`
+
+### Svøm dag
+- Oppvarming 10–15 min utenfor vann
+- Start rolig; sighting
+- Exit: T1 effektivitet øvd
 
 ### Sykkel
-
-- **100 km** med variert terreng og lang «scenic» seksjon — tren **steady power** på 3–5 t økter, ikke bare 90 min rulle.
-- Vind/kulde i Lofoten: mental og fueling-plan på sykkel (se `ernaring/`).
-- Erfaren syklist historisk — moderat motivasjon: bruk **løp-brikker** og målrettede kvalitetsøkter, ikke bare mengde sykkel.
+- Første 30 min konservativ watt
+- Fuel 60–90 g CHO/h fra start
+- Lag klær for kulde/regn
 
 ### Løp
+- Første 3 km under plan
+- Bakke: power hike strategi øvd
+- Siste 5 km: mental, ikke ny pacing-experiment
 
-- **21 km** med **fjell og grus** etter sykkel — prioritér løpsmotivasjon til **terrengløp**, bakkeintervaller, og **løp etter sykkel** (brick) i build-fase.
-- Tjeldbergtinden: bakkeøkter i Trøndelag (tredemølle incline / lokale topper) i spesialfase.
+## Treningsøkter som «matcher» ruten
 
-## Arrangør / logistikk
+| Race-krav | Økt |
+|-----------|-----|
+| 1,9 km svøm | 1900 kontinuerlig; 10×200 @ race pace |
+| 100 km | 4–5 h Z2 ute; 100 km i grupperide |
+| Vind | 3 h ute med eksponerte partier |
+| Bakke løp | 8×2 min opp; trail long run |
+| Full dag | Brick 80–100 km + 10–15 km løp |
 
-- [Half Extreme oversikt](https://thearctictriple.no/lofoten-triathlon-half-extreme)
-- Maks ~150 deltakere — planlegg reise (Evenes → buss / fly til Svolvær).
-- Fullt supported — ingen ekstern support underveis.
+## Logistikk
 
-## Ikke forveksle med
+- [The Arctic Triple — Half Extreme](https://thearctictriple.no/lofoten-triathlon-half-extreme)
+- [Race Manual](https://thearctictriple.no/lofoten-triathlon-half-extreme-race-manual)
+- Reise: Evenes → Svolvær; begrenset startplasser (~150)
 
-- **Extreme**: 4 km / 181 km / 45 km løp — utenfor nåværende scope.
-- Besøk Lofoten-listinger med avvikende tall (f.eks. 2 km / 92 km) — **stol på race manual** for planlegging.
+## Ikke planlegg for
+
+- Full Extreme distanser
+- Norseman-nutrition/volum
+- «Bare sykkel» måned uten svøm

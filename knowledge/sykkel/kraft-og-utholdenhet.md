@@ -1,29 +1,62 @@
-# Sykkeltrening — kraft og utholdenhet
+# Sykkeltrening — utholdenhet, volum og comeback
 
-William: historisk **høy nivå**, peak FTP 410 W (2019) — planlegg fra **2026-test**, ikke historikk.
+William: **elite-historikk**, **moderat motivasjon** — sykkel skal være **effektiv og variert**, ikke mengde for mengdes skyld.
 
-## Soner (power)
+## Nå-FTP vs 2019
 
-Bruk gjeldende FTP i `profile.md`. Typisk fordeling mot 750–800 t:
+| | 2019 | Planlegging nå |
+|---|------|----------------|
+| FTP | 410 W (~4,6 W/kg) | **Test på nytt** |
+| Intervaller | Trolig for harde | Start −10–15 % under gjetning |
 
-- **70–80 %** Z1–Z2 (inkl. lange ruller)
-- **10–15 %** tempo/sweet spot
-- **5–10 %** threshold/VO2 (kvalitet)
+**Ramp-test (innendørs):** 5 min oppvarming, 1 min steg +20 W til failure (eller TP ramp) → sett FTP ~75 % av best 1 min (protokollavhengig).
 
-## Lange økter
+## Langøkter — hjerte i Half Extreme
 
-- Bygg mot **4–5 t** Z2 med fueling — direkte relevant for 100 km Lofoten.
-- Variasjon: 2 t steady + 2 h «tempo blokker» i build.
+100 km ≈ **3–5 t** for William avhengig av watt og vind. **Måløkter:**
 
-## Motivasjon
+| Økt | Struktur | Formål |
+|-----|----------|--------|
+| Foundation | 2,5–3 h @ 65–72 % FTP | MSK + fettmetabolisme |
+| Progressive | 2 h Z2 + 60 min @ 75–78 % | Race «feel» |
+| Full | 4–5 h @ 65–70 % | Nutrition, mental |
+| B-group | 3 h med 3×20 min sweet spot | Tidseffektiv (build) |
 
-- Unngå «bare mengde sykkel»: kombiner med **løp** samme uke, eller tydelig mål (TSS, terrengtur, sosial tur).
+**Fueling:** start 30 min inn; 60–90 g CHO/h i build (se ernæring).
 
-## Innendørs (Trondheim)
+## Z2-kvalitet
 
-- Smart trainer: ERG for intervaller; sim for lengde.
-- Vift + fuktighet — ernæring/hydrering like viktig som ute.
+- **Ikke** junk miles: hold watt jevnt (ERG eller disiplin)
+- Cadence 85–95 på rulle; stå opp 5–10 min/time på lang tur ute
 
-## Neuromuskulært
+## Motivasjons-design
 
-- Historisk 5 s 1300 W — kort sprintarbeid **ikke** prioritet for Half Extreme; ok som sporadisk «fun».
+| Kjedelig | Bedre |
+|----------|-------|
+| 2 h samme film | 2 h med 4×5 min «over under» i Z2 |
+| Kun rulle | 1×/uke ute selv om kaldt |
+| Solo alltid | 1×/uke gruppe/training partner |
+
+## Watt vs puls innendørs
+
+- Varm stue → puls drift; stol på watt
+- Ute vinter: puls + RPE
+
+## Sykkel i tri-uke — prioritering
+
+1. **Én lang** (lør typisk)
+2. **Én kvalitet** (ons/tir)
+3. **Én recovery** 45–60 min
+4. Resten kan byttes mot brick
+
+## TSS-budsjett sykkel (ved 15 t total uke)
+
+Sykkel ~7 t → ofte **250–400 TSS/uke** avhengig av intensitet.
+
+## Feil etter comeback
+
+- 5 h rulle Z3 «fordi det føles ok» → ødelegger løp
+- Ignorere sadelplager — fix bike fit tidlig
+- Kun ERG intervaller, null utekjøring — dårlig for Lofoten vind/teknikk
+
+Se `intervaller-og-sonearbeid.md`, `ror-sykkel-og-terreng.md`.

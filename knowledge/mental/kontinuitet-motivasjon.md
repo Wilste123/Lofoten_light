@@ -1,23 +1,51 @@
-# Mental — kontinuitet og motivasjon
+# Mental coaching — kontinuitet over perfeksjon
 
-## William-spesifikt
+## Kjerne
 
-- Sykkel: moderat motivasjon — «kjedelig å bare sykle»
-- Løp: høy motivasjon — bruk som **anker** for vaner
-- Svøm: må bygges — forvent friksjon første måneder
+William taper ikke motst vilje — han taper mot **brudd i vaner** og **for høy belastning tidlig**. Coach-målet er **uker i strekk**, ikke hero-uker.
 
-## Strategier
+## Ukentlig scoreboard (prosess)
 
-1. **Faste ankre**: faste ukedager per disiplin (f.eks. tir svøm, ons løp, lør lang sykkel/løp).
-2. **Varierte sykkeløkter**: terreng, gruppe, mål TSS — ikke bare samme rullefilm.
-3. **Prosessmål**: «4 økter/uke» før «CTL 80».
-4. **750–800 t**: visuell fremdrift (timer akkumulert) — ikke bare FTP-jakt.
+| Poeng | Handling |
+|-------|----------|
+| +1 | Planlagt økt fullført (uansett Plan B) |
+| +1 | 7+ t søvn gjennomsnitt |
+| +1 | Svøm fullført |
+| −2 | Hoppet over økt uten omplan |
+| −3 | Skjult volumsprang «fordi formen var god» |
 
-## Når motivasjon faller
+**Mål:** 4+ økter/uke, 48 uker/år — det er 750 t.
 
-- Reduser intensitet, behold **frekvens** (prioritet 1).
-- Bytt disiplin én dag (løp i stedet for sykkel) innenfor ukeplan.
+## Sykkel-motivasjon
+
+| Trigger | Intervensjon |
+|---------|--------------|
+| «Sykkel er kjedelig» | Bytt til ute, gruppe, eller 1 h hard + fri resten uka |
+| «Jeg vil bare sykle» | «Svøm i morgen 45 min, så sykkel» — rekkefølge |
+| CTL-jakt | Vis timer mot **årsmål**, ikke 2019 |
+
+## Løp-glede kanalisering
+
+- Tillat **4. easy løp** hvis 3 andre er på plan — cap **hard** løp
+- Trail som belønning etter hard sykkel-uke
+
+## Svøm-motstand
+
+- Forvent motstand første 8 uker — **ikke** moral failure
+- Mini-victories: 400 m continuous, ny CSS PR
+
+## Selvsnakk
+
+| Destruktivt | Coach-erstattning |
+|-------------|-------------------|
+| «Jeg var 410 W» | «Jeg bygger 2026-FTP» |
+| «Jeg må ta igjen» | «Jeg holder 11 t denne uken» |
+| «Half Extreme er langt unna» | «Denne brick er for Tjeldbergtind» |
+
+## Burnout-signaler
+
+- Irritasjon før økt, HR unormalt høy på easy, søvn ødelagt 5+ dager → **recovery uke nå**, ikke «push through».
 
 ## Langsikt
 
-- Half Extreme 2027 er hovedprosjekt — ikke sammenlign med 2019-self daglig.
+Half Extreme 2027 er **ett** prosjekt — identitet som «utholdenhetsutøver i comeback» støtter kontinuitet bedre enn «jeg må bli som 19 år igjen».

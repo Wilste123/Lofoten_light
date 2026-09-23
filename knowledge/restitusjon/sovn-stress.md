@@ -1,25 +1,59 @@
-# Restitusjon — søvn og stress
+# Restitusjon — søvn, stress, HRV
 
-Prioritet 1–3 i profile: kontinuitet og skadefrihet **krever** recovery.
+Uten restitusjon er 750–800 t **skadeår**, ikke progresjonsår.
 
 ## Søvn
 
-- Mål **7–9 t** for de fleste utholdenhetsutøvere.
-- Høyt volum uten søvn → ACWR «ser ok» men skaderisiko øker.
+| | Anbefaling |
+|---|------------|
+| Varighet | 7–9 t for de fleste |
+| Regelmessighet | Samme oppvekking ±30 min |
+| Pre-søvn | Skjerm ned 60 min; ikke hard økt sent uten grunn |
+| Alkohol | Reduserer REM og glykogen — begrens i build |
 
-## Stress (jobb, studier, liv)
+**Treningsjustering:**
 
-- Allostatic load: mental stress teller som belastning — reduser treningsintensitet i eksamens-/travel-uker i stedet for å hoppe over all trening (kontinuitet).
+| Søvn 3 netter | Handling |
+|---------------|----------|
+| <6 t | Dropp VO2/threshold; hold Z1–Z2 |
+| 6–7 t | Plan som normalt, ingen ekstra |
+| >7,5 t | Ok å ta planlagt Q |
+
+## Stress (jobb, studier, relasjoner)
+
+- **Allostatic load** — mental stress = fysisk belastning
+- Eksamensuke: −30 % volum, behold 2× svøm kort
+- Reise: pack sko, hotell-tredemølle 30 min beats null
 
 ## Aktiv recovery
 
-- Z1 sykkel/løp/svøm 20–40 min; mobilitet; ikke «junk» som erstatter søvn.
+| Aktivitet | Når |
+|-----------|-----|
+| 30 min Z1 sykkel | Dagen etter hard |
+| Svøm easy drill | Alternativ til løp |
+| Walk 45 min | Rest day movement |
 
-## HRV / readiness
+**Ikke:** 90 min «junk» som hindrer søvn.
 
-- TrainingPeaks eller Whoop/Garmin — bruk som **trend**, ikke enkeltdag panikk.
-- 2–3 dager røde flagg → lett uke, ikke full stop med mindre sykdom.
+## HRV / readiness (Garmin/WHOOP/TP)
+
+- Grøn/gul/rød: **trend over 3 dager**
+- Én rød dag + god søvn → lett økt ok
+- Tre røde → recovery uke
 
 ## Sykdom
 
-- «Neck up» vs feber — følg norske/idrettsmedisinske retningslinjer; gradvis retur 3–7 dager.
+| Symptom | Trening |
+|---------|---------|
+| Over halsen, lett | Z1 kort eller rest |
+| Feber, bryst, utmattelse | **Stopp** til 24–48 t feberfri |
+| Retur | 50 % uke 1, 75 % uke 2, 100 % uke 3 |
+
+## Massasje, sauna, kuld bad
+
+- Supplement — ikke erstatning søvn
+- Isbad etter hard løp: individuelt; ikke obligatorisk
+
+## Coach-spørsmål hver mandag
+
+«Hvor mange timer søvn i snitt sist uke?» — svaret styrer ukeplan.

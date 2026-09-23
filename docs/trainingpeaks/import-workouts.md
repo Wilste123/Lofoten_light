@@ -12,7 +12,7 @@ TrainingPeaks’ **OAuth API** is for approved partners, not personal scripts. T
 
 ### Option B — ZWO file (bike, smart trainer)
 
-1. Use files in `workouts/zwo/bike/` (or run `scripts/build_zwo_library.py` for swim/run/strength/brick).
+1. Use files in `workouts/zwo/bike/` only — TP rejects swim/run ZWO. For other sports use `workouts/planned/` or TrainingDojo CSV ([zwo-kun-sykkel.md](zwo-kun-sykkel.md)).
 2. In TrainingPeaks: import into library (version-dependent) or open in **Zwift**/**TrainerRoad** if you use those bridges.
 3. If TP does not accept ZWO directly, use the same file in Zwift and let TP sync completed activities from your connected device account.
 

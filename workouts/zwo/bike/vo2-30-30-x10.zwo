@@ -2,7 +2,7 @@
 <workout_file>
   <author>Xtri training coach</author>
   <name>VO2 30-30 x10</name>
-  <description>Micro intervals — neuromuscular + aerobic</description>
+  <description>Micro intervals — Bike: Power = fraction of FTP. Set bike FTP in TrainingPeaks Settings → Zones; watts are calculated on import.</description>
   <sportType>bike</sportType>
   <tags/>
   <workout>

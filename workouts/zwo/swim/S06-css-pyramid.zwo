@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>S06 CSS pyramid</name>
+  <description>100-200-300-400-300-200-100 @ CSS. — Swim: Power = fraction of threshold SWIM pace (T-pace/CSS). Set swim threshold pace in TP Zones — not bike FTP. Import via Workout Builder (structured swim), not bulk ZWO.</description>
+  <sportType>swim</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="600" Power="0.9300" pace="0">
+      <textevent message="WU" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="3480" Power="0.9300" pace="0">
+      <textevent message="Pyramid sets 20s rest between" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="420" Power="0.9300" pace="0">
+      <textevent message="CD" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

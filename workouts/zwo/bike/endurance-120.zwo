@@ -2,7 +2,7 @@
 <workout_file>
   <author>Xtri training coach</author>
   <name>Endurance 120</name>
-  <description>Base aerobic — 2h Z2</description>
+  <description>Base aerobic — Bike: Power = fraction of FTP. Set bike FTP in TrainingPeaks Settings → Zones; watts are calculated on import.</description>
   <sportType>bike</sportType>
   <tags/>
   <workout>

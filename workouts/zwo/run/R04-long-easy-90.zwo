@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>R04 Long 90</name>
+  <description>Langløp Z2. — Run: Power = fraction of threshold RUN pace (pace=2 ≈ 10k/threshold reference). Set run threshold pace in TP Zones — not bike FTP. TP Workout Library ZWO import is bike-only; use Workout Builder for run or sync from calendar.</description>
+  <sportType>run</sportType>
+  <durationType>time</durationType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="5400" Power="0.7800" pace="2">
+      <textevent message="Long easy — fuel after 60 min" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

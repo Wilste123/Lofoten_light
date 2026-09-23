@@ -2,7 +2,7 @@
 <workout_file>
   <author>Xtri training coach</author>
   <name>Sweet Spot 2x20</name>
-  <description>Time-efficient threshold development</description>
+  <description>Time-efficient threshold development — Bike: Power = fraction of FTP. Set bike FTP in TrainingPeaks Settings → Zones; watts are calculated on import.</description>
   <sportType>bike</sportType>
   <tags/>
   <workout>

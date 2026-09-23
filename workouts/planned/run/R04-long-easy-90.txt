@@ -3,6 +3,6 @@ sport: run
 description: Langløp Z2.
 tp_intensity: Run → Workout Builder: % Threshold Pace OR % LTHR (not power)
 duration_min: 90
-trainingpeaks: Build structured workout (not ZWO). See docs/trainingpeaks/intensitet-svom-lop.md
+trainingpeaks: Builder or TrainingDojo; mirror ZWO in workouts/zwo/ (pace zones, not bike FTP)
 steps:
   - 90:00 | Long easy — fuel after 60 min | tp_target: % LTHR 80-89% (or RPE 4-5)

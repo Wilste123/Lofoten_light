@@ -2,7 +2,7 @@
 <workout_file>
   <author>Xtri training coach</author>
   <name>Sweet Spot 3x15</name>
-  <description>Sustained sub-threshold</description>
+  <description>Sustained sub-threshold — Bike: Power = fraction of FTP. Set bike FTP in TrainingPeaks Settings → Zones; watts are calculated on import.</description>
   <sportType>bike</sportType>
   <tags/>
   <workout>

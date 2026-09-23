@@ -2,7 +2,7 @@
 <workout_file>
   <author>Xtri training coach</author>
   <name>Over-Under 3x12</name>
-  <description>Lactate tolerance — 2 min under / 2 min over</description>
+  <description>Lactate tolerance — Bike: Power = fraction of FTP. Set bike FTP in TrainingPeaks Settings → Zones; watts are calculated on import.</description>
   <sportType>bike</sportType>
   <tags/>
   <workout>

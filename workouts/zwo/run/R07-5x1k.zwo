@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>R07 5x1 km</name>
+  <description>5x1 km @ 10k effort. — Run: Power = fraction of threshold RUN pace (pace=2 ≈ 10k/threshold reference). Set run threshold pace in TP Zones — not bike FTP. TP Workout Library ZWO import is bike-only; use Workout Builder for run or sync from calendar.</description>
+  <sportType>run</sportType>
+  <durationType>time</durationType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="900" Power="0.7200" pace="2">
+      <textevent message="WU 15" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="240" Power="1.0800" pace="2">
+      <textevent message="1k rep 1 RPE 8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="90" Power="0.6500" pace="2">
+      <textevent message="Jog 90s" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="240" Power="1.0800" pace="2">
+      <textevent message="1k rep 2 RPE 8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="90" Power="0.6500" pace="2">
+      <textevent message="Jog 90s" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="240" Power="1.0800" pace="2">
+      <textevent message="1k rep 3 RPE 8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="90" Power="0.6500" pace="2">
+      <textevent message="Jog 90s" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="240" Power="1.0800" pace="2">
+      <textevent message="1k rep 4 RPE 8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="90" Power="0.6500" pace="2">
+      <textevent message="Jog 90s" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="240" Power="1.0800" pace="2">
+      <textevent message="1k rep 5 RPE 8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="90" Power="0.6500" pace="2">
+      <textevent message="Jog 90s" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0.7800" pace="2">
+      <textevent message="CD 10" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

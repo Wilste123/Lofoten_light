@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>R11 6x8 threshold</name>
+  <description>Cruise intervals. — Run: Power = fraction of threshold RUN pace (pace=2 ≈ 10k/threshold reference). Set run threshold pace in TP Zones — not bike FTP. TP Workout Library ZWO import is bike-only; use Workout Builder for run or sync from calendar.</description>
+  <sportType>run</sportType>
+  <durationType>time</durationType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="900" Power="0.7200" pace="2">
+      <textevent message="WU 15" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="480" Power="1.0000" pace="2">
+      <textevent message="Threshold 8 min #1 RPE 7-8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.6500" pace="2">
+      <textevent message="Jog 2 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="480" Power="1.0000" pace="2">
+      <textevent message="Threshold 8 min #2 RPE 7-8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.6500" pace="2">
+      <textevent message="Jog 2 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="480" Power="1.0000" pace="2">
+      <textevent message="Threshold 8 min #3 RPE 7-8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.6500" pace="2">
+      <textevent message="Jog 2 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="480" Power="1.0000" pace="2">
+      <textevent message="Threshold 8 min #4 RPE 7-8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.6500" pace="2">
+      <textevent message="Jog 2 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="480" Power="1.0000" pace="2">
+      <textevent message="Threshold 8 min #5 RPE 7-8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.6500" pace="2">
+      <textevent message="Jog 2 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="480" Power="1.0000" pace="2">
+      <textevent message="Threshold 8 min #6 RPE 7-8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.6500" pace="2">
+      <textevent message="Jog 2 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="720" Power="0.7800" pace="2">
+      <textevent message="CD 12" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

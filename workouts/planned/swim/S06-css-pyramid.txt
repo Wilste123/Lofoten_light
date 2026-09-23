@@ -3,7 +3,7 @@ sport: swim
 description: 100-200-300-400-300-200-100 @ CSS.
 tp_intensity: Swim → Workout Builder: % Threshold swim pace (T-pace/CSS); pool length in Equipment
 duration_min: 75
-trainingpeaks: Build structured workout (not ZWO). See docs/trainingpeaks/intensitet-svom-lop.md
+trainingpeaks: Builder or TrainingDojo; mirror ZWO in workouts/zwo/ (pace zones, not bike FTP)
 steps:
   - 10:00 | WU | tp_target: % T-pace 92-94%
   - 58:00 | Pyramid sets 20s rest between | tp_target: % T-pace 92-94%

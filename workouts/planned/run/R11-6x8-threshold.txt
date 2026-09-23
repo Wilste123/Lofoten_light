@@ -3,7 +3,7 @@ sport: run
 description: Cruise intervals.
 tp_intensity: Run → Workout Builder: % Threshold Pace OR % LTHR (not power)
 duration_min: 87
-trainingpeaks: Build structured workout (not ZWO). See docs/trainingpeaks/intensitet-svom-lop.md
+trainingpeaks: Builder or TrainingDojo; mirror ZWO in workouts/zwo/ (pace zones, not bike FTP)
 steps:
   - 15:00 | WU 15 | tp_target: % LTHR Z1-Z2
   - 8:00 | Threshold 8 min #1 RPE 7-8 | tp_target: % threshold pace 95-105%

@@ -23,11 +23,13 @@
 
 Brick sykkel (samme import): `zwo/brick/BR01-bike-90.zwo`, `BR02-bike-180.zwo`, `BR03-bike-240.zwo`
 
-## Svøm — planned (`planned/swim/*.txt`) → TrainingDojo / kalender
+## Svøm — planned (`planned/swim/*.txt`) → TP: **% threshold swim pace** (CSS), ikke watt
+
+Se [intensitet-svom-lop.md](../docs/trainingpeaks/intensitet-svom-lop.md).
 
 S01 … S09 — filnavn `S01-teknikk-a.txt` osv.
 
-## Løp — planned (`planned/run/*.txt`)
+## Løp — planned (`planned/run/*.txt`) → TP: **% threshold pace** eller **% LTHR**
 
 R01 … R13 — f.eks. `R01-easy-40.txt`, `R11-6x8-threshold.txt`
 

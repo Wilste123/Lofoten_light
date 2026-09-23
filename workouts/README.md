@@ -1,41 +1,29 @@
 # Treningsbibliotek
 
-TrainingPeaks **importerer bare kraftbaserte sykkeløkter** som `.zwo`. Svøm, løp og styrke ligger som **planfiler** (`.txt`) for kalender / Workout Builder — ikke ZWO.
+## ZWO (`workouts/zwo/`)
 
-| Mappe | TP Workout Library import? | Innhold |
-|-------|----------------------------|---------|
-| `zwo/bike/` | **Ja** | Sykkel med watt (% FTP) |
-| `zwo/brick/BR*-bike-*.zwo` | **Ja** | Sykkeldel av brick |
-| `planned/swim/` | Nei — bruk TrainingDojo eller kalender | Steg + varighet |
-| `planned/run/` | Nei | Steg + varighet |
-| `planned/strength/` | Nei | Steg + varighet |
-| `planned/brick/` | Nei (løp etter sykkel) | Løpedel av brick |
+| Mappe | `Power=` i filen | Sett i TrainingPeaks | TP Library **Import ZWO** |
+|-------|------------------|--------------------|---------------------------|
+| `zwo/bike/` | **% bike FTP** | Sykkel **FTP** | **Ja** |
+| `zwo/run/` | **% run threshold pace** (`pace="2"`) | **Run threshold pace** | Nei → Builder / TrainingDojo |
+| `zwo/swim/` | **% swim T-pace (CSS)** | **Swim threshold pace** | Nei → structured swim Builder |
+| `zwo/brick/` | Sykkel-ZWO + løp-ZWO | FTP + run pace | Kun sykkel-filer importeres som watt |
 
-**Oversikt:** [index.md](index.md)  
-**TP-feilmelding om ZWO:** [docs/trainingpeaks/zwo-kun-sykkel.md](../docs/trainingpeaks/zwo-kun-sykkel.md)
+**Bike FTP styrer ikke løp/svøm.** Les [docs/trainingpeaks/zwo-og-tp-zoner.md](../docs/trainingpeaks/zwo-og-tp-zoner.md).
 
-## Sykkel (ZWO)
+## Styrke (ikke ZWO)
 
-Workout Library → Import → filer fra `zwo/bike/`.
+- Kalender: TrainingDojo CSV (`sport=strength`)
+- Strukturert: [Strength Builder](https://help.trainingpeaks.com/hc/en-us/articles/23361947242381-Strength-Workout-Builder-FAQs) + `workouts/strength/trainingpeaks/`
+- Guide: [docs/trainingpeaks/styrke-import.md](../docs/trainingpeaks/styrke-import.md)
 
-## Svøm / løp / styrke
+## Planned tekst (`workouts/planned/`)
 
-Intensitet i TP er **pace eller puls** (svøm: % terskel-pace / CSS), **ikke watt**. Se [docs/trainingpeaks/intensitet-svom-lop.md](../docs/trainingpeaks/intensitet-svom-lop.md).
+Samme økter som ZWO for løp/svøm, med `tp_target` for manuell Workout Builder.
 
-1. **Enklest:** `plans/csv/trainingdojo-4uker-2026-09-28.csv` → TrainingDojo → kalender (tekst).  
-2. **Strukturert / klokke:** `planned/<sport>/<id>.txt` → Workout Builder (`tp_intensity` + `tp_target` per steg).
-
-## Pakker
-
-```bash
-./scripts/zip_zwo_library.sh      # kun sykkel + brick-sykkel .zwo
-./scripts/zip_planned_library.sh  # swim/run/strength/brick løp .txt
-```
-
-## Regenerere
+## Bygg alt
 
 ```bash
 python3 scripts/build_zwo_library.py
+./scripts/zip_zwo_library.sh
 ```
-
-Sykkel-`.zwo` i `zwo/bike/` beholdes; `planned/` genereres på nytt.

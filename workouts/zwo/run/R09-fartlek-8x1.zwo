@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>R09 Fartlek</name>
+  <description>8x1 min hard / 2 easy. — Run: Power = fraction of threshold RUN pace (pace=2 ≈ 10k/threshold reference). Set run threshold pace in TP Zones — not bike FTP. TP Workout Library ZWO import is bike-only; use Workout Builder for run or sync from calendar.</description>
+  <sportType>run</sportType>
+  <durationType>time</durationType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="600" Power="0.7800" pace="2">
+      <textevent message="Easy 10" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="1.0800" pace="2">
+      <textevent message="Hard 1 min #1" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.7800" pace="2">
+      <textevent message="Easy 2 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="1.0800" pace="2">
+      <textevent message="Hard 1 min #2" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.7800" pace="2">
+      <textevent message="Easy 2 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="1.0800" pace="2">
+      <textevent message="Hard 1 min #3" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.7800" pace="2">
+      <textevent message="Easy 2 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="1.0800" pace="2">
+      <textevent message="Hard 1 min #4" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.7800" pace="2">
+      <textevent message="Easy 2 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="1.0800" pace="2">
+      <textevent message="Hard 1 min #5" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.7800" pace="2">
+      <textevent message="Easy 2 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="1.0800" pace="2">
+      <textevent message="Hard 1 min #6" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.7800" pace="2">
+      <textevent message="Easy 2 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="1.0800" pace="2">
+      <textevent message="Hard 1 min #7" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.7800" pace="2">
+      <textevent message="Easy 2 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="1.0800" pace="2">
+      <textevent message="Hard 1 min #8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.7800" pace="2">
+      <textevent message="Easy 2 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0.7800" pace="2">
+      <textevent message="CD 10" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

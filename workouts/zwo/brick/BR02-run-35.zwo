@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>BR02 Run off bike 35</name>
+  <description>Etter 3h Z2 sykkel. — Run: Power = fraction of threshold RUN pace (pace=2 ≈ 10k/threshold reference). Set run threshold pace in TP Zones — not bike FTP. TP Workout Library ZWO import is bike-only; use Workout Builder for run or sync from calendar.</description>
+  <sportType>run</sportType>
+  <durationType>time</durationType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="600" Power="0.7800" pace="2">
+      <textevent message="Easy 10" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="900" Power="0.7800" pace="2">
+      <textevent message="Steady 15 RPE 5-6" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0.7800" pace="2">
+      <textevent message="Easy 10" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

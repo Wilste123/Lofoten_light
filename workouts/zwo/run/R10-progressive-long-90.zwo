@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>R10 Progressive 90</name>
+  <description>30+30+20 min build. — Run: Power = fraction of threshold RUN pace (pace=2 ≈ 10k/threshold reference). Set run threshold pace in TP Zones — not bike FTP. TP Workout Library ZWO import is bike-only; use Workout Builder for run or sync from calendar.</description>
+  <sportType>run</sportType>
+  <durationType>time</durationType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="1800" Power="0.7800" pace="2">
+      <textevent message="Z2 30" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="1800" Power="0.9100" pace="2">
+      <textevent message="Mod 30" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="1200" Power="1.0000" pace="2">
+      <textevent message="MP-HM 20" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0.7800" pace="2">
+      <textevent message="Easy 10" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

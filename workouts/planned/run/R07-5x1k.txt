@@ -3,7 +3,7 @@ sport: run
 description: 5x1 km @ 10k effort.
 tp_intensity: Run → Workout Builder: % Threshold Pace OR % LTHR (not power)
 duration_min: 52
-trainingpeaks: Build structured workout (not ZWO). See docs/trainingpeaks/intensitet-svom-lop.md
+trainingpeaks: Builder or TrainingDojo; mirror ZWO in workouts/zwo/ (pace zones, not bike FTP)
 steps:
   - 15:00 | WU 15 | tp_target: % LTHR Z1-Z2
   - 4:00 | 1k rep 1 RPE 8 | tp_target: % threshold pace 102-115% or RPE 8-9

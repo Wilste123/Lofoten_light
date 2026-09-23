@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -52,7 +54,9 @@ def write_planned(
     ]
     if duration_min is not None:
         lines.append(f"duration_min: {duration_min}")
-    lines.append("trainingpeaks: Build structured workout (not ZWO). See docs/trainingpeaks/intensitet-svom-lop.md")
+    lines.append(
+        "trainingpeaks: Builder or TrainingDojo; mirror ZWO in workouts/zwo/ (pace zones, not bike FTP)"
+    )
     lines.append("steps:")
     for dur, msg, tp in steps:
         lines.append(f"  - {dur} | {msg} | tp_target: {tp}")
@@ -84,15 +88,16 @@ def total_min(blocks: list[tuple[int, str] | tuple[int, str, str]]) -> int:
 
 def main() -> None:
     ZWO.mkdir(parents=True, exist_ok=True)
-    BIKE_OUT.mkdir(parents=True, exist_ok=True)
-    if BIKE_SRC.is_dir():
-        for src in sorted(BIKE_SRC.glob("*.zwo")):
-            shutil.copy2(src, BIKE_OUT / src.name)
-    elif not any(BIKE_OUT.glob("*.zwo")):
-        raise SystemExit(
-            "No bike .zwo found. Add files under workouts/zwo/bike/ "
-            "(or temporarily workouts/exports/zwo/)."
-        )
+    scripts = ROOT / "scripts"
+    manifest = ROOT / "workouts" / "bike" / "manifest.json"
+    if not manifest.is_file():
+        if any((ZWO / "bike").glob("*.zwo")):
+            subprocess.run(
+                [sys.executable, "compile_bike_manifest.py"], check=True, cwd=scripts
+            )
+        else:
+            raise SystemExit("No bike workouts. Add workouts/zwo/bike/*.zwo or manifest.json.")
+    subprocess.run([sys.executable, "export_bike_zwo.py"], check=True, cwd=scripts)
 
     # Remove non-TP ZWO (swim/run/strength/run-off-bike) if present from older builds
     for sub in ("swim", "run", "strength"):
@@ -335,13 +340,16 @@ def main() -> None:
         60,
     )
 
-    print(f"Bike ZWO (TP library import): {ZWO / 'bike'}")
-    print(f"  bike: {len(list(BIKE_OUT.glob('*.zwo')))}")
+    subprocess.run([sys.executable, "planned_to_zwo.py"], check=True, cwd=scripts)
+
+    print(f"Bike ZWO (TP import, uses bike FTP): {ZWO / 'bike'}")
+    print(f"  bike: {len(list((ZWO / 'bike').glob('*.zwo')))}")
     print(f"  brick bike zwo: {len(list(brick_zwo.glob('*.zwo')))}")
-    print(f"Planned text (TP calendar / builder): {PLANNED}")
+    print(f"Run/swim ZWO (threshold pace fractions, not bike FTP): {ZWO / 'run'}, {ZWO / 'swim'}")
+    print(f"Planned text + strength TP guide: {PLANNED}, workouts/strength/trainingpeaks/")
     for sub in ("swim", "run", "strength", "brick"):
         d = PLANNED / sub
-        print(f"  {sub}: {len(list(d.glob('*.txt'))) if d.is_dir() else 0}")
+        print(f"  planned/{sub}: {len(list(d.glob('*.txt'))) if d.is_dir() else 0}")
 
 
 if __name__ == "__main__":

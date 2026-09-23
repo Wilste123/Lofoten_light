@@ -1,0 +1,19 @@
+name: Example Threshold 2x20
+description: Classic FTP intervals for experienced cyclists
+sport: bike
+steps:
+  - duration_min: 15
+    power_pct_ftp: 55
+    note: Warm-up, include 3x30s fast pedals
+  - duration_min: 20
+    power_pct_ftp: 97
+    note: Threshold block 1
+  - duration_min: 10
+    power_pct_ftp: 50
+    note: Easy spin
+  - duration_min: 20
+    power_pct_ftp: 97
+    note: Threshold block 2
+  - duration_min: 10
+    power_pct_ftp: 45
+    note: Cool-down

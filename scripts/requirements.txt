@@ -1,0 +1,2 @@
+# Stdlib only — no packages required for current scripts.
+# Add PyYAML here if you later want richer workout schemas.

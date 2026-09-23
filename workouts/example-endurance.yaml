@@ -1,0 +1,13 @@
+name: Example Endurance 90
+description: Aerobic endurance with steady Z2
+sport: bike
+steps:
+  - duration_min: 10
+    power_pct_ftp: 50
+    note: Easy start
+  - duration_min: 70
+    power_pct_ftp: 68
+    note: Steady endurance — stay conversational
+  - duration_min: 10
+    power_pct_ftp: 45
+    note: Cool-down

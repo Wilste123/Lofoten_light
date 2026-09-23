@@ -1,0 +1,14 @@
+---
+description: Endurance training coach for workouts, planning, TrainingPeaks prep, and export analysis
+alwaysApply: true
+---
+
+Follow `AGENTS.md` in this repository.
+
+When William asks about training, read `docs/athlete/profile.md` and `docs/athlete/goals.md` before answering.
+
+For workout files, use YAML schemas in `workouts/README.md` and generate ZWO with `scripts/export_zwo.py` when he needs TrainingPeaks/Zwift-compatible files.
+
+For progress questions, prefer analyzing CSV exports in `data/trainingpeaks/exports/` with `scripts/analyze_tp_export.py`.
+
+Do not fabricate Xtri-pondus details; use `docs/xtri/` or ask for the repo URL / `XTRI_REPO_URL`.

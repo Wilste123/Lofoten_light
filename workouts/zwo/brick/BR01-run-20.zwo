@@ -1,16 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <workout_file>
   <author>Xtri training coach</author>
-  <name>BR01 Run off bike 20</name>
-  <description>Etter 90 min sykkel — første 5 min RPE 4. — Run: Power = fraction of threshold RUN pace (pace=2 ≈ 10k/threshold reference). Set run threshold pace in TP Zones — not bike FTP. TP Workout Library ZWO import is bike-only; use Workout Builder for run or sync from calendar.</description>
-  <sportType>run</sportType>
-  <durationType>time</durationType>
+  <name>RUN BR01 Run off bike 20</name>
+  <description>Etter 90 min sykkel — første 5 min RPE 4. — IMPORT: TP only accepts cycling ZWO — this file is sportType=bike so Library import works. After import: open workout → Build → set sport to Run → convert intensity to % Threshold Pace (keep the same % numbers). Power values are already % of run threshold (easy ~78%, threshold 100%).</description>
+  <sportType>bike</sportType>
   <tags/>
   <workout>
-    <SteadyState Duration="300" Power="0.7800" pace="2">
+    <SteadyState Duration="300" Power="0.7800" pace="0">
       <textevent message="Jelly legs easy 5" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="900" Power="0.7800" pace="2">
+    <SteadyState Duration="900" Power="0.7800" pace="0">
       <textevent message="Easy 15 RPE 5" timeoffset="0"/>
     </SteadyState>
   </workout>

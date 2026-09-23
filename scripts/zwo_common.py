@@ -1,21 +1,21 @@
-"""Shared ZWO XML writers — intensities as fractions (bike FTP, run/swim threshold pace)."""
+"""Shared ZWO XML writers for TrainingPeaks Library import (power-based cycling format)."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
 FTP_NOTE_BIKE = (
-    "Bike: Power = fraction of FTP. Set bike FTP in TrainingPeaks Settings → Zones; "
-    "watts are calculated on import."
+    "Power = fraction of bike FTP. Set FTP in TrainingPeaks Settings → Zones."
 )
 RUN_NOTE = (
-    "Run: Power = fraction of threshold RUN pace (pace=2 ≈ 10k/threshold reference). "
-    "Set run threshold pace in TP Zones — not bike FTP. TP Workout Library ZWO import is bike-only; "
-    "use Workout Builder for run or sync from calendar."
+    "IMPORT: TP only accepts cycling ZWO — this file is sportType=bike so Library import works. "
+    "After import: open workout → Build → set sport to Run → convert intensity to % Threshold Pace "
+    "(keep the same % numbers). Power values are already % of run threshold (easy ~78%, threshold 100%)."
 )
 SWIM_NOTE = (
-    "Swim: Power = fraction of threshold SWIM pace (T-pace/CSS). Set swim threshold pace in TP Zones — "
-    "not bike FTP. Import via Workout Builder (structured swim), not bulk ZWO."
+    "IMPORT: TP only accepts cycling ZWO — this file is sportType=bike so Library import works. "
+    "After import: open workout → Build → set sport to Swim → convert intensity to % Threshold Pace "
+    "(T-pace/CSS). Power values are % of swim T-pace (easy ~89%, CSS 100%). Set pool length in Equipment."
 )
 
 
@@ -31,24 +31,25 @@ def write_zwo_power(
     steps: list[tuple[int, str, float, str | None]],
     extra_note: str,
     run_pace_attr: str | None = None,
+    *,
+    tp_library_import: bool = False,
 ) -> None:
-    """steps: (duration_sec, message, power_fraction, optional pace attr for run)"""
+    """If tp_library_import, emit sportType=bike (only format TP Library Import accepts)."""
     desc = f"{description} — {extra_note}"
+    xml_sport = "bike" if tp_library_import else sport
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         "<workout_file>",
         "  <author>Xtri training coach</author>",
         f"  <name>{esc(name)}</name>",
         f"  <description>{esc(desc)}</description>",
-        f"  <sportType>{sport}</sportType>",
+        f"  <sportType>{xml_sport}</sportType>",
+        "  <tags/>",
+        "  <workout>",
     ]
-    if sport == "run":
-        lines.append("  <durationType>time</durationType>")
-    lines.append("  <tags/>")
-    lines.append("  <workout>")
-    for dur, msg, power, pace in steps:
-        pace_attr = pace if pace is not None else (run_pace_attr if sport == "run" else "0")
-        lines.append(f'    <SteadyState Duration="{dur}" Power="{power:.4f}" pace="{pace_attr}">')
+    for dur, msg, power, _pace in steps:
+        p = max(power, 0.45) if tp_library_import else power
+        lines.append(f'    <SteadyState Duration="{dur}" Power="{p:.4f}" pace="0">')
         lines.append(f'      <textevent message="{esc(msg)}" timeoffset="0"/>')
         lines.append("    </SteadyState>")
     lines.extend(["  </workout>", "</workout_file>", ""])

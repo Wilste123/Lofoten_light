@@ -2,7 +2,7 @@
 <workout_file>
   <author>Xtri training coach</author>
   <name>Threshold 5x10</name>
-  <description>Repeated threshold bouts — Bike: Power = fraction of FTP. Set bike FTP in TrainingPeaks Settings → Zones; watts are calculated on import.</description>
+  <description>Repeated threshold bouts — Power = fraction of bike FTP. Set FTP in TrainingPeaks Settings → Zones.</description>
   <sportType>bike</sportType>
   <tags/>
   <workout>

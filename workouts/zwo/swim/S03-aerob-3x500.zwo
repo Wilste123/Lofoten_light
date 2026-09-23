@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <workout_file>
   <author>Xtri training coach</author>
-  <name>S03 Aerob 3x500</name>
-  <description>3x500 @ RPE 5-6, 25s pause. — Swim: Power = fraction of threshold SWIM pace (T-pace/CSS). Set swim threshold pace in TP Zones — not bike FTP. Import via Workout Builder (structured swim), not bulk ZWO.</description>
-  <sportType>swim</sportType>
+  <name>SWIM S03 Aerob 3x500</name>
+  <description>3x500 @ RPE 5-6, 25s pause. — IMPORT: TP only accepts cycling ZWO — this file is sportType=bike so Library import works. After import: open workout → Build → set sport to Swim → convert intensity to % Threshold Pace (T-pace/CSS). Power values are % of swim T-pace (easy ~89%, CSS 100%). Set pool length in Equipment.</description>
+  <sportType>bike</sportType>
   <tags/>
   <workout>
     <SteadyState Duration="600" Power="0.9300" pace="0">

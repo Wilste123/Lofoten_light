@@ -1,40 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <workout_file>
   <author>Xtri training coach</author>
-  <name>R13 4x12 cruise</name>
-  <description>Halvmaraton spesifikk. — Run: Power = fraction of threshold RUN pace (pace=2 ≈ 10k/threshold reference). Set run threshold pace in TP Zones — not bike FTP. TP Workout Library ZWO import is bike-only; use Workout Builder for run or sync from calendar.</description>
-  <sportType>run</sportType>
-  <durationType>time</durationType>
+  <name>RUN R13 4x12 cruise</name>
+  <description>Halvmaraton spesifikk. — IMPORT: TP only accepts cycling ZWO — this file is sportType=bike so Library import works. After import: open workout → Build → set sport to Run → convert intensity to % Threshold Pace (keep the same % numbers). Power values are already % of run threshold (easy ~78%, threshold 100%).</description>
+  <sportType>bike</sportType>
   <tags/>
   <workout>
-    <SteadyState Duration="900" Power="0.7200" pace="2">
+    <SteadyState Duration="900" Power="0.7200" pace="0">
       <textevent message="WU" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="720" Power="1.0000" pace="2">
+    <SteadyState Duration="720" Power="1.0000" pace="0">
       <textevent message="Cruise 12 min #1" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="180" Power="0.6500" pace="2">
+    <SteadyState Duration="180" Power="0.6500" pace="0">
       <textevent message="Jog 3 min" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="720" Power="1.0000" pace="2">
+    <SteadyState Duration="720" Power="1.0000" pace="0">
       <textevent message="Cruise 12 min #2" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="180" Power="0.6500" pace="2">
+    <SteadyState Duration="180" Power="0.6500" pace="0">
       <textevent message="Jog 3 min" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="720" Power="1.0000" pace="2">
+    <SteadyState Duration="720" Power="1.0000" pace="0">
       <textevent message="Cruise 12 min #3" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="180" Power="0.6500" pace="2">
+    <SteadyState Duration="180" Power="0.6500" pace="0">
       <textevent message="Jog 3 min" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="720" Power="1.0000" pace="2">
+    <SteadyState Duration="720" Power="1.0000" pace="0">
       <textevent message="Cruise 12 min #4" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="180" Power="0.6500" pace="2">
+    <SteadyState Duration="180" Power="0.6500" pace="0">
       <textevent message="Jog 3 min" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="720" Power="0.7800" pace="2">
+    <SteadyState Duration="720" Power="0.7800" pace="0">
       <textevent message="CD" timeoffset="0"/>
     </SteadyState>
   </workout>

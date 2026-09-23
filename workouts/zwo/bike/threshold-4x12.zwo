@@ -2,7 +2,7 @@
 <workout_file>
   <author>Xtri training coach</author>
   <name>Threshold 4x12</name>
-  <description>Longer sub-threshold blocks — Bike: Power = fraction of FTP. Set bike FTP in TrainingPeaks Settings → Zones; watts are calculated on import.</description>
+  <description>Longer sub-threshold blocks — Power = fraction of bike FTP. Set FTP in TrainingPeaks Settings → Zones.</description>
   <sportType>bike</sportType>
   <tags/>
   <workout>

@@ -1,64 +1,63 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <workout_file>
   <author>Xtri training coach</author>
-  <name>R08 Hill 8x90</name>
-  <description>Bakke Tjeldbergtind prep. — Run: Power = fraction of threshold RUN pace (pace=2 ≈ 10k/threshold reference). Set run threshold pace in TP Zones — not bike FTP. TP Workout Library ZWO import is bike-only; use Workout Builder for run or sync from calendar.</description>
-  <sportType>run</sportType>
-  <durationType>time</durationType>
+  <name>RUN R08 Hill 8x90</name>
+  <description>Bakke Tjeldbergtind prep. — IMPORT: TP only accepts cycling ZWO — this file is sportType=bike so Library import works. After import: open workout → Build → set sport to Run → convert intensity to % Threshold Pace (keep the same % numbers). Power values are already % of run threshold (easy ~78%, threshold 100%).</description>
+  <sportType>bike</sportType>
   <tags/>
   <workout>
-    <SteadyState Duration="900" Power="0.7200" pace="2">
+    <SteadyState Duration="900" Power="0.7200" pace="0">
       <textevent message="WU" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="90" Power="1.0800" pace="2">
+    <SteadyState Duration="90" Power="1.0800" pace="0">
       <textevent message="Hill 90s #1 RPE 7-8" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="120" Power="0.6500" pace="2">
+    <SteadyState Duration="120" Power="0.6500" pace="0">
       <textevent message="Jog down" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="90" Power="1.0800" pace="2">
+    <SteadyState Duration="90" Power="1.0800" pace="0">
       <textevent message="Hill 90s #2 RPE 7-8" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="120" Power="0.6500" pace="2">
+    <SteadyState Duration="120" Power="0.6500" pace="0">
       <textevent message="Jog down" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="90" Power="1.0800" pace="2">
+    <SteadyState Duration="90" Power="1.0800" pace="0">
       <textevent message="Hill 90s #3 RPE 7-8" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="120" Power="0.6500" pace="2">
+    <SteadyState Duration="120" Power="0.6500" pace="0">
       <textevent message="Jog down" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="90" Power="1.0800" pace="2">
+    <SteadyState Duration="90" Power="1.0800" pace="0">
       <textevent message="Hill 90s #4 RPE 7-8" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="120" Power="0.6500" pace="2">
+    <SteadyState Duration="120" Power="0.6500" pace="0">
       <textevent message="Jog down" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="90" Power="1.0800" pace="2">
+    <SteadyState Duration="90" Power="1.0800" pace="0">
       <textevent message="Hill 90s #5 RPE 7-8" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="120" Power="0.6500" pace="2">
+    <SteadyState Duration="120" Power="0.6500" pace="0">
       <textevent message="Jog down" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="90" Power="1.0800" pace="2">
+    <SteadyState Duration="90" Power="1.0800" pace="0">
       <textevent message="Hill 90s #6 RPE 7-8" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="120" Power="0.6500" pace="2">
+    <SteadyState Duration="120" Power="0.6500" pace="0">
       <textevent message="Jog down" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="90" Power="1.0800" pace="2">
+    <SteadyState Duration="90" Power="1.0800" pace="0">
       <textevent message="Hill 90s #7 RPE 7-8" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="120" Power="0.6500" pace="2">
+    <SteadyState Duration="120" Power="0.6500" pace="0">
       <textevent message="Jog down" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="90" Power="1.0800" pace="2">
+    <SteadyState Duration="90" Power="1.0800" pace="0">
       <textevent message="Hill 90s #8 RPE 7-8" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="120" Power="0.6500" pace="2">
+    <SteadyState Duration="120" Power="0.6500" pace="0">
       <textevent message="Jog down" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="900" Power="0.7800" pace="2">
+    <SteadyState Duration="900" Power="0.7800" pace="0">
       <textevent message="CD" timeoffset="0"/>
     </SteadyState>
   </workout>

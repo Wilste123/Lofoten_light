@@ -28,10 +28,8 @@ FRAC: dict[str, float] = {
     "% T-pace 89-90% or RPE 2-4": 0.89,
     "RPE 3-5 (rename steps for drills)": 0.88,
     "RPE 3-5": 0.88,
-    "Recover (duration), target pace 0": 0.0,
+    "Recover (duration), target pace 0": 0.50,
 }
-
-RUN_PACE_REF = "2"  # Zwift/Intervals: pace=2 ≈ 10k / threshold reference
 
 
 def parse_planned(path: Path) -> tuple[str, str, str, list[tuple[int, str, str]]]:
@@ -61,15 +59,22 @@ def frac_for(tp_target: str) -> float:
 
 
 def convert_file(src: Path, dest: Path, sport: str, note: str) -> None:
-    name, file_sport, desc, steps = parse_planned(src)
-    if file_sport != sport and sport == "run":
-        pass  # brick run files are sport run
+    name, _file_sport, desc, steps = parse_planned(src)
+    prefix = "RUN " if sport == "run" else "SWIM "
+    if not name.upper().startswith(("RUN ", "SWIM ")):
+        name = prefix + name
     zwo_steps = []
     for sec, msg, tp in steps:
-        f = frac_for(tp)
-        pace = RUN_PACE_REF if sport == "run" else "0"
-        zwo_steps.append((sec, msg, f, pace))
-    write_zwo_power(dest, sport, name, desc, zwo_steps, note, run_pace_attr=RUN_PACE_REF if sport == "run" else None)
+        zwo_steps.append((sec, msg, frac_for(tp), None))
+    write_zwo_power(
+        dest,
+        sport,
+        name,
+        desc,
+        zwo_steps,
+        note,
+        tp_library_import=True,
+    )
 
 
 def main() -> None:

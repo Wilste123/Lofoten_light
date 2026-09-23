@@ -48,14 +48,26 @@ Kilde for sannhet for agenten. Oppdater ved nye tester, skader eller endret tilg
 | 2019 (test) | **FTP 410 W** (rulle innendørs) | Peak FTP-referanse — **ikke** dagens FTP |
 | 2019 | **5 sek peak ~1300 W** | Neuromuskulær kapasitet historisk |
 | 2026 hittil | **>50 t** trening | Re-etablering etter lang lav periode |
+| Neste 12 mnd (mål) | **750–800 t** totalt | Se volumplan under — ikke lineær jump fra lav uke til snitt |
 
 **Planleggingsimplikasjon:** Bruk **konservativ nå-FTP** til soner er re-testet (2026). Historisk 410 W er motivasjon og tak på potensial, ikke intensitetsgrunnlag før ny test.
+
+### Volummål 12 måneder (750–800 t)
+
+| | |
+|---|---|
+| **Årsmål** | 750–800 timer over rullerende 12 måneder |
+| **Snitt ved jevn fordeling** | ~14,5–15,5 t/uke (750÷52 ≈ 14,4; 800÷52 ≈ 15,4) |
+| **Sammenligning 2019** | ~1050 t (~20 t/uke) — 750–800 er lavere enn peak-år, fornuftig med MSK-oppbygging |
+| **Hvordan nå målet** | Trapp opp uketimer over måneder (prioritet 3); recovery-uker; tri-fordeling — ikke maks sykkel bare fordi historikken er sykkel |
+
+Agenten skal **planlegge faser** (f.eks. start der William er nå → stabil base → gradvis mot ~15 t/uke snitt), ikke fordele 750 t likt fra uke 1 hvis nåværende belastning er lavere.
 
 ## Praktisk treningsoppsett (utfyll)
 
 | Felt | Verdi |
 |------|--------|
-| Typisk uke (timer) | TBD |
+| Typisk uke (timer) | **Mål-snitt ~14,5–15,5 t** på 12 mnd; nåværende uke TBD inntil kalender er satt |
 | Treningsdager | TBD |
 | Innendørs / utendørs | Trondheim — vinter innendørs sykkel sannsynlig del av året |
 | Utstyr | TBD (powermeter, smart trainer, pulsbelte) |

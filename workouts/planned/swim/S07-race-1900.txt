@@ -1,0 +1,9 @@
+name: S07 Race 1900
+sport: swim
+description: Race sim 1.9 km — start kontrollert.
+duration_min: 55
+trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+steps:
+  - 12:00 | WU + 4x50 race feel
+  - 38:00 | 1900 continuous wetsuit
+  - 5:00 | CD

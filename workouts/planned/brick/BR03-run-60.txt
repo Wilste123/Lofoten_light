@@ -1,0 +1,10 @@
+name: BR03 Run off bike 60
+sport: run
+description: Etter 4h sykkel — terreng siste 10 min.
+duration_min: 60
+trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+steps:
+  - 15:00 | Easy 15 flat
+  - 30:00 | Trail 30
+  - 10:00 | Hills 10
+  - 5:00 | CD 5

@@ -64,7 +64,7 @@ Filer ligger ferdig i `workouts/zwo/` (sykkel: `zwo/bike/*.zwo`). Pakk alt: `./s
 2. Dra fra biblioteket til kalenderdag  
 3. Alternativ: kjør i **Zwift** (importer workout) → fullfør → sync Garmin/Wahoo → TP  
 
-Svøm/løp/styrke: importer tilsvarende `.zwo` fra `workouts/zwo/swim|run|strength/` (varighet + tekststeg).
+Svøm/løp/styrke: **ikke** ZWO-import — bruk TrainingDojo-CSV (beskrivelse på kalender) eller `workouts/planned/**/*.txt`. Les [zwo-kun-sykkel.md](zwo-kun-sykkel.md).
 
 ---
 
@@ -119,6 +119,7 @@ Plan og logg matcher da automatisk hvis dato/tittel stemmer.
 | `plans/csv/trainingdojo-4uker-2026-09-28.csv` | **TrainingDojo → TP** |
 | `plans/csv/ukeplan-2026-09-28-4uker.csv` | Excel / arkivering |
 | `plans/csv/12mnd-periodisering.csv` | Grovplan Excel |
-| `workouts/zwo/` · `workouts/zwo-all.zip` | Alle økter (ZWO) |
+| `workouts/zwo/bike/` · `zwo-bike.zip` | Sykkel (ZWO → TP library) |
+| `workouts/planned/` · `planned-all.zip` | Svøm/løp/styrke (kalender) |
 
 Mer bakgrunn: [import-workouts.md](import-workouts.md) · [api.md](api.md)

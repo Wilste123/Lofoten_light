@@ -1,0 +1,9 @@
+name: S08 OWS sim
+sport: swim
+description: Åpent vann sighting 6 tak.
+duration_min: 60
+trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+steps:
+  - 10:00 | Shore warm-up
+  - 40:00 | 400+800+4x50+400 OWS
+  - 10:00 | Easy CD

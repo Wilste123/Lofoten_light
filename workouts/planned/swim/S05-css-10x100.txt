@@ -1,0 +1,9 @@
+name: S05 CSS 10x100
+sport: swim
+description: 10x100 @ CSS +10s pause.
+duration_min: 60
+trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+steps:
+  - 12:00 | 400 WU + 8x50
+  - 40:00 | 10x100 @ CSS 10s rest
+  - 8:00 | 300 pull CD

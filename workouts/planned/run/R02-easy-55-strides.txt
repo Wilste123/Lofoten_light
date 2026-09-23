@@ -1,0 +1,10 @@
+name: R02 Easy + strides
+sport: run
+description: 50 min + 6x15s strides.
+duration_min: 53
+trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+steps:
+  - 15:00 | Easy 15
+  - 30:00 | Easy 30
+  - 3:00 | 6x15s strides / 60s
+  - 5:00 | CD

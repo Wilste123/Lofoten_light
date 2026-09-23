@@ -1,0 +1,7 @@
+name: ST02 Styrke B build
+sport: strength
+description: Trap bar hip thrust step-down carry — 40 min.
+duration_min: 40
+trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+steps:
+  - 40:00 | Strength B: deadlift/hip thrust, step-down, Copenhagen, carry, push-up

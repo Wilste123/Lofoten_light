@@ -1,0 +1,9 @@
+name: S03 Aerob 3x500
+sport: swim
+description: 3x500 @ RPE 5-6, 25s pause.
+duration_min: 55
+trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+steps:
+  - 10:00 | 400 WU + 4x50 build
+  - 40:00 | 3x500 steady 25s rest
+  - 5:00 | 200 CD

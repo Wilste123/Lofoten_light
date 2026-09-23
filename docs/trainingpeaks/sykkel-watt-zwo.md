@@ -20,7 +20,7 @@ Sykkel-ZWO i repoet bruker **Power="0.xxxx"** (= andel av FTP).
 
 Biblioteket ligger ferdig bygget under `workouts/zwo/bike/` (f.eks. `endurance-90.zwo`, `threshold-5x10.zwo`).
 
-Regenerere svøm/løp/styrke/brick (sykkel-filer beholdes på plass):
+Svøm/løp/styrke er **ikke** ZWO i TP — se [zwo-kun-sykkel.md](zwo-kun-sykkel.md). Regenerere planned-tekst (sykkel beholdes):
 
 ```bash
 python3 scripts/build_zwo_library.py

@@ -1,0 +1,9 @@
+name: S02 Teknikk skulder
+sport: swim
+description: Skuldervennlig teknikk.
+duration_min: 37
+trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+steps:
+  - 5:00 | 300 easy
+  - 25:00 | 6x75 drill + 4x50 non-free
+  - 7:00 | 200 CD

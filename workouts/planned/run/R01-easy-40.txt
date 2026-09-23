@@ -1,0 +1,7 @@
+name: R01 Easy 40
+sport: run
+description: Z2 samtale.
+duration_min: 40
+trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+steps:
+  - 40:00 | Easy run RPE 4-5

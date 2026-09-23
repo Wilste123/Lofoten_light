@@ -1,0 +1,9 @@
+name: S06 CSS pyramid
+sport: swim
+description: 100-200-300-400-300-200-100 @ CSS.
+duration_min: 75
+trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+steps:
+  - 10:00 | WU
+  - 58:00 | Pyramid sets 20s rest between
+  - 7:00 | CD

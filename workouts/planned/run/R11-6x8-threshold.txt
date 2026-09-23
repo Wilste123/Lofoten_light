@@ -1,0 +1,20 @@
+name: R11 6x8 threshold
+sport: run
+description: Cruise intervals.
+duration_min: 87
+trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+steps:
+  - 15:00 | WU 15
+  - 8:00 | Threshold 8 min #1 RPE 7-8
+  - 2:00 | Jog 2 min
+  - 8:00 | Threshold 8 min #2 RPE 7-8
+  - 2:00 | Jog 2 min
+  - 8:00 | Threshold 8 min #3 RPE 7-8
+  - 2:00 | Jog 2 min
+  - 8:00 | Threshold 8 min #4 RPE 7-8
+  - 2:00 | Jog 2 min
+  - 8:00 | Threshold 8 min #5 RPE 7-8
+  - 2:00 | Jog 2 min
+  - 8:00 | Threshold 8 min #6 RPE 7-8
+  - 2:00 | Jog 2 min
+  - 12:00 | CD 12

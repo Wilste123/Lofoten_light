@@ -1,0 +1,7 @@
+name: ST03 Styrke recovery
+sport: strength
+description: Mobilitet lett 25 min.
+duration_min: 25
+trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+steps:
+  - 25:00 | Band walks, glute bridge, bird dog, stretch

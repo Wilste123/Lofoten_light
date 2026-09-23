@@ -1,0 +1,24 @@
+name: R09 Fartlek
+sport: run
+description: 8x1 min hard / 2 easy.
+duration_min: 44
+trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+steps:
+  - 10:00 | Easy 10
+  - 1:00 | Hard 1 min #1
+  - 2:00 | Easy 2 min
+  - 1:00 | Hard 1 min #2
+  - 2:00 | Easy 2 min
+  - 1:00 | Hard 1 min #3
+  - 2:00 | Easy 2 min
+  - 1:00 | Hard 1 min #4
+  - 2:00 | Easy 2 min
+  - 1:00 | Hard 1 min #5
+  - 2:00 | Easy 2 min
+  - 1:00 | Hard 1 min #6
+  - 2:00 | Easy 2 min
+  - 1:00 | Hard 1 min #7
+  - 2:00 | Easy 2 min
+  - 1:00 | Hard 1 min #8
+  - 2:00 | Easy 2 min
+  - 10:00 | CD 10

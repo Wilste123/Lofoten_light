@@ -1,0 +1,9 @@
+name: S01 Teknikk A
+sport: swim
+description: Drill + aerob. RPE 3-5.
+duration_min: 40
+trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+steps:
+  - 10:00 | WU 200 mix + 4x50 drill
+  - 20:00 | 8x50 drill/swim 15s + 4x100 easy 20s
+  - 10:00 | 8x25 kick + 100 CD

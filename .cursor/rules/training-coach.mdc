@@ -9,7 +9,7 @@ When William asks about training: read `docs/athlete/profile.md`, `docs/athlete/
 
 Use the full `knowledge/` tree per `knowledge/README.md`.
 
-For workout files, use `workouts/index.md` and `.zwo` under `workouts/zwo/`. Regenerate non-bike ZWO with `scripts/build_zwo_library.py`.
+For workouts: bike ZWO in `workouts/zwo/bike/` (TP library import only). Swim/run/strength in `workouts/planned/*.txt` — TP does not import non-cycling ZWO. See `docs/trainingpeaks/zwo-kun-sykkel.md`.
 
 For progress questions, prefer analyzing CSV exports in `data/trainingpeaks/exports/` with `scripts/analyze_tp_export.py`.
 

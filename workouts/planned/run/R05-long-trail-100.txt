@@ -1,0 +1,7 @@
+name: R05 Trail 100
+sport: run
+description: Terreng + hike.
+duration_min: 100
+trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+steps:
+  - 100:00 | Trail aerobic + hills

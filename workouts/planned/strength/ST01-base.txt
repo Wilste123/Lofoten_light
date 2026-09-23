@@ -1,0 +1,7 @@
+name: ST01 Styrke A base
+sport: strength
+description: Goblet squat RDL planke band calf dead bug — 35 min.
+duration_min: 35
+trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+steps:
+  - 35:00 | Strength A: 3x10 squat, 3x8 RDL/side, planks, band, calf, dead bug

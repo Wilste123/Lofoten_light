@@ -1,36 +1,39 @@
-# Treningsbibliotek (kun ZWO)
+# Treningsbibliotek
 
-Alle økter ligger som **`.zwo`** under `workouts/zwo/`. Det er én filtype for sykkel, svøm, løp, styrke og brick.
+TrainingPeaks **importerer bare kraftbaserte sykkeløkter** som `.zwo`. Svøm, løp og styrke ligger som **planfiler** (`.txt`) for kalender / Workout Builder — ikke ZWO.
 
-| Mappe | Innhold |
-|-------|---------|
-| `zwo/bike/` | Sykkel med **watt** (`<target>` = % FTP) |
-| `zwo/swim/` | Svøm — varighet + tekstinstruksjoner (`textevent`) |
-| `zwo/run/` | Løp — varighet + pace/soner i tekst |
-| `zwo/strength/` | Styrke — blokker som tekst |
-| `zwo/brick/` | Brick (sykkel-ZWO + løp-ZWO i samme mappe per økt) |
+| Mappe | TP Workout Library import? | Innhold |
+|-------|----------------------------|---------|
+| `zwo/bike/` | **Ja** | Sykkel med watt (% FTP) |
+| `zwo/brick/BR*-bike-*.zwo` | **Ja** | Sykkeldel av brick |
+| `planned/swim/` | Nei — bruk TrainingDojo eller kalender | Steg + varighet |
+| `planned/run/` | Nei | Steg + varighet |
+| `planned/strength/` | Nei | Steg + varighet |
+| `planned/brick/` | Nei (løp etter sykkel) | Løpedel av brick |
 
-**Oversikt:** [index.md](index.md)
+**Oversikt:** [index.md](index.md)  
+**TP-feilmelding om ZWO:** [docs/trainingpeaks/zwo-kun-sykkel.md](../docs/trainingpeaks/zwo-kun-sykkel.md)
 
-## TrainingPeaks
+## Sykkel (ZWO)
 
-1. **Sykkel:** Workout Library → Import → velg `.zwo` fra `zwo/bike/` (strukturert watt).
-2. **Svøm / løp / styrke:** Importer tilsvarende `.zwo` fra `zwo/swim/`, `zwo/run/`, `zwo/strength/`. Varighet og steg ligger i filen; sykkel får full watt-struktur i TP, andre idretter ofte som **varighet + notater** avhengig av TP-versjon.
-3. **Kalender (4 uker):** [plans/csv/trainingdojo-4uker-2026-09-28.csv](../plans/csv/trainingdojo-4uker-2026-09-28.csv) via TrainingDojo — koble bibliotek-økter manuelt eller erstatt tekst-rader med importerte ZWO.
+Workout Library → Import → filer fra `zwo/bike/`.
 
-## Pakke alt
+## Svøm / løp / styrke
+
+1. **Enklest:** `plans/csv/trainingdojo-4uker-2026-09-28.csv` → TrainingDojo → TrainingPeaks kalender.  
+2. **Detaljer:** åpne `planned/<sport>/<id>.txt` og lim steg inn i økten, eller bygg i Workout Builder.
+
+## Pakker
 
 ```bash
-./scripts/zip_zwo_library.sh
-# → workouts/zwo-all.zip
+./scripts/zip_zwo_library.sh      # kun sykkel + brick-sykkel .zwo
+./scripts/zip_planned_library.sh  # swim/run/strength/brick løp .txt
 ```
 
-## Regenerere (svøm/løp/styrke/brick)
-
-Sykkel-ZWO vedlikeholdes som filer i `zwo/bike/`. Kjør:
+## Regenerere
 
 ```bash
 python3 scripts/build_zwo_library.py
 ```
 
-(Brick kopierer sykkel fra `zwo/bike/`; svøm/løp/styrke genereres fra scriptet.)
+Sykkel-`.zwo` i `zwo/bike/` beholdes; `planned/` genereres på nytt.

@@ -1,0 +1,10 @@
+name: R10 Progressive 90
+sport: run
+description: 30+30+20 min build.
+duration_min: 90
+trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+steps:
+  - 30:00 | Z2 30
+  - 30:00 | Mod 30
+  - 20:00 | MP-HM 20
+  - 10:00 | Easy 10

@@ -1,0 +1,18 @@
+name: R07 5x1 km
+sport: run
+description: 5x1 km @ 10k effort.
+duration_min: 52
+trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+steps:
+  - 15:00 | WU 15
+  - 4:00 | 1k rep 1 RPE 8
+  - 1:30 | Jog 90s
+  - 4:00 | 1k rep 2 RPE 8
+  - 1:30 | Jog 90s
+  - 4:00 | 1k rep 3 RPE 8
+  - 1:30 | Jog 90s
+  - 4:00 | 1k rep 4 RPE 8
+  - 1:30 | Jog 90s
+  - 4:00 | 1k rep 5 RPE 8
+  - 1:30 | Jog 90s
+  - 10:00 | CD 10

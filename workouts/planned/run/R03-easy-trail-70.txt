@@ -1,0 +1,7 @@
+name: R03 Trail 70
+sport: run
+description: Trail RPE 5.
+duration_min: 70
+trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+steps:
+  - 70:00 | Trail/grus easy

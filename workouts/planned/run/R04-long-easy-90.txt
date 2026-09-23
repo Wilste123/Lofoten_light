@@ -1,0 +1,7 @@
+name: R04 Long 90
+sport: run
+description: Langløp Z2.
+duration_min: 90
+trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+steps:
+  - 90:00 | Long easy — fuel after 60 min

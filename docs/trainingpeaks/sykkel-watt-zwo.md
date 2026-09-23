@@ -18,7 +18,11 @@ Alle filer i `workouts/bike/*.yaml` bruker **% FTP** — TP regner om til watt.
 
 ---
 
-## Steg 1 — Generer ZWO lokalt
+## YAML er ikke for TrainingPeaks
+
+Repoet lagrer økter som `workouts/bike/*.yaml`. TP tar ikke YAML — eksporter til **ZWO** (TP) eller **FIT** (Garmin/Wahoo). Se [fit-vs-zwo.md](fit-vs-zwo.md).
+
+## Steg 1 — Generer ZWO lokalt (TrainingPeaks)
 
 ```bash
 cd <repo>

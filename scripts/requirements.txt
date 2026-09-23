@@ -1,2 +1,2 @@
-# Stdlib only — no packages required for current scripts.
-# Add PyYAML here if you later want richer workout schemas.
+garmin-fit-sdk>=21.0.0
+# Optional: PyYAML for richer YAML parsing (fallback parser works without it)

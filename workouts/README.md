@@ -6,12 +6,18 @@ Strukturerte økter for William (Half Extreme 2027). **Sykkel** = YAML → ZWO. 
 
 Se **[index.md](index.md)** — søkbar oversikt med fase, varighet og formål.
 
-## Sykkel (YAML)
+## Sykkel (YAML → ZWO eller FIT)
+
+TrainingPeaks: **ZWO** (prosent FTP). Garmin/Wahoo: **FIT** (krever `--ftp` watt).
 
 ```bash
-python3 scripts/export_zwo.py workouts/bike/sweet-spot-2x20.yaml
-python3 scripts/export_all_zwo.sh   # alle sykkel-YAML
+pip install -r scripts/requirements.txt
+./scripts/export_all_zwo.sh
+export FTP=280 && ./scripts/export_all_fit.sh
+python3 scripts/export_fit.py workouts/bike/endurance-90.yaml --ftp 280
 ```
+
+Se [docs/trainingpeaks/fit-vs-zwo.md](../docs/trainingpeaks/fit-vs-zwo.md).
 
 Felter:
 

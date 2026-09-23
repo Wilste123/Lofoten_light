@@ -1,0 +1,9 @@
+date,weekday,workout_id,yaml_source,zwo_file,ftp_pct_summary,notes
+2026-09-30,Wednesday,B02,workouts/bike/endurance-90.yaml,endurance-90.zwo,"~68% FTP steady 70min","Importer zwo til TP library; legg på denne dagen. Slett tekst-sykkel fra full TrainingDojo hvis du brukte den."
+2026-10-03,Saturday,B01,workouts/bike/recovery-45.yaml,recovery-45.zwo,"~50% FTP 35min","Recovery spin"
+2026-10-07,Wednesday,B02,workouts/bike/endurance-90.yaml,endurance-90.zwo,"~68% FTP","Samme som uke 1 onsdag"
+2026-10-10,Saturday,B03,workouts/bike/endurance-120.yaml,endurance-120.zwo,"~70% FTP 90min","2t Z2 — fueling øv"
+2026-10-14,Wednesday,B03,workouts/bike/endurance-120.yaml,endurance-120.zwo,"~70% FTP","2t Z2"
+2026-10-17,Saturday,B02,workouts/bike/endurance-90.yaml,endurance-90.zwo,"~68% FTP","90 min"
+2026-10-21,Wednesday,B01,workouts/bike/recovery-45.yaml,recovery-45.zwo,"~50% FTP","Recovery uke"
+2026-10-24,Saturday,B01,workouts/bike/recovery-45.yaml,recovery-45.zwo,"Valgfri 30min — bruk første 30 min av recovery-45 eller fri Z1",""

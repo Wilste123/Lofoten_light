@@ -17,7 +17,9 @@ On a new thread or when planning changes, read (in order):
 2. `docs/athlete/goals.md` (Lofoten Half Extreme 2027 main project)
 3. Any files under `docs/xtri/` (Xtri-pondus background after sync)
 4. Latest plan in `plans/` and recent workouts in `workouts/`
-5. `knowledge/load-and-intensity.md` for intensity distribution defaults
+5. `knowledge/README.md` — full knowledge base (ernæring, skader, svøm/sykkel/løp, utstyr, Lofoten, restitusjon)
+6. `knowledge/load-and-intensity.md` for intensity distribution defaults
+7. `knowledge/triathlon/lofoten-half-extreme.md` when planning race-specific work
 
 If `docs/xtri/` is empty, ask William for the Xtri repo URL or paste key docs—do not invent project-specific physiology or phase names.
 

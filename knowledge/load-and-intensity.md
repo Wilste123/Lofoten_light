@@ -2,6 +2,8 @@
 
 Use with William’s zones in `docs/athlete/profile.md`. Adjust when profile specifies polarized vs pyramidal preference.
 
+See also `knowledge/skader/belastningsstyring-acwr.md` and `knowledge/triathlon/periodisering-mot-2027.md` (750–800 t / 12 mnd).
+
 ## Weekly structure (experienced cyclist, tri context)
 
 - **2 quality sessions/week** on bike is a common default during base/build; add a third only if sleep, HRV, and completion rate stay high.

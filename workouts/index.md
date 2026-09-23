@@ -16,6 +16,8 @@
 | B12 | Tempo 3×10 | Sykkel | base | 70 | [bike/tempo-3x10.yaml](bike/tempo-3x10.yaml) |
 | B13 | Progressive long | Sykkel | build | 240 | [bike/progressive-long-240.yaml](bike/progressive-long-240.yaml) |
 | B14 | Race surges long | Sykkel | spesifikk | 270 | [bike/race-surges-270.yaml](bike/race-surges-270.yaml) |
+| B15 | Threshold 5×10 | Sykkel | build | 95 | [bike/threshold-5x10.yaml](bike/threshold-5x10.yaml) |
+| B16 | Threshold 4×12 | Sykkel | build | 90 | [bike/threshold-4x12.yaml](bike/threshold-4x12.yaml) |
 | S01 | Teknikk A | Svøm | re-etablering | 50 | [swim/teknikk-a.md](swim/teknikk-a.md) |
 | S02 | Teknikk B (skulder) | Svøm | base | 45 | [swim/teknikk-b-skulder.md](swim/teknikk-b-skulder.md) |
 | S03 | Aerob 3×500 | Svøm | base | 55 | [swim/aerob-3x500.md](swim/aerob-3x500.md) |
@@ -35,6 +37,9 @@
 | R08 | Bakke 8×90s | Løp | build/spesifikk | 60 | [run/hill-8x90.md](run/hill-8x90.md) |
 | R09 | Fartlek 8×1 | Løp | base/build | 45 | [run/fartlek-8x1.md](run/fartlek-8x1.md) |
 | R10 | Progressiv long | Løp | build | 90 | [run/progressive-long-90.md](run/progressive-long-90.md) |
+| R11 | 6×8 min terskel | Løp | build | 75 | [run/interval-6x8.md](run/interval-6x8.md) |
+| R12 | 5×10 min terskel | Løp | build | 80 | [run/interval-5x10.md](run/interval-5x10.md) |
+| R13 | 4×12 min cruise | Løp | build | 75 | [run/interval-4x12.md](run/interval-4x12.md) |
 | ST01 | Styrke A base | Styrke | base | 35 | [strength/styrke-a-base.md](strength/styrke-a-base.md) |
 | ST02 | Styrke B build | Styrke | build | 40 | [strength/styrke-b-build.md](strength/styrke-b-build.md) |
 | ST03 | Styrke recovery | Styrke | recovery | 25 | [strength/styrke-recovery.md](strength/styrke-recovery.md) |

@@ -2,72 +2,64 @@
 
 Erstatt watt med % **gjeldende FTP** fra profile. Oppvarming standard: **15 min** progresjon + 3×30 s fast pedal.
 
+## Forskningsforankring (kort)
+
+- **Lav intensitet** utgjør bulk av volum hos elite utholdenhet (~80 % Z1–Z2; Seiler & Tønnessen 2009).
+- **Threshold / MLSS:** arbeid ved eller rett under FTP forbedrer tid ved steady state (Laursen & Jenkins 2002).
+- **Fraksjonert terskel** (f.eks. **5×10 min @ ~98 % FTP**): flere kortere boutar vs. 2×20 — høy tid nær MLSS med kortere recovery enn én 50 min blokk (Billat et al. — kort vs lang intervall; anvendt i sykkelcoaching som «5×10 FTP»).
+- **VO2max:** 3–5 min reps @ 106–120 % FTP (Midgley et al. 2006 — interval duration and intensity).
+
+Roter **én** hard sykkeløkt/uke i re-etablering, **1–2** i build. Se `workouts/index.md` B06–B11, **B15–B16**.
+
+---
+
+## Øktbibliotek (repo)
+
+| ID | Økt | Fil |
+|----|------|-----|
+| B08 | 2×20 threshold | `bike/threshold-2x20.yaml` |
+| **B15** | **5×10 threshold** | `bike/threshold-5x10.yaml` |
+| **B16** | **4×12 threshold** | `bike/threshold-4x12.yaml` |
+| B06 | Sweet spot 2×20 | `bike/sweet-spot-2x20.yaml` |
+| B10 | VO2 5×3 | `bike/vo2-5x3.yaml` |
+
 ---
 
 ## Økt 1 — Sweet spot (tidseffektiv base/build)
 
-**Total ~75 min | TSS ~70–85**
+**Total ~75 min | TSS ~70–85** — se `bike/sweet-spot-2x20.yaml`
 
-- 15 min oppvarming
-- **2×20 min @ 88–93 % FTP** (5 min recovery mellom)
-- 10 min nedkjøling
+## Økt 2 — Threshold 2×20
 
-*Plan B:* 2×15 min hvis trött.
+Se `bike/threshold-2x20.yaml`
 
----
+## Økt 3 — Threshold 5×10 (lang fraksjonert terskel)
 
-## Økt 2 — Threshold «over-unders»
+**~95 min | TSS ~95** — `bike/threshold-5x10.yaml`
 
-**~80 min | TSS ~85–95**
+**Når:** build, når 2×20 er gjennomført 2–3 ganger uten overreaching.  
+**Ikke:** recovery-uke eller uke med R11/R12 hard løp.
 
-- 15 min oppvarming
-- **3×12 min:** 2 min @ 95 %, 2 min @ 105 %, repeat ×3 innen blokken (3 min easy mellom blokker)
-- 10 min cooldown
+## Økt 4 — Over-unders
 
-*William:* ikke mer enn 1×/uke i re-etablering.
+Se `bike/threshold-over-under.yaml`
 
----
+## Økt 5 — VO2 5×3
 
-## Økt 3 — VO2 (build)
-
-**~70 min | TSS ~75–90**
-
-- 15 min oppvarming
-- **5×3 min @ 115–120 % FTP**, 3 min easy
-- 10 min cooldown
-
----
-
-## Økt 4 — Endurance med «race surges»
-
-**3–4 h | TSS ~180–240**
-
-- 2 h @ 68–72 % FTP
-- Hver 30 min: **5 min @ 80 % FTP**
-- Resten Z2
-
----
-
-## Økt 5 — Recovery
-
-**45–60 min | TSS ~25–40**
-
-- Kun 55–65 % FTP; høy kadanse
-
----
+Se `bike/vo2-5x3.yaml`
 
 ## Plassering i uke
 
 | Økt | Ikke dagen etter … |
 |-----|---------------------|
-| VO2 | Hard løp |
-| Threshold | Brick |
-| Lang Z2 | VO2 (heller dag før eller 2 dager mellom) |
-
-## ZWO
-
-Lag YAML i `workouts/` → `scripts/export_zwo.py`.
+| 5×10 / 4×12 threshold | Hard løp (6×8) |
+| VO2 | Brick |
+| Lang Z2 | VO2 (heller 2 dager mellom) |
 
 ## HR-fallback
 
-Hvis ingen FTP: threshold ≈ **Z4 HR** hold 2×20 med 5 min pause — RPE 7–8.
+Hvis ingen FTP: threshold ≈ **Z4 HR** hold; 5×10 = 10 min @ Z4 med 5 min Z1 mellom.
+
+## ZWO
+
+`./scripts/export_all_zwo.sh`

@@ -1,0 +1,38 @@
+name: Threshold 4x12
+description: Longer sub-threshold blocks — muscular endurance near MLSS
+sport: bike
+phase: build
+duration_min: 90
+tss_estimate: 92
+science_note: >
+  Intervals 8-12 min at ~95-100% FTP target fractional VO2 and lactate steady state
+  (Seiler 2010; interval duration affects time above 90% VO2max). Fewer reps than 5x10
+  but longer time at intensity — alternate weekly with 5x10.
+steps:
+  - duration_min: 15
+    power_pct_ftp: 55
+    note: Warm-up
+  - duration_min: 12
+    power_pct_ftp: 96
+    note: Block 1
+  - duration_min: 4
+    power_pct_ftp: 50
+    note: Recovery
+  - duration_min: 12
+    power_pct_ftp: 96
+    note: Block 2
+  - duration_min: 4
+    power_pct_ftp: 50
+    note: Recovery
+  - duration_min: 12
+    power_pct_ftp: 96
+    note: Block 3
+  - duration_min: 4
+    power_pct_ftp: 50
+    note: Recovery
+  - duration_min: 12
+    power_pct_ftp: 96
+    note: Block 4
+  - duration_min: 15
+    power_pct_ftp: 45
+    note: Cool-down

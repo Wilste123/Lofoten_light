@@ -47,7 +47,7 @@ Every plan must include:
 
 ```bash
 ./scripts/sync_xtri_docs.sh
-python3 scripts/export_zwo.py workouts/example-threshold.yaml
+./scripts/export_all_zwo.sh
 python3 scripts/analyze_tp_export.py data/trainingpeaks/exports/<file>.csv
 ./scripts/fetch_knowledge_archives.sh
 ```

@@ -1,8 +1,8 @@
 name: ST01 Styrke A base
 sport: strength
-description: Goblet squat RDL planke band calf dead bug — 35 min.
-tp_intensity: Other → duration + notes; optional RPE
+description: Grunnstyrke tri — 35 min.
+tp_intensity: Styrke → TrainingPeaks Strength Builder (ikke ZWO/FIT)
 duration_min: 35
-trainingpeaks: Builder or TrainingDojo; mirror ZWO in workouts/zwo/ (pace zones, not bike FTP)
+trainingpeaks: Se docs/trainingpeaks/styrke-import.md og workouts/strength/trainingpeaks/
 steps:
-  - 35:00 | Strength A: 3x10 squat, 3x8 RDL/side, planks, band, calf, dead bug | tp_target: RPE 5-6
+  - 35:00 | Goblet squat 3×10, split squat 3×8/side, planke, band-row, calf, dead bug

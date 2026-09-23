@@ -3,7 +3,7 @@ day,sport,subtype,title,duration_minutes,tss,description,phase
 2,run,endurance,Løp easy 40 (R01),40,40,"40 min Z2 samtale. Mykt underlag.",re-etablering
 3,bike,endurance,Sykkel Z2 90 (B02),90,55,"Rulle ~68% FTP. Importer ZWO endurance-90 eller kjør fri Z2.",re-etablering
 4,strength,general,Styrke A base (ST01),35,20,"Goblet squat, split squat, planke, band row, calf, dead bug.",re-etablering
-5,swim,technique,Svøm teknikk skulder (S02),45,30,"Skuldervennlig drill: 300 easy; 6x75 drill + 4x50 non-free; 200 CD. (planned/swim/S02-teknikk-skulder.txt)",re-etablering
+5,swim,technique,Svøm teknikk skulder (S02),45,30,"Skuldervennlig drill: 300 lett; 6x75 drill + 4x50 uten crawl; 200 avslutning. (workouts/zwo/swim/S02-teknikk-skulder.zwo)",re-etablering
 6,bike,recovery,Sykkel recovery 45 (B01),45,28,"Z1 høy kadanse. ZWO recovery-45.",re-etablering
 7,run,endurance,Løp easy + strides (R02),50,45,"Easy + 6x15s strides.",re-etablering
 8,swim,technique,Svøm teknikk A (S01),50,35,"Som uke 1.",re-etablering

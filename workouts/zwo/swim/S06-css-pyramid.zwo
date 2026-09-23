@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <workout_file>
   <author>Xtri training coach</author>
-  <name>SWIM S06 CSS pyramid</name>
-  <description>100-200-300-400-300-200-100 @ CSS. — IMPORT: TP only accepts cycling ZWO — this file is sportType=bike so Library import works. After import: open workout → Build → set sport to Swim → convert intensity to % Threshold Pace (T-pace/CSS). Power values are % of swim T-pace (easy ~89%, CSS 100%). Set pool length in Equipment.</description>
+  <name>SVØM S06 CSS pyramide</name>
+  <description>100–200–300–400–300–200–100 @ CSS. — IMPORT: TP godtar kun sykkel-ZWO — filen er sportType=bike for import. Etter import: åpne økt → Bygg → sett sport til Svøm → intensitet % T-pace (CSS). Power ≈ % av svøm-T-pace (lett ~89 %, CSS 100 %). Sett bassenglengde under Utstyr.</description>
   <sportType>bike</sportType>
   <tags/>
   <workout>
-    <SteadyState Duration="600" Power="0.9300" pace="0">
-      <textevent message="WU" timeoffset="0"/>
+    <SteadyState Duration="600" Power="0.9000" pace="0">
+      <textevent message="Oppvarming" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="3480" Power="0.9300" pace="0">
-      <textevent message="Pyramid sets 20s rest between" timeoffset="0"/>
+    <SteadyState Duration="3480" Power="1.0000" pace="0">
+      <textevent message="Pyramidesett 20 s pause mellom" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="420" Power="0.9300" pace="0">
-      <textevent message="CD" timeoffset="0"/>
+    <SteadyState Duration="420" Power="0.8900" pace="0">
+      <textevent message="Avslutning" timeoffset="0"/>
     </SteadyState>
   </workout>
 </workout_file>

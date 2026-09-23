@@ -1,64 +1,64 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <workout_file>
   <author>Xtri training coach</author>
-  <name>RUN R09 Fartlek</name>
-  <description>8x1 min hard / 2 easy. — IMPORT: TP only accepts cycling ZWO — this file is sportType=bike so Library import works. After import: open workout → Build → set sport to Run → convert intensity to % Threshold Pace (keep the same % numbers). Power values are already % of run threshold (easy ~78%, threshold 100%).</description>
+  <name>LØP R09 Fartlek</name>
+  <description>8×1 min hard / 2 lett. — IMPORT: TP godtar kun sykkel-ZWO — filen er sportType=bike for import. Etter import: åpne økt → Bygg → sett sport til Løp → intensitet % terskel-pace (samme %-tall). Power ≈ % av løpsterskel (lett ~78 %, terskel 100 %). Ikke sykkel-FTP på kalender.</description>
   <sportType>bike</sportType>
   <tags/>
   <workout>
     <SteadyState Duration="600" Power="0.7800" pace="0">
-      <textevent message="Easy 10" timeoffset="0"/>
+      <textevent message="Lett 10 min" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="60" Power="1.0800" pace="0">
       <textevent message="Hard 1 min #1" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="120" Power="0.7800" pace="0">
-      <textevent message="Easy 2 min" timeoffset="0"/>
+      <textevent message="Lett 2 min" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="60" Power="1.0800" pace="0">
       <textevent message="Hard 1 min #2" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="120" Power="0.7800" pace="0">
-      <textevent message="Easy 2 min" timeoffset="0"/>
+      <textevent message="Lett 2 min" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="60" Power="1.0800" pace="0">
       <textevent message="Hard 1 min #3" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="120" Power="0.7800" pace="0">
-      <textevent message="Easy 2 min" timeoffset="0"/>
+      <textevent message="Lett 2 min" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="60" Power="1.0800" pace="0">
       <textevent message="Hard 1 min #4" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="120" Power="0.7800" pace="0">
-      <textevent message="Easy 2 min" timeoffset="0"/>
+      <textevent message="Lett 2 min" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="60" Power="1.0800" pace="0">
       <textevent message="Hard 1 min #5" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="120" Power="0.7800" pace="0">
-      <textevent message="Easy 2 min" timeoffset="0"/>
+      <textevent message="Lett 2 min" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="60" Power="1.0800" pace="0">
       <textevent message="Hard 1 min #6" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="120" Power="0.7800" pace="0">
-      <textevent message="Easy 2 min" timeoffset="0"/>
+      <textevent message="Lett 2 min" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="60" Power="1.0800" pace="0">
       <textevent message="Hard 1 min #7" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="120" Power="0.7800" pace="0">
-      <textevent message="Easy 2 min" timeoffset="0"/>
+      <textevent message="Lett 2 min" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="60" Power="1.0800" pace="0">
       <textevent message="Hard 1 min #8" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="120" Power="0.7800" pace="0">
-      <textevent message="Easy 2 min" timeoffset="0"/>
+      <textevent message="Lett 2 min" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="600" Power="0.7800" pace="0">
-      <textevent message="CD 10" timeoffset="0"/>
+      <textevent message="Avslutning 10 min" timeoffset="0"/>
     </SteadyState>
   </workout>
 </workout_file>

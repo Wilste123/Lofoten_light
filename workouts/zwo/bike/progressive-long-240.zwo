@@ -2,7 +2,7 @@
 <workout_file>
   <author>Xtri training coach</author>
   <name>Progressive Long 240</name>
-  <description>4h — Power = fraction of bike FTP. Set FTP in TrainingPeaks Settings → Zones.</description>
+  <description>4h — Power = andel av sykkel-FTP. Sett FTP under TrainingPeaks Innstillinger → Soner.</description>
   <sportType>bike</sportType>
   <tags/>
   <workout>

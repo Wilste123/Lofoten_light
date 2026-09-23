@@ -120,6 +120,7 @@ Plan og logg matcher da automatisk hvis dato/tittel stemmer.
 | `plans/csv/ukeplan-2026-09-28-4uker.csv` | Excel / arkivering |
 | `plans/csv/12mnd-periodisering.csv` | Grovplan Excel |
 | `workouts/zwo/bike/` · `zwo-bike.zip` | Sykkel (ZWO → TP library) |
-| `workouts/planned/` · `planned-all.zip` | Svøm/løp/styrke (kalender) |
+| `workouts/zwo/run/` · `workouts/zwo/swim/` | Løp/svøm (ZWO) |
+| `workouts/planned/strength/` | Styrke (txt + Strength Builder) |
 
 Mer bakgrunn: [import-workouts.md](import-workouts.md) · [api.md](api.md)

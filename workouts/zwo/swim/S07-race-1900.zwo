@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <workout_file>
   <author>Xtri training coach</author>
-  <name>SWIM S07 Race 1900</name>
-  <description>Race sim 1.9 km — start kontrollert. — IMPORT: TP only accepts cycling ZWO — this file is sportType=bike so Library import works. After import: open workout → Build → set sport to Swim → convert intensity to % Threshold Pace (T-pace/CSS). Power values are % of swim T-pace (easy ~89%, CSS 100%). Set pool length in Equipment.</description>
+  <name>SVØM S07 Race 1900</name>
+  <description>Racesim 1,9 km — start kontrollert. — IMPORT: TP godtar kun sykkel-ZWO — filen er sportType=bike for import. Etter import: åpne økt → Bygg → sett sport til Svøm → intensitet % T-pace (CSS). Power ≈ % av svøm-T-pace (lett ~89 %, CSS 100 %). Sett bassenglengde under Utstyr.</description>
   <sportType>bike</sportType>
   <tags/>
   <workout>
-    <SteadyState Duration="720" Power="0.9300" pace="0">
-      <textevent message="WU + 4x50 race feel" timeoffset="0"/>
+    <SteadyState Duration="720" Power="0.9000" pace="0">
+      <textevent message="Oppvarming + 4×50 race-følelse" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="2280" Power="0.9300" pace="0">
-      <textevent message="1900 continuous wetsuit" timeoffset="0"/>
+    <SteadyState Duration="2280" Power="1.0300" pace="0">
+      <textevent message="1900 kontinuerlig i våtdrakt" timeoffset="0"/>
     </SteadyState>
-    <SteadyState Duration="300" Power="0.9300" pace="0">
-      <textevent message="CD" timeoffset="0"/>
+    <SteadyState Duration="300" Power="0.8900" pace="0">
+      <textevent message="Avslutning" timeoffset="0"/>
     </SteadyState>
   </workout>
 </workout_file>

@@ -1,46 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <workout_file>
   <author>Xtri training coach</author>
-  <name>RUN R07 5x1 km</name>
-  <description>5x1 km @ 10k effort. — IMPORT: TP only accepts cycling ZWO — this file is sportType=bike so Library import works. After import: open workout → Build → set sport to Run → convert intensity to % Threshold Pace (keep the same % numbers). Power values are already % of run threshold (easy ~78%, threshold 100%).</description>
+  <name>LØP R07 5×1 km</name>
+  <description>5×1 km @ 10 km-innsats. — IMPORT: TP godtar kun sykkel-ZWO — filen er sportType=bike for import. Etter import: åpne økt → Bygg → sett sport til Løp → intensitet % terskel-pace (samme %-tall). Power ≈ % av løpsterskel (lett ~78 %, terskel 100 %). Ikke sykkel-FTP på kalender.</description>
   <sportType>bike</sportType>
   <tags/>
   <workout>
     <SteadyState Duration="900" Power="0.7200" pace="0">
-      <textevent message="WU 15" timeoffset="0"/>
+      <textevent message="Oppvarming 15 min" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="240" Power="1.0800" pace="0">
-      <textevent message="1k rep 1 RPE 8" timeoffset="0"/>
+      <textevent message="1 km rep 1 RPE 8" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="90" Power="0.6500" pace="0">
-      <textevent message="Jog 90s" timeoffset="0"/>
+      <textevent message="Jogg 90 s" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="240" Power="1.0800" pace="0">
-      <textevent message="1k rep 2 RPE 8" timeoffset="0"/>
+      <textevent message="1 km rep 2 RPE 8" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="90" Power="0.6500" pace="0">
-      <textevent message="Jog 90s" timeoffset="0"/>
+      <textevent message="Jogg 90 s" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="240" Power="1.0800" pace="0">
-      <textevent message="1k rep 3 RPE 8" timeoffset="0"/>
+      <textevent message="1 km rep 3 RPE 8" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="90" Power="0.6500" pace="0">
-      <textevent message="Jog 90s" timeoffset="0"/>
+      <textevent message="Jogg 90 s" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="240" Power="1.0800" pace="0">
-      <textevent message="1k rep 4 RPE 8" timeoffset="0"/>
+      <textevent message="1 km rep 4 RPE 8" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="90" Power="0.6500" pace="0">
-      <textevent message="Jog 90s" timeoffset="0"/>
+      <textevent message="Jogg 90 s" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="240" Power="1.0800" pace="0">
-      <textevent message="1k rep 5 RPE 8" timeoffset="0"/>
+      <textevent message="1 km rep 5 RPE 8" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="90" Power="0.6500" pace="0">
-      <textevent message="Jog 90s" timeoffset="0"/>
+      <textevent message="Jogg 90 s" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="600" Power="0.7800" pace="0">
-      <textevent message="CD 10" timeoffset="0"/>
+      <textevent message="Avslutning 10 min" timeoffset="0"/>
     </SteadyState>
   </workout>
 </workout_file>

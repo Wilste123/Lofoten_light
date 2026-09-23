@@ -1,52 +1,52 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <workout_file>
   <author>Xtri training coach</author>
-  <name>RUN R11 6x8 threshold</name>
-  <description>Cruise intervals. — IMPORT: TP only accepts cycling ZWO — this file is sportType=bike so Library import works. After import: open workout → Build → set sport to Run → convert intensity to % Threshold Pace (keep the same % numbers). Power values are already % of run threshold (easy ~78%, threshold 100%).</description>
+  <name>LØP R11 6×8 terskel</name>
+  <description>Cruise-intervaller. — IMPORT: TP godtar kun sykkel-ZWO — filen er sportType=bike for import. Etter import: åpne økt → Bygg → sett sport til Løp → intensitet % terskel-pace (samme %-tall). Power ≈ % av løpsterskel (lett ~78 %, terskel 100 %). Ikke sykkel-FTP på kalender.</description>
   <sportType>bike</sportType>
   <tags/>
   <workout>
     <SteadyState Duration="900" Power="0.7200" pace="0">
-      <textevent message="WU 15" timeoffset="0"/>
+      <textevent message="Oppvarming 15 min" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="480" Power="1.0000" pace="0">
-      <textevent message="Threshold 8 min #1 RPE 7-8" timeoffset="0"/>
+      <textevent message="Terskel 8 min #1 RPE 7–8" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="120" Power="0.6500" pace="0">
-      <textevent message="Jog 2 min" timeoffset="0"/>
+      <textevent message="Jogg 2 min" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="480" Power="1.0000" pace="0">
-      <textevent message="Threshold 8 min #2 RPE 7-8" timeoffset="0"/>
+      <textevent message="Terskel 8 min #2 RPE 7–8" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="120" Power="0.6500" pace="0">
-      <textevent message="Jog 2 min" timeoffset="0"/>
+      <textevent message="Jogg 2 min" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="480" Power="1.0000" pace="0">
-      <textevent message="Threshold 8 min #3 RPE 7-8" timeoffset="0"/>
+      <textevent message="Terskel 8 min #3 RPE 7–8" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="120" Power="0.6500" pace="0">
-      <textevent message="Jog 2 min" timeoffset="0"/>
+      <textevent message="Jogg 2 min" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="480" Power="1.0000" pace="0">
-      <textevent message="Threshold 8 min #4 RPE 7-8" timeoffset="0"/>
+      <textevent message="Terskel 8 min #4 RPE 7–8" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="120" Power="0.6500" pace="0">
-      <textevent message="Jog 2 min" timeoffset="0"/>
+      <textevent message="Jogg 2 min" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="480" Power="1.0000" pace="0">
-      <textevent message="Threshold 8 min #5 RPE 7-8" timeoffset="0"/>
+      <textevent message="Terskel 8 min #5 RPE 7–8" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="120" Power="0.6500" pace="0">
-      <textevent message="Jog 2 min" timeoffset="0"/>
+      <textevent message="Jogg 2 min" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="480" Power="1.0000" pace="0">
-      <textevent message="Threshold 8 min #6 RPE 7-8" timeoffset="0"/>
+      <textevent message="Terskel 8 min #6 RPE 7–8" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="120" Power="0.6500" pace="0">
-      <textevent message="Jog 2 min" timeoffset="0"/>
+      <textevent message="Jogg 2 min" timeoffset="0"/>
     </SteadyState>
     <SteadyState Duration="720" Power="0.7800" pace="0">
-      <textevent message="CD 12" timeoffset="0"/>
+      <textevent message="Avslutning 12 min" timeoffset="0"/>
     </SteadyState>
   </workout>
 </workout_file>

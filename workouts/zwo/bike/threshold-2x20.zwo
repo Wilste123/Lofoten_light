@@ -2,7 +2,7 @@
 <workout_file>
   <author>Xtri training coach</author>
   <name>Threshold 2x20</name>
-  <description>Classic FTP intervals — Power = fraction of bike FTP. Set FTP in TrainingPeaks Settings → Zones.</description>
+  <description>Classic FTP intervals — Power = andel av sykkel-FTP. Sett FTP under TrainingPeaks Innstillinger → Soner.</description>
   <sportType>bike</sportType>
   <tags/>
   <workout>

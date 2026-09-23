@@ -2,7 +2,7 @@
 <workout_file>
   <author>Xtri training coach</author>
   <name>Threshold 4x12</name>
-  <description>Longer sub-threshold blocks — Power = fraction of bike FTP. Set FTP in TrainingPeaks Settings → Zones.</description>
+  <description>Longer sub-threshold blocks — Power = andel av sykkel-FTP. Sett FTP under TrainingPeaks Innstillinger → Soner.</description>
   <sportType>bike</sportType>
   <tags/>
   <workout>

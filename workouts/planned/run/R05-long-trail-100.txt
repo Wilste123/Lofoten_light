@@ -1,8 +1,0 @@
-name: R05 Trail 100
-sport: run
-description: Terreng + hike.
-tp_intensity: Run → Workout Builder: % Threshold Pace OR % LTHR (not power)
-duration_min: 100
-trainingpeaks: Builder or TrainingDojo; mirror ZWO in workouts/zwo/ (pace zones, not bike FTP)
-steps:
-  - 100:00 | Trail aerobic + hills | tp_target: % LTHR 80-89% (or RPE 4-5)

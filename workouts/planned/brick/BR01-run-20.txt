@@ -1,9 +1,0 @@
-name: BR01 Run off bike 20
-sport: run
-description: Etter 90 min sykkel — første 5 min RPE 4.
-tp_intensity: Run → Workout Builder: % Threshold Pace OR % LTHR (not power)
-duration_min: 20
-trainingpeaks: Builder or TrainingDojo; mirror ZWO in workouts/zwo/ (pace zones, not bike FTP)
-steps:
-  - 5:00 | Jelly legs easy 5 | tp_target: % LTHR 80-89% (or RPE 4-5)
-  - 15:00 | Easy 15 RPE 5 | tp_target: % LTHR 80-89% (or RPE 4-5)

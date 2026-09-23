@@ -1,6 +1,6 @@
 # Importer løp og svøm som ZWO i TrainingPeaks
 
-TrainingPeaks Library-import godtar **bare** `.zwo` som **kraftbasert sykkel** (`sportType=bike` + `Power=` > 0). Derfor er løp- og svøm-filene i `workouts/zwo/run/` og `workouts/zwo/swim/` bygd **identisk med sykkel-ZWO**, med navn `RUN …` / `SWIM …`.
+TrainingPeaks Library-import godtar **bare** `.zwo` som **kraftbasert sykkel** (`sportType=bike` + `Power=` > 0). Derfor er løp- og svøm-filene i `workouts/zwo/run/` og `workouts/zwo/swim/` bygd **identisk med sykkel-ZWO**, med norske navn `LØP …` / `SVØM …`. Det finnes **ingen** parallelle `.txt` eller `.fit` for disse øktene i repoet.
 
 Offisiell begrensning: [Import Planned Workouts (.zwo)](https://help.trainingpeaks.com/hc/en-us/articles/32432105650573-Import-Planned-Workouts-into-TrainingPeaks).
 

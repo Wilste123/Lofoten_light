@@ -2,7 +2,7 @@
 <workout_file>
   <author>Xtri training coach</author>
   <name>Threshold 5x10</name>
-  <description>Repeated threshold bouts — Power = fraction of bike FTP. Set FTP in TrainingPeaks Settings → Zones.</description>
+  <description>Repeated threshold bouts — Power = andel av sykkel-FTP. Sett FTP under TrainingPeaks Innstillinger → Soner.</description>
   <sportType>bike</sportType>
   <tags/>
   <workout>

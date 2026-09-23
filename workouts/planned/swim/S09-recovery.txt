@@ -1,8 +1,0 @@
-name: S09 Recovery swim
-sport: swim
-description: Lett bevegelse RPE 2-4.
-tp_intensity: Swim → Workout Builder: % Threshold swim pace (T-pace/CSS); pool length in Equipment
-duration_min: 35
-trainingpeaks: Builder or TrainingDojo; mirror ZWO in workouts/zwo/ (pace zones, not bike FTP)
-steps:
-  - 35:00 | 300 + 6x50 + 4x100 pull + 200 easy | tp_target: % T-pace 89-90% or RPE 2-4

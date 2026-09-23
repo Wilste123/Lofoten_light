@@ -2,7 +2,7 @@
 <workout_file>
   <author>Xtri training coach</author>
   <name>VO2 5x3</name>
-  <description>Short VO2max intervals — Power = fraction of bike FTP. Set FTP in TrainingPeaks Settings → Zones.</description>
+  <description>Short VO2max intervals — Power = andel av sykkel-FTP. Sett FTP under TrainingPeaks Innstillinger → Soner.</description>
   <sportType>bike</sportType>
   <tags/>
   <workout>

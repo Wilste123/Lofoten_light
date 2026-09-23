@@ -1,21 +1,21 @@
-"""Shared ZWO XML writers for TrainingPeaks Library import (power-based cycling format)."""
+"""Felles ZWO-skriving for TrainingPeaks Library-import (kraft-sykkel-format)."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
 FTP_NOTE_BIKE = (
-    "Power = fraction of bike FTP. Set FTP in TrainingPeaks Settings → Zones."
+    "Power = andel av sykkel-FTP. Sett FTP under TrainingPeaks Innstillinger → Soner."
 )
 RUN_NOTE = (
-    "IMPORT: TP only accepts cycling ZWO — this file is sportType=bike so Library import works. "
-    "After import: open workout → Build → set sport to Run → convert intensity to % Threshold Pace "
-    "(keep the same % numbers). Power values are already % of run threshold (easy ~78%, threshold 100%)."
+    "IMPORT: TP godtar kun sykkel-ZWO — filen er sportType=bike for import. "
+    "Etter import: åpne økt → Bygg → sett sport til Løp → intensitet % terskel-pace "
+    "(samme %-tall). Power ≈ % av løpsterskel (lett ~78 %, terskel 100 %). Ikke sykkel-FTP på kalender."
 )
 SWIM_NOTE = (
-    "IMPORT: TP only accepts cycling ZWO — this file is sportType=bike so Library import works. "
-    "After import: open workout → Build → set sport to Swim → convert intensity to % Threshold Pace "
-    "(T-pace/CSS). Power values are % of swim T-pace (easy ~89%, CSS 100%). Set pool length in Equipment."
+    "IMPORT: TP godtar kun sykkel-ZWO — filen er sportType=bike for import. "
+    "Etter import: åpne økt → Bygg → sett sport til Svøm → intensitet % T-pace (CSS). "
+    "Power ≈ % av svøm-T-pace (lett ~89 %, CSS 100 %). Sett bassenglengde under Utstyr."
 )
 
 
@@ -34,7 +34,6 @@ def write_zwo_power(
     *,
     tp_library_import: bool = False,
 ) -> None:
-    """If tp_library_import, emit sportType=bike (only format TP Library Import accepts)."""
     desc = f"{description} — {extra_note}"
     xml_sport = "bike" if tp_library_import else sport
     lines = [

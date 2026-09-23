@@ -1,19 +1,16 @@
 # Treningsbibliotek
 
-## ZWO for TrainingPeaks Library import
+## Løp og svøm — kun `.zwo` (norsk)
 
-Alle `.zwo` er **power-based cycling XML** (`sportType=bike`) — det er det eneste TP Import Workout tar.
+`workouts/zwo/run/` og `workouts/zwo/swim/` — importer til TrainingPeaks Library som sykkel-ZWO, deretter bytt sport i Builder. Ingen `.txt` eller `.fit` for disse idrettene.
 
-| Mappe | Prefiks i navn | Etter import |
-|-------|----------------|--------------|
-| `zwo/bike/` | (ingen) | La stå som Bike — watt fra **FTP** |
-| `zwo/run/` | `RUN …` | Endre sport til **Run** + % threshold pace |
-| `zwo/swim/` | `SWIM …` | Endre sport til **Swim** + % T-pace |
-| `zwo/brick/` | sykkel + `RUN …` | Sykkel som bike; løp som over |
+## Sykkel
 
-Guide: [docs/trainingpeaks/importer-lop-svom-zwo.md](../docs/trainingpeaks/importer-lop-svom-zwo.md)
+`workouts/zwo/bike/` — watt fra **FTP** i TP.
 
-Styrke: **ikke ZWO** — [styrke-import.md](../docs/trainingpeaks/styrke-import.md)
+## Styrke
+
+`workouts/planned/strength/*.txt` + [styrke-import.md](../docs/trainingpeaks/styrke-import.md) — **ikke** ZWO/FIT.
 
 ```bash
 python3 scripts/build_zwo_library.py

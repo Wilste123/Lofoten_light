@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>ST01 Styrke A base</name>
+  <description>Goblet squat RDL planke band calf dead bug — 35 min.</description>
+  <sportType>other</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="2100" Power="0" pace="0">
+      <textevent message="Strength A: 3x10 squat, 3x8 RDL/side, planks, band, calf, dead bug" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

@@ -1,6 +1,5 @@
 .cache/
 data/trainingpeaks/exports/*
 !data/trainingpeaks/exports/.gitkeep
-workouts/generated/
 *.env
 docs/trainingpeaks/api-credentials.md

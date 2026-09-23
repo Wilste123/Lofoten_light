@@ -9,7 +9,7 @@ When William asks about training: read `docs/athlete/profile.md`, `docs/athlete/
 
 Use the full `knowledge/` tree per `knowledge/README.md`.
 
-For workout files, use YAML schemas in `workouts/README.md` and generate ZWO with `scripts/export_zwo.py` when he needs TrainingPeaks/Zwift-compatible files.
+For workout files, use `workouts/index.md` and `.zwo` under `workouts/zwo/`. Regenerate non-bike ZWO with `scripts/build_zwo_library.py`.
 
 For progress questions, prefer analyzing CSV exports in `data/trainingpeaks/exports/` with `scripts/analyze_tp_export.py`.
 

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>R03 Trail 70</name>
+  <description>Trail RPE 5.</description>
+  <sportType>run</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="4200" Power="0" pace="0">
+      <textevent message="Trail/grus easy" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

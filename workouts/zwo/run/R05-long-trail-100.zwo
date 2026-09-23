@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>R05 Trail 100</name>
+  <description>Terreng + hike.</description>
+  <sportType>run</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="6000" Power="0" pace="0">
+      <textevent message="Trail aerobic + hills" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

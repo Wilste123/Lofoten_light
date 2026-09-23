@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>R11 6x8 threshold</name>
+  <description>Cruise intervals.</description>
+  <sportType>run</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="900" Power="0" pace="0">
+      <textevent message="WU 15" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="480" Power="0" pace="0">
+      <textevent message="Threshold 8 min #1 RPE 7-8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0" pace="0">
+      <textevent message="Jog 2 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="480" Power="0" pace="0">
+      <textevent message="Threshold 8 min #2 RPE 7-8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0" pace="0">
+      <textevent message="Jog 2 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="480" Power="0" pace="0">
+      <textevent message="Threshold 8 min #3 RPE 7-8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0" pace="0">
+      <textevent message="Jog 2 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="480" Power="0" pace="0">
+      <textevent message="Threshold 8 min #4 RPE 7-8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0" pace="0">
+      <textevent message="Jog 2 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="480" Power="0" pace="0">
+      <textevent message="Threshold 8 min #5 RPE 7-8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0" pace="0">
+      <textevent message="Jog 2 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="480" Power="0" pace="0">
+      <textevent message="Threshold 8 min #6 RPE 7-8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0" pace="0">
+      <textevent message="Jog 2 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="720" Power="0" pace="0">
+      <textevent message="CD 12" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

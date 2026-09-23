@@ -17,36 +17,36 @@ Roter **én** hard sykkeløkt/uke i re-etablering, **1–2** i build. Se `workou
 
 | ID | Økt | Fil |
 |----|------|-----|
-| B08 | 2×20 threshold | `bike/threshold-2x20.yaml` |
-| **B15** | **5×10 threshold** | `bike/threshold-5x10.yaml` |
-| **B16** | **4×12 threshold** | `bike/threshold-4x12.yaml` |
-| B06 | Sweet spot 2×20 | `bike/sweet-spot-2x20.yaml` |
-| B10 | VO2 5×3 | `bike/vo2-5x3.yaml` |
+| B08 | 2×20 threshold | `workouts/zwo/bike/threshold-2x20.zwo` |
+| **B15** | **5×10 threshold** | `workouts/zwo/bike/threshold-5x10.zwo` |
+| **B16** | **4×12 threshold** | `workouts/zwo/bike/threshold-4x12.zwo` |
+| B06 | Sweet spot 2×20 | `workouts/zwo/bike/sweet-spot-2x20.zwo` |
+| B10 | VO2 5×3 | `workouts/zwo/bike/vo2-5x3.zwo` |
 
 ---
 
 ## Økt 1 — Sweet spot (tidseffektiv base/build)
 
-**Total ~75 min | TSS ~70–85** — se `bike/sweet-spot-2x20.yaml`
+**Total ~75 min | TSS ~70–85** — se `workouts/zwo/bike/sweet-spot-2x20.zwo`
 
 ## Økt 2 — Threshold 2×20
 
-Se `bike/threshold-2x20.yaml`
+Se `workouts/zwo/bike/threshold-2x20.zwo`
 
 ## Økt 3 — Threshold 5×10 (lang fraksjonert terskel)
 
-**~95 min | TSS ~95** — `bike/threshold-5x10.yaml`
+**~95 min | TSS ~95** — `workouts/zwo/bike/threshold-5x10.zwo`
 
 **Når:** build, når 2×20 er gjennomført 2–3 ganger uten overreaching.  
 **Ikke:** recovery-uke eller uke med R11/R12 hard løp.
 
 ## Økt 4 — Over-unders
 
-Se `bike/threshold-over-under.yaml`
+Se `workouts/zwo/bike/over-under-3x12.zwo`
 
 ## Økt 5 — VO2 5×3
 
-Se `bike/vo2-5x3.yaml`
+Se `workouts/zwo/bike/vo2-5x3.zwo`
 
 ## Plassering i uke
 
@@ -62,4 +62,4 @@ Hvis ingen FTP: threshold ≈ **Z4 HR** hold; 5×10 = 10 min @ Z4 med 5 min Z1 m
 
 ## ZWO
 
-`./scripts/export_all_zwo.sh`
+`workouts/zwo/bike/` (eller `./scripts/zip_zwo_library.sh`)

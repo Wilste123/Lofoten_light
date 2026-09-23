@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>S08 OWS sim</name>
+  <description>Åpent vann sighting 6 tak.</description>
+  <sportType>swim</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="600" Power="0" pace="0">
+      <textevent message="Shore warm-up" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="2400" Power="0" pace="0">
+      <textevent message="400+800+4x50+400 OWS" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0" pace="0">
+      <textevent message="Easy CD" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>R01 Easy 40</name>
+  <description>Z2 samtale.</description>
+  <sportType>run</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="2400" Power="0" pace="0">
+      <textevent message="Easy run RPE 4-5" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

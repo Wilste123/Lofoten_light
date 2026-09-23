@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>S07 Race 1900</name>
+  <description>Race sim 1.9 km — start kontrollert.</description>
+  <sportType>swim</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="720" Power="0" pace="0">
+      <textevent message="WU + 4x50 race feel" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="2280" Power="0" pace="0">
+      <textevent message="1900 continuous wetsuit" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="300" Power="0" pace="0">
+      <textevent message="CD" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

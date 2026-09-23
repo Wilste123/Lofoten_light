@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>S01 Teknikk A</name>
+  <description>Drill + aerob. RPE 3-5.</description>
+  <sportType>swim</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="600" Power="0" pace="0">
+      <textevent message="WU 200 mix + 4x50 drill" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="1200" Power="0" pace="0">
+      <textevent message="8x50 drill/swim 15s + 4x100 easy 20s" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0" pace="0">
+      <textevent message="8x25 kick + 100 CD" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

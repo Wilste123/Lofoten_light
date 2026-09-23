@@ -1,2 +1,1 @@
-garmin-fit-sdk>=21.0.0
-# Optional: PyYAML for richer YAML parsing (fallback parser works without it)
+# Optional deps for analysis scripts only (see scripts/analyze_tp_export.py)

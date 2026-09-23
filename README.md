@@ -37,7 +37,7 @@ docs/xtri/             Synced copies of Xtri project docs (after sync script)
 docs/trainingpeaks/    Import/export how-tos
 knowledge/             Stable coaching reference (load, intensity, tri balance)
 plans/                 Meso/micro cycles (markdown)
-workouts/              Workout definitions (YAML) + generated ZWO
+workouts/zwo/          Workout library (ZWO: bike, swim, run, strength, brick)
 scripts/               sync, export, analysis
 data/                  Local exports only (not committed; see .gitignore)
 ```
@@ -47,7 +47,7 @@ data/                  Local exports only (not committed; see .gitignore)
 Example prompts:
 
 - “Build a 4-week bike base block around 8 h/week; I can train Tue/Thu/Sat/Sun.”
-- “Turn `workouts/tuesday-threshold.yaml` into a ZWO and a TrainingPeaks builder checklist.”
+- “Add a 5×8 min run threshold ZWO to `workouts/zwo/run/` and update `workouts/index.md`.”
 - “Analyze my last 12 weeks of TP export and flag CTL drift and intensity distribution.”
 - “After reading `docs/xtri/`, align my weekly plan with the Xtri pondus phase goals.”
 

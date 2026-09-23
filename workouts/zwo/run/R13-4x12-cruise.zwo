@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>R13 4x12 cruise</name>
+  <description>Halvmaraton spesifikk.</description>
+  <sportType>run</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="900" Power="0" pace="0">
+      <textevent message="WU" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="720" Power="0" pace="0">
+      <textevent message="Cruise 12 min #1" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="180" Power="0" pace="0">
+      <textevent message="Jog 3 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="720" Power="0" pace="0">
+      <textevent message="Cruise 12 min #2" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="180" Power="0" pace="0">
+      <textevent message="Jog 3 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="720" Power="0" pace="0">
+      <textevent message="Cruise 12 min #3" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="180" Power="0" pace="0">
+      <textevent message="Jog 3 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="720" Power="0" pace="0">
+      <textevent message="Cruise 12 min #4" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="180" Power="0" pace="0">
+      <textevent message="Jog 3 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="720" Power="0" pace="0">
+      <textevent message="CD" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

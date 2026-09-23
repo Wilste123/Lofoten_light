@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>ST02 Styrke B build</name>
+  <description>Trap bar hip thrust step-down carry — 40 min.</description>
+  <sportType>other</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="2400" Power="0" pace="0">
+      <textevent message="Strength B: deadlift/hip thrust, step-down, Copenhagen, carry, push-up" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

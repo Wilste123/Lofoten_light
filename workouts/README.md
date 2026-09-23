@@ -1,49 +1,36 @@
-# Øktbibliotek
+# Treningsbibliotek (kun ZWO)
 
-Strukturerte økter for William (Half Extreme 2027). **Sykkel** = YAML → ZWO. **Svøm, løp, styrke, brick** = markdown med YAML frontmatter (TrainingPeaks-beskrivelse / TrainingDojo).
+Alle økter ligger som **`.zwo`** under `workouts/zwo/`. Det er én filtype for sykkel, svøm, løp, styrke og brick.
 
-## Katalog
+| Mappe | Innhold |
+|-------|---------|
+| `zwo/bike/` | Sykkel med **watt** (`<target>` = % FTP) |
+| `zwo/swim/` | Svøm — varighet + tekstinstruksjoner (`textevent`) |
+| `zwo/run/` | Løp — varighet + pace/soner i tekst |
+| `zwo/strength/` | Styrke — blokker som tekst |
+| `zwo/brick/` | Brick (sykkel-ZWO + løp-ZWO i samme mappe per økt) |
 
-Se **[index.md](index.md)** — søkbar oversikt med fase, varighet og formål.
+**Oversikt:** [index.md](index.md)
 
-## Sykkel (YAML → ZWO eller FIT)
+## TrainingPeaks
 
-TrainingPeaks: **ZWO** (prosent FTP). Garmin/Wahoo: **FIT** (krever `--ftp` watt).
+1. **Sykkel:** Workout Library → Import → velg `.zwo` fra `zwo/bike/` (strukturert watt).
+2. **Svøm / løp / styrke:** Importer tilsvarende `.zwo` fra `zwo/swim/`, `zwo/run/`, `zwo/strength/`. Varighet og steg ligger i filen; sykkel får full watt-struktur i TP, andre idretter ofte som **varighet + notater** avhengig av TP-versjon.
+3. **Kalender (4 uker):** [plans/csv/trainingdojo-4uker-2026-09-28.csv](../plans/csv/trainingdojo-4uker-2026-09-28.csv) via TrainingDojo — koble bibliotek-økter manuelt eller erstatt tekst-rader med importerte ZWO.
+
+## Pakke alt
 
 ```bash
-pip install -r scripts/requirements.txt
-./scripts/export_all_zwo.sh
-export FTP=280 && ./scripts/export_all_fit.sh
-python3 scripts/export_fit.py workouts/bike/endurance-90.yaml --ftp 280
+./scripts/zip_zwo_library.sh
+# → workouts/zwo-all.zip
 ```
 
-Se [docs/trainingpeaks/fit-vs-zwo.md](../docs/trainingpeaks/fit-vs-zwo.md).
+## Regenerere (svøm/løp/styrke/brick)
 
-Felter:
+Sykkel-ZWO vedlikeholdes som filer i `zwo/bike/`. Kjør:
 
-| Felt | Beskrivelse |
-|------|-------------|
-| `sport` | `bike` |
-| `phase` | `re-etablering`, `base`, `build`, `spesifikk`, `recovery` |
-| `duration_min` | Ca. total |
-| `tss_estimate` | Veiledende (krever riktig FTP i TP) |
-| `steps` | `duration_min`, `power_pct_ftp`, `note` |
+```bash
+python3 scripts/build_zwo_library.py
+```
 
-## Svøm / løp / styrke / brick (Markdown)
-
-Filen starter med frontmatter (`---`). Resten er **coach-tekst** du limer i TP eller TrainingDojo `description`.
-
-Importer til kalender: agent eller `docs/trainingpeaks/import-workouts.md`.
-
-## Fase-veiledning
-
-| Fase | Sykkel | Svøm | Løp |
-|------|--------|------|-----|
-| Re-etablering | recovery, endurance 60–90 | teknikk, aerob kort | easy, strides |
-| Base | endurance 120–180, SS | aerob, CSS intro | long easy, tempo lett |
-| Build | SS, THR, VO2, lang 240+ | CSS, 1500+ | intervaller, bakke |
-| Spesifikk | race sim, surges | 1900, OWS | brick-løp, terreng |
-
-## Soner
-
-Bruk **gjeldende FTP / CSS / LTHR** fra `docs/athlete/profile.md` — ikke 2019-FTP.
+(Brick kopierer sykkel fra `zwo/bike/`; svøm/løp/styrke genereres fra scriptet.)

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>S03 Aerob 3x500</name>
+  <description>3x500 @ RPE 5-6, 25s pause.</description>
+  <sportType>swim</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="600" Power="0" pace="0">
+      <textevent message="400 WU + 4x50 build" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="2400" Power="0" pace="0">
+      <textevent message="3x500 steady 25s rest" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="300" Power="0" pace="0">
+      <textevent message="200 CD" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

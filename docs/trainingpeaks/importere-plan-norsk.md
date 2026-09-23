@@ -41,7 +41,7 @@ TrainingDojo trenger **ditt** TP bearer token (samme type tilgang som nettlesere
 - **Sykkel med watt:** TrainingDojo gir **ikke** power-trinn. Bruk **hybrid** (anbefalt):
   1. Importer `trainingdojo-4uker-uten-sykkel.csv` til TrainingDojo **eller** slett sykkeløkter fra full import  
   2. Følg **[sykkel-watt-zwo.md](sykkel-watt-zwo.md)** + `plans/csv/sykkel-zwo-kalender-4uker.csv`  
-  3. ZWO fra `workouts/generated/` → TP Workout Library → dra på kalenderdag  
+  3. ZWO fra `workouts/zwo/bike/` → TP Workout Library → dra på kalenderdag  
 - **Styrke:** TP viser ofte som «Other» / styrke — detaljer står i `description`.  
 - **TSS** i CSV er estimat; juster i TP når du har FTP i profile.
 
@@ -56,12 +56,7 @@ TrainingDojo trenger **ditt** TP bearer token (samme type tilgang som nettlesere
 
 For økter med watt-trinn (B01, B02, B03, …):
 
-```bash
-cd repo-rot
-./scripts/export_all_zwo.sh
-```
-
-Filer: `workouts/generated/*.zwo`
+Filer ligger ferdig i `workouts/zwo/` (sykkel: `zwo/bike/*.zwo`). Pakk alt: `./scripts/zip_zwo_library.sh`.
 
 **TrainingPeaks (varierer med abonnement/versjon):**
 
@@ -69,7 +64,7 @@ Filer: `workouts/generated/*.zwo`
 2. Dra fra biblioteket til kalenderdag  
 3. Alternativ: kjør i **Zwift** (importer workout) → fullfør → sync Garmin/Wahoo → TP  
 
-Uten ZWO: åpne `workouts/bike/<navn>.yaml` og bygg manuelt i **Workout Builder** med samme minutter og % FTP.
+Svøm/løp/styrke: importer tilsvarende `.zwo` fra `workouts/zwo/swim|run|strength/` (varighet + tekststeg).
 
 ---
 
@@ -77,7 +72,7 @@ Uten ZWO: åpne `workouts/bike/<navn>.yaml` og bygg manuelt i **Workout Builder*
 
 1. TP → **Calendar** → klikk dag → **Create Workout**  
 2. Velg sport (Swim / Bike / Run / Other)  
-3. Lim inn tekst fra `workouts/swim/*.md` eller `workouts/run/*.md` (seksjon **TP copy-paste**)  
+3. Importer `.zwo` fra `workouts/zwo/` eller lim inn beskrivelse fra `workouts/index.md`  
 4. Sett varighet og planlagt TSS  
 
 Bra for å rette enkeltdager; tungt for 28 dager.
@@ -124,6 +119,6 @@ Plan og logg matcher da automatisk hvis dato/tittel stemmer.
 | `plans/csv/trainingdojo-4uker-2026-09-28.csv` | **TrainingDojo → TP** |
 | `plans/csv/ukeplan-2026-09-28-4uker.csv` | Excel / arkivering |
 | `plans/csv/12mnd-periodisering.csv` | Grovplan Excel |
-| `workouts/generated/*.zwo` | Struktur sykkel |
+| `workouts/zwo/` · `workouts/zwo-all.zip` | Alle økter (ZWO) |
 
 Mer bakgrunn: [import-workouts.md](import-workouts.md) · [api.md](api.md)

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>ST03 Styrke recovery</name>
+  <description>Mobilitet lett 25 min.</description>
+  <sportType>other</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="1500" Power="0" pace="0">
+      <textevent message="Band walks, glute bridge, bird dog, stretch" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

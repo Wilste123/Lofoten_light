@@ -1,2 +1,0 @@
-All .fit files in fit/ were built with FTP=300 watts.
-Update docs/athlete/profile.md and re-run export_all_fit.sh with your real FTP.

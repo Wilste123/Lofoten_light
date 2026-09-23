@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>BR03 Run off bike 60</name>
+  <description>Etter 4h sykkel — terreng siste 10 min.</description>
+  <sportType>run</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="900" Power="0" pace="0">
+      <textevent message="Easy 15 flat" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="1800" Power="0" pace="0">
+      <textevent message="Trail 30" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0" pace="0">
+      <textevent message="Hills 10" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="300" Power="0" pace="0">
+      <textevent message="CD 5" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

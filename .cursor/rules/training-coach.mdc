@@ -5,7 +5,7 @@ alwaysApply: true
 
 Follow `AGENTS.md` in this repository.
 
-When William asks about training, read `docs/athlete/profile.md` and `docs/athlete/goals.md` before answering.
+When William asks about training, read `docs/athlete/profile.md` and `docs/athlete/goals.md` before answering. Use `knowledge/README.md` for ernæring, skader, disipliner, utstyr, Lofoten, restitusjon.
 
 For workout files, use YAML schemas in `workouts/README.md` and generate ZWO with `scripts/export_zwo.py` when he needs TrainingPeaks/Zwift-compatible files.
 

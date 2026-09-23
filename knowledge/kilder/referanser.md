@@ -9,7 +9,7 @@
 
 ## Lofoten / race
 
-- [Half Extreme](https://thearctriptriple.no/lofoten-triathlon-half-extreme) — sjekk URL: thearctictriple.no
+- [Half Extreme](https://thearctictriple.no/lofoten-triathlon-half-extreme)
 - [Race Manual](https://thearctictriple.no/lofoten-triathlon-half-extreme-race-manual)
 
 ## Belastning / skade

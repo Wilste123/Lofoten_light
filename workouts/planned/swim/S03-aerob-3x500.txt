@@ -1,9 +1,10 @@
 name: S03 Aerob 3x500
 sport: swim
 description: 3x500 @ RPE 5-6, 25s pause.
+tp_intensity: Swim → Workout Builder: % Threshold swim pace (T-pace/CSS); pool length in Equipment
 duration_min: 55
-trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+trainingpeaks: Build structured workout (not ZWO). See docs/trainingpeaks/intensitet-svom-lop.md
 steps:
-  - 10:00 | 400 WU + 4x50 build
-  - 40:00 | 3x500 steady 25s rest
-  - 5:00 | 200 CD
+  - 10:00 | 400 WU + 4x50 build | tp_target: % T-pace 92-94%
+  - 40:00 | 3x500 steady 25s rest | tp_target: % T-pace 92-94%
+  - 5:00 | 200 CD | tp_target: % T-pace 92-94%

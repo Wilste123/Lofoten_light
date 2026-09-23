@@ -1,10 +1,11 @@
 name: BR03 Run off bike 60
 sport: run
 description: Etter 4h sykkel — terreng siste 10 min.
+tp_intensity: Run → Workout Builder: % Threshold Pace OR % LTHR (not power)
 duration_min: 60
-trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+trainingpeaks: Build structured workout (not ZWO). See docs/trainingpeaks/intensitet-svom-lop.md
 steps:
-  - 15:00 | Easy 15 flat
-  - 30:00 | Trail 30
-  - 10:00 | Hills 10
-  - 5:00 | CD 5
+  - 15:00 | Easy 15 flat | tp_target: % LTHR 80-89% (or RPE 4-5)
+  - 30:00 | Trail 30 | tp_target: % LTHR 80-89% (or RPE 4-5)
+  - 10:00 | Hills 10 | tp_target: % threshold pace 88-94%
+  - 5:00 | CD 5 | tp_target: % LTHR 80-89% (or RPE 4-5)

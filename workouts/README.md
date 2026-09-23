@@ -20,8 +20,10 @@ Workout Library → Import → filer fra `zwo/bike/`.
 
 ## Svøm / løp / styrke
 
-1. **Enklest:** `plans/csv/trainingdojo-4uker-2026-09-28.csv` → TrainingDojo → TrainingPeaks kalender.  
-2. **Detaljer:** åpne `planned/<sport>/<id>.txt` og lim steg inn i økten, eller bygg i Workout Builder.
+Intensitet i TP er **pace eller puls** (svøm: % terskel-pace / CSS), **ikke watt**. Se [docs/trainingpeaks/intensitet-svom-lop.md](../docs/trainingpeaks/intensitet-svom-lop.md).
+
+1. **Enklest:** `plans/csv/trainingdojo-4uker-2026-09-28.csv` → TrainingDojo → kalender (tekst).  
+2. **Strukturert / klokke:** `planned/<sport>/<id>.txt` → Workout Builder (`tp_intensity` + `tp_target` per steg).
 
 ## Pakker
 

@@ -1,9 +1,10 @@
 name: S04 Aerob 1500
 sport: swim
 description: 1500 m kontinuerlig RPE 5-6.
+tp_intensity: Swim → Workout Builder: % Threshold swim pace (T-pace/CSS); pool length in Equipment
 duration_min: 50
-trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+trainingpeaks: Build structured workout (not ZWO). See docs/trainingpeaks/intensitet-svom-lop.md
 steps:
-  - 10:00 | WU
-  - 32:00 | 1500 continuous negative split mindset
-  - 8:00 | CD
+  - 10:00 | WU | tp_target: % T-pace 92-94%
+  - 32:00 | 1500 continuous negative split mindset | tp_target: % T-pace 92-94%
+  - 8:00 | CD | tp_target: % T-pace 92-94%

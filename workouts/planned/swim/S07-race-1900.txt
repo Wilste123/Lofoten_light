@@ -1,9 +1,10 @@
 name: S07 Race 1900
 sport: swim
 description: Race sim 1.9 km — start kontrollert.
+tp_intensity: Swim → Workout Builder: % Threshold swim pace (T-pace/CSS); pool length in Equipment
 duration_min: 55
-trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+trainingpeaks: Build structured workout (not ZWO). See docs/trainingpeaks/intensitet-svom-lop.md
 steps:
-  - 12:00 | WU + 4x50 race feel
-  - 38:00 | 1900 continuous wetsuit
-  - 5:00 | CD
+  - 12:00 | WU + 4x50 race feel | tp_target: % T-pace 92-94%
+  - 38:00 | 1900 continuous wetsuit | tp_target: % T-pace 92-94%
+  - 5:00 | CD | tp_target: % T-pace 92-94%

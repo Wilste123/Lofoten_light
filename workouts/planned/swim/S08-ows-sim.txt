@@ -1,9 +1,10 @@
 name: S08 OWS sim
 sport: swim
 description: Åpent vann sighting 6 tak.
+tp_intensity: Swim → Workout Builder: % Threshold swim pace (T-pace/CSS); pool length in Equipment
 duration_min: 60
-trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+trainingpeaks: Build structured workout (not ZWO). See docs/trainingpeaks/intensitet-svom-lop.md
 steps:
-  - 10:00 | Shore warm-up
-  - 40:00 | 400+800+4x50+400 OWS
-  - 10:00 | Easy CD
+  - 10:00 | Shore warm-up | tp_target: % T-pace 92-94%
+  - 40:00 | 400+800+4x50+400 OWS | tp_target: % T-pace 92-94%
+  - 10:00 | Easy CD | tp_target: % T-pace 92-94%

@@ -1,10 +1,11 @@
 name: R10 Progressive 90
 sport: run
 description: 30+30+20 min build.
+tp_intensity: Run → Workout Builder: % Threshold Pace OR % LTHR (not power)
 duration_min: 90
-trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+trainingpeaks: Build structured workout (not ZWO). See docs/trainingpeaks/intensitet-svom-lop.md
 steps:
-  - 30:00 | Z2 30
-  - 30:00 | Mod 30
-  - 20:00 | MP-HM 20
-  - 10:00 | Easy 10
+  - 30:00 | Z2 30 | tp_target: % LTHR 80-89% (or RPE 4-5)
+  - 30:00 | Mod 30 | tp_target: % threshold pace 88-94%
+  - 20:00 | MP-HM 20 | tp_target: % threshold pace 95-105%
+  - 10:00 | Easy 10 | tp_target: % LTHR 80-89% (or RPE 4-5)

@@ -13,42 +13,73 @@ BIKE_SRC = ROOT / "workouts" / "exports" / "zwo"
 BIKE_OUT = ZWO / "bike"
 
 
+# TrainingPeaks intensity (not watt) — see docs/trainingpeaks/intensitet-svom-lop.md
+RUN_TP = "Run → Workout Builder: % Threshold Pace OR % LTHR (not power)"
+SWIM_TP = "Swim → Workout Builder: % Threshold swim pace (T-pace/CSS); pool length in Equipment"
+ST_TP = "Other → duration + notes; optional RPE"
+
+RUN_Z2 = "% LTHR 80-89% (or RPE 4-5)"
+RUN_WU = "% LTHR Z1-Z2"
+RUN_TEMPO = "% threshold pace 88-94%"
+RUN_TH = "% threshold pace 95-105%"
+RUN_VO2 = "% threshold pace 102-115% or RPE 8-9"
+RUN_REC = "Recover — % LTHR Z1"
+RUN_STRIDE = "Strides — RPE 7-8 for 15s, easy between"
+
+SWIM_WU = "% T-pace 89-92% or RPE 3-4"
+SWIM_AEROB = "% T-pace 92-94%"
+SWIM_CSS = "% T-pace ~100%"
+SWIM_HARD = "% T-pace 99-106%"
+SWIM_EASY = "% T-pace 89-90% or RPE 2-4"
+SWIM_REST = "Recover (duration), target pace 0"
+
+
 def write_planned(
     path: Path,
     sport: str,
     name: str,
     description: str,
-    steps: list[tuple[str, str]],
+    tp_intensity: str,
+    steps: list[tuple[str, str, str]],
     duration_min: int | None = None,
 ) -> None:
-    """steps: (duration label e.g. '10:00', instruction)"""
+    """steps: (duration label, instruction, TP target for Workout Builder)"""
     lines = [
         f"name: {name}",
         f"sport: {sport}",
         f"description: {description}",
+        f"tp_intensity: {tp_intensity}",
     ]
     if duration_min is not None:
         lines.append(f"duration_min: {duration_min}")
-    lines.append("trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)")
+    lines.append("trainingpeaks: Build structured workout (not ZWO). See docs/trainingpeaks/intensitet-svom-lop.md")
     lines.append("steps:")
-    for dur, msg in steps:
-        lines.append(f"  - {dur} | {msg}")
+    for dur, msg, tp in steps:
+        lines.append(f"  - {dur} | {msg} | tp_target: {tp}")
     lines.append("")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
-def steps_from_seconds(blocks: list[tuple[int, str]]) -> list[tuple[str, str]]:
-    out: list[tuple[str, str]] = []
-    for sec, msg in blocks:
+def steps_from_seconds(
+    blocks: list[tuple[int, str] | tuple[int, str, str]],
+    default_tp: str = "",
+) -> list[tuple[str, str, str]]:
+    out: list[tuple[str, str, str]] = []
+    for item in blocks:
+        if len(item) == 2:
+            sec, msg = item
+            tp = default_tp
+        else:
+            sec, msg, tp = item
         m, s = divmod(sec, 60)
         label = f"{m}:{s:02d}" if s else f"{m}:00"
-        out.append((label, msg))
+        out.append((label, msg, tp))
     return out
 
 
-def total_min(blocks: list[tuple[int, str]]) -> int:
-    return sum(sec for sec, _ in blocks) // 60
+def total_min(blocks: list[tuple[int, str] | tuple[int, str, str]]) -> int:
+    return sum(item[0] for item in blocks) // 60
 
 
 def main() -> None:
@@ -77,33 +108,42 @@ def main() -> None:
         shutil.rmtree(PLANNED)
     PLANNED.mkdir(parents=True)
 
-    def swim(path: str, name: str, desc: str, blocks: list[tuple[int, str]]) -> None:
+    def swim(path: str, name: str, desc: str, blocks: list[tuple[int, str] | tuple[int, str, str]]) -> None:
         write_planned(
             PLANNED / "swim" / f"{path}.txt",
             "swim",
             name,
             desc,
-            steps_from_seconds(blocks),
+            SWIM_TP,
+            steps_from_seconds(blocks, SWIM_AEROB),
             total_min(blocks),
         )
 
-    def run(path: str, name: str, desc: str, blocks: list[tuple[int, str]]) -> None:
+    def run(
+        path: str,
+        name: str,
+        desc: str,
+        blocks: list[tuple[int, str] | tuple[int, str, str]],
+        step_tp_default: str = RUN_Z2,
+    ) -> None:
         write_planned(
             PLANNED / "run" / f"{path}.txt",
             "run",
             name,
             desc,
-            steps_from_seconds(blocks),
+            RUN_TP,
+            steps_from_seconds(blocks, step_tp_default),
             total_min(blocks),
         )
 
-    def strength(path: str, name: str, desc: str, blocks: list[tuple[int, str]]) -> None:
+    def strength(path: str, name: str, desc: str, blocks: list[tuple[int, str] | tuple[int, str, str]]) -> None:
         write_planned(
             PLANNED / "strength" / f"{path}.txt",
             "strength",
             name,
             desc,
-            steps_from_seconds(blocks),
+            ST_TP,
+            steps_from_seconds(blocks, "RPE 5-6"),
             total_min(blocks),
         )
 
@@ -111,13 +151,21 @@ def main() -> None:
         "S01-teknikk-a",
         "S01 Teknikk A",
         "Drill + aerob. RPE 3-5.",
-        [(600, "WU 200 mix + 4x50 drill"), (1200, "8x50 drill/swim 15s + 4x100 easy 20s"), (600, "8x25 kick + 100 CD")],
+        [
+            (600, "WU 200 mix + 4x50 drill", SWIM_WU),
+            (1200, "8x50 drill/swim 15s + 4x100 easy 20s", "RPE 3-5 (rename steps for drills)"),
+            (600, "8x25 kick + 100 CD", SWIM_EASY),
+        ],
     )
     swim(
         "S02-teknikk-skulder",
         "S02 Teknikk skulder",
         "Skuldervennlig teknikk.",
-        [(300, "300 easy"), (1500, "6x75 drill + 4x50 non-free"), (420, "200 CD")],
+        [
+            (300, "300 easy", SWIM_WU),
+            (1500, "6x75 drill + 4x50 non-free", "RPE 3-5"),
+            (420, "200 CD", SWIM_EASY),
+        ],
     )
     swim(
         "S03-aerob-3x500",
@@ -155,14 +203,19 @@ def main() -> None:
         "Åpent vann sighting 6 tak.",
         [(600, "Shore warm-up"), (2400, "400+800+4x50+400 OWS"), (600, "Easy CD")],
     )
-    swim("S09-recovery", "S09 Recovery swim", "Lett bevegelse RPE 2-4.", [(2100, "300 + 6x50 + 4x100 pull + 200 easy")])
+    swim("S09-recovery", "S09 Recovery swim", "Lett bevegelse RPE 2-4.", [(2100, "300 + 6x50 + 4x100 pull + 200 easy", SWIM_EASY)])
 
     run("R01-easy-40", "R01 Easy 40", "Z2 samtale.", [(2400, "Easy run RPE 4-5")])
     run(
         "R02-easy-55-strides",
         "R02 Easy + strides",
         "50 min + 6x15s strides.",
-        [(900, "Easy 15"), (1800, "Easy 30"), (180, "6x15s strides / 60s"), (300, "CD")],
+        [
+            (900, "Easy 15", RUN_Z2),
+            (1800, "Easy 30", RUN_Z2),
+            (180, "6x15s strides / 60s", RUN_STRIDE),
+            (300, "CD", RUN_Z2),
+        ],
     )
     run("R03-easy-trail-70", "R03 Trail 70", "Trail RPE 5.", [(4200, "Trail/grus easy")])
     run("R04-long-easy-90", "R04 Long 90", "Langløp Z2.", [(5400, "Long easy — fuel after 60 min")])
@@ -171,43 +224,54 @@ def main() -> None:
         "R06-tempo-2x15",
         "R06 Tempo 2x15",
         "2x15 min @ RPE 7, 3 min jog.",
-        [(900, "WU + strides"), (900, "Tempo 1"), (180, "Jog 3"), (900, "Tempo 2"), (600, "CD")],
+        [
+            (900, "WU + strides", RUN_WU),
+            (900, "Tempo 1", RUN_TEMPO),
+            (180, "Jog 3", RUN_REC),
+            (900, "Tempo 2", RUN_TEMPO),
+            (600, "CD", RUN_Z2),
+        ],
     )
-    blocks_5x1k: list[tuple[int, str]] = [(900, "WU 15")]
+    blocks_5x1k: list[tuple[int, str, str]] = [(900, "WU 15", RUN_WU)]
     for i in range(5):
-        blocks_5x1k += [(240, f"1k rep {i+1} RPE 8"), (90, "Jog 90s")]
-    blocks_5x1k.append((600, "CD 10"))
+        blocks_5x1k += [(240, f"1k rep {i+1} RPE 8", RUN_VO2), (90, "Jog 90s", RUN_REC)]
+    blocks_5x1k.append((600, "CD 10", RUN_Z2))
     run("R07-5x1k", "R07 5x1 km", "5x1 km @ 10k effort.", blocks_5x1k)
-    blocks_hill: list[tuple[int, str]] = [(900, "WU")]
+    blocks_hill: list[tuple[int, str, str]] = [(900, "WU", RUN_WU)]
     for i in range(8):
-        blocks_hill += [(90, f"Hill 90s #{i+1} RPE 7-8"), (120, "Jog down")]
-    blocks_hill.append((900, "CD"))
+        blocks_hill += [(90, f"Hill 90s #{i+1} RPE 7-8", RUN_VO2), (120, "Jog down", RUN_REC)]
+    blocks_hill.append((900, "CD", RUN_Z2))
     run("R08-hill-8x90", "R08 Hill 8x90", "Bakke Tjeldbergtind prep.", blocks_hill)
-    blocks_fartlek: list[tuple[int, str]] = [(600, "Easy 10")]
+    blocks_fartlek: list[tuple[int, str, str]] = [(600, "Easy 10", RUN_Z2)]
     for i in range(8):
-        blocks_fartlek += [(60, f"Hard 1 min #{i+1}"), (120, "Easy 2 min")]
-    blocks_fartlek.append((600, "CD 10"))
+        blocks_fartlek += [(60, f"Hard 1 min #{i+1}", RUN_VO2), (120, "Easy 2 min", RUN_Z2)]
+    blocks_fartlek.append((600, "CD 10", RUN_Z2))
     run("R09-fartlek-8x1", "R09 Fartlek", "8x1 min hard / 2 easy.", blocks_fartlek)
     run(
         "R10-progressive-long-90",
         "R10 Progressive 90",
         "30+30+20 min build.",
-        [(1800, "Z2 30"), (1800, "Mod 30"), (1200, "MP-HM 20"), (600, "Easy 10")],
+        [
+            (1800, "Z2 30", RUN_Z2),
+            (1800, "Mod 30", RUN_TEMPO),
+            (1200, "MP-HM 20", RUN_TH),
+            (600, "Easy 10", RUN_Z2),
+        ],
     )
-    blocks_6x8: list[tuple[int, str]] = [(900, "WU 15")]
+    blocks_6x8: list[tuple[int, str, str]] = [(900, "WU 15", RUN_WU)]
     for i in range(6):
-        blocks_6x8 += [(480, f"Threshold 8 min #{i+1} RPE 7-8"), (120, "Jog 2 min")]
-    blocks_6x8.append((720, "CD 12"))
+        blocks_6x8 += [(480, f"Threshold 8 min #{i+1} RPE 7-8", RUN_TH), (120, "Jog 2 min", RUN_REC)]
+    blocks_6x8.append((720, "CD 12", RUN_Z2))
     run("R11-6x8-threshold", "R11 6x8 threshold", "Cruise intervals.", blocks_6x8)
-    blocks_5x10: list[tuple[int, str]] = [(900, "WU")]
+    blocks_5x10: list[tuple[int, str, str]] = [(900, "WU", RUN_WU)]
     for i in range(5):
-        blocks_5x10 += [(600, f"Threshold 10 min #{i+1}"), (180, "Jog 3 min")]
-    blocks_5x10.append((600, "CD"))
+        blocks_5x10 += [(600, f"Threshold 10 min #{i+1}", RUN_TH), (180, "Jog 3 min", RUN_REC)]
+    blocks_5x10.append((600, "CD", RUN_Z2))
     run("R12-5x10-threshold", "R12 5x10 threshold", "5x10 min @ LT.", blocks_5x10)
-    blocks_4x12: list[tuple[int, str]] = [(900, "WU")]
+    blocks_4x12: list[tuple[int, str, str]] = [(900, "WU", RUN_WU)]
     for i in range(4):
-        blocks_4x12 += [(720, f"Cruise 12 min #{i+1}"), (180, "Jog 3 min")]
-    blocks_4x12.append((720, "CD"))
+        blocks_4x12 += [(720, f"Cruise 12 min #{i+1}", RUN_TH), (180, "Jog 3 min", RUN_REC)]
+    blocks_4x12.append((720, "CD", RUN_Z2))
     run("R13-4x12-cruise", "R13 4x12 cruise", "Halvmaraton spesifikk.", blocks_4x12)
 
     strength(
@@ -239,7 +303,8 @@ def main() -> None:
         "run",
         "BR01 Run off bike 20",
         "Etter 90 min sykkel — første 5 min RPE 4.",
-        steps_from_seconds([(300, "Jelly legs easy 5"), (900, "Easy 15 RPE 5")]),
+        RUN_TP,
+        steps_from_seconds([(300, "Jelly legs easy 5", RUN_Z2), (900, "Easy 15 RPE 5", RUN_Z2)]),
         20,
     )
     write_planned(
@@ -247,7 +312,10 @@ def main() -> None:
         "run",
         "BR02 Run off bike 35",
         "Etter 3h Z2 sykkel.",
-        steps_from_seconds([(600, "Easy 10"), (900, "Steady 15 RPE 5-6"), (600, "Easy 10")]),
+        RUN_TP,
+        steps_from_seconds(
+            [(600, "Easy 10", RUN_Z2), (900, "Steady 15 RPE 5-6", RUN_Z2), (600, "Easy 10", RUN_Z2)]
+        ),
         35,
     )
     write_planned(
@@ -255,7 +323,15 @@ def main() -> None:
         "run",
         "BR03 Run off bike 60",
         "Etter 4h sykkel — terreng siste 10 min.",
-        steps_from_seconds([(900, "Easy 15 flat"), (1800, "Trail 30"), (600, "Hills 10"), (300, "CD 5")]),
+        RUN_TP,
+        steps_from_seconds(
+            [
+                (900, "Easy 15 flat", RUN_Z2),
+                (1800, "Trail 30", RUN_Z2),
+                (600, "Hills 10", RUN_TEMPO),
+                (300, "CD 5", RUN_Z2),
+            ]
+        ),
         60,
     )
 

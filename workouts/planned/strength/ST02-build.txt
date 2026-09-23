@@ -1,7 +1,8 @@
 name: ST02 Styrke B build
 sport: strength
 description: Trap bar hip thrust step-down carry — 40 min.
+tp_intensity: Other → duration + notes; optional RPE
 duration_min: 40
-trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+trainingpeaks: Build structured workout (not ZWO). See docs/trainingpeaks/intensitet-svom-lop.md
 steps:
-  - 40:00 | Strength B: deadlift/hip thrust, step-down, Copenhagen, carry, push-up
+  - 40:00 | Strength B: deadlift/hip thrust, step-down, Copenhagen, carry, push-up | tp_target: RPE 5-6

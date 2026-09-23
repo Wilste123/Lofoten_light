@@ -1,7 +1,8 @@
 name: ST03 Styrke recovery
 sport: strength
 description: Mobilitet lett 25 min.
+tp_intensity: Other → duration + notes; optional RPE
 duration_min: 25
-trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+trainingpeaks: Build structured workout (not ZWO). See docs/trainingpeaks/intensitet-svom-lop.md
 steps:
-  - 25:00 | Band walks, glute bridge, bird dog, stretch
+  - 25:00 | Band walks, glute bridge, bird dog, stretch | tp_target: RPE 5-6

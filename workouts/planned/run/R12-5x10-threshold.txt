@@ -1,18 +1,19 @@
 name: R12 5x10 threshold
 sport: run
 description: 5x10 min @ LT.
+tp_intensity: Run → Workout Builder: % Threshold Pace OR % LTHR (not power)
 duration_min: 90
-trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+trainingpeaks: Build structured workout (not ZWO). See docs/trainingpeaks/intensitet-svom-lop.md
 steps:
-  - 15:00 | WU
-  - 10:00 | Threshold 10 min #1
-  - 3:00 | Jog 3 min
-  - 10:00 | Threshold 10 min #2
-  - 3:00 | Jog 3 min
-  - 10:00 | Threshold 10 min #3
-  - 3:00 | Jog 3 min
-  - 10:00 | Threshold 10 min #4
-  - 3:00 | Jog 3 min
-  - 10:00 | Threshold 10 min #5
-  - 3:00 | Jog 3 min
-  - 10:00 | CD
+  - 15:00 | WU | tp_target: % LTHR Z1-Z2
+  - 10:00 | Threshold 10 min #1 | tp_target: % threshold pace 95-105%
+  - 3:00 | Jog 3 min | tp_target: Recover — % LTHR Z1
+  - 10:00 | Threshold 10 min #2 | tp_target: % threshold pace 95-105%
+  - 3:00 | Jog 3 min | tp_target: Recover — % LTHR Z1
+  - 10:00 | Threshold 10 min #3 | tp_target: % threshold pace 95-105%
+  - 3:00 | Jog 3 min | tp_target: Recover — % LTHR Z1
+  - 10:00 | Threshold 10 min #4 | tp_target: % threshold pace 95-105%
+  - 3:00 | Jog 3 min | tp_target: Recover — % LTHR Z1
+  - 10:00 | Threshold 10 min #5 | tp_target: % threshold pace 95-105%
+  - 3:00 | Jog 3 min | tp_target: Recover — % LTHR Z1
+  - 10:00 | CD | tp_target: % LTHR 80-89% (or RPE 4-5)

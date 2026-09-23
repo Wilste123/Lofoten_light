@@ -1,7 +1,8 @@
 name: ST01 Styrke A base
 sport: strength
 description: Goblet squat RDL planke band calf dead bug — 35 min.
+tp_intensity: Other → duration + notes; optional RPE
 duration_min: 35
-trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+trainingpeaks: Build structured workout (not ZWO). See docs/trainingpeaks/intensitet-svom-lop.md
 steps:
-  - 35:00 | Strength A: 3x10 squat, 3x8 RDL/side, planks, band, calf, dead bug
+  - 35:00 | Strength A: 3x10 squat, 3x8 RDL/side, planks, band, calf, dead bug | tp_target: RPE 5-6

@@ -47,7 +47,7 @@ data/                  Local exports only (not committed; see .gitignore)
 Example prompts:
 
 - “Build a 4-week bike base block around 8 h/week; I can train Tue/Thu/Sat/Sun.”
-- “Add a 5×8 min run threshold ZWO to `workouts/zwo/run/` and update `workouts/index.md`.”
+- “Add a 5×8 min run threshold session to `workouts/planned/run/` and update `workouts/index.md`.”
 - “Analyze my last 12 weeks of TP export and flag CTL drift and intensity distribution.”
 - “After reading `docs/xtri/`, align my weekly plan with the Xtri pondus phase goals.”
 

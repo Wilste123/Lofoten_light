@@ -1,7 +1,8 @@
 name: R03 Trail 70
 sport: run
 description: Trail RPE 5.
+tp_intensity: Run → Workout Builder: % Threshold Pace OR % LTHR (not power)
 duration_min: 70
-trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+trainingpeaks: Build structured workout (not ZWO). See docs/trainingpeaks/intensitet-svom-lop.md
 steps:
-  - 70:00 | Trail/grus easy
+  - 70:00 | Trail/grus easy | tp_target: % LTHR 80-89% (or RPE 4-5)

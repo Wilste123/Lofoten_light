@@ -1,9 +1,10 @@
 name: S05 CSS 10x100
 sport: swim
 description: 10x100 @ CSS +10s pause.
+tp_intensity: Swim → Workout Builder: % Threshold swim pace (T-pace/CSS); pool length in Equipment
 duration_min: 60
-trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+trainingpeaks: Build structured workout (not ZWO). See docs/trainingpeaks/intensitet-svom-lop.md
 steps:
-  - 12:00 | 400 WU + 8x50
-  - 40:00 | 10x100 @ CSS 10s rest
-  - 8:00 | 300 pull CD
+  - 12:00 | 400 WU + 8x50 | tp_target: % T-pace 92-94%
+  - 40:00 | 10x100 @ CSS 10s rest | tp_target: % T-pace 92-94%
+  - 8:00 | 300 pull CD | tp_target: % T-pace 92-94%

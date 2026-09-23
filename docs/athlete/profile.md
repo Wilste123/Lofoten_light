@@ -83,6 +83,39 @@ Agenten skal **planlegge faser** (f.eks. start der William er nå → stabil bas
 | CSS svøm (per 100 m) | TBD | | Svakeste ben — prioritér frekvens og teknikk |
 | Vekt (kg) | ~89 | | |
 
+## Intensitetssoner løp (TrainingPeaks)
+
+Sett i TP under **Zones → Run** når testet. Repo-økter bruker primært **% threshold pace** eller **% LTHR**.
+
+| Sone | Navn | % LTHR (mal) | % threshold pace (mal) |
+|------|------|--------------|-------------------------|
+| Z1 | Recovery | &lt; 81% | &gt; 15s saktere enn terskel/km |
+| Z2 | Easy / endurance | 81–89% | 6–15s saktere |
+| Z3 | Tempo | 90–93% | 3–6s saktere |
+| Z4 | Threshold | 94–99% | 0–3s fra terskel |
+| Z5 | VO2 / hard | 100–106% | terskel til ~10s raskere |
+
+**Threshold pace (min/km):** TBD  
+**LTHR (bpm):** TBD  
+
+Strukturert løp: Workout Builder med **% Threshold Pace** eller **% LTHR** — ikke watt. Se `docs/trainingpeaks/intensitet-svom-lop.md`.
+
+## Intensitetssoner svøm (TrainingPeaks)
+
+Sett **threshold swim pace** i TP = CSS / snitt per 100 m fra 1000 m test.
+
+| Sone | Navn | % av T-pace (mal) |
+|------|------|-------------------|
+| WU / recovery | Lett | 89–90% |
+| Aerob | Endurance | 92–94% |
+| Tempo | | 95–98% |
+| Threshold / CSS | | 99–106% |
+| Hard | VO2-lignende | 106%+ |
+
+**CSS / T-pace (per 100 m):** TBD  
+
+Svøm: **distanse eller varighet** + **% threshold pace** i Builder; pause = recover-blokk. Se `docs/trainingpeaks/intensitet-svom-lop.md`.
+
 ## Intensitetssoner sykkel (power)
 
 Fyll inn når FTP 2026 er kjent. Tabell under er **mal** (% av gjeldende FTP):

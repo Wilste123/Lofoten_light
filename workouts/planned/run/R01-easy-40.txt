@@ -1,7 +1,8 @@
 name: R01 Easy 40
 sport: run
 description: Z2 samtale.
+tp_intensity: Run → Workout Builder: % Threshold Pace OR % LTHR (not power)
 duration_min: 40
-trainingpeaks: calendar or Workout Builder (ZWO import is bike/power only)
+trainingpeaks: Build structured workout (not ZWO). See docs/trainingpeaks/intensitet-svom-lop.md
 steps:
-  - 40:00 | Easy run RPE 4-5
+  - 40:00 | Easy run RPE 4-5 | tp_target: % LTHR 80-89% (or RPE 4-5)

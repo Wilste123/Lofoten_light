@@ -23,4 +23,10 @@ Offisiell TP-hjelp: [Import Planned Workouts (.zwo)](https://help.trainingpeaks.
 
 ## Strukturert løp/svøm på klokke
 
-TP kan **eksportere** pace/HR-økter som `.fit` fra Workout Builder — men **bulk-import** til biblioteket er ikke det samme som sykkel-ZWO. Bygg én gang i TP, lagre i bibliotek, og dupliser — eller bruk kalenderøkter fra TrainingDojo.
+Bruk **pace eller puls**, ikke watt: [intensitet-svom-lop.md](intensitet-svom-lop.md).
+
+- **Løp:** % **threshold pace** eller % **LTHR** i Workout Builder  
+- **Svøm:** % **threshold swim pace** (CSS/T-pace) + riktig bassenglengde  
+- **Eksport til Garmin:** ofte **.fit**, ikke .zwo  
+
+Bygg i TP → lagre i bibliotek → synk kalender. Eller TrainingDojo uten struktur (kun beskrivelse).

@@ -1,10 +1,12 @@
 # CSV / Excel
 
-Åpne filene i Excel eller Google Sheets. For **TrainingDojo**, bruk `ukeplan-2026-09-28-4uker.csv`:
+Åpne filene i Excel eller Google Sheets. For **TrainingDojo → TrainingPeaks**, bruk ferdig fil:
 
-1. Fjern/metadata-rader øverst (`plan_start_date`) — behold kun header `week,day_number,...` eller eksporter kun data-rader.
-2. Map kolonner til TrainingDojo: `day` = `day_number`, `sport`, `title`, `duration_minutes`, `description`, `phase`.
-3. **Startdato i importer:** `2026-09-28`
+**`trainingdojo-4uker-2026-09-28.csv`** — startdato **2026-09-28**
+
+Steg-for-steg: [docs/trainingpeaks/importere-plan-norsk.md](../../docs/trainingpeaks/importere-plan-norsk.md)
+
+`ukeplan-2026-09-28-4uker.csv` er utvidet versjon for Excel (flere kolonner).
 
 | Fil | Innhold |
 |-----|---------|

@@ -183,10 +183,15 @@ Hvis du ligger **>10 % under** etter mnd 6: øk **frekvens** (kortere økter), i
 
 ---
 
+## Første blokk (start 28.09.2026)
+
+- Ukeplaner: `2026-09-28-uke-01.md` … `uke-04.md`  
+- CSV: `csv/ukeplan-2026-09-28-4uker.csv` · grovplan: `csv/12mnd-periodisering.csv`
+
 ## Neste steg (operasjonelt)
 
-1. Fyll **treningsdager** i `docs/athlete/profile.md`.  
-2. Be agenten: *«Lag uke 1–4 fra måned 1 i periodiseringsplanen med økt-IDer.»*  
-3. Eksporter til TrainingDojo når blokk er satt.
+1. Fyll **FTP/CSS** i `docs/athlete/profile.md` etter tester.  
+2. Uke 5 (26. okt): be om neste 4-ukers blokk.  
+3. Importer CSV via TrainingDojo med startdato **2026-09-28**.
 
 **Relatert:** [periodisering-mot-2027](../knowledge/triathlon/periodisering-mot-2027.md) · [ukemaler](../knowledge/coach/ukemaler.md) · [index økter](../workouts/index.md)

@@ -1,0 +1,29 @@
+day,sport,subtype,title,duration_minutes,tss,description,phase
+1,swim,technique,Svøm teknikk A (S01),50,35,"WU 200; 8x50 drill; 4x100 easy; kick. RPE 3-5.",re-etablering
+2,run,endurance,Løp easy 40 (R01),40,40,"40 min Z2 samtale. Mykt underlag.",re-etablering
+3,bike,endurance,Sykkel Z2 90 (B02),90,55,"Rulle ~68% FTP. Importer ZWO endurance-90 eller kjør fri Z2.",re-etablering
+4,strength,general,Styrke A base (ST01),35,20,"Goblet squat, split squat, planke, band row, calf, dead bug.",re-etablering
+5,swim,technique,Svøm teknikk skulder (S02),45,30,"Skuldervennlig drill. Se repo workouts/swim/teknikk-b-skulder.md",re-etablering
+6,bike,recovery,Sykkel recovery 45 (B01),45,28,"Z1 høy kadanse. ZWO recovery-45.",re-etablering
+7,run,endurance,Løp easy + strides (R02),50,45,"Easy + 6x15s strides.",re-etablering
+8,swim,technique,Svøm teknikk A (S01),50,35,"Som uke 1.",re-etablering
+9,run,endurance,Løp trail easy 60 (R03),60,55,"Trail/grus RPE 5.",re-etablering
+10,bike,endurance,Sykkel Z2 90 (B02),90,55,"Z2 rulle.",re-etablering
+11,strength,general,Styrke A base (ST01),35,20,"Styrke A.",re-etablering
+12,swim,endurance,Svøm aerob 3x500 (S03),55,45,"3x500 aerob 25s pause. Plan B: 3x400.",re-etablering
+13,bike,endurance,Sykkel Z2 120 (B03),120,75,"2t Z2. Start drikkevane.",re-etablering
+14,run,endurance,Løp easy 40 (R01),40,40,"Easy.",re-etablering
+15,swim,endurance,Svøm aerob 3x500 (S03),55,45,"3x500.",re-etablering
+16,run,endurance,Løp easy + strides (R02),50,45,"R02.",re-etablering
+17,bike,endurance,Sykkel Z2 120 (B03),120,75,"2t Z2.",re-etablering
+18,strength,general,Styrke A base (ST01),35,20,"Styrke A.",re-etablering
+19,swim,technique,Svøm teknikk A (S01),50,35,"Teknikk.",re-etablering
+20,bike,endurance,Sykkel Z2 90 (B02),90,55,"90 min Z2.",re-etablering
+21,run,endurance,Løp long easy 75 (R04),75,70,"Langløp RPE 5. Plan B 60 min.",re-etablering
+22,swim,recovery,Svøm recovery (S09),35,20,"Lett svøm.",recovery
+23,run,recovery,Løp easy 35,35,30,"Kort recovery løp.",recovery
+24,bike,recovery,Sykkel recovery 45 (B01),45,28,"Z1.",recovery
+25,strength,recovery,Styrke recovery (ST03),25,15,"Mobilitet lett.",recovery
+26,swim,technique,Svøm teknikk lett (S02),40,28,"Kort teknikk.",recovery
+27,bike,recovery,Sykkel valgfri 30,30,18,"Valgfri Z1 eller fri.",recovery
+28,run,recovery,Løp easy 30,30,25,"Kort easy.",recovery

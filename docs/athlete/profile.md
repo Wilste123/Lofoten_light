@@ -68,7 +68,8 @@ Agenten skal **planlegge faser** (f.eks. start der William er nå → stabil bas
 | Felt | Verdi |
 |------|--------|
 | Typisk uke (timer) | **Mål-snitt ~14,5–15,5 t** på 12 mnd; nåværende uke TBD inntil kalender er satt |
-| Treningsdager | TBD |
+| Treningsdager | Alle dager (7/7); uke 4 recovery med kortere økter |
+| Planstart | **28.09.2026** — se `plans/2026-09-28-uke-01.md` |
 | Innendørs / utendørs | Trondheim — vinter innendørs sykkel sannsynlig del av året |
 | Utstyr | TBD (powermeter, smart trainer, pulsbelte) |
 
@@ -107,7 +108,7 @@ Fyll inn når FTP 2026 er kjent. Tabell under er **mal** (% av gjeldende FTP):
 - **Løp:** høy motivasjon — bruk det for kontinuitet og skadefri progresjon (viktigste prioritet 1–3).
 - **Svøm:** lav erfaring — korte, hyppige økter beats hero-sessions; teknikk og vane.
 - **Xtri / Lofoten:** se `goals.md` — ikke trene som for full Norseman ennå.
-- TrainingPeaks-eksport: `data/trainingpeaks/exports/`; bulk-push via TrainingDojo (se `docs/trainingpeaks/import-workouts.md`).
+- TrainingPeaks: importer plan via **TrainingDojo** + `plans/csv/trainingdojo-4uker-2026-09-28.csv` (se `docs/trainingpeaks/importere-plan-norsk.md`).
 
 ## Datakilder
 

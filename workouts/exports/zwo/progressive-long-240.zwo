@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>Progressive Long 240</name>
+  <description>4h — finish last hour upper Z2</description>
+  <sportType>bike</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="1200" Power="0.5500" pace="0">
+      <textevent message="Warm-up" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="7200" Power="0.6500" pace="0">
+      <textevent message="Z2 low — fuel early" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="3600" Power="0.7200" pace="0">
+      <textevent message="Z2 high / tempo feel" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="1800" Power="0.6500" pace="0">
+      <textevent message="Settle" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0.4500" pace="0">
+      <textevent message="Cool-down" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>Endurance 300</name>
+  <description>5h Z2 — race nutrition practice</description>
+  <sportType>bike</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="1200" Power="0.5500" pace="0">
+      <textevent message="Warm-up" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="15600" Power="0.6700" pace="0">
+      <textevent message="Z2 — race fueling 60-90g CHO/h" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="1200" Power="0.4500" pace="0">
+      <textevent message="Cool-down" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

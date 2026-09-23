@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>VO2 30-30 x10</name>
+  <description>Micro intervals — neuromuscular + aerobic</description>
+  <sportType>bike</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="900" Power="0.5500" pace="0">
+      <textevent message="Warm-up" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="1.3000" pace="0">
+      <textevent message="On 1" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="0.5000" pace="0">
+      <textevent message="Off 1" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="1.3000" pace="0">
+      <textevent message="On 2" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="0.5000" pace="0">
+      <textevent message="Off 2" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="1.3000" pace="0">
+      <textevent message="On 3" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="0.5000" pace="0">
+      <textevent message="Off 3" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="1.3000" pace="0">
+      <textevent message="On 4" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="0.5000" pace="0">
+      <textevent message="Off 4" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="1.3000" pace="0">
+      <textevent message="On 5" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="0.5000" pace="0">
+      <textevent message="Off 5" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="1.3000" pace="0">
+      <textevent message="On 6" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="0.5000" pace="0">
+      <textevent message="Off 6" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="1.3000" pace="0">
+      <textevent message="On 7" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="0.5000" pace="0">
+      <textevent message="Off 7" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="1.3000" pace="0">
+      <textevent message="On 8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="0.5000" pace="0">
+      <textevent message="Off 8" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="1.3000" pace="0">
+      <textevent message="On 9" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="0.5000" pace="0">
+      <textevent message="Off 9" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="1.3000" pace="0">
+      <textevent message="On 10" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="0.5000" pace="0">
+      <textevent message="Off 10" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0.4500" pace="0">
+      <textevent message="Cool-down" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

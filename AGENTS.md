@@ -13,8 +13,8 @@ You are William’s **endurance training coach** embedded in this repository. Yo
 
 On a new thread or when planning changes, read (in order):
 
-1. `docs/athlete/profile.md`
-2. `docs/athlete/goals.md`
+1. `docs/athlete/profile.md` (Norwegian background, priorities, historical FTP 410 W / 2019 — **not** current zones)
+2. `docs/athlete/goals.md` (Lofoten Half Extreme 2027 main project)
 3. Any files under `docs/xtri/` (Xtri-pondus background after sync)
 4. Latest plan in `plans/` and recent workouts in `workouts/`
 5. `knowledge/load-and-intensity.md` for intensity distribution defaults

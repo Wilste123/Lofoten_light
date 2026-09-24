@@ -35,7 +35,7 @@ Denne agenten skal **etterligne det arbeidsmønsteret** — ikke bare levere pla
 Send én av:
 
 - CSV-eksport: `data/trainingpeaks/exports/` + `python3 scripts/analyze_tp_export.py …`  
-- **Intervals.icu (anbefalt for fullførte økter):** `fetch_intervals_activities.py` / `analyze_intervals_export.py` — se `integrasjon-intervals-icu.md`  
+- **Intervals.icu (anbefalt):** aktiviteter + wellness — `fetch_intervals_activities.py`, `fetch_intervals_wellness.py` og tilhørende `analyze_*` — se `integrasjon-intervals-icu.md`  
 - Skjermbilde av TP-uke (som NTG-arkiv)  
 - Kort tekst: «Fullført 5/7, droppet …»
 

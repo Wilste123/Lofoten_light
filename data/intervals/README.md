@@ -1,4 +1,6 @@
 # Intervals.icu data
 
-- **Eksport (ukesanalyse):** `exports/*.csv` — generert av `scripts/fetch_intervals_activities.py` (ikke committet; se `.gitignore`).
+- **Aktiviteter:** `exports/*activities*.csv` — `scripts/fetch_intervals_activities.py`
+- **Wellness (søvn, vekt, HRV, readiness):** `exports/*wellness*.csv` — `scripts/fetch_intervals_wellness.py`
+- Filer committes ikke; se `.gitignore`.
 - **Verifisert plan-push:** `docs/trainingpeaks/intervals-push-verified.md`

@@ -79,9 +79,15 @@ Sykkel/løp/svøm får **ZWO** når fil finnes i `workouts/zwo/`. Styrke = tekst
    ```bash
    source .env  # eller export INTERVALS_API_KEY=...
    python3 scripts/fetch_intervals_activities.py --days 7 \
-     -o data/intervals/exports/uke.csv
-   python3 scripts/analyze_intervals_export.py data/intervals/exports/uke.csv
+     -o data/intervals/exports/uke-activities.csv
+   python3 scripts/analyze_intervals_export.py data/intervals/exports/uke-activities.csv
+
+   python3 scripts/fetch_intervals_wellness.py --days 7 \
+     -o data/intervals/exports/uke-wellness.csv
+   python3 scripts/analyze_intervals_wellness.py data/intervals/exports/uke-wellness.csv
    ```
+
+   **Wellness** (søvn, hvilepuls, HRV, vekt, readiness, subjektivt) kommer fra det Garmin/klokke (eller manuell logging) sender til **Intervals → Wellness**. API: `GET /athlete/0/wellness.csv?oldest=&newest=`.
 
 4. **Cloud Agent:** Legg `INTERVALS_API_KEY` som **secret** i Cursor-miljøet hvis du vil at agenten skal hente uten manuell CSV. Uten secret: last ned **activities.csv** fra Intervals (eller kjør fetch lokalt) og legg i `data/intervals/exports/` / lim inn i chat.
 

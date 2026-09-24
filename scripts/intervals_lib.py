@@ -84,6 +84,35 @@ def _zwo_stem_from_description(description: str) -> str | None:
     return None
 
 
+def resolve_bike_zwo_path(
+    description: str,
+    sport: str,
+    repo_root: Path,
+    explicit_path: str | None = None,
+) -> Path | None:
+    """Bike ZWO from description or from linked planned/bike/*.txt (zwo: line or stem)."""
+    found = resolve_zwo_path(description, sport, repo_root, explicit_path)
+    if found:
+        return found
+    for m in PLANNED_SESSION_RE.finditer(description or ""):
+        if "/bike/" not in m.group(1):
+            continue
+        planned = repo_root / m.group(1)
+        if not planned.is_file():
+            continue
+        for line in planned.read_text(encoding="utf-8").splitlines():
+            if line.startswith("zwo:"):
+                rel = line.split(":", 1)[1].strip()
+                cand = repo_root / rel
+                if cand.is_file():
+                    return cand
+        stem = planned.stem
+        cand = repo_root / f"workouts/zwo/bike/{stem}.zwo"
+        if cand.is_file():
+            return cand
+    return None
+
+
 def resolve_planned_session(description: str, sport: str, repo_root: Path) -> str | None:
     """Full Intervals description for run/swim/bike (not strength)."""
     if not description:

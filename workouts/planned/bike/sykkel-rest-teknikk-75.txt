@@ -1,5 +1,6 @@
 name: Sykkel lett + ettbens teknikk
 sport: bike
+zwo: workouts/zwo/bike/endurance-90.zwo
 ---
 OPV-inspirert: mesteparten rolig Z2, deretter 4×1,5 min ettbeins på lett watt. Fokus runde bevegelse, ikke TSS.
 

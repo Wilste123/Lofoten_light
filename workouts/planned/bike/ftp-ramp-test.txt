@@ -1,5 +1,6 @@
 name: FTP ramp test
 sport: bike
+zwo: workouts/zwo/bike/ftp-ramp-test.zwo
 ---
 Ramp-test. Følg ZWO-strukturen på sykkel. Etterpå: oppdater FTP i Intervals og i docs/athlete/profile.md. Ærlig tall — ikke 2019-FTP.
 

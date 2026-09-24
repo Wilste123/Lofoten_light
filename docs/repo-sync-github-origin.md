@@ -1,7 +1,9 @@
 # Synk Cursor/Origin ↔ GitHub (uten lokal terminal)
 
 Dette repoet ble **primært pushet til Origin** (`origin.cursor.com/.../Lofoten_Light_agent`).  
-Et **duplikat på GitHub** oppdateres ikke automatisk. Du trenger **ikke** programvare på PC — kun secrets i Cursor + én Cloud Agent-kjøring.
+**GitHub-speil:** [`Wilste123/Lofoten_light`](https://github.com/Wilste123/Lofoten_light) (samme `main` etter sync 2026-09-24).
+
+Historikk på GitHub og Origin var **ulike** (ingen felles merge-base). Fasit = Origin; unike GitHub-filer ble kopiert inn før force-push til GitHub.
 
 ## Anbefalt «source of truth»
 

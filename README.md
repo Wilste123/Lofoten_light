@@ -6,7 +6,7 @@ The “agent” is **Cursor itself**, guided by `AGENTS.md` and `.cursor/rules/`
 
 ## Repo på GitHub vs Cursor/Origin
 
-Kode kan ligge på **to steder** (Origin + GitHub-duplikat). Synk uten lokal terminal: [`docs/repo-sync-github-origin.md`](docs/repo-sync-github-origin.md) + secret **`GITHUB_TOKEN`** i Cursor Cloud.
+Kode på **Origin** (Cursor) og **GitHub** [`Wilste123/Lofoten_light`](https://github.com/Wilste123/Lofoten_light) — hold `main` lik via [`docs/repo-sync-github-origin.md`](docs/repo-sync-github-origin.md).
 
 ## Quick start
 

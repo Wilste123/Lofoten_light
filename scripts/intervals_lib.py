@@ -138,6 +138,56 @@ def fetch_wellness_csv(oldest: str, newest: str) -> bytes:
     )
 
 
+def put_wellness(day: str, fields: dict) -> dict:
+    """Create/update one wellness row (day = YYYY-MM-DD). Only include fields to change."""
+    aid = athlete_id()
+    url = f"{API_BASE}/athlete/{aid}/wellness/{day}"
+    body = json.dumps(fields).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=body,
+        method="PUT",
+        headers={
+            "Authorization": auth_header(),
+            "Content-Type": "application/json",
+            "User-Agent": "LofotenLightAgent/1.0 (intervals wellness)",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            raw = resp.read().decode()
+            return json.loads(raw) if raw else {"status": resp.status}
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode()[:2000]
+        raise RuntimeError(f"Intervals API {e.code}: {detail}") from e
+
+
+def put_wellness_bulk(rows: list[dict]) -> dict | list:
+    """Bulk wellness update. Each row must include id (YYYY-MM-DD) plus fields."""
+    if not rows:
+        return {"updated": 0}
+    aid = athlete_id()
+    url = f"{API_BASE}/athlete/{aid}/wellness-bulk"
+    body = json.dumps(rows).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=body,
+        method="PUT",
+        headers={
+            "Authorization": auth_header(),
+            "Content-Type": "application/json",
+            "User-Agent": "LofotenLightAgent/1.0 (intervals wellness)",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            raw = resp.read().decode()
+            return json.loads(raw) if raw else {"status": resp.status}
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode()[:2000]
+        raise RuntimeError(f"Intervals API {e.code}: {detail}") from e
+
+
 def delete_events_bulk(external_ids: list[str]) -> dict:
     """Delete calendar events by external_id (agent plan ids ll-agent-…)."""
     if not external_ids:

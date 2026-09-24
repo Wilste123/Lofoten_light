@@ -1,0 +1,6 @@
+week_ending,weight_kg_7d_avg,body_fat_pct_7d_avg,body_water_pct_7d_avg,ffm_kg_7d_avg,muscle_kg_7d_avg,visceral_avg,monthly_cap_kg,strength_ok,opv_line
+# Søndag (YYYY-MM-DD) + 7-dagers snitt fra smartvekt. Fyll etter ukesopp.
+# Eksempel:
+# 2026-10-04,89.8,18.2,56.0,73.4,34.0,9,90,yes,Svøm 3/3 bein ok
+# Push til Intervals (lagres på søndagens wellness-rad):
+# python3 scripts/push_intervals_wellness.py plans/csv/intervals-bia-ukesnitt.csv --weekly

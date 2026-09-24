@@ -87,7 +87,9 @@ Sykkel/løp/svøm får **ZWO** når fil finnes i `workouts/zwo/`. Styrke = tekst
    python3 scripts/analyze_intervals_wellness.py data/intervals/exports/uke-wellness.csv
    ```
 
-   **Wellness** (søvn, hvilepuls, HRV, vekt, readiness, subjektivt) kommer fra det Garmin/klokke (eller manuell logging) sender til **Intervals → Wellness**. API: `GET /athlete/0/wellness.csv?oldest=&newest=`.
+   **BIA / smartvekt (push):** `plans/csv/intervals-bia-daily.csv` og `intervals-bia-ukesnitt.csv` → `scripts/push_intervals_wellness.py` (vekt + `bodyFat` + vann/FFM i `comments`). Se `docs/athlete/kroppssammensetning-smartvekt.md`.
+
+   **Wellness** (søvn, hvilepuls, HRV, vekt, readiness, subjektivt) kommer fra Garmin/klokke **og/eller** push over. API: `GET /athlete/0/wellness.csv?oldest=&newest=`.
 
 4. **Cloud Agent:** Legg `INTERVALS_API_KEY` som **secret** i Cursor-miljøet hvis du vil at agenten skal hente uten manuell CSV. Uten secret: last ned **activities.csv** fra Intervals (eller kjør fetch lokalt) og legg i `data/intervals/exports/` / lim inn i chat.
 

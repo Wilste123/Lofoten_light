@@ -31,6 +31,7 @@ WELLNESS_METRICS = [
     ("motivation", "Motivasjon", "", 1.0),
     ("steps", "Skritt", "", 1.0),
     ("spO2", "SpO2", "%", 1.0),
+    ("bodyFat", "Fett %", "%", 1.0),
 ]
 
 
@@ -48,6 +49,7 @@ def col_map(fields: list[str]) -> dict[str, str | None]:
         out[key] = find_column(fields, [key, key.lower()])
     out["date"] = find_column(fields, ["date", "id", "day"])
     out["comments"] = find_column(fields, ["comments", "comment"])
+    out["bodyFat"] = find_column(fields, ["bodyFat", "body_fat", "body fat"])
     out["ctl"] = find_column(fields, ["ctl"])
     out["atl"] = find_column(fields, ["atl"])
     return out

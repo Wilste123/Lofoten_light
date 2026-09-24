@@ -57,10 +57,31 @@ Se også `knowledge/ernaring/grunnlag.md` — ved uønsket vekttap i base: **øk
 
 ---
 
+## Intervals + CSV (BIA-felter)
+
+| Fil | Bruk |
+|-----|------|
+| `plans/csv/intervals-bia-daily.csv` | **Hver morgen:** vekt, fett %, vann %, FFM, muskel, visceral, RHR |
+| `plans/csv/intervals-bia-ukesnitt.csv` | **Søndag:** 7-dagers snitt + `opv_line` til coach |
+
+**Push til Intervals wellness** (API-felt `weight`, `bodyFat`, `restingHR`; vann/FFM/muskel i `comments` som `BIA water=… ffm=…`):
+
+```bash
+# Daglige rader
+python3 scripts/push_intervals_wellness.py plans/csv/intervals-bia-daily.csv --dry-run
+python3 scripts/push_intervals_wellness.py plans/csv/intervals-bia-daily.csv
+
+# Søndags ukesnitt (lagres på week_ending-dato)
+python3 scripts/aggregate_bia_weekly.py --week-ending 2026-10-04   # fyller snitt fra daily
+python3 scripts/push_intervals_wellness.py plans/csv/intervals-bia-ukesnitt.csv --weekly
+```
+
+Hent tilbake / analyse: `fetch_intervals_wellness.py` + `analyze_intervals_wellness.py`.
+
 ## Hva du logger til OPV (ukentlig, søndag)
 
-Én linje er nok:
+Fyll `opv_line` i `intervals-bia-ukesnitt.csv` (eller kommentar i Intervals). Eksempel:
 
-`Vekt snitt 87,2 | Fett BIA 16,1 % | FFM 73,1 | Vann 57 % | styrke ok / bein tung`
+`Snitt 87,2 kg | fett 16,1 % | FFM 73,1 | vann 57 % | styrke ok`
 
 Agenten bruker dette mot tabellen i `plans/2026-2027-12mnd-periodisering.md`.

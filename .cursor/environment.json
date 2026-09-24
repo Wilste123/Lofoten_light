@@ -1,0 +1,5 @@
+{
+  "name": "Xtri training coach",
+  "user": "ubuntu",
+  "install": "pip install --user -r scripts/requirements.txt"
+}

@@ -1,5 +1,7 @@
 # Grov periodisering — 12 måneder (rullerende)
 
+> **Lesbar blokkplan (formål per periode):** [`blokker-periodisering-2026-2027.md`](blokker-periodisering-2026-2027.md)
+
 **Utgangspunkt:** ca. september 2026  
 **Hovedmål:** [Lofoten Half Extreme 2027](../knowledge/triathlon/lofoten-half-extreme.md) (1,9 / 100 / 21 km)  
 **Årsmål volum:** [750–800 timer](../docs/athlete/profile.md) (~14,5–15,5 t/uke i snitt når du er oppe i plan)  

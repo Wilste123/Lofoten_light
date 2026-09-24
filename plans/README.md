@@ -8,7 +8,9 @@ Store meso/micro cycles as markdown, e.g. `2026-09-28-uke-01.md`.
 |-----|-----|
 | 1–4 | `2026-09-28-uke-01.md` … `uke-04.md` (re-etablering + recovery) |
 | CSV TrainingDojo | `csv/trainingdojo-4uker-2026-09-28.csv` |
-| Makro | `2026-2027-12mnd-periodisering.md` |
+| **Blokk / tanke bak fasene** | **`blokker-periodisering-2026-2027.md`** |
+| Makro (månedstabell) | `2026-2027-12mnd-periodisering.md` |
+| CSV årsoversikt | `csv/12mnd-periodisering.csv` |
 
 Øktbeskrivelser er skrevet **OPV-stil** for TP; kommentar/ukesopp: `docs/trainingpeaks/trener-feedback-syklus.md`.
 

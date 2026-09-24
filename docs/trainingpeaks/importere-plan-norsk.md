@@ -15,7 +15,8 @@ Bruk ferdig fil (TrainingDojo-format):
 
 | Fil | Bruk |
 |-----|------|
-| **`trainingdojo-4uker-uten-sykkel-opv.csv`** | **Anbefalt:** svøm/løp/styrke med **OPV-tekst** i beskrivelse + sykkel via ZWO |
+| **`trainingdojo-uke-notater-4uker-opv.csv`** | **Kun 4 ukentlige coach-notater** (Other) — fokus/ukebrief, ikke økter |
+| **`trainingdojo-4uker-uten-sykkel-opv.csv`** | Svøm/løp/styrke med lang økt-tekst (valgfritt; du kan beholde kort CSV) |
 | `trainingdojo-4uker-2026-09-28-opv.csv` | Hele uka inkl. sykkel som tekst (bruk ZWO i tillegg eller i stedet) |
 | `trainingdojo-4uker-2026-09-28.csv` | Kort beskrivelse (eldre) |
 | `trainingdojo-4uker-uten-sykkel.csv` | Uten sykkel, kort tekst |
@@ -121,7 +122,8 @@ Plan og logg matcher da automatisk hvis dato/tittel stemmer.
 
 | Fil | Bruk |
 |-----|------|
-| `plans/csv/trainingdojo-4uker-uten-sykkel-opv.csv` | **TrainingDojo → TP** (OPV-tekst, hybrid sykkel) |
+| `plans/csv/trainingdojo-uke-notater-4uker-opv.csv` | **TrainingDojo → TP** ukentlige notater (4 stk) |
+| `plans/csv/trainingdojo-4uker-uten-sykkel-opv.csv` | TrainingDojo økter OPV-tekst (valgfritt) |
 | `plans/csv/trainingdojo-4uker-2026-09-28-opv.csv` | TrainingDojo full uke OPV-tekst |
 | `plans/csv/trainingdojo-4uker-2026-09-28.csv` | TrainingDojo kort tekst |
 | `plans/csv/ukeplan-2026-09-28-4uker.csv` | Excel / arkivering |

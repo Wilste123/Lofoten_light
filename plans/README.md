@@ -7,7 +7,9 @@ Store meso/micro cycles as markdown, e.g. `2026-09-28-uke-01.md`.
 | Uke | Fil |
 |-----|-----|
 | 1–4 | `2026-09-28-uke-01.md` … `uke-04.md` (re-etablering + recovery) |
-| CSV TrainingDojo | `csv/trainingdojo-4uker-2026-09-28.csv` |
+| CSV TrainingDojo økter | `csv/trainingdojo-4uker-uten-sykkel.csv` |
+| **CSV ukentlige coach-notater** | **`csv/trainingdojo-uke-notater-4uker-opv.csv`** |
+| Lesbare ukenotater | `uke-notater/2026-09-28-blokk-4uker.md` |
 | **Blokk / tanke bak fasene** | **`blokker-periodisering-2026-2027.md`** |
 | Makro (månedstabell) | `2026-2027-12mnd-periodisering.md` |
 | CSV årsoversikt | `csv/12mnd-periodisering.csv` |

@@ -136,3 +136,32 @@ def fetch_wellness_csv(oldest: str, newest: str) -> bytes:
         f"/athlete/{aid}/wellness.csv?oldest={oldest}&newest={newest}",
         timeout=60,
     )
+
+
+def delete_events_bulk(external_ids: list[str]) -> dict:
+    """Delete calendar events by external_id (agent plan ids ll-agent-…)."""
+    if not external_ids:
+        return {"eventsDeleted": 0}
+    aid = athlete_id()
+    url = f"{API_BASE}/athlete/{aid}/events/bulk-delete"
+    unique = sorted(set(external_ids))
+    body = json.dumps([{"external_id": eid} for eid in unique]).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=body,
+        method="PUT",
+        headers={
+            "Authorization": auth_header(),
+            "Content-Type": "application/json",
+            "User-Agent": "LofotenLightAgent/1.0 (intervals delete)",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            raw = resp.read().decode()
+            if not raw:
+                return {"status": resp.status}
+            return json.loads(raw)
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode()[:2000]
+        raise RuntimeError(f"Intervals API {e.code}: {detail}") from e

@@ -54,6 +54,7 @@ python3 scripts/analyze_tp_export.py data/trainingpeaks/exports/<file>.csv
 python3 scripts/fetch_intervals_wellness.py --days 7 -o data/intervals/exports/wellness.csv
 python3 scripts/analyze_intervals_wellness.py data/intervals/exports/wellness.csv
 python3 scripts/intervals_push_calendar.py --start 2026-09-28  # plan → Intervals (secret INTERVALS_API)
+python3 scripts/intervals_delete_calendar.py --start 2026-09-28  # fjern agent-plan
 python3 scripts/fetch_intervals_activities.py --days 7 -o data/intervals/exports/uke.csv
 python3 scripts/analyze_intervals_export.py data/intervals/exports/uke.csv
 ./scripts/fetch_knowledge_archives.sh

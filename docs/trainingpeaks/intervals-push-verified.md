@@ -24,6 +24,13 @@ python3 scripts/intervals_push_calendar.py --start 2026-09-28 --dry-run
 python3 scripts/intervals_push_calendar.py --start 2026-09-28
 ```
 
+Fjern samme plan fra kalenderen (fullførte aktiviteter påvirkes ikke):
+
+```bash
+python3 scripts/intervals_delete_calendar.py --start 2026-09-28 --dry-run
+python3 scripts/intervals_delete_calendar.py --start 2026-09-28
+```
+
 **Resultat første kjøring:** 32 kalenderhendelser (28 økter + 4 UKENOTE), **14** med ZWO-struktur.
 
 ### Inputfiler (automatisk)

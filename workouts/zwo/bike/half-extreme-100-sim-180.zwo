@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>Half Extreme 100 km sim (75 min)</name>
+  <description>~3h kortet race-sim (ca. 75 km / 75 % av full sim). Samme disponering som B18 full — stepping stone før half-extreme-100-sim-240.zwo. Power = % FTP.</description>
+  <sportType>bike</sportType>
+  <tags>
+    <tag>Half Extreme</tag>
+    <tag>race sim</tag>
+  </tags>
+  <workout>
+    <SteadyState Duration="600" Power="0.5500" pace="0">
+      <textevent message="Oppvarming" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="1800" Power="0.6000" pace="0">
+      <textevent message="Konservativ start — E10-følelse" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="1800" Power="0.6800" pace="0">
+      <textevent message="Steady Z2 + fueling" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="300" Power="0.7800" pace="0">
+      <textevent message="Vind-surge 5 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="2700" Power="0.6700" pace="0">
+      <textevent message="Laukvik-lignende blokk — spis!" timeoffset="900"/>
+    </SteadyState>
+    <SteadyState Duration="300" Power="0.7800" pace="0">
+      <textevent message="Surge 2" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="1800" Power="0.6800" pace="0">
+      <textevent message="Hjem mot T2 — rolig" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0.4500" pace="0">
+      <textevent message="Cool-down" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

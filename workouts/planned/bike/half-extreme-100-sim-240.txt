@@ -1,0 +1,28 @@
+name: Half Extreme 100 km race sim (rulle)
+sport: bike
+zwo: workouts/zwo/bike/half-extreme-100-sim-240.zwo
+---
+~4 t race-sim sykkelben Lofoten Half Extreme. Power = % FTP (210 W plan).
+
+Ikke ekte løypeprofil — for GPS/høyde: last ned GPX fra thearctictriple.com og kjør i Zwift/Rouvy/FulGaz.
+
+Race-disponering:
+- Første 45 min konservativ (~60 % FTP)
+- Hoveddel ~67–69 % FTP
+- 3×5 min «vind» ~78 % FTP
+- Fueling 60–90 g CHO/h fra min 20
+- Siste 30 min: spar bein (Tjeldbergtind kommer etter T2)
+
+Plan B: 75 % versjon → half-extreme-100-sim-180.zwo (3 t)
+Fase: build/spec (B18) — ikke uke 1–4 re-etablering.
+
+---intervals---
+- 15m 55-60% FTP
+- 45m 58-62% FTP
+- 40m 65-70% FTP
+- 5m 75-80% FTP
+- 60m 65-70% FTP
+- 5m 75-80% FTP
+- 55m 65-72% FTP
+- 30m 62-68% FTP
+- 10m 45-50% FTP

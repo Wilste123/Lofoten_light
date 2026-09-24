@@ -6,3 +6,4 @@ data/intervals/exports/*
 *.env
 docs/trainingpeaks/api-credentials.md
 __pycache__/
+reports/wellness/*.png

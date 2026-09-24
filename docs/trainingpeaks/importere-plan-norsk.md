@@ -13,7 +13,12 @@ TrainingPeaks har **ikke** bulk-import for vanlige utøvere. To realistiske veie
 
 Bruk ferdig fil (TrainingDojo-format):
 
-`plans/csv/trainingdojo-4uker-2026-09-28.csv`
+| Fil | Bruk |
+|-----|------|
+| **`trainingdojo-4uker-uten-sykkel-opv.csv`** | **Anbefalt:** svøm/løp/styrke med **OPV-tekst** i beskrivelse + sykkel via ZWO |
+| `trainingdojo-4uker-2026-09-28-opv.csv` | Hele uka inkl. sykkel som tekst (bruk ZWO i tillegg eller i stedet) |
+| `trainingdojo-4uker-2026-09-28.csv` | Kort beskrivelse (eldre) |
+| `trainingdojo-4uker-uten-sykkel.csv` | Uten sykkel, kort tekst |
 
 Kolonner: `day`, `sport`, `subtype`, `title`, `duration_minutes`, `tss`, `description`, `phase`  
 - `day` = 1 på **28.09.2026**, 2 = 29.09, … 28 = 25.10.2026  
@@ -116,7 +121,9 @@ Plan og logg matcher da automatisk hvis dato/tittel stemmer.
 
 | Fil | Bruk |
 |-----|------|
-| `plans/csv/trainingdojo-4uker-2026-09-28.csv` | **TrainingDojo → TP** |
+| `plans/csv/trainingdojo-4uker-uten-sykkel-opv.csv` | **TrainingDojo → TP** (OPV-tekst, hybrid sykkel) |
+| `plans/csv/trainingdojo-4uker-2026-09-28-opv.csv` | TrainingDojo full uke OPV-tekst |
+| `plans/csv/trainingdojo-4uker-2026-09-28.csv` | TrainingDojo kort tekst |
 | `plans/csv/ukeplan-2026-09-28-4uker.csv` | Excel / arkivering |
 | `plans/csv/12mnd-periodisering.csv` | Grovplan Excel |
 | `workouts/zwo/bike/` · `zwo-bike.zip` | Sykkel (ZWO → TP library) |

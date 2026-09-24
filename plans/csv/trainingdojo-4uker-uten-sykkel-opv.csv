@@ -1,0 +1,21 @@
+day,sport,subtype,title,duration_minutes,tss,description,phase
+1,swim,technique,Svøm teknikk A (S01),50,35,"UKE 1 — Kontakt alle tre ben. Ingen hero. FORMÅL: basseng-vane og skuldervennlig teknikk. OPPVARMING: 200 m mix. MAIN: 8x50 drill+svøm 15s pause · 4x100 lett crawl 20s · 8x25 spark + 100 rolig. RPE 3-5. PLAN B: 35 min dropp 2x100. SYKKEL: legg ZWO endurance-90 på ons 30.09 og recovery-spin-45 på lør 03.10 (se sykkel-zwo-kalender-4uker.csv). ETTER ØKTA: kommenter i TP — følelse teknikk bein.",re-etablering
+2,run,endurance,Løp easy 40 (R01),40,40,"FORMÅL: kontakt løp uten å jage fart. 10 min superlett · 25 min Z2 samtale (mykt underlag) · 5 min ned. RPE max 5. Ikke intervall. PLAN B: 30 min hvis sliten. KOMMENTAR: skriv om legg og motivasjon — du legger lista.",re-etablering
+4,strength,general,Styrke A base (ST01),35,20,"Valgfritt 10 min basis (planke bird dog) før program. MAIN: goblet squat 3x10 · split squat 3x8/side · planke 3x45s · band row 3x12 · calf 3x15 · dead bug 3x10/side. Kontrollert tempo ikke failure. PLAN B: 2 sett. MSK før volum.",re-etablering
+5,swim,technique,Svøm teknikk skulder (S02),45,30,"FORMÅL: skulder/sparering. 300 lett · 6x75 drill · 4x50 uten full crawl om nødvendig · 200 ned. RPE 3-5. Ikke dropp denne for rulla — Half Extreme svømmer deg opp.",re-etablering
+7,run,endurance,Løp easy + strides (R02),50,45,"35-40 min lett løp · 6x15s strides med full gangpause (RPE 6-7 på stride ikke sprint) · 5 min ned. PLAN B: uten strides 40 min easy. Søndag: send kort ukesopp til coach.",re-etablering
+8,swim,technique,Svøm teknikk A (S01),50,35,"UKE 2 — Litt mer volum samme intensitet. S01 som uke 1. KOMMENTAR: én ting som ble bedre enn uke 1. OPPVARMING 200 · 8x50 · 4x100 · spark. RPE 3-5.",re-etablering
+9,run,endurance,Løp trail/myr lett 60 (R03),60,55,"FORMÅL: variasjon NTG-stil. Trail/grus RPE 4-5 ELLER myr med staver rolig (snakketest). Ingen bakkeintervall. PLAN B: 45 min flat. Ikke elghufs hard ennå.",re-etablering
+11,strength,general,Styrke A base (ST01),35,20,"ST01 som uke 1. Styrke er skadefrihetsarbeid — ikke hopp over for ekstra løp.",re-etablering
+12,swim,endurance,Svøm aerob 3x500 (S03),55,45,"Første aerob blokk. 300 WU · 3x500 aerob 25s pause · 200 ned. RPE 4-5. PLAN B: 3x400 eller 20 min kontinuerlig. KOMMENTAR: traff du pauser og pust?",re-etablering
+14,run,endurance,Løp easy 40 (R01),40,40,"Ren restitusjon etter lør lang sykkel (ZWO). Superlett. Ikke ta igjen TSS.",re-etablering
+15,swim,endurance,Svøm aerob 3x500 (S03),55,45,"UKE 3 — Topp mikroblokk før recovery. 3x500 uten å øke fart siste 100m. RPE 4-5. PLAN B: 3x400.",re-etablering
+16,run,endurance,Løp easy + strides (R02),50,45,"6x15s strides som uke 1. Ingen elghufs denne uken.",re-etablering
+18,strength,general,Styrke A base (ST01),35,20,"ST01. Hold linjen — ikke mer løp fordi det er gøy.",re-etablering
+19,swim,technique,Svøm teknikk A (S01),50,35,"Lett teknikk før recovery-uke. RPE max 4 på main.",re-etablering
+21,run,endurance,Løp long easy 75 (R04),75,70,"NØKKEL LØP. ROLIG langtur RPE 4-5 samtale 75 min (Plan B 60). Myk grus/sti. Valgfritt staver siste 30 min rolig. IKKE push pace — uke 4 er recovery. OBLIGATORISK TP-kommentar: bein etter 45 min.",re-etablering
+22,swim,recovery,Svøm recovery (S09),35,20,"UKE 4 RESSURSUKE — minus 30% timer. Ingen threshold. Lett mix RPE 2-4. Behold svøm-frekvens.",recovery
+23,run,recovery,Løp easy 35 (R01),35,30,"Superlett. Ikke ekstra km.",recovery
+25,strength,recovery,Styrke recovery (ST03),25,15,"Band walks glute bridge bird dog stretch. 1 runde om trøtt. Ikke failure.",recovery
+26,swim,technique,Svøm teknikk lett (S02),40,28,"Kun drill og rolig. Kort og fint.",recovery
+28,run,recovery,Løp easy 30 + ukesopp,30,25,"30 min easy. UKESOPP til coach: timer fullført svøm 3x/uke? bein? én stødig fremgang? plan uke 5?",recovery

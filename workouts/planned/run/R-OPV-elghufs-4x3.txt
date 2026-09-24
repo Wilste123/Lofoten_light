@@ -1,12 +1,14 @@
 name: Elghufs 4×3 min
 sport: run
+intervals_target: HR
 ---
-OPV elghufs på løp: bratt bakke, staver, lange steg — ikke vanlig motbakkesprint. I drag: puls rundt 155–163 (terskel-følelse). Plan B: 3×3 min. Stopp hvis rygg eller isjasnerven sier fra.
+OPV elghufs: bratt bakke, staver, lange steg — ikke vanlig motbakkesprint. I drag: puls rundt 155–163. Plan B: 3 drag. Stopp hvis rygg eller isjasnerven sier fra.
 
 ---intervals---
-Warmup
-- 15m 75-85% LTHR
-Main
-- 4x (3m 94-99% LTHR 3m 70-75% LTHR)
-Cooldown
-- 10m 75-85% LTHR
+- Warmup 15m 75-85% LTHR
+
+Main Set 4x
+- 3m 94-99% LTHR
+- 3m 70-75% LTHR
+
+- Cooldown 10m 75-85% LTHR

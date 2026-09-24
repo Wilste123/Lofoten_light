@@ -61,17 +61,55 @@ def resolve_strength_description(description: str, repo_root: Path) -> str | Non
     return None
 
 
+def read_planned_meta(path: Path) -> dict[str, str]:
+    meta: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.strip() == "---":
+            break
+        if ":" in line and line[0] not in (" ", "\t", "-"):
+            key, val = line.split(":", 1)
+            meta[key.strip()] = val.strip()
+    return meta
+
+
 def format_planned_session_for_intervals(path: Path) -> str:
-    """Coach prose + Intervals.icu workout builder block (---intervals---)."""
+    """Coach (markdown) + Intervals.icu workout block. Run/swim: syntax must be parser-safe."""
     raw = path.read_text(encoding="utf-8")
-    if "---intervals---" in raw:
-        head, intervals = raw.split("---intervals---", 1)
-        coach = head.split("---", 1)[-1].strip() if "---" in head else head.strip()
-        intervals = intervals.strip()
-        if coach and intervals:
-            return f"{coach}\n\n{intervals}"
-        return intervals or coach
-    return format_strength_txt_for_intervals(path)
+    if "---intervals---" not in raw:
+        return format_strength_txt_for_intervals(path)
+    head, intervals = raw.split("---intervals---", 1)
+    coach = head.split("---", 1)[-1].strip() if "---" in head else head.strip()
+    intervals = intervals.strip()
+    sport = read_planned_meta(path).get("sport", "")
+    if sport == "run":
+        from run_intervals_syntax import lint_run_intervals_block
+
+        issues = lint_run_intervals_block(intervals)
+        if issues:
+            raise ValueError(f"{path}: Intervals løp-syntax: " + "; ".join(issues[:3]))
+    if coach:
+        return f"### Fra treneren\n\n{coach}\n\n---\n\n{intervals}"
+    return intervals
+
+
+def resolve_planned_session_path(
+    description: str, sport: str, repo_root: Path
+) -> Path | None:
+    if not description:
+        return None
+    for m in PLANNED_SESSION_RE.finditer(description):
+        candidate = repo_root / m.group(1)
+        if candidate.is_file():
+            return candidate
+    sport_l = (sport or "").lower()
+    if sport_l not in ("run", "swim", "bike"):
+        return None
+    stem = _zwo_stem_from_description(description)
+    if stem:
+        candidate = repo_root / f"workouts/planned/{sport_l}/{stem}.txt"
+        if candidate.is_file():
+            return candidate
+    return None
 
 
 def _zwo_stem_from_description(description: str) -> str | None:
@@ -115,21 +153,14 @@ def resolve_bike_zwo_path(
 
 def resolve_planned_session(description: str, sport: str, repo_root: Path) -> str | None:
     """Full Intervals description for run/swim/bike (not strength)."""
-    if not description:
-        return None
-    for m in PLANNED_SESSION_RE.finditer(description):
-        candidate = repo_root / m.group(1)
-        if candidate.is_file():
-            return format_planned_session_for_intervals(candidate)
-    sport_l = (sport or "").lower()
-    if sport_l not in ("run", "swim", "bike"):
-        return None
-    stem = _zwo_stem_from_description(description)
-    if stem:
-        candidate = repo_root / f"workouts/planned/{sport_l}/{stem}.txt"
-        if candidate.is_file():
-            return format_planned_session_for_intervals(candidate)
+    path = resolve_planned_session_path(description, sport, repo_root)
+    if path:
+        return format_planned_session_for_intervals(path)
     return None
+
+
+def planned_intervals_target(path: Path) -> str | None:
+    return read_planned_meta(path).get("intervals_target")
 
 
 def api_key() -> str:

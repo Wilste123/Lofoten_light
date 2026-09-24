@@ -1,15 +1,18 @@
 name: Løp easy med strides
 sport: run
+intervals_target: HR
 ---
-Easy med seks korte steg på slutten. Strides = 15 sekunder raskere steg, ikke sprint. Puls kan hoppe litt i stride, men hoveddelen skal være 134–147.
+Easy med seks korte steg på slutten. Strides = 15 sekunder raskere steg, ikke sprint. Hoveddelen skal være 134–147.
 
 Plan B: dropp strides, behold 40 min rolig.
 
 ---intervals---
-Warmup
-- 10m 81-89% LTHR
-Main
+- Warmup 10m 81-89% LTHR
+
 - 30m 81-89% LTHR
-- 6x 15s 95% LTHR 60s 81-89% LTHR
-Cooldown
-- 5m 75-80% LTHR
+
+Strides 6x
+- 15s 95% LTHR
+- 60s 81-89% LTHR
+
+- Cooldown 5m 75-80% LTHR

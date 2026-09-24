@@ -1,12 +1,11 @@
 name: Svøm aerob 1500
 sport: swim
 ---
-Kontinuerlig 1500 etter oppvarming. Negativ split i hodet — start rolig.
+1500 kontinuerlig etter oppvarming.
 
 ---intervals---
-Warmup
-- 400m 90% Pace
-Main
+- Warmup 400m 90% Pace
+
 - 1500m 94% Pace
-Cooldown
-- 200m 89% Pace
+
+- Cooldown 200m 89% Pace

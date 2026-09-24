@@ -1,14 +1,12 @@
 name: Svøm aerob 3×500
 sport: swim
 ---
-Aerob svøm. Jevn innsats RPE 5–6. 25 s pause mellom 500-ene er ok.
-
-Plan B: 3×400 samme følelse.
+Aerob svøm. Jevn innsats RPE 5–6.
 
 ---intervals---
-Warmup
-- 400m 90% Pace
-Main
-- 3x 500m 94% Pace 25s rest
-Cooldown
-- 200m 89% Pace
+- Warmup 400m 90% Pace
+
+Main Set 3x
+- 500m 94% Pace 25s rest
+
+- Cooldown 200m 89% Pace

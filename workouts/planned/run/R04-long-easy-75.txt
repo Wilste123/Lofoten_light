@@ -1,14 +1,12 @@
 name: Langløp easy 75
 sport: run
+intervals_target: HR
 ---
-Lang dag, men ikke lang hard dag. Puls snitt under 147 — cap deg selv i bakker. Ta med væske hvis over 60 min.
-
-Plan B: 60 min og inn, uten skam.
+Lang dag, ikke lang hard dag. Puls snitt under 147. Plan B: 60 min.
 
 ---intervals---
-Warmup
-- 10m 81-89% LTHR
-Main
+- Warmup 10m 81-89% LTHR
+
 - 60m 81-89% LTHR
-Cooldown
-- 5m 75-80% LTHR
+
+- Cooldown 5m 75-80% LTHR

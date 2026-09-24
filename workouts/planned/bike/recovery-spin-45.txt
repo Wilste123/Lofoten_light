@@ -1,7 +1,8 @@
 name: Sykkel recovery 45
 sport: bike
+zwo: workouts/zwo/bike/recovery-spin-45.zwo
 ---
-Recovery spin. Under 116 W (ca. 55 % FTP). Høy kadanse, lav watt.
+Recovery spin. Under 116 W.
 
 ---intervals---
 - 45m 50-55% FTP

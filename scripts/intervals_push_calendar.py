@@ -17,8 +17,10 @@ from intervals_lib import (  # noqa: E402
     SPORT_TO_INTERVALS_TYPE,
     api_key,
     post_events_bulk,
+    planned_intervals_target,
     resolve_bike_zwo_path,
     resolve_planned_session,
+    resolve_planned_session_path,
     resolve_strength_description,
 )
 
@@ -110,9 +112,17 @@ def build_workout_event(
         if body:
             ev["description"] = body
     else:
-        session = resolve_planned_session(description, sport_key, repo_root)
+        planned_path = resolve_planned_session_path(description, sport_key, repo_root)
+        session = (
+            resolve_planned_session(description, sport_key, repo_root)
+            if planned_path
+            else None
+        )
         if session:
             ev["description"] = session
+        if planned_path and sport_key == "run":
+            if planned_intervals_target(planned_path) == "HR":
+                ev["target"] = "HR"
 
     return ev
 

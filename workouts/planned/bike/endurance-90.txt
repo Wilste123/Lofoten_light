@@ -1,14 +1,12 @@
 name: Sykkel Z2 90
 sport: bike
+zwo: workouts/zwo/bike/endurance-90.zwo
 ---
-William, denne skal være kjedelig. FTP 210 W: sikt på ca. 137–151 watt (65–72 %). Film er ok, watt er viktigere enn underholdning. Drikke hver 20. min.
-
-Plan B: 60 min samme sone.
+William, kjedelig og rolig. Ca. 137–151 watt (65–72 % FTP). Plan B: 60 min.
 
 ---intervals---
-Warmup
-- 10m 55-60% FTP
-Main
+- Warmup 10m 55-60% FTP
+
 - 70m 65-72% FTP
-Cooldown
-- 10m 55% FTP
+
+- Cooldown 10m 55% FTP

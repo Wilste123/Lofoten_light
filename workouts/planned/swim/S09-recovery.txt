@@ -1,7 +1,7 @@
 name: Svøm recovery
 sport: swim
 ---
-Recovery. Kort og lett i vannet.
+Recovery. Kort og lett.
 
 ---intervals---
 - 35m 88-90% Pace

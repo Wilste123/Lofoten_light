@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""One-off generator for workouts/planned/{run,swim,bike} Intervals session files."""
+"""Generator for workouts/planned/{run,swim,bike} Intervals session files."""
+
+from __future__ import annotations
 
 from pathlib import Path
 
@@ -8,28 +10,30 @@ PLANNED = ROOT / "workouts" / "planned"
 
 SESSIONS: dict[str, str] = {}
 
+
 def add(path: str, body: str) -> None:
     SESSIONS[path] = body.strip() + "\n"
 
 
-# --- RUN ---
+# --- RUN (Intervals syntax: every % → LTHR; repeats = "Main Set Nx" + blank lines) ---
+
 add(
     "run/R01-easy-40.txt",
     """
 name: Løp easy 40
 sport: run
+intervals_target: HR
 ---
-William, rolig løp i dag. Puls er boss — ikke pace på klokka. Terskelpuls ca. 165: hold deg på 134–147 slag i minuttet (easy). Pace kan være 6:35–7:00 per km hvis underlaget er flatt; i motvind eller myr, ignorer pace.
+William, rolig løp i dag. Puls er boss — ikke pace på klokka. Terskelpuls ca. 165: hold deg på 134–147 slag i minuttet (easy). Pace kan være 6:35–7:00 per km på flatt underlag; i motvind eller myr, ignorer pace.
 
 Rygg og isjas: hvis nerven bråker, gå 1 min og fortsett rolig. Plan B: 30 min + tøying hjemme.
 
 ---intervals---
-Warmup
-- 10m 81-89% LTHR
-Main
+- Warmup 10m 81-89% LTHR
+
 - 25m 81-89% LTHR
-Cooldown
-- 5m 75-80% LTHR
+
+- Cooldown 5m 75-80% LTHR
 """,
 )
 
@@ -38,8 +42,9 @@ add(
     """
 name: Løp recovery 35
 sport: run
+intervals_target: HR
 ---
-Recovery-uke. Kort og lett — under 134 puls hvis du kan. Dette er for å få beina i bevegelse, ikke for å «telle timer».
+Recovery-uke. Kort og lett — under 134 puls hvis du kan.
 
 ---intervals---
 - 35m 75-80% LTHR
@@ -51,8 +56,9 @@ add(
     """
 name: Løp recovery 30
 sport: run
+intervals_target: HR
 ---
-Søndag lett + ukesopp etterpå. 30 min maks. Snakketest hele veien.
+Søndag lett + ukesopp. 30 min maks. Snakketest hele veien.
 
 ---intervals---
 - 30m 75-80% LTHR
@@ -64,19 +70,22 @@ add(
     """
 name: Løp easy med strides
 sport: run
+intervals_target: HR
 ---
-Easy med seks korte steg på slutten. Strides = 15 sekunder raskere steg, ikke sprint. Puls kan hoppe litt i stride, men hoveddelen skal være 134–147.
+Easy med seks korte steg på slutten. Strides = 15 sekunder raskere steg, ikke sprint. Hoveddelen skal være 134–147.
 
 Plan B: dropp strides, behold 40 min rolig.
 
 ---intervals---
-Warmup
-- 10m 81-89% LTHR
-Main
+- Warmup 10m 81-89% LTHR
+
 - 30m 81-89% LTHR
-- 6x 15s 95% LTHR 60s 81-89% LTHR
-Cooldown
-- 5m 75-80% LTHR
+
+Strides 6x
+- 15s 95% LTHR
+- 60s 81-89% LTHR
+
+- Cooldown 5m 75-80% LTHR
 """,
 )
 
@@ -85,18 +94,18 @@ add(
     """
 name: Løp terreng / myr lett
 sport: run
+intervals_target: HR
 ---
-Terreng eller myr — OPV-stil med staver om du har. Puls 134–147; bakker tillatt å gå. Ingen intervaller. Staver er for rytme og overkropp, ikke for å jage fart.
+Terreng eller myr — staver om du har. Puls 134–147; bakker tillatt å gå.
 
-Plan B: 45 min flatt asfalt samme puls.
+Plan B: 45 min flatt samme puls.
 
 ---intervals---
-Warmup
-- 10m 81-89% LTHR
-Main
+- Warmup 10m 81-89% LTHR
+
 - 50m 81-89% LTHR
-Cooldown
-- 5m 75-80% LTHR
+
+- Cooldown 5m 75-80% LTHR
 """,
 )
 
@@ -105,16 +114,16 @@ add(
     """
 name: Løp terreng lett 55
 sport: run
+intervals_target: HR
 ---
-Kortere trail-økt før FTP-test uka. Rolig. Samme pulsregel som ellers.
+Kortere trail før FTP-uke. Rolig puls som vanlig.
 
 ---intervals---
-Warmup
-- 8m 81-89% LTHR
-Main
+- Warmup 8m 81-89% LTHR
+
 - 42m 81-89% LTHR
-Cooldown
-- 5m 75-80% LTHR
+
+- Cooldown 5m 75-80% LTHR
 """,
 )
 
@@ -123,18 +132,16 @@ add(
     """
 name: Langløp easy 75
 sport: run
+intervals_target: HR
 ---
-Lang dag, men ikke lang hard dag. Puls snitt under 147 — cap deg selv i bakker. Ta med væske hvis over 60 min.
-
-Plan B: 60 min og inn, uten skam.
+Lang dag, ikke lang hard dag. Puls snitt under 147. Plan B: 60 min.
 
 ---intervals---
-Warmup
-- 10m 81-89% LTHR
-Main
+- Warmup 10m 81-89% LTHR
+
 - 60m 81-89% LTHR
-Cooldown
-- 5m 75-80% LTHR
+
+- Cooldown 5m 75-80% LTHR
 """,
 )
 
@@ -143,16 +150,16 @@ add(
     """
 name: Langløp easy 80
 sport: run
+intervals_target: HR
 ---
-Litt lengre enn uke 3 — fortsatt easy. Fuel: test noe du tåler (gel eller sportsdrikk) etter ca. 60 min hvis du vil trene mage.
+Litt lengre — fortsatt easy. Test fuel etter ca. 60 min hvis du vil.
 
 ---intervals---
-Warmup
-- 10m 81-89% LTHR
-Main
+- Warmup 10m 81-89% LTHR
+
 - 65m 81-89% LTHR
-Cooldown
-- 5m 75-80% LTHR
+
+- Cooldown 5m 75-80% LTHR
 """,
 )
 
@@ -161,38 +168,56 @@ add(
     """
 name: Elghufs 4×3 min
 sport: run
+intervals_target: HR
 ---
-OPV elghufs på løp: bratt bakke, staver, lange steg — ikke vanlig motbakkesprint. I drag: puls rundt 155–163 (terskel-følelse). Plan B: 3×3 min. Stopp hvis rygg eller isjasnerven sier fra.
+OPV elghufs: bratt bakke, staver, lange steg — ikke vanlig motbakkesprint. I drag: puls rundt 155–163. Plan B: 3 drag. Stopp hvis rygg eller isjasnerven sier fra.
 
 ---intervals---
-Warmup
-- 15m 75-85% LTHR
-Main
-- 4x (3m 94-99% LTHR 3m 70-75% LTHR)
-Cooldown
-- 10m 75-85% LTHR
+- Warmup 15m 75-85% LTHR
+
+Main Set 4x
+- 3m 94-99% LTHR
+- 3m 70-75% LTHR
+
+- Cooldown 10m 75-85% LTHR
 """,
 )
 
-# --- SWIM ---
+add(
+    "run/OPV-myr-loping-staver.txt",
+    """
+name: Myr-løp med staver
+sport: run
+intervals_target: HR
+---
+Myr-løp med staver. Puls 134–147. Staver for rytme og overkropp, ikke hero-TSS. Plan B: tredemølle 40 min samme puls.
+
+---intervals---
+- Warmup 10m 81-89% LTHR
+
+- 50m 81-89% LTHR
+
+- Cooldown 5m 75-80% LTHR
+""",
+)
+
+# --- SWIM (unchanged structure, ensure Pace on every step) ---
 add(
     "swim/S01-teknikk-a.txt",
     """
 name: Svøm teknikk A
 sport: swim
 ---
-William, teknikkøkt. RPE 3–5. Fokus: vannfølelse og drill — ikke hero-meter. Basseng 25 m. CSS ca. 2:20 / 100 m i Intervals.
-
-Plan B: kutt 4×100, behold drill.
+William, teknikkøkt. RPE 3–5. Basseng 25 m. CSS ca. 2:20 / 100 m i Intervals.
 
 ---intervals---
-Warmup
-- 200m 90% Pace
-Main
+- Warmup 200m 90% Pace
+
 - 8x 50m 88% Pace 15s rest
+
 - 4x 100m 92% Pace 20s rest
-Cooldown
-- 200m 89% Pace
+
+- Cooldown 200m 89% Pace
 """,
 )
 
@@ -202,16 +227,16 @@ add(
 name: Svøm teknikk skulder
 sport: swim
 ---
-Skuldervennlig. Bytt til rygg på øm skulder. Ingen vond smerte.
+Skuldervennlig. Bytt til rygg ved øm skulder.
 
 ---intervals---
-Warmup
-- 300m 90% Pace
-Main
+- Warmup 300m 90% Pace
+
 - 6x 75m 88% Pace 15s rest
+
 - 4x 50m 90% Pace 20s rest
-Cooldown
-- 200m 89% Pace
+
+- Cooldown 200m 89% Pace
 """,
 )
 
@@ -221,17 +246,15 @@ add(
 name: Svøm aerob 3×500
 sport: swim
 ---
-Aerob svøm. Jevn innsats RPE 5–6. 25 s pause mellom 500-ene er ok.
-
-Plan B: 3×400 samme følelse.
+Aerob svøm. Jevn innsats RPE 5–6.
 
 ---intervals---
-Warmup
-- 400m 90% Pace
-Main
-- 3x 500m 94% Pace 25s rest
-Cooldown
-- 200m 89% Pace
+- Warmup 400m 90% Pace
+
+Main Set 3x
+- 500m 94% Pace 25s rest
+
+- Cooldown 200m 89% Pace
 """,
 )
 
@@ -241,15 +264,14 @@ add(
 name: Svøm aerob 1500
 sport: swim
 ---
-Kontinuerlig 1500 etter oppvarming. Negativ split i hodet — start rolig.
+1500 kontinuerlig etter oppvarming.
 
 ---intervals---
-Warmup
-- 400m 90% Pace
-Main
+- Warmup 400m 90% Pace
+
 - 1500m 94% Pace
-Cooldown
-- 200m 89% Pace
+
+- Cooldown 200m 89% Pace
 """,
 )
 
@@ -259,31 +281,29 @@ add(
 name: Svøm recovery
 sport: swim
 ---
-Recovery. Kort og lett i vannet.
+Recovery. Kort og lett.
 
 ---intervals---
 - 35m 88-90% Pace
 """,
 )
 
-# --- BIKE (prose + FTP structure; ZWO still attached on push) ---
+# --- BIKE ---
 add(
     "bike/endurance-90.txt",
     """
 name: Sykkel Z2 90
 sport: bike
+zwo: workouts/zwo/bike/endurance-90.zwo
 ---
-William, denne skal være kjedelig. FTP 210 W: sikt på ca. 137–151 watt (65–72 %). Film er ok, watt er viktigere enn underholdning. Drikke hver 20. min.
-
-Plan B: 60 min samme sone.
+William, kjedelig og rolig. Ca. 137–151 watt (65–72 % FTP). Plan B: 60 min.
 
 ---intervals---
-Warmup
-- 10m 55-60% FTP
-Main
+- Warmup 10m 55-60% FTP
+
 - 70m 65-72% FTP
-Cooldown
-- 10m 55% FTP
+
+- Cooldown 10m 55% FTP
 """,
 )
 
@@ -292,16 +312,16 @@ add(
     """
 name: Sykkel Z2 120
 sport: bike
+zwo: workouts/zwo/bike/endurance-120.zwo
 ---
-Lang Z2. Siste 30 min: øv med det du skal drikke på sykkel i Lofoten. Rolig watt — ikke «ta igjen» etter en rolig uke.
+Lang Z2. Øv drikke siste 30 min.
 
 ---intervals---
-Warmup
-- 15m 55-60% FTP
-Main
+- Warmup 15m 55-60% FTP
+
 - 90m 65-72% FTP
-Cooldown
-- 15m 55% FTP
+
+- Cooldown 15m 55% FTP
 """,
 )
 
@@ -310,8 +330,9 @@ add(
     """
 name: Sykkel recovery 45
 sport: bike
+zwo: workouts/zwo/bike/recovery-spin-45.zwo
 ---
-Recovery spin. Under 116 W (ca. 55 % FTP). Høy kadanse, lav watt.
+Recovery spin. Under 116 W.
 
 ---intervals---
 - 45m 50-55% FTP
@@ -323,11 +344,12 @@ add(
     """
 name: FTP ramp test
 sport: bike
+zwo: workouts/zwo/bike/ftp-ramp-test.zwo
 ---
-Ramp-test. Følg ZWO-strukturen på sykkel. Etterpå: oppdater FTP i Intervals og i docs/athlete/profile.md. Ærlig tall — ikke 2019-FTP.
+Ramp-test. Oppdater FTP etterpå i Intervals og profile.md.
 
 ---intervals---
-- Se strukturert fil (ramp) — kjør ftp-ramp-test.zwo på sykkel
+- Følg ramp-test ZWO på sykkel
 """,
 )
 
@@ -336,17 +358,20 @@ add(
     """
 name: Sykkel lett + ettbens teknikk
 sport: bike
+zwo: workouts/zwo/bike/endurance-90.zwo
 ---
-OPV-inspirert: mesteparten rolig Z2, deretter 4×1,5 min ettbeins på lett watt. Fokus runde bevegelse, ikke TSS.
+Rolig Z2 + 4×1,5 min ettbeins lett watt.
 
 ---intervals---
-Warmup
-- 20m 60-70% FTP
-Main
+- Warmup 20m 60-70% FTP
+
 - 35m 65-72% FTP
-- 4x 90s 75% FTP 90s 60% FTP
-Cooldown
-- 10m 55% FTP
+
+Main Set 4x
+- 90s 75% FTP
+- 90s 60% FTP
+
+- Cooldown 10m 55% FTP
 """,
 )
 

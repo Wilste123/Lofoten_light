@@ -15,7 +15,7 @@ Bruk ferdig fil (TrainingDojo-format):
 
 | Fil | Bruk |
 |-----|------|
-| **`trainingdojo-uke-notater-4uker-opv.csv`** | **Kun 4 ukentlige coach-notater** (Other) — fokus/ukebrief, ikke økter |
+| **`trainingdojo-uke-notater-4uker-opv.csv`** | **4 coach-notater på søndag** (dag 7/14/21/28) — ukesopp + fokus, ikke økter |
 | **`trainingdojo-4uker-uten-sykkel-opv.csv`** | Svøm/løp/styrke med lang økt-tekst (valgfritt; du kan beholde kort CSV) |
 | `trainingdojo-4uker-2026-09-28-opv.csv` | Hele uka inkl. sykkel som tekst (bruk ZWO i tillegg eller i stedet) |
 | `trainingdojo-4uker-2026-09-28.csv` | Kort beskrivelse (eldre) |

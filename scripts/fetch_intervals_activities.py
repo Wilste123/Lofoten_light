@@ -63,6 +63,7 @@ def main() -> int:
 
     token = base64.b64encode(f"API_KEY:{api_key}".encode()).decode()
     req.add_header("Authorization", f"Basic {token}")
+    req.add_header("User-Agent", "LofotenLightAgent/1.0 (intervals fetch)")
 
     try:
         with urllib.request.urlopen(req, timeout=60) as resp:

@@ -1,29 +1,25 @@
 # Intervals.icu — analyse-hub for coach (Ole)
 
-**Kort svar:** Ja. Intervals.icu er **bedre enn TrainingPeaks** for at agenten skal lese **fullførte** økter (åpent API, plan↔aktivitet-parring, soner allerede beregnet). **Samtidig** med TP betyr i praksis: **én opptakskilde** (Garmin/Wahoo/Zwift) som sender til begge, **plus** at **plan** speiles til Intervals så analyse ikke bare ser «tom kalender».
-
-TP forblir greit som **plan-import** (TrainingDojo + ZWO) slik du har nå.
+**Kort svar:** Intervals.icu er **primær hub** for William (plan-push fra repo, analyse, Garmin/Wahoo struktur). TrainingPeaks er valgfri.
 
 ---
 
 ## Anbefalt arkitektur (William 2026)
 
 ```text
-Plan (repo / Dojo) ──► TrainingPeaks kalender  (økttekst, sykkel-ZWO)
+Plan (repo CSV + ZWO) ──► Intervals.icu kalender  (API push)
         │
-        └── (valgfritt speil) ──► Intervals.icu kalender  (plan vs faktisk)
+        ├── Garmin / Wahoo: «Upload planned workouts»
+        └── Agent: fetch activities → ukesopp
 
-Garmin / Wahoo / Zwift ──► Intervals.icu  (aktiviteter, soner, PMC)
-        │
-        └── (valgfritt) ──► TrainingPeaks  (hvis du vil beholde grønn/rød-kalender der)
+Garmin / Wahoo / Zwift ──► Intervals.icu  (fullførte økter)
 ```
 
-| Rolle | TrainingPeaks | Intervals.icu |
-|--------|---------------|---------------|
-| Plan fra coach / Dojo | **Primær** | Speil (anbefalt for analyse) |
-| Fullførte økter | CSV-eksport (tungt) | **API / activities.csv** |
-| Ole / agent ukesopp | Fungerer, ofte uten TSS i plan-CSV | **Anbefalt** — load, IF, soner, parring |
-| Push kommentarer tilbake | Partner API | Ikke nødvendig — agent svarer i Cursor |
+| Rolle | Intervals.icu | TrainingPeaks (valgfri) |
+|--------|---------------|-------------------------|
+| Plan fra coach | **`intervals_push_calendar.py`** | Dojo hvis du vil beholde TP |
+| Struktur på klokke / Wahoo | Ja (koblinger i Settings) | Alternativ via TP |
+| Ole / agent ukesopp | **API + plan↔aktivitet** | Plan-CSV uten TSS er svak |
 
 ---
 
@@ -37,32 +33,44 @@ Agenten **laster ikke opp** FIT-filer for deg; det gjør enheten/synken.
 
 ---
 
-## Steg 2 — Plan på Intervals (så analyse gir mening)
+## Steg 2 — Push plan fra repo (strukturerte økter)
 
-Uten plan på Intervals ser agenten bare watt og puls — ikke om du traff **R01 easy** vs. planlagt struktur.
+Sett **FTP 210 W**, **løp 6:20/km**, **LTHR 165** under Intervals Settings → Zones (samme som TP).
 
-**Alternativer:**
+```bash
+cp .env.example .env   # fyll INTERVALS_API_KEY, valgfritt INTERVALS_ATHLETE_ID
+export $(grep -v '^#' .env | xargs)
 
-| Metode | Beskrivelse |
-|--------|-------------|
-| **A. Manuelt** | Dra inn sykkel-ZWO fra `workouts/zwo/bike/` i Intervals-kalender (løp/svøm: bygg eller kopier fra Dojo-beskrivelse). |
-| **B. tp2intervals** | [freekode/tp2intervals](https://github.com/freekode/tp2intervals) — speiler plan TP ↔ Intervals (krever TP-cookie + Intervals API-nøkkel). |
-| **C. trainingpeaks-to-intervals-icu** | [Sladck/trainingpeaks-to-intervals-icu](https://github.com/Sladck/trainingpeaks-to-intervals-icu) — plan TP → Intervals med absolutte watt/pace fra **dine TP-terskler** (210 W, 6:20, 165). |
+# Test uten API
+python3 scripts/intervals_push_calendar.py --start 2026-09-28 --dry-run
 
-For **Cursor-coach** er **B eller C** mest lik «alt på ett sted for analyse», mens du **fortsatt importerer plan via Dojo til TP**.
+# Legg 4 uker på kalender (økter + søndags-UKENOTE)
+python3 scripts/intervals_push_calendar.py --start 2026-09-28
+```
 
-Fremtidig repo-idé: push plan direkte til Intervals API fra `plans/csv/` (samme som nivå 2 for TP) — ikke bygget ennå.
+| Input | Fil |
+|--------|-----|
+| Alle økter | `plans/csv/trainingdojo-4uker-2026-09-28.csv` |
+| Sykkel-ZWO på dato | `plans/csv/sykkel-zwo-kalender-4uker.csv` |
+| Ukentlige notater | `plans/csv/trainingdojo-uke-notater-4uker-opv.csv` |
+
+Sykkel/løp/svøm får **ZWO** når fil finnes i `workouts/zwo/`. Styrke = tekst + varighet. `external_id` `ll-agent-…` gjør re-push tryggere (`upsert=true`).
+
+**Garmin / Wahoo:** Settings → Connections → huk av **Upload planned workouts** (ca. 7 dager frem).
 
 ---
 
 ## Steg 3 — Koble agenten (API-nøkkel, ikke i git)
 
-1. Intervals → **Settings** → **Developer settings** → generer **API key**.
+1. Intervals → **Settings** → **Developer settings** → generer **API key** (roter hvis den har vært i chat/logg).
 2. Lokalt: `.env` (allerede i `.gitignore`):
 
    ```bash
    INTERVALS_API_KEY=din_nøkkel_her
+   INTERVALS_ATHLETE_ID=0
    ```
+
+   `0` = «autentisert utøver»; eller ditt id (f.eks. `i303008`).
 
 3. Hent siste uke til repo (valgfritt lagring):
 

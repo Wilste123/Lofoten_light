@@ -166,7 +166,10 @@ def main() -> int:
     args = parser.parse_args()
 
     if not args.dry_run and not api_key():
-        print("Set INTERVALS_API_KEY (and optional INTERVALS_ATHLETE_ID).", file=sys.stderr)
+        print(
+            "Set INTERVALS_API or INTERVALS_API_KEY (optional INTERVALS_ATHLETE_ID=0).",
+            file=sys.stderr,
+        )
         return 1
 
     plan_start = date.fromisoformat(args.start)

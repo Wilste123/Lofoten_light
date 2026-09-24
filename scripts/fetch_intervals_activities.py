@@ -38,10 +38,13 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    api_key = os.environ.get("INTERVALS_API_KEY", "").strip()
+    api_key = (
+        os.environ.get("INTERVALS_API", "").strip()
+        or os.environ.get("INTERVALS_API_KEY", "").strip()
+    )
     if not api_key:
         print(
-            "Set INTERVALS_API_KEY in the environment (Intervals Settings → Developer).",
+            "Set INTERVALS_API or INTERVALS_API_KEY (Intervals Settings → Developer).",
             file=sys.stderr,
         )
         return 1

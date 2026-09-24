@@ -2,6 +2,8 @@
 
 **Kort svar:** Intervals.icu er **primær hub** for William (plan-push fra repo, analyse, Garmin/Wahoo struktur). TrainingPeaks er valgfri.
 
+**Verifisert oppsett (fungerende push):** [`intervals-push-verified.md`](intervals-push-verified.md) — GitHub secret **`INTERVALS_API`**.
+
 ---
 
 ## Anbefalt arkitektur (William 2026)
@@ -66,11 +68,11 @@ Sykkel/løp/svøm får **ZWO** når fil finnes i `workouts/zwo/`. Styrke = tekst
 2. Lokalt: `.env` (allerede i `.gitignore`):
 
    ```bash
-   INTERVALS_API_KEY=din_nøkkel_her
+   INTERVALS_API=din_nøkkel_her
    INTERVALS_ATHLETE_ID=0
    ```
 
-   `0` = «autentisert utøver»; eller ditt id (f.eks. `i303008`).
+   GitHub: repo secret **`INTERVALS_API`**. `INTERVALS_API_KEY` fungerer også lokalt. `0` = autentisert utøver i API-path.
 
 3. Hent siste uke til repo (valgfritt lagring):
 

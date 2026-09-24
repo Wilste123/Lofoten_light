@@ -26,7 +26,11 @@ ZWO_PATH_RE = re.compile(
 
 
 def api_key() -> str:
-    return os.environ.get("INTERVALS_API_KEY", "").strip()
+    """GitHub repo secret: INTERVALS_API. Local .env may use either name."""
+    return (
+        os.environ.get("INTERVALS_API", "").strip()
+        or os.environ.get("INTERVALS_API_KEY", "").strip()
+    )
 
 
 def athlete_id() -> str:

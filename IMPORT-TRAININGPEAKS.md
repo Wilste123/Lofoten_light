@@ -13,3 +13,5 @@
 **Soner før import:** [`docs/athlete/profile.md`](docs/athlete/profile.md) → FTP **235 W**, løp **5:05/km**, svøm **2:20/100m**.
 
 **Guide:** [`docs/trainingpeaks/importere-plan-norsk.md`](docs/trainingpeaks/importere-plan-norsk.md)
+
+**Direkte kobling coach ↔ TP (uten Dojo)?** [`docs/trainingpeaks/integrasjon-coach-og-tp.md`](docs/trainingpeaks/integrasjon-coach-og-tp.md)

@@ -10,7 +10,7 @@
 | `trainingdojo-4uker-uten-sykkel.csv` | Økter (uten sykkel) |
 | `sykkel-zwo-kalender-4uker.csv` | ZWO på riktig dato |
 
-**Soner før import:** [`docs/athlete/profile.md`](docs/athlete/profile.md) → FTP **235 W**, løp **5:05/km**, svøm **2:20/100m**.
+**Soner før import:** [`docs/athlete/profile.md`](docs/athlete/profile.md) → FTP **210 W**, løp **6:20/km**, HR **165**, svøm **2:20/100m** (est.).
 
 **Guide:** [`docs/trainingpeaks/importere-plan-norsk.md`](docs/trainingpeaks/importere-plan-norsk.md)
 

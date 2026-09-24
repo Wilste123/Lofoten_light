@@ -74,44 +74,43 @@ Agenten skal **planlegge faser** (f.eks. start der William er nå → stabil bas
 | Innendørs / utendørs | Trondheim — vinter innendørs sykkel sannsynlig del av året |
 | Utstyr | TBD (powermeter, smart trainer, pulsbelte) |
 
-## Planleggingsverdier sep 2026 (estimat — sett i TrainingPeaks)
+## Planleggingsverdier sep 2026 (William — sett i TrainingPeaks)
 
-**Grunnlag:** Mann 24 år, 187 cm, 89 kg — **lav strukturert belastning nå** (ingen fersk test). Estimat fra fysikk + konservativ W/kg, **ikke** historisk 410 W. Detaljer: [`soner-planlegging-2026.md`](soner-planlegging-2026.md). **Juster etter tester.**
+**Kilde:** Dine arbeidsantakelser 2026-09-24 — **ikke** 2019-FTP (410 W). Svøm fortsatt estimat til CSS-test. Detaljer: [`soner-planlegging-2026.md`](soner-planlegging-2026.md). **Bekreft med ramp / 5 km / CSS.**
 
 | Metrikk | Planlegging TP | Dato | Notater |
 |---------|----------------|------|---------|
-| **FTP sykkel** | **235 W** | 2026-09-24 est. | Ramp-test uke 6–8; forvent ofte 220–270 før test |
-| **Max HR** | **191 bpm** | est. | Tanaka 208−0,7×alder |
+| **FTP sykkel** | **210 W** | 2026-09-24 | ~2,36 W/kg — konservativ; ramp uke 6–8 |
+| **Max HR** | **191 bpm** | est. | Tanaka (klokke kan overstyre) |
 | **Hvilepuls** | **58 bpm** | antatt | Oppdater fra klokke |
-| **LTHR sykkel** | **166 bpm** | est. | ~87 % av max; verifiser med test |
-| **LTHR løp** | **172 bpm** | est. | 30 min steady eller 5 km proxy |
-| **Threshold pace løp** | **5:05 min/km** | est. | = 100 % terskel i TP Run zones |
+| **LTHR / terskel HR** | **165 bpm** | 2026-09-24 | Brukes sykkel + løp inntil separate tester |
+| **Threshold pace løp** | **6:20 min/km** | 2026-09-24 | = 100 % terskel i TP Run zones |
 | **CSS / T-pace svøm** | **2:20 / 100 m** | est. | 1000 m test når klar |
 | Vekt (kg) | ~89 | | |
 
-### Sykkel — watt og puls (ved FTP 235 W)
+### Sykkel — watt og puls (ved FTP 210 W, LTHR 165)
 
-| Sone | % FTP | Watt ca. | HR ca. (% av LTHR sykkel) |
-|------|-------|----------|---------------------------|
-| Z1 | &lt; 55 % | &lt; 129 | &lt; 81 % (&lt; 134) |
-| Z2 | 56–75 % | 132–176 | 81–89 % (134–148) |
-| Z3 | 76–90 % | 179–212 | 90–93 % (149–154) |
-| Z4 | 91–105 % | 214–247 | 94–99 % (156–164) |
-| Z5 | 106–120 % | 249–282 | 100–106 % (166–176) |
+| Sone | % FTP | Watt ca. | HR ca. (% av 165) |
+|------|-------|----------|-------------------|
+| Z1 | &lt; 55 % | &lt; 116 | &lt; 81 % (&lt; 134) |
+| Z2 | 56–75 % | 118–158 | 81–89 % (134–147) |
+| Z3 | 76–90 % | 160–189 | 90–93 % (149–153) |
+| Z4 | 91–105 % | 191–221 | 94–99 % (155–163) |
+| Z5 | 106–120 % | 223–252 | 100–106 % (165–175) |
 
-**Z2 re-etablering (uke 1–4):** ~65–72 % FTP ≈ **153–169 W** eller RPE 4–5.
+**Z2 re-etablering (uke 1–4):** ~65–72 % FTP ≈ **137–151 W** eller RPE 4–5.
 
-### Løp — pace og puls (terskel 5:05/km, LTHR 172)
+### Løp — pace og puls (terskel 6:20/km, LTHR 165)
 
 | Sone | Pace ca. | % LTHR ca. |
 |------|----------|------------|
-| Z1 recovery | &gt; 5:35/km | &lt; 139 |
-| Z2 easy | 5:20–5:35/km | 139–153 |
-| Z3 tempo | 5:11–5:20/km | 155–160 |
-| Z4 threshold | 5:02–5:08/km | 162–170 |
-| Z5 hard | 4:55–5:02/km | 172–182 |
+| Z1 recovery | &gt; 6:35/km | &lt; 134 |
+| Z2 easy | 6:26–6:35/km | 134–147 |
+| Z3 tempo | 6:17–6:23/km | 149–153 |
+| Z4 threshold | 6:14–6:20/km | 155–163 |
+| Z5 hard | 6:10–6:14/km | 165–175 |
 
-**Easy uke 1–4:** ~5:25–5:45/km, RPE ≤5.
+**Easy uke 1–4:** ~6:35–7:00/km, RPE ≤5 (prioriter følelse over pace).
 
 ### Svøm — per 100 m (T-pace 2:20)
 
@@ -127,9 +126,9 @@ Agenten skal **planlegge faser** (f.eks. start der William er nå → stabil bas
 
 | Metrikk | Verdi | Dato | Notater |
 |---------|--------|------|---------|
-| FTP (W) | *235 plan* → test | | |
-| Threshold HR sykkel (bpm) | *166 plan* | | |
-| LTHR løp (bpm) | *172 plan* | | |
+| FTP (W) | **210** (guess) → ramp-test | 2026-09-24 | |
+| Threshold HR sykkel (bpm) | **165** (guess) | 2026-09-24 | |
+| LTHR løp (bpm) | **165** (guess) | 2026-09-24 | |
 | CSS svøm (per 100 m) | *2:20 plan* | | |
 | Vekt (kg) | ~89 | | |
 
@@ -145,8 +144,8 @@ Sett i TP under **Zones → Run** når testet. Repo-økter bruker primært **% t
 | Z4 | Threshold | 94–99% | 0–3s fra terskel |
 | Z5 | VO2 / hard | 100–106% | terskel til ~10s raskere |
 
-**Threshold pace (min/km):** **5:05** (planlegging sep 2026)  
-**LTHR (bpm):** **172** (planlegging sep 2026)  
+**Threshold pace (min/km):** **6:20** (William sep 2026)  
+**LTHR (bpm):** **165** (William sep 2026)  
 
 Strukturert løp: Workout Builder med **% Threshold Pace** eller **% LTHR** — ikke watt. Se `docs/trainingpeaks/intensitet-svom-lop.md`.
 
@@ -168,7 +167,7 @@ Svøm: **distanse eller varighet** + **% threshold pace** i Builder; pause = rec
 
 ## Intensitetssoner sykkel (power)
 
-**FTP i TP: 235 W** (planlegging sep 2026 — se tabell over). Tabell under er **mal** (% av gjeldende FTP):
+**FTP i TP: 210 W** (William sep 2026 — se tabell over). Tabell under er **mal** (% av gjeldende FTP):
 
 | Sone | Navn | % FTP |
 |------|------|-------|

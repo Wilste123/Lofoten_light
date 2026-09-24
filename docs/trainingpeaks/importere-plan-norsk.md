@@ -11,6 +11,8 @@ TrainingPeaks har **ikke** bulk-import for vanlige utøvere. To realistiske veie
 
 ### 1. Forbered fil
 
+**Enkleste sti i repo:** mappen [`imports/`](imports/) (speil av `plans/csv/`).
+
 Bruk ferdig fil (TrainingDojo-format):
 
 | Fil | Bruk |

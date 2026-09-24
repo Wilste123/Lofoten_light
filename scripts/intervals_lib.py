@@ -29,7 +29,7 @@ STRENGTH_TXT_RE = re.compile(
 )
 
 PLANNED_SESSION_RE = re.compile(
-    r"(workouts/planned/(?:run|swim|bike)/[A-Za-z0-9._-]+\.txt)"
+    r"(workouts/planned/(?:run|swim|bike|other)/[A-Za-z0-9._-]+\.txt)"
 )
 
 
@@ -102,7 +102,7 @@ def resolve_planned_session_path(
         if candidate.is_file():
             return candidate
     sport_l = (sport or "").lower()
-    if sport_l not in ("run", "swim", "bike"):
+    if sport_l not in ("run", "swim", "bike", "other"):
         return None
     stem = _zwo_stem_from_description(description)
     if stem:

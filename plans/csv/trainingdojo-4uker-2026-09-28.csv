@@ -1,10 +1,10 @@
 day,sport,subtype,title,duration_minutes,tss,description,phase,external_suffix,start_time
-1,Swim,technique,Svøm teknikk A (S01),50,35,workouts/planned/swim/S01-teknikk-a.txt,re-etablering,,
+1,Bike,recovery,Sykkel lett — erstatter svøm (finger),40,28,workouts/planned/other/PLANB-svom-finger-man.txt,re-etablering,,
 1,Strength,general,"Styrke hjemme — rygg, isjas, ankel",35,18,workouts/planned/strength/ST04-prehab-rygg-isjas-hjemme.txt,re-etablering,st04,18:00
 2,Run,endurance,Løp easy 40 (R01),40,40,workouts/planned/run/R01-easy-40.txt,re-etablering,,
 3,Bike,endurance,Sykkel Z2 90 (B02),90,55,workouts/planned/bike/endurance-90.txt,re-etablering,,
 4,Strength,general,Styrke på 3T — maskiner,45,25,workouts/planned/strength/ST01-base-3t.txt,re-etablering,,18:00
-5,Swim,technique,Svøm teknikk skulder (S02),45,30,workouts/planned/swim/S02-teknikk-skulder.txt,re-etablering,,
+5,Run,recovery,Gå/lett løp — erstatter svøm (finger),40,30,workouts/planned/other/PLANB-svom-finger-fre.txt,re-etablering,,
 6,Bike,recovery,Sykkel recovery 45 (B01),45,28,workouts/planned/bike/recovery-spin-45.txt,re-etablering,,
 7,Run,endurance,Løp easy + strides (R02),50,45,workouts/planned/run/R02-easy-55-strides.txt,re-etablering,,
 8,Swim,technique,Svøm teknikk A (S01),50,35,workouts/planned/swim/S01-teknikk-a.txt,re-etablering,,

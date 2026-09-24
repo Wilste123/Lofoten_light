@@ -205,7 +205,7 @@ Svøm: **distanse eller varighet** + **% threshold pace** i Builder; pause = rec
 
 ## Begrensninger
 
-- **Skader / plager (William sep 2026):** **Rygg** og **isjasnerven** (ikke «hamstring-iskias» — se [`plager-rygg-isjas.md`](plager-rygg-isjas.md)); **ankel** (dorsiflex/calf); **støtemuskulatur** (gradvis løp). Styrke **2×/uke:** mandag **hjemme** `ST04-prehab-rygg-isjas-hjemme.txt`, torsdag **3T** `ST01-base-3t.txt`.
+- **Skader / plager (William sep 2026):** **Kuttskade finger** (sep 2026) + infeksjon — **ingen svøm** til sår er lukket og du er feberfri (uke 28.09–04.10 erstattet med sykkel/gå). **Rygg** og **isjasnerven** (ikke «hamstring-iskias» — se [`plager-rygg-isjas.md`](plager-rygg-isjas.md)); **ankel** (dorsiflex/calf); **støtemuskulatur** (gradvis løp). Styrke **2×/uke:** mandag **hjemme** `ST04-prehab-rygg-isjas-hjemme.txt`, torsdag **3T** `ST01-base-3t.txt`.
 - **Regler:** Gradvis opptrapping; unngå tenåringsvolum på dekadent MSK-grunnlag (se utgangspunkt over)
 - **Motivasjon:** Varier sykkel med løp der det gir mening; ikke «bare sykkel»-blokker uten mening for William
 

@@ -8,7 +8,7 @@ Referanse for **topp-coach**-agenten. Alt skal kunne brukes til **konkrete ukepl
 2. `coach/treneridentitet.md` + `coach/ole-petter-vibekken-referanse.md` — hvem treneren er for William  
 3. `docs/athlete/profile.md` + `goals.md`  
 4. `coach/ukemaler.md` — fasebaserte uker  
-4. `triathlon/periodisering-mot-2027.md` + `lofoten-half-extreme.md`
+5. `triathlon/periodisering-mot-2027.md` + `lofoten-half-extreme.md`
 
 ## Indeks
 

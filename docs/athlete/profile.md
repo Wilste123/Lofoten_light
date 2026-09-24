@@ -70,7 +70,7 @@ Agenten skal **planlegge faser** (f.eks. start der William er nå → stabil bas
 |------|--------|
 | Typisk uke (timer) | **Mål-snitt ~14,5–15,5 t** på 12 mnd; nåværende uke TBD inntil kalender er satt |
 | Treningsdager | Alle dager (7/7); uke 4 recovery med kortere økter |
-| Planstart | **28.09.2026** — se `plans/2026-09-28-uke-01.md` |
+| Planstart | **28.09.2026** — `plans/2026-09-28-uke-01.md` … `uke-04.md`; TP-import `plans/csv/trainingdojo-4uker-2026-09-28.csv` |
 | Innendørs / utendørs | Trondheim — vinter innendørs sykkel sannsynlig del av året |
 | Utstyr | TBD (powermeter, smart trainer, pulsbelte) |
 

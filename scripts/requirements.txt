@@ -1,1 +1,5 @@
-# Optional deps for analysis scripts only (see scripts/analyze_tp_export.py)
+# Optional deps for analysis / chart scripts
+# pip install -r scripts/requirements.txt
+matplotlib>=3.8
+pandas>=2.0
+numpy>=1.26

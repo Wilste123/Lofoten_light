@@ -1,6 +1,8 @@
 .cache/
 data/trainingpeaks/exports/*
 !data/trainingpeaks/exports/.gitkeep
+data/intervals/exports/*
+!data/intervals/exports/.gitkeep
 *.env
 docs/trainingpeaks/api-credentials.md
 __pycache__/

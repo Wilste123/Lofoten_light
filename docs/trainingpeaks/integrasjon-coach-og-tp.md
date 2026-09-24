@@ -61,6 +61,8 @@ Agent → CSV → Intervals → (synk) → TP
 
 Mer teknisk oppsett, men bedre for **automation** enn å vente på TP partner.
 
+**Anbefalt for William:** aktiviteter via Garmin → Intervals; plan speiles TP → Intervals; agent henter uke med `scripts/fetch_intervals_activities.py` + `analyze_intervals_export.py`. Se **[`integrasjon-intervals-icu.md`](integrasjon-intervals-icu.md)**.
+
 ---
 
 ## Anbefaling for William (2026)

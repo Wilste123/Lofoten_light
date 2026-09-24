@@ -1,0 +1,21 @@
+day,sport,subtype,title,duration_minutes,tss,description,phase
+1,Swim,technique,Svøm teknikk A (S01),50,35,"WU 200; 8x50 drill; 4x100 easy; kick. RPE 3-5.",re-etablering
+2,Run,endurance,Løp easy 40 (R01),40,40,"40 min Z2 samtale. Mykt underlag.",re-etablering
+4,Strength,general,Styrke A base (ST01),35,20,"Goblet squat, split squat, planke, band row, calf, dead bug.",re-etablering
+5,Swim,technique,Svøm teknikk skulder (S02),45,30,"Skuldervennlig drill.",re-etablering
+7,Run,endurance,Løp easy + strides (R02),50,45,"Easy + 6x15s strides.",re-etablering
+8,Swim,technique,Svøm teknikk A (S01),50,35,"Som uke 1.",re-etablering
+9,Run,endurance,Løp trail easy 60 (R03),60,55,"Trail/grus RPE 5.",re-etablering
+11,Strength,general,Styrke A base (ST01),35,20,"Styrke A.",re-etablering
+12,Swim,endurance,Svøm aerob 3x500 (S03),55,45,"3x500 aerob 25s. Plan B: 3x400.",re-etablering
+14,Run,endurance,Løp easy 40 (R01),40,40,"Easy.",re-etablering
+15,Swim,endurance,Svøm aerob 3x500 (S03),55,45,"3x500.",re-etablering
+16,Run,endurance,Løp easy + strides (R02),50,45,"R02.",re-etablering
+18,Strength,general,Styrke A base (ST01),35,20,"Styrke A.",re-etablering
+19,Swim,technique,Svøm teknikk A (S01),50,35,"Teknikk.",re-etablering
+21,Run,endurance,Løp long easy 75 (R04),75,70,"Langløp RPE 5. Plan B 60 min.",re-etablering
+22,Swim,recovery,Svøm recovery (S09),35,20,"Lett svøm.",recovery
+23,Run,recovery,Løp easy 35,35,30,"Kort recovery løp.",recovery
+25,Strength,recovery,Styrke recovery (ST03),25,15,"Mobilitet lett.",recovery
+26,Swim,technique,Svøm teknikk lett (S02),40,28,"Kort teknikk.",recovery
+28,Run,recovery,Løp easy 30,30,25,"Kort easy.",recovery

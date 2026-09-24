@@ -8,6 +8,7 @@ The “agent” is **Cursor itself**, guided by `AGENTS.md` and `.cursor/rules/`
 
 1. Open this folder in Cursor (or start a Cloud Agent on this repo).
 2. Fill in [`docs/athlete/profile.md`](docs/athlete/profile.md) (zones, schedule, goals, injury history).
+3. **TrainingPeaks import-filer:** [`docs/trainingpeaks/imports/`](docs/trainingpeaks/imports/) (ukenotater + 4-ukers CSV).
 3. Optional: pull background docs from your Xtri repo:
    ```bash
    export XTRI_REPO_URL='https://github.com/you/xtri-pondus.git'

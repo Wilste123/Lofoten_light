@@ -74,14 +74,63 @@ Agenten skal **planlegge faser** (f.eks. start der William er nå → stabil bas
 | Innendørs / utendørs | Trondheim — vinter innendørs sykkel sannsynlig del av året |
 | Utstyr | TBD (powermeter, smart trainer, pulsbelte) |
 
-## Nåværende benchmarks (2026)
+## Planleggingsverdier sep 2026 (estimat — sett i TrainingPeaks)
+
+**Grunnlag:** Mann 24 år, 187 cm, 89 kg — **lav strukturert belastning nå** (ingen fersk test). Estimat fra fysikk + konservativ W/kg, **ikke** historisk 410 W. Detaljer: [`soner-planlegging-2026.md`](soner-planlegging-2026.md). **Juster etter tester.**
+
+| Metrikk | Planlegging TP | Dato | Notater |
+|---------|----------------|------|---------|
+| **FTP sykkel** | **235 W** | 2026-09-24 est. | Ramp-test uke 6–8; forvent ofte 220–270 før test |
+| **Max HR** | **191 bpm** | est. | Tanaka 208−0,7×alder |
+| **Hvilepuls** | **58 bpm** | antatt | Oppdater fra klokke |
+| **LTHR sykkel** | **166 bpm** | est. | ~87 % av max; verifiser med test |
+| **LTHR løp** | **172 bpm** | est. | 30 min steady eller 5 km proxy |
+| **Threshold pace løp** | **5:05 min/km** | est. | = 100 % terskel i TP Run zones |
+| **CSS / T-pace svøm** | **2:20 / 100 m** | est. | 1000 m test når klar |
+| Vekt (kg) | ~89 | | |
+
+### Sykkel — watt og puls (ved FTP 235 W)
+
+| Sone | % FTP | Watt ca. | HR ca. (% av LTHR sykkel) |
+|------|-------|----------|---------------------------|
+| Z1 | &lt; 55 % | &lt; 129 | &lt; 81 % (&lt; 134) |
+| Z2 | 56–75 % | 132–176 | 81–89 % (134–148) |
+| Z3 | 76–90 % | 179–212 | 90–93 % (149–154) |
+| Z4 | 91–105 % | 214–247 | 94–99 % (156–164) |
+| Z5 | 106–120 % | 249–282 | 100–106 % (166–176) |
+
+**Z2 re-etablering (uke 1–4):** ~65–72 % FTP ≈ **153–169 W** eller RPE 4–5.
+
+### Løp — pace og puls (terskel 5:05/km, LTHR 172)
+
+| Sone | Pace ca. | % LTHR ca. |
+|------|----------|------------|
+| Z1 recovery | &gt; 5:35/km | &lt; 139 |
+| Z2 easy | 5:20–5:35/km | 139–153 |
+| Z3 tempo | 5:11–5:20/km | 155–160 |
+| Z4 threshold | 5:02–5:08/km | 162–170 |
+| Z5 hard | 4:55–5:02/km | 172–182 |
+
+**Easy uke 1–4:** ~5:25–5:45/km, RPE ≤5.
+
+### Svøm — per 100 m (T-pace 2:20)
+
+| Sone | Pace ca. |
+|------|----------|
+| Recovery | 2:35–2:40 |
+| Aerob | 2:28–2:32 |
+| Tempo | 2:22–2:26 |
+| Threshold | 2:18–2:24 |
+| Hard | &lt; 2:18 |
+
+## Nåværende benchmarks (etter test — erstatt estimat)
 
 | Metrikk | Verdi | Dato | Notater |
 |---------|--------|------|---------|
-| FTP (W) | TBD — re-test | | Ikke planlegg intervaller fra 2019-tall |
-| Threshold HR sykkel (bpm) | TBD | | |
-| LTHR løp (bpm) | TBD | | |
-| CSS svøm (per 100 m) | TBD | | Svakeste ben — prioritér frekvens og teknikk |
+| FTP (W) | *235 plan* → test | | |
+| Threshold HR sykkel (bpm) | *166 plan* | | |
+| LTHR løp (bpm) | *172 plan* | | |
+| CSS svøm (per 100 m) | *2:20 plan* | | |
 | Vekt (kg) | ~89 | | |
 
 ## Intensitetssoner løp (TrainingPeaks)
@@ -96,8 +145,8 @@ Sett i TP under **Zones → Run** når testet. Repo-økter bruker primært **% t
 | Z4 | Threshold | 94–99% | 0–3s fra terskel |
 | Z5 | VO2 / hard | 100–106% | terskel til ~10s raskere |
 
-**Threshold pace (min/km):** TBD  
-**LTHR (bpm):** TBD  
+**Threshold pace (min/km):** **5:05** (planlegging sep 2026)  
+**LTHR (bpm):** **172** (planlegging sep 2026)  
 
 Strukturert løp: Workout Builder med **% Threshold Pace** eller **% LTHR** — ikke watt. Se `docs/trainingpeaks/intensitet-svom-lop.md`.
 
@@ -113,13 +162,13 @@ Sett **threshold swim pace** i TP = CSS / snitt per 100 m fra 1000 m test.
 | Threshold / CSS | | 99–106% |
 | Hard | VO2-lignende | 106%+ |
 
-**CSS / T-pace (per 100 m):** TBD  
+**CSS / T-pace (per 100 m):** **2:20** (planlegging sep 2026)  
 
 Svøm: **distanse eller varighet** + **% threshold pace** i Builder; pause = recover-blokk. Se `docs/trainingpeaks/intensitet-svom-lop.md`.
 
 ## Intensitetssoner sykkel (power)
 
-Fyll inn når FTP 2026 er kjent. Tabell under er **mal** (% av gjeldende FTP):
+**FTP i TP: 235 W** (planlegging sep 2026 — se tabell over). Tabell under er **mal** (% av gjeldende FTP):
 
 | Sone | Navn | % FTP |
 |------|------|-------|

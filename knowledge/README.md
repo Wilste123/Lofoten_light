@@ -14,7 +14,7 @@ Referanse for **topp-coach**-agenten. Alt skal kunne brukes til **konkrete ukepl
 
 | Mappe | Innhold |
 |-------|---------|
-| **[coach/](coach/)** | Filosofi, treneridentitet (OPV-modell), ukemaler, typiske feil |
+| **[coach/](coach/)** | Filosofi, treneridentitet (OPV-modell), `opv-nokkelokter.md`, ukemaler, typiske feil |
 | [ernaring/](ernaring/) | Daglig, fueling, race |
 | [skader/](skader/) | ACWR, styrkeprogram, løp, oversikt |
 | [svom/](svom/) | Faser 0–3, øktbibliotek, OWS/kulde |

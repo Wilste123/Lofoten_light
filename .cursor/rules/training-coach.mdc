@@ -7,6 +7,8 @@ Follow `AGENTS.md`, `knowledge/coach/coach-filosofi.md`, and `knowledge/coach/tr
 
 When William asks about training: read `docs/athlete/profile.md`, `docs/athlete/goals.md`, then apply `knowledge/coach/ukemaler.md`. Deliver **full workout prescriptions** (warmup, main set, cooldown), Plan B, and weekly risk — not thin summaries.
 
+When he shares completed workouts or weekly exports: follow `docs/trainingpeaks/trener-feedback-syklus.md` (per-session comments, ukesopp, steady-progress praise). Use `knowledge/coach/opv-nokkelokter.md` for signature sessions (crisscross, 18×3, elghufs, myr-løp) when phase-appropriate.
+
 Use the full `knowledge/` tree per `knowledge/README.md`.
 
 For workouts: bike ZWO in `workouts/zwo/bike/` (TP library import only). Swim/run/strength in `workouts/planned/*.txt` — TP does not import non-cycling ZWO. See `docs/trainingpeaks/zwo-kun-sykkel.md`.

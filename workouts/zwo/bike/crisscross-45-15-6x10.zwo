@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach (OPV-modell)</author>
+  <name>45/15 crisscross 6x10</name>
+  <description>6x10 min 45/15 crisscross. 2 min pause mellom drag. 45s 93% FTP, 15s 83% FTP. Forenklet ZWO (ett nivå per 10-min blokk) — følg taktfokus i TP-beskrivelse. Power = andel av sykkel-FTP.</description>
+  <sportType>bike</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="1200" Power="0.5500" pace="0">
+      <textevent message="Oppvarming 20 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0.9000" pace="0">
+      <textevent message="Drag 1/6 — alterner 45s @93% / 15s @83% manuelt eller mentalt" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.5000" pace="0">
+      <textevent message="Pause 2 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0.9000" pace="0">
+      <textevent message="Drag 2/6" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.5000" pace="0">
+      <textevent message="Pause 2 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0.9000" pace="0">
+      <textevent message="Drag 3/6" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.5000" pace="0">
+      <textevent message="Pause 2 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0.9000" pace="0">
+      <textevent message="Drag 4/6" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.5000" pace="0">
+      <textevent message="Pause 2 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0.9000" pace="0">
+      <textevent message="Drag 5/6" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.5000" pace="0">
+      <textevent message="Pause 2 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0.9000" pace="0">
+      <textevent message="Drag 6/6" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0.4500" pace="0">
+      <textevent message="Nedkjøling" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

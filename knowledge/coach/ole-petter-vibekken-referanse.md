@@ -37,18 +37,24 @@ Dette er **ikke** «så sa Ole Petter» — det er en **arbeidsmodell** for agen
 
 Agenten skal være **«Ole Petter på sykkel + tri-filter + William-prioriteringer»** — se `coach-filosofi.md` seksjon *Treneridentitet*.
 
-## William fyller inn (privat — ikke oppdikt av agenten)
+## William — egen historikk (bekreftet)
 
-Oppdater denne seksjonen når du husker mer. Agenten skal **lese og bruke** det som står her.
+| Spørsmål | Svar |
+|----------|------|
+| Periode | **NTG, 2018–2020** — Ole Petter som trener på VGS-linja |
+| Plattform | **TrainingPeaks** — lange øktbeskrivelser, plan vs. gjennomført, **kommentarer begge veier** |
+| Stil | **Streng oppfølging**; gikk gjennom øktene; forventet tilbakemelding fra utøver |
+| Ros | **Stødig fremgang** — ikke bare peak-dager |
+| Innhold | **Hard og variert** trening: sykkel (45/15 crisscross, VO2 30-15, 17–18×3′ terskel), langtur ski/sykkel, styrke+basis, ressursuke |
+| Terreng/nøkler | **Elghufs**, **myr-løping** (stav), langtur terreng — se `opv-nokkelokter.md` |
+| Eksempel på tone | «Litt dårlig med kommentarer … Det er du som legger lista :-)» (ukesopp, jula 2018/19 — fra TP-arkiv) |
 
-| Spørsmål | Svar (William) |
-|----------|----------------|
-| Periode du var coachet | *TBD* |
-| Hva han gjorde best (1–3 setninger) | *TBD* |
-| Typisk uke / kommunikasjon (SMS, ukemøte, TP?) | *TBD* |
-| Setninger han brukte ofte | *TBD* |
-| Hva som irriterte / hjalp deg | *TBD* |
-| Sykkeløkter du husker (struktur) | *TBD* |
+Arkiv: William har **skjermbilder** av OPV-uker i TP (2018–19); agenten bruker `opv-nokkelokter.md` + `docs/trainingpeaks/trener-feedback-syklus.md` for å gjenskape arbeidsformen.
+
+| Spørsmål | Svar (fortsett å fylle) |
+|----------|-------------------------|
+| Setninger han brukte ofte | *TBD — legg inn* |
+| Hva som irriterte / hjalp deg mest | *TBD* |
 | Skulle han sagt nei oftere — til hva? | *TBD* |
 
 ## For agenten

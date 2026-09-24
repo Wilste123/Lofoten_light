@@ -14,6 +14,7 @@ Kilde for sannhet for agenten. Oppdater ved nye tester, skader eller endret tilg
 
 ### Idrettsbakgrunn
 
+- **NTG** (toppidrett VGS) ca. **2018–2020** — trener **Ole Petter Vibekken** (sykkel/utholdenhet, TrainingPeaks, hard variert struktur; se `knowledge/coach/ole-petter-vibekken-referanse.md`)
 - **Landeveissykling** ca. 11–19 år, konkurrerte på relativt høyt nivå
 - Erfaring med strukturert utholdenhetstrening, intervaller, perioder med høy belastning, konkurranser og restitusjon
 - **Siste ~4–5 år:** svært lite og ujevn trening; enkelte perioder med bedre form, ingen stabil langtidsrutine

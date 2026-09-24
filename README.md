@@ -4,6 +4,10 @@ A **knowledge + workflow repo** for talking to a Cursor agent about cycling and 
 
 The “agent” is **Cursor itself**, guided by `AGENTS.md` and `.cursor/rules/`. You chat in the IDE or a Cloud Agent with this repo open; the agent reads your athlete profile, zones, goals, and (when synced) background from the Xtri project.
 
+## Repo på GitHub vs Cursor/Origin
+
+Kode kan ligge på **to steder** (Origin + GitHub-duplikat). Synk uten lokal terminal: [`docs/repo-sync-github-origin.md`](docs/repo-sync-github-origin.md) + secret **`GITHUB_TOKEN`** i Cursor Cloud.
+
 ## Quick start
 
 1. Open this folder in Cursor (or start a Cloud Agent on this repo).

@@ -1,13 +1,14 @@
 name: Svøm teknikk skulder
 sport: swim
+intervals_target: Pace
 ---
 Skuldervennlig. Bytt til rygg ved øm skulder.
 
 ---intervals---
-- Warmup 300m 90% Pace
+- Warmup 300mtr 90% Pace
 
-- 6x 75m 88% Pace 15s rest
+- 6x 75mtr 88% Pace 15s rest
 
-- 4x 50m 90% Pace 20s rest
+- 4x 50mtr 90% Pace 20s rest
 
-- Cooldown 200m 89% Pace
+- Cooldown 200mtr 89% Pace

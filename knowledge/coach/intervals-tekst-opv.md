@@ -10,6 +10,8 @@ Kalenderbeskrivelser skal leses som **en trener som skriver til William**, ikke 
 
 Løp/svøm: **ikke** sykkel-ZWO til Intervals (viser watt). Bruk `workouts/planned/run|swim/*.txt` med `---intervals---`.
 
+**Svøm avstand:** I Intervals betyr **`m` = minutter**. Meter skrives **`mtr`**: `200mtr`, `8x 50mtr` — aldri `200m` (blir 200 minutter).
+
 **Løp (Garmin/Intervals):** Hver steg med prosent må ha **`LTHR`** (`- 3m 70-75% LTHR`). Repeter: `Main Set 4x` på egen linje, tom linje, så `- 3m …` per steg — **ikke** `4x (3m … 3m …)`. Push setter `target: HR` på Run-events. `intervals_target: HR` i fil-header.
 
 Sykkel: ZWO (% FTP) + coach-tekst fra `workouts/planned/bike/*.txt`.

@@ -1,7 +1,8 @@
 name: Svøm recovery
 sport: swim
+intervals_target: Pace
 ---
-Recovery. Kort og lett.
+Recovery. Kort og lett i vannet.
 
 ---intervals---
 - 35m 88-90% Pace

@@ -211,13 +211,13 @@ sport: swim
 William, teknikkøkt. RPE 3–5. Basseng 25 m. CSS ca. 2:20 / 100 m i Intervals.
 
 ---intervals---
-- Warmup 200m 90% Pace
+- Warmup 200mtr 90% Pace
 
-- 8x 50m 88% Pace 15s rest
+- 8x 50mtr 88% Pace 15s rest
 
-- 4x 100m 92% Pace 20s rest
+- 4x 100mtr 92% Pace 20s rest
 
-- Cooldown 200m 89% Pace
+- Cooldown 200mtr 89% Pace
 """,
 )
 
@@ -230,13 +230,13 @@ sport: swim
 Skuldervennlig. Bytt til rygg ved øm skulder.
 
 ---intervals---
-- Warmup 300m 90% Pace
+- Warmup 300mtr 90% Pace
 
-- 6x 75m 88% Pace 15s rest
+- 6x 75mtr 88% Pace 15s rest
 
-- 4x 50m 90% Pace 20s rest
+- 4x 50mtr 90% Pace 20s rest
 
-- Cooldown 200m 89% Pace
+- Cooldown 200mtr 89% Pace
 """,
 )
 
@@ -249,12 +249,12 @@ sport: swim
 Aerob svøm. Jevn innsats RPE 5–6.
 
 ---intervals---
-- Warmup 400m 90% Pace
+- Warmup 400mtr 90% Pace
 
 Main Set 3x
-- 500m 94% Pace 25s rest
+- 500mtr 94% Pace 25s rest
 
-- Cooldown 200m 89% Pace
+- Cooldown 200mtr 89% Pace
 """,
 )
 
@@ -267,11 +267,11 @@ sport: swim
 1500 kontinuerlig etter oppvarming.
 
 ---intervals---
-- Warmup 400m 90% Pace
+- Warmup 400mtr 90% Pace
 
-- 1500m 94% Pace
+- 1500mtr 94% Pace
 
-- Cooldown 200m 89% Pace
+- Cooldown 200mtr 89% Pace
 """,
 )
 

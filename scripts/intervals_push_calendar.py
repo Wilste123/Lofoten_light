@@ -120,9 +120,12 @@ def build_workout_event(
         )
         if session:
             ev["description"] = session
-        if planned_path and sport_key == "run":
-            if planned_intervals_target(planned_path) == "HR":
+        if planned_path:
+            itarget = planned_intervals_target(planned_path)
+            if sport_key == "run" and itarget == "HR":
                 ev["target"] = "HR"
+            elif sport_key == "swim" and itarget == "Pace":
+                ev["target"] = "PACE"
 
     return ev
 

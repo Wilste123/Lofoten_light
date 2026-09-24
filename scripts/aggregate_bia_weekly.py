@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import sys
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from pathlib import Path
 from statistics import mean
 
@@ -88,19 +88,12 @@ def main() -> int:
         print(out)
         return 0
 
-    # Append to weekly CSV if not duplicate week_ending
-    existing: list[dict] = []
     fieldnames = list(out.keys())
     if args.append.is_file():
         with args.append.open(newline="", encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
-            fieldnames = reader.fieldnames or fieldnames
-            for row in reader:
-                if row.get("week_ending") and not str(row["week_ending"]).startswith("#"):
-                    existing.append(row)
-
-    existing = [r for r in existing if r.get("week_ending") != out["week_ending"]]
-    existing.append({k: out.get(k, "") for k in fieldnames})
+            if reader.fieldnames:
+                fieldnames = list(reader.fieldnames)
 
     line = ",".join(str(out.get(k, "")) for k in fieldnames)
     text = args.append.read_text(encoding="utf-8") if args.append.is_file() else ""

@@ -218,7 +218,7 @@ Dette er **ikke** statistisk ML — det er «hvis du gjør det riktige»:
 | **CTL** | ~{CTL_TARGET_12M_BEST:.0f} ved sep 2027 | Jevn ~14–15 t/uke, skadefri opptrapping (ikke 2019) |
 | **Søvn** | {SLEEP_TARGET_BEST:.1f} t/snitt | `knowledge/restitusjon/sovn-stress.md` |
 | **Vekt** | {WEIGHT_TARGET_BAND[0]:.0f}–{WEIGHT_TARGET_BAND[1]:.0f} kg | Vedlikehold styrke + volum |
-| **Wellness-logging** | >300 dager/år med sønn+RHR | Nødvendig for OPV justering |
+| **Wellness-logging** | >300 dager/år med søvn+RHR | Nødvendig for OPV justering |
 
 ### Risiko hvis data forblir tom
 

@@ -78,7 +78,7 @@ gantt
 | **Nøkkeløkter** | `OPV-myr-loping-staver`, kort `OPV-elghufs 4×3`, sykkel rest-teknikk ([`opv-nokkelokter.md`](../knowledge/coach/opv-nokkelokter.md)) |
 | **Suksess** | FTP 2026 i `profile.md`; fortsatt 0 røde uker på løp |
 
-*Planfiler: be agent om `2026-10-26` 4-ukers blokk (genereres etter B0 ukesopp).*
+| **Planfiler** | [`2026-10-26-uke-05.md`](2026-10-26-uke-05.md) … [`uke-08.md`](2026-10-26-uke-08.md) · CSV `csv/trainingdojo-4uker-2026-10-26.csv` |
 
 ---
 

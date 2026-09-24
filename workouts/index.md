@@ -18,7 +18,8 @@ S01–S10 (inkl. **S03b** Plan B, **S10** pust)
 
 R01–R14 (inkl. **R14** recovery 30 min)
 
-**NTG/OPV (tekst):** `planned/run/OPV-elghufs-5x4.txt`, `planned/run/OPV-myr-loping-staver.txt` — se `knowledge/coach/opv-nokkelokter.md`
+**NTG/OPV (tekst):** `planned/run/OPV-elghufs-5x4.txt`, `planned/run/OPV-myr-loping-staver.txt` — se `knowledge/coach/opv-nokkelokter.md`  
+**OPV ZWO løp:** `zwo/run/R-OPV-elghufs-4x3.zwo` (comeback 4×3)
 
 ## Brick — `zwo/brick/`
 

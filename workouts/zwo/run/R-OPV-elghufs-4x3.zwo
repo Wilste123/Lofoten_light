@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach (OPV)</author>
+  <name>LØP OPV Elghufs 4×3</name>
+  <description>Comeback elghufs: 4×3 min bratt med staver, RPE 7–8. Se workouts/planned/run/OPV-elghufs-5x4.txt (Plan B 4×3). Etter import: sport Løp, % terskel-pace.</description>
+  <sportType>bike</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="900" Power="0.7000" pace="0">
+      <textevent message="Oppvarming 15 min + steg" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="180" Power="1.0500" pace="0">
+      <textevent message="Elghufs 3 min #1 — staver, lange steg" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="180" Power="0.6000" pace="0">
+      <textevent message="Gå/tropp ned 3 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="180" Power="1.0500" pace="0">
+      <textevent message="Elghufs 3 min #2" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="180" Power="0.6000" pace="0">
+      <textevent message="Ned" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="180" Power="1.0500" pace="0">
+      <textevent message="Elghufs 3 min #3" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="180" Power="0.6000" pace="0">
+      <textevent message="Ned" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="180" Power="1.0500" pace="0">
+      <textevent message="Elghufs 3 min #4 — ikke jukse til vanlig løp" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="180" Power="0.6000" pace="0">
+      <textevent message="Ned" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0.6500" pace="0">
+      <textevent message="Nedkjøring lett uten staver" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

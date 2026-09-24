@@ -108,3 +108,31 @@ def post_events_bulk(
     except urllib.error.HTTPError as e:
         detail = e.read().decode()[:2000]
         raise RuntimeError(f"Intervals API {e.code}: {detail}") from e
+
+
+def api_get(path: str, *, timeout: int = 60) -> bytes:
+    """GET Intervals.icu API path (e.g. /athlete/0/wellness.csv?oldest=...)."""
+    path = path if path.startswith("/") else f"/{path}"
+    url = f"{API_BASE}{path}"
+    req = urllib.request.Request(
+        url,
+        method="GET",
+        headers={
+            "Authorization": auth_header(),
+            "User-Agent": "LofotenLightAgent/1.0 (intervals api)",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.read()
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode()[:2000]
+        raise RuntimeError(f"Intervals API {e.code}: {detail}") from e
+
+
+def fetch_wellness_csv(oldest: str, newest: str) -> bytes:
+    aid = athlete_id()
+    return api_get(
+        f"/athlete/{aid}/wellness.csv?oldest={oldest}&newest={newest}",
+        timeout=60,
+    )

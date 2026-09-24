@@ -51,8 +51,12 @@ Plan synkes typisk **~7 dager** frem til Connect/Wahoo Cloud, deretter til klokk
 
 ```bash
 python3 scripts/fetch_intervals_activities.py --days 7 \
-  -o data/intervals/exports/uke.csv
-python3 scripts/analyze_intervals_export.py data/intervals/exports/uke.csv
+  -o data/intervals/exports/uke-activities.csv
+python3 scripts/analyze_intervals_export.py data/intervals/exports/uke-activities.csv
+
+python3 scripts/fetch_intervals_wellness.py --days 7 \
+  -o data/intervals/exports/uke-wellness.csv
+python3 scripts/analyze_intervals_wellness.py data/intervals/exports/uke-wellness.csv
 ```
 
 Send output + korte kommentarer til coach i Cursor (`docs/trainingpeaks/trener-feedback-syklus.md`).

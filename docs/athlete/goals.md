@@ -6,7 +6,7 @@
 |---|---|
 | **Arrangement** | **Lofoten Half Extreme 2027** |
 | Rolle | Primært fokus — bygge mot dette, ikke mot full Extreme ennå |
-| Måltype | TBD (fullføre / tid / opplevelse) — avklar når nærmere |
+| **Måltype (William, sep 2026)** | **#1 fullføre** (innen cut-offs, bein i behold). **Styringsanker tid:** ca. **6:30–7:00** totalt — brukes til pacing og simulering, ikke før suksess er «over målstreken». |
 | **Race-vekt (William, sep 2026)** | **Under 80 kg** mot start Half Extreme 2027 — **ikke** før build/spiss; styrke + watt må henge med |
 
 Planlegging skal være **spesifikk mot Lofoten Half Extreme**, med gradvis opptrapping og kontinuitet (se prioriteringer i `profile.md`).

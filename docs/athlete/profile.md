@@ -183,7 +183,7 @@ Svøm: **distanse eller varighet** + **% threshold pace** i Builder; pause = rec
 
 ## Begrensninger
 
-- **Skader / plager:** TBD
+- **Skader / plager (William sep 2026):** **Iskias/hamstring** (følg med ved RDL/løp); **ankel** (dorsiflex/calf — ST04); **støtemuskulatur** (gradvis opptrapping løp). Prehab: `ST04-prehab-iskias-ankel.txt` **2× styrke/uke** med ST01.
 - **Regler:** Gradvis opptrapping; unngå tenåringsvolum på dekadent MSK-grunnlag (se utgangspunkt over)
 - **Motivasjon:** Varier sykkel med løp der det gir mening; ikke «bare sykkel»-blokker uten mening for William
 

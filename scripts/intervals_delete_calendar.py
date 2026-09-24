@@ -32,7 +32,9 @@ def collect_external_ids(
         sport = (row.get("sport") or "").strip().lower()
         if sport in ("other",) or (row.get("subtype") or "").lower() == "note":
             continue
-        ids.append(external_id(plan_start, int(row["day"])))
+        day = int(row["day"])
+        suffix = (row.get("external_suffix") or "").strip()
+        ids.append(external_id(plan_start, day, suffix))
 
     if notes_path and notes_path.is_file():
         for row in load_csv(notes_path):

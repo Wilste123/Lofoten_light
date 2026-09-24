@@ -73,23 +73,31 @@ Agenten skal **planlegge faser** (f.eks. start der William er nå → stabil bas
 | Typisk uke (timer) | **Mål-snitt ~14,5–15,5 t** på 12 mnd; nåværende uke TBD inntil kalender er satt |
 | Treningsdager | Alle dager (7/7); uke 4 recovery med kortere økter |
 | Planstart | **28.09.2026** — `plans/2026-09-28-uke-01.md` … `uke-04.md`; **Intervals:** `scripts/intervals_push_calendar.py --start 2026-09-28` (valgfri TP/Dojo) |
-| Innendørs / utendørs | Trondheim — vinter innendørs sykkel sannsynlig del av året |
+| Innendørs / utendørs | Trondheim — **rulle nov 2025**; **PM ute våren**; **basseng 3T** vinter; **utesvøm til vår** |
 | Utstyr | Se **Utstyr (sep 2026)** under; **smartvekt (BIA)** — logg morgen snitt |
 | Kroppssammensetning | Race **&lt;80 kg**; BIA-mål: [`kroppssammensetning-smartvekt.md`](kroppssammensetning-smartvekt.md) |
 
 ## Utstyr (sep 2026)
 
-| Kategori | Har du | Coach-note |
-|----------|--------|------------|
-| Sykkel | **Basso Venta**, Ultegra Di2 | Solid rammepakke. **Powermeter?** (ikke oppgitt — uten PM er sykkel-Q på RPE/HR + Bolt utendørs.) Sjekk **utveksling/gir** mot Lofoten 100 km / ~2000 m. |
-| Sykkelcomputer | **Wahoo Elemnt Bolt** | Bra. Koble til Intervals/Garmin etter behov. |
-| Puls | **Brystbelte** + **Garmin Forerunner 235** | Belte = stol på det for løp-Z2. **235 er gammel** — strukturerte økter fra Intervals→Garmin kan være begrenset; vurder oppgradering før build (ikke akutt uke 1). |
-| Løpesko | **Saucony Endorphin Speed 5** | Rask sko — fint til strides/tempo. **Ikke nok alene** til lang trail/halv på grus/asfalt Lofoten: planlegg **daglig/rolig sko** + **terreng** når volum øker. |
-| Innendørs sykkel | *Ikke oppgitt* | Trondheim-vinter: **smart trainer** (eller fast plan B: spinningssenter / lang pause struktur) — avklar før nov–des. |
-| Svøm | *Ikke oppgitt* | Basseng = medlemskap. **OWS:** våtdrakt, briller, cap — før jul 2027. |
-| Styrke | 3T + hjemme | I plan (ST01 / ST04). |
+| Kategori | Har du / plan | Coach-note |
+|----------|----------------|------------|
+| Sykkel | **Basso Venta**, Ultegra Di2 | Sjekk **gir/utveksling** mot Lofoten (~2000 m). |
+| Powermeter | **Våren 2027** (ute-sesong) | Okt–mar: **smart rulle m/fast watt (plan: nov 2026)** dekker watt innendørs. PM på sykkel når du er ute igjen. |
+| Sykkel innendørs | **Smart rulle → nov 2026** | Etter montering: FTP-test og Z2 på **ekte watt** inne. |
+| Sykkelcomputer | **Wahoo Elemnt Bolt** | Ute; innendørs via rulle-app. |
+| Puls | **Brystbelte** + **FR 235** → **265 eller Vivomove, des 2026** | Belte beholdes til løp. Se klokke-råd under. |
+| Løpesko | **Saucony Endorphin Speed 5** | Tempo/strides — legg til **rolig/terrengsko** før langløp-volum. |
+| Svøm | **Basseng via 3T** (abonnement) | Vinter: **inne**. **Utesvøm til vår** — OWS/våtdrakt senere (før race 2027). |
+| Styrke | 3T + hjemme | ST01 + ST04 samme hub som basseng. |
 
-**Mangler å fylle inn:** powermeter ja/nei, smart trainer, våtdrakt/størrelse, svømmebriller, gjerne backup løpesko.
+### Klokke (des 2026)
+
+| Valg | Til tri / Intervals / strukturerte løp |
+|------|------------------------------------------|
+| **Forerunner 265** | **Anbefalt:** Intervals→Garmin, løp-steg, lang batteri. |
+| **Vivomove** | Hverdags — **ikke** som eneste treningsklokke (svak struktur på klokke). |
+
+**Fortsatt:** våtdrakt + briller (OWS), backup rolig løpesko.
 
 ## Planleggingsverdier sep 2026 (William — sett i TrainingPeaks)
 

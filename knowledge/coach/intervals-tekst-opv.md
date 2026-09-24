@@ -7,6 +7,10 @@ Kalenderbeskrivelser skal leses som **en trener som skriver til William**, ikke 
 - Fullstendige setninger på norsk.
 - Forklar **hvor** (3T vs hjemme), **hvordan** det skal føles (puls, rolig, ikke hero).
 - Styrke: hele økta i beskrivelsen (push-script henter fra `workouts/planned/strength/*.txt` etter `---`).
+
+Løp/svøm: **ikke** sykkel-ZWO til Intervals (viser watt). Bruk `workouts/planned/run|swim/*.txt` med `---intervals---` og syntaks som `- 40m 81-89% LTHR` / `- 500m 94% Pace`.
+
+Sykkel: ZWO (% FTP) + coach-tekst fra `workouts/planned/bike/*.txt`.
 - UKENOTE søndag 19:00: trening + kropp (vekt snitt, BIA) + **ett spørsmål** tilbake til coach.
 
 ## Ikke gjør

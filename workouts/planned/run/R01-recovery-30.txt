@@ -1,0 +1,7 @@
+name: Løp recovery 30
+sport: run
+---
+Søndag lett + ukesopp etterpå. 30 min maks. Snakketest hele veien.
+
+---intervals---
+- 30m 75-80% LTHR

@@ -1,0 +1,15 @@
+name: Svøm teknikk A
+sport: swim
+---
+William, teknikkøkt. RPE 3–5. Fokus: vannfølelse og drill — ikke hero-meter. Basseng 25 m. CSS ca. 2:20 / 100 m i Intervals.
+
+Plan B: kutt 4×100, behold drill.
+
+---intervals---
+Warmup
+- 200m 90% Pace
+Main
+- 8x 50m 88% Pace 15s rest
+- 4x 100m 92% Pace 20s rest
+Cooldown
+- 200m 89% Pace

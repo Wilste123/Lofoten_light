@@ -1,0 +1,14 @@
+name: Løp terreng / myr lett
+sport: run
+---
+Terreng eller myr — OPV-stil med staver om du har. Puls 134–147; bakker tillatt å gå. Ingen intervaller. Staver er for rytme og overkropp, ikke for å jage fart.
+
+Plan B: 45 min flatt asfalt samme puls.
+
+---intervals---
+Warmup
+- 10m 81-89% LTHR
+Main
+- 50m 81-89% LTHR
+Cooldown
+- 5m 75-80% LTHR

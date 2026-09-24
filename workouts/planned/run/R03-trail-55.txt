@@ -1,0 +1,12 @@
+name: Løp terreng lett 55
+sport: run
+---
+Kortere trail-økt før FTP-test uka. Rolig. Samme pulsregel som ellers.
+
+---intervals---
+Warmup
+- 8m 81-89% LTHR
+Main
+- 42m 81-89% LTHR
+Cooldown
+- 5m 75-80% LTHR

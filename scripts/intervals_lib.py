@@ -28,6 +28,10 @@ STRENGTH_TXT_RE = re.compile(
     r"(workouts/planned/strength/[A-Za-z0-9._-]+\.txt)"
 )
 
+PLANNED_SESSION_RE = re.compile(
+    r"(workouts/planned/(?:run|swim|bike)/[A-Za-z0-9._-]+\.txt)"
+)
+
 
 def format_strength_txt_for_intervals(path: Path) -> str:
     """Body after '---' is coach text for Intervals; else whole file minus metadata headers."""
@@ -54,6 +58,48 @@ def resolve_strength_description(description: str, repo_root: Path) -> str | Non
         candidate = repo_root / rel
         if candidate.is_file():
             return format_strength_txt_for_intervals(candidate)
+    return None
+
+
+def format_planned_session_for_intervals(path: Path) -> str:
+    """Coach prose + Intervals.icu workout builder block (---intervals---)."""
+    raw = path.read_text(encoding="utf-8")
+    if "---intervals---" in raw:
+        head, intervals = raw.split("---intervals---", 1)
+        coach = head.split("---", 1)[-1].strip() if "---" in head else head.strip()
+        intervals = intervals.strip()
+        if coach and intervals:
+            return f"{coach}\n\n{intervals}"
+        return intervals or coach
+    return format_strength_txt_for_intervals(path)
+
+
+def _zwo_stem_from_description(description: str) -> str | None:
+    for m in ZWO_PATH_RE.finditer(description or ""):
+        rel = m.group(1) or m.group(2)
+        if not rel:
+            continue
+        name = rel if rel.endswith(".zwo") else f"{rel}.zwo"
+        return Path(name).stem
+    return None
+
+
+def resolve_planned_session(description: str, sport: str, repo_root: Path) -> str | None:
+    """Full Intervals description for run/swim/bike (not strength)."""
+    if not description:
+        return None
+    for m in PLANNED_SESSION_RE.finditer(description):
+        candidate = repo_root / m.group(1)
+        if candidate.is_file():
+            return format_planned_session_for_intervals(candidate)
+    sport_l = (sport or "").lower()
+    if sport_l not in ("run", "swim", "bike"):
+        return None
+    stem = _zwo_stem_from_description(description)
+    if stem:
+        candidate = repo_root / f"workouts/planned/{sport_l}/{stem}.txt"
+        if candidate.is_file():
+            return format_planned_session_for_intervals(candidate)
     return None
 
 

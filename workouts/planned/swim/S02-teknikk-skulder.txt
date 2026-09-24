@@ -1,0 +1,13 @@
+name: Svøm teknikk skulder
+sport: swim
+---
+Skuldervennlig. Bytt til rygg på øm skulder. Ingen vond smerte.
+
+---intervals---
+Warmup
+- 300m 90% Pace
+Main
+- 6x 75m 88% Pace 15s rest
+- 4x 50m 90% Pace 20s rest
+Cooldown
+- 200m 89% Pace

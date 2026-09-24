@@ -1,0 +1,13 @@
+name: Sykkel lett + ettbens teknikk
+sport: bike
+---
+OPV-inspirert: mesteparten rolig Z2, deretter 4×1,5 min ettbeins på lett watt. Fokus runde bevegelse, ikke TSS.
+
+---intervals---
+Warmup
+- 20m 60-70% FTP
+Main
+- 35m 65-72% FTP
+- 4x 90s 75% FTP 90s 60% FTP
+Cooldown
+- 10m 55% FTP

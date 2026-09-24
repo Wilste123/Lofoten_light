@@ -1,0 +1,14 @@
+name: Løp easy 40
+sport: run
+---
+William, rolig løp i dag. Puls er boss — ikke pace på klokka. Terskelpuls ca. 165: hold deg på 134–147 slag i minuttet (easy). Pace kan være 6:35–7:00 per km hvis underlaget er flatt; i motvind eller myr, ignorer pace.
+
+Rygg og isjas: hvis nerven bråker, gå 1 min og fortsett rolig. Plan B: 30 min + tøying hjemme.
+
+---intervals---
+Warmup
+- 10m 81-89% LTHR
+Main
+- 25m 81-89% LTHR
+Cooldown
+- 5m 75-80% LTHR

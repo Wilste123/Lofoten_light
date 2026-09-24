@@ -1,0 +1,12 @@
+name: Sykkel Z2 120
+sport: bike
+---
+Lang Z2. Siste 30 min: øv med det du skal drikke på sykkel i Lofoten. Rolig watt — ikke «ta igjen» etter en rolig uke.
+
+---intervals---
+Warmup
+- 15m 55-60% FTP
+Main
+- 90m 65-72% FTP
+Cooldown
+- 15m 55% FTP

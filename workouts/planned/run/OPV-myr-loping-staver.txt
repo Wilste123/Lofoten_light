@@ -1,18 +1,14 @@
-Myr-løp med staver (NTG / OPV-tradisjon)
+name: Myr-løp med staver
+sport: run
+---
+Myr-løp med staver (NTG / OPV-tradisjon). Underlag: myr, sti, bløtt terreng — Trondheim-område. Puls 134–147 (easy). Staver aktivt på mye av turen — variasjon og overkropp, ikke hero-TSS.
 
-Varighet: 60–90 min
-Intensitet: Z2, RPE 4–5 (snakketest)
-Underlag: myr, sti, bløtt terreng — Trondheim-område
+Oppvarming 10 min uten staver, deretter staver på. Plan B: tredemølle 40 min samme puls uten staver. Hvis is/kaldt: kortere løp 45 min.
 
-Oppvarming: 10 min uten staver, deretter staver på
-
-Main:
-- Hold jevn rytme; staver aktivt på mye av turen
-- Ingen intervaller — dette er variasjon og overkropp, ikke hero-TSS
-- Hvis is/kaldt: kortere løp 45 min + styrke hjemme
-
-Nedkjøling: 5 min lett
-
-Plan B: tredemølle 40 min Z2 uten staver
-
-TP-beskrivelse: se knowledge/coach/opv-nokkelokter.md
+---intervals---
+Warmup
+- 10m 81-89% LTHR
+Main
+- 50m 81-89% LTHR
+Cooldown
+- 5m 75-80% LTHR

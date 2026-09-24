@@ -1,0 +1,7 @@
+name: Løp recovery 35
+sport: run
+---
+Recovery-uke. Kort og lett — under 134 puls hvis du kan. Dette er for å få beina i bevegelse, ikke for å «telle timer».
+
+---intervals---
+- 35m 75-80% LTHR

@@ -1,0 +1,12 @@
+name: Langløp easy 80
+sport: run
+---
+Litt lengre enn uke 3 — fortsatt easy. Fuel: test noe du tåler (gel eller sportsdrikk) etter ca. 60 min hvis du vil trene mage.
+
+---intervals---
+Warmup
+- 10m 81-89% LTHR
+Main
+- 65m 81-89% LTHR
+Cooldown
+- 5m 75-80% LTHR

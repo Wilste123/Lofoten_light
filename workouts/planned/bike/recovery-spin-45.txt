@@ -1,0 +1,7 @@
+name: Sykkel recovery 45
+sport: bike
+---
+Recovery spin. Under 116 W (ca. 55 % FTP). Høy kadanse, lav watt.
+
+---intervals---
+- 45m 50-55% FTP

@@ -17,6 +17,7 @@ from intervals_lib import (  # noqa: E402
     SPORT_TO_INTERVALS_TYPE,
     api_key,
     post_events_bulk,
+    resolve_planned_session,
     resolve_strength_description,
     resolve_zwo_path,
 )
@@ -68,7 +69,10 @@ def build_workout_event(
 
     icu_type = SPORT_TO_INTERVALS_TYPE.get(sport_key, "Other")
     zwo_explicit = bike_by_date.get(event_date) if sport_key == "bike" else None
-    zwo_path = resolve_zwo_path(description, sport_raw, repo_root, zwo_explicit)
+    # Run/swim: bike-ZWO shows watts in Intervals — use native HR/pace text only.
+    zwo_path = None
+    if sport_key == "bike":
+        zwo_path = resolve_zwo_path(description, sport_raw, repo_root, zwo_explicit)
 
     row_start = (row.get("start_time") or "").strip() or start_time
     suffix = (row.get("external_suffix") or "").strip()
@@ -103,6 +107,10 @@ def build_workout_event(
         body = resolve_strength_description(description, repo_root)
         if body:
             ev["description"] = body
+    else:
+        session = resolve_planned_session(description, sport_key, repo_root)
+        if session:
+            ev["description"] = session
 
     return ev
 

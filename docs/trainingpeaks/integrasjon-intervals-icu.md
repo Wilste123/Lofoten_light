@@ -56,7 +56,15 @@ python3 scripts/intervals_push_calendar.py --start 2026-09-28
 | Sykkel-ZWO på dato | `plans/csv/sykkel-zwo-kalender-4uker.csv` |
 | Ukentlige notater | `plans/csv/trainingdojo-uke-notater-4uker-opv.csv` |
 
-Sykkel/løp/svøm får **ZWO** når fil finnes i `workouts/zwo/`. Styrke = tekst + varighet. `external_id` `ll-agent-…` gjør re-push tryggere (`upsert=true`).
+Sykkel/løp/svøm får **ZWO** når fil finnes i `workouts/zwo/`. Styrke: CSV peker på `workouts/planned/strength/*.txt` — push-scriptet legger inn **full coach-tekst** (etter `---` i filen). `external_id` `ll-agent-…` gjør re-push tryggere (`upsert=true`).
+
+Blokk B1 (uke 5–8):
+
+```bash
+python3 scripts/intervals_push_calendar.py --start 2026-10-26 \
+  --plan plans/csv/trainingdojo-4uker-2026-10-26.csv \
+  --notes plans/csv/trainingdojo-uke-notater-4uker-opv-2026-10-26.csv
+```
 
 **Garmin / Wahoo:** Settings → Connections → huk av **Upload planned workouts** (ca. 7 dager frem).
 

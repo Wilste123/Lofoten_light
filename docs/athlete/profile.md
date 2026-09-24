@@ -137,6 +137,7 @@ Fyll inn når FTP 2026 er kjent. Tabell under er **mal** (% av gjeldende FTP):
 
 ## Coaching notes (for agenten)
 
+- **Tidligere trener:** Ole Petter Vibekken — agenten skal lene seg på `knowledge/coach/ole-petter-vibekken-referanse.md` (offentlig + Williams notater der). Fyll inn periode og hva som fungerte i tabellen der.
 - Erfaren syklist — forstår TSS, CTL, intervaller og periodisering; trenger ikke grunnleggende forklaring på sykkel.
 - **Løp:** høy motivasjon — bruk det for kontinuitet og skadefri progresjon (viktigste prioritet 1–3).
 - **Svøm:** lav erfaring — korte, hyppige økter beats hero-sessions; teknikk og vane.

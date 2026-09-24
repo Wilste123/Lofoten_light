@@ -7,7 +7,7 @@
 | Fil | Hva |
 |-----|-----|
 | **`trainingdojo-uke-notater-4uker-opv.csv`** | **4 ukentlige coach-notater (søndag)** — kun fokus/ukesopp, ikke økter. Start **2026-09-28**. |
-| **Intervals push** | `python3 scripts/intervals_push_calendar.py --start 2026-09-28` — bruker tabellen over + `sykkel-zwo-kalender-4uker.csv` |
+| **Intervals push** | `python3 scripts/intervals_push_calendar.py --start 2026-09-28` — se **`docs/trainingpeaks/intervals-push-verified.md`** (secret `INTERVALS_API`) |
 | `trainingdojo-4uker-uten-sykkel.csv` | Økter svøm/løp/styrke (uten sykkel) — hybrid med ZWO |
 | `trainingdojo-4uker-2026-09-28.csv` | Alle økter inkl. sykkel som tekst |
 | `trainingdojo-4uker-uten-sykkel-opv.csv` | Valgfritt: lange øktbeskrivelser uten sykkel |

@@ -23,6 +23,8 @@
 | B15 | Threshold 5×10 | `zwo/bike/threshold-5x10.zwo` | Build | 95–110 |
 | B16 | Threshold 4×12 | `zwo/bike/threshold-4x12.zwo` | Build | 100–115 |
 | B17 | FTP ramp-test | `zwo/bike/ftp-ramp-test.zwo` | Etter 4–6 uker stabil sykkel | 50–70 |
+| B18 | Half Extreme 100 km sim | `zwo/bike/half-extreme-100-sim-240.zwo` | Spec (build+) | 210–250 |
+| B18b | Half Extreme sim 75 % | `zwo/bike/half-extreme-100-sim-180.zwo` | Spec (før full B18) | 155–185 |
 
 ## Svøm (S)
 

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>Half Extreme 100 km race sim</name>
+  <description>~4h rulle-sim av Lofoten Half Extreme sykkelben (100 km). Power = % FTP. Ikke 1:1 GPS/høyde — bruk offisiell GPX på Zwift/Rouvy for det. Denne økta: konservativ start, steady Z2, vind-surges, fueling-cues (Laukvik ~60 km). FTP 210 W → 62% ≈ 130 W. Spec-fase (B18), ikke re-etablering. Se knowledge/triathlon/lofoten-half-extreme.md</description>
+  <sportType>bike</sportType>
+  <tags>
+    <tag>Half Extreme</tag>
+    <tag>race sim</tag>
+  </tags>
+  <workout>
+    <SteadyState Duration="900" Power="0.5500" pace="0">
+      <textevent message="Oppvarming — T1 kommer etter svøm på racedag" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="2700" Power="0.6000" pace="0">
+      <textevent message="Km 0–18: E10 nord — ROLIG. Første 30 min under plan." timeoffset="0"/>
+      <textevent message="Start fueling: sippe hver 15–20 min" timeoffset="900"/>
+    </SteadyState>
+    <SteadyState Duration="2400" Power="0.6800" pace="0">
+      <textevent message="Steady Z2 — ikke jage TSS" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="300" Power="0.7800" pace="0">
+      <textevent message="Sidevind / bro — 5 min fast sitter, ikke sprint" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="3600" Power="0.6700" pace="0">
+      <textevent message="Mot Fiskebøl / Pollveien — jevn kadanse 85–95" timeoffset="0"/>
+      <textevent message="~60 km Laukvik: matstasjon — KJØR FORBI, fuel fra egen flaske" timeoffset="1800"/>
+      <textevent message="60–90 g karbo/h — sjekk at du faktisk spiser" timeoffset="2700"/>
+    </SteadyState>
+    <SteadyState Duration="300" Power="0.7800" pace="0">
+      <textevent message="Eksponert parti — hold watt, ikke øk kadanse" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="3300" Power="0.6900" pace="0">
+      <textevent message="E10 tilbake mot Svolvær — bevar bein til 21 km løp" timeoffset="0"/>
+      <textevent message="Siste 30 min sykkel: konservativ om du er tom" timeoffset="2400"/>
+    </SteadyState>
+    <SteadyState Duration="1800" Power="0.6500" pace="0">
+      <textevent message="T2-sim: rolig inn — ikke «ta igjen» før løp" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0.4500" pace="0">
+      <textevent message="Nedtrapping. Brick: legg BR03 etter denne når du er i build." timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

@@ -55,7 +55,7 @@
 | Race-krav | Økt |
 |-----------|-----|
 | 1,9 km svøm | 1900 kontinuerlig; 10×200 @ race pace |
-| 100 km | 4–5 h Z2 ute; 100 km i grupperide |
+| 100 km | 4–5 h Z2 ute; 100 km i grupperide; **B18** ZWO race-sim på rulla (build+) |
 | Vind | 3 h ute med eksponerte partier |
 | Bakke løp | 8×2 min opp; trail long run |
 | Full dag | Brick 80–100 km + 10–15 km løp |

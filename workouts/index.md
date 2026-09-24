@@ -6,7 +6,7 @@
 
 ## Sykkel — `zwo/bike/` (TP-import, % FTP)
 
-Re-etab: **B01–B03** · Base: **B04, B06–B07, B14** · Build: **B08–B11, B15–B16** · Lang/spec: **B05, B12–B13** · Test: **B17** (`ftp-ramp-test.zwo`)
+Re-etab: **B01–B03** · Base: **B04, B06–B07, B14** · Build: **B08–B11, B15–B16** · Lang/spec: **B05, B12–B13, B18** (`half-extreme-100-sim-240.zwo`, kort `half-extreme-100-sim-180.zwo`) · Test: **B17** (`ftp-ramp-test.zwo`)
 
 `endurance-90.zwo`, `crisscross-45-15-6x10.zwo` (OPV), osv. — se mappen.
 

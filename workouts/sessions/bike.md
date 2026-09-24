@@ -29,6 +29,7 @@ Se `knowledge/sykkel/intervaller-og-sonearbeid.md` for plassering og forskningsn
 - **B08/B15/B16** threshold — ikke recovery-uke
 - **B10/B09** VO2 — ikke dagen før brick
 - **B12/B13** lang med progresjon / surges — Lofoten sykkelben
+- **B18/B18b** Half Extreme **100 km race-sim** på rulla (watt + fueling + vind-surges) — `half-extreme-100-sim-240.zwo` / kort `half-extreme-100-sim-180.zwo`. Ekte høyde/GPS: GPX fra arrangør i Zwift/Rouvy.
 
 ## B17 — FTP ramp-test (~45–55 min)
 

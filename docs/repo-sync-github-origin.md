@@ -13,7 +13,7 @@ Et **duplikat på GitHub** oppdateres ikke automatisk. Du trenger **ikke** progr
 ## Steg 1 — GitHub token (én gang)
 
 1. GitHub → **Settings** → **Developer settings** → **Fine-grained personal access token** (eller classic PAT).
-2. Repository access: **kun** `Lofoten_Light_agent`.
+2. Repository access: **`Wilste123/Lofoten_light`** (GitHub) — ikke `william-berg-steffenak/Lofoten_Light_agent` (Origin-navn).
 3. Permissions: **Contents** → Read and write.
 4. Cursor → **Dashboard** → **Cloud Agents** → **Environments** → ditt miljø → **Secrets**:
    - Legg til **`GITHUB_TOKEN`** = tokenet (ikke committes i repo).
@@ -27,7 +27,7 @@ Skriv f.eks.: «Synk GitHub og Origin — kjør repo-sync».
 Agenten kjører da (med begge remotes):
 
 ```bash
-git remote add github "https://x-access-token:${GITHUB_TOKEN}@github.com/william-berg-steffenak/Lofoten_Light_agent.git" 2>/dev/null || true
+git remote add github "https://x-access-token:${GITHUB_TOKEN}@github.com/Wilste123/Lofoten_light.git" 2>/dev/null || true
 git fetch origin main
 git fetch github main
 git checkout main

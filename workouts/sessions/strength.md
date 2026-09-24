@@ -3,7 +3,11 @@
 Kilde: `knowledge/skader/forebygging-styrke-mobilitet.md`.  
 TP: `docs/trainingpeaks/styrke-import.md` — **ikke** ZWO.
 
-## ST01 — Base (35 min, 2×/uke i re-etab/base)
+## ST04 — Prehab iskias / ankel / støt (30 min, **mandag 18:00**)
+
+`workouts/planned/strength/ST04-prehab-iskias-ankel.txt` — **2. styrkeøkt** uken (sammen med ST01 tor). Ikke dropp for «mengde».
+
+## ST01 — Base (40 min, **torsdag 18:00** i re-etab/base)
 
 **Oppvarming (5 min):** world's greatest stretch, leg swings, 10 air squats.
 

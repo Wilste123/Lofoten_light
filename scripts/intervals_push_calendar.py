@@ -69,13 +69,15 @@ def build_workout_event(
     zwo_explicit = bike_by_date.get(event_date) if sport_key == "bike" else None
     zwo_path = resolve_zwo_path(description, sport_raw, repo_root, zwo_explicit)
 
+    row_start = (row.get("start_time") or "").strip() or start_time
+    suffix = (row.get("external_suffix") or "").strip()
     ev: dict = {
         "category": "WORKOUT",
-        "start_date_local": day_to_datetime(plan_start, day, start_time),
+        "start_date_local": day_to_datetime(plan_start, day, row_start),
         "type": icu_type,
         "name": title,
         "description": description,
-        "external_id": external_id(plan_start, day),
+        "external_id": external_id(plan_start, day, suffix),
     }
     if duration_min > 0:
         ev["moving_time"] = duration_min * 60

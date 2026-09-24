@@ -1,35 +1,11 @@
-# Styrke — ST01 / ST02 / ST03
+# Styrke — William (B0/B1)
 
-Kilde: `knowledge/skader/forebygging-styrke-mobilitet.md`.  
-TP: `docs/trainingpeaks/styrke-import.md` — **ikke** ZWO.
+| Økt | Hvor | Fil |
+|-----|------|-----|
+| **ST04** mandag ~18:00 | **Hjemme** — rygg, isjasnerven, ankel, kjerne | `workouts/planned/strength/ST04-prehab-rygg-isjas-hjemme.txt` |
+| **ST01** torsdag ~18:00 | **3T** — maskiner (ikke kjerne-maskin) | `workouts/planned/strength/ST01-base-3t.txt` |
+| **ST03** recovery-uke | **Hjemme** | `workouts/planned/strength/ST03-recovery-hjemme.txt` |
 
-## ST04 — Prehab iskias / ankel / støt (30 min, **mandag 18:00**)
+Intervals får **full coach-tekst** ved push (`scripts/intervals_push_calendar.py`).
 
-`workouts/planned/strength/ST04-prehab-iskias-ankel.txt` — **2. styrkeøkt** uken (sammen med ST01 tor). Ikke dropp for «mengde».
-
-## ST01 — Base (40 min, **torsdag 18:00** i re-etab/base)
-
-**Oppvarming (5 min):** world's greatest stretch, leg swings, 10 air squats.
-
-| Øvelse | Sett × reps | Pause |
-|--------|-------------|-------|
-| Goblet squat eller split squat | 3×8–10/bein | 60 s |
-| Romanian deadlift (lett) | 3×8 | 60 s |
-| Single-leg calf raise | 3×12/bein | 45 s |
-| Sideplanke | 3×30–45 s/side | 30 s |
-| Band row / pull-apart | 3×15 | 45 s |
-| Dead bug | 3×8/side | 30 s |
-
-**Cooldown:** hofte flexor 60 s/side.
-
-**Plan B:** 20 min — goblet squat 2×10, planke, band row.
-
-## ST02 — Build (40 min, 1×/uke erstatter én ST01)
-
-Trap bar deadlift eller hip thrust 4×6, step-down 3×8/bein, Copenhagen plank 3×20–30 s, farmer carry 3×40 m, push-up 3×10.
-
-**Ikke** samme dag som VO2 sykkel.
-
-## ST03 — Recovery (25 min)
-
-Band walks, glute bridge 2×15, bird dog 2×10/side, lett stretching. Recovery-uke uke 4.
+Plager og ordvalg: `docs/athlete/plager-rygg-isjas.md`.

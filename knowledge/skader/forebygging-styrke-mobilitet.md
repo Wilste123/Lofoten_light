@@ -49,9 +49,10 @@
 
 ## William-spesifikke fokus
 
+- **Rygg og isjasnerven:** se `docs/athlete/plager-rygg-isjas.md` — **mandag hjemme (ST04)**, **torsdag 3T maskiner (ST01)**, kjerne hjemme
 - **Løp-motivasjon:** styrke beskytter når km øker
-- **Svøm:** scapula kontroll — band work
-- **Bakke Lofoten:** eccentric quad + calf — ikke bare VO2
+- **Svøm:** scapula kontroll — band work (3T: ro maskin)
+- **Bakke Lofoten:** beinpress + hofteabduksjon + calf — ikke bare VO2
 
 ## Progression
 

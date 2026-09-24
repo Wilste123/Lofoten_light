@@ -1,24 +1,19 @@
-# ST01 — Styrke A (TrainingPeaks Strength Builder)
+# ST01 — Styrke på 3T (maskiner)
 
-Kalender-tekst: `workouts/planned/strength/ST01-base.txt`  
-TrainingDojo: allerede i `trainingdojo-4uker-*.csv` (torsdag).
+Kalender / Intervals: `workouts/planned/strength/ST01-base-3t.txt`  
+Torsdag ca. 18:00 i 4-ukers CSV.
 
-## Bygg i TP (Premium, desktop)
+## Maskiner (sjekkliste)
 
-1. Calendar eller Library → **Create Workout** → sport **Strength** (Strength Builder).
-2. Varighet ~35 min, TSS ~20 (estimat).
-3. Legg inn blokker (ca. 3 sett hver om ikke annet):
+| # | Øvelse | Sett × reps |
+|---|--------|-------------|
+| 1 | Beinpress | 3×12 |
+| 2 | Ro sittende | 3×12 |
+| 3 | Brystpress | 3×10 |
+| 4 | Hofteabduksjon | 3×15 |
+| 5 | Leg curl sittende (valgfri) | 2×12 |
+| 6 | Calf Smith/step | 3×12/bein |
 
-| Øvelse | Prescription |
-|--------|----------------|
-| Goblet squat | 3×10 |
-| Split squat / lunge | 3×8 / side |
-| Plank | 3×45 s |
-| Band row | 3×12 |
-| Standing calf raise | 3×15 |
-| Dead bug | 3×10 / side |
+Kjerne: **mandag hjemme (ST04)**.
 
-4. **Save to Workout Library** → «ST01 Styrke A base».
-5. Dra på torsdager i stedet for ren tekst-rad (valgfritt).
-
-Coach instructions (valgfritt): fokus kontrollert tempo, ikke failure første 8 uker.
+William: rygg/isjas — dropp leg curl og beinpress ved nervesignaler.

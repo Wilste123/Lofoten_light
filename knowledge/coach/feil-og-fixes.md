@@ -1,5 +1,10 @@
 # Typiske feil — og coach-fixes (William-profil)
 
+## 0. «Planen er ferdig» uten at utøveren kan gjennomføre den
+
+**Symptom:** Kalender i Intervals med «ST04» og forkortelser; styrke uten sett/reps; UKENOTE som telegram.  
+**Fix:** Hver styrkeøkt har **full tekst** (`workouts/planned/strength/*.txt` + push). Skill **3T vs hjemme**. Intervals-tekst som **menneske** — se `knowledge/coach/intervals-tekst-opv.md`. Ikke si ferdig før push/dry-run er kjørt.
+
 ## 1. «Jeg kjenner igjen 2019-kroppen»
 
 **Symptom:** 20 t uke 3, ømme achilles, dropout uke 5.  

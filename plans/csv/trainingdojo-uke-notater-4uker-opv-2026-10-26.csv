@@ -1,5 +1,41 @@
 day,sport,subtype,title,duration_minutes,tss,description,phase
-7,Other,Note,UKENOTE B1 Uke 5 (søn 01.11),1,0,"OPV B1 uke5. ~8t. MYR tir HR 134-147. ST04 man + ST01 tor 18:00 (iskias/ankel). Sykkel rest-teknikk lør. UKESOPP + BIA.",re-etablering
-14,Other,Note,UKENOTE B1 Uke 6 (søn 08.11),1,0,"OPV B1 uke6. FTP ons — oppdater soner. Løp easy HR. ST04+ST01. UKESOPP: test ærlig.",re-etablering
-21,Other,Note,UKENOTE B1 Uke 7 (søn 15.11),1,0,"OPV B1 uke7. ELGHUFS 4x3 tir — HR drag 155-163 max. Kommenter iskias/ankel. ST04+ST01. UKESOPP.",re-etablering
-28,Other,Note,UKENOTE B1 Uke 8 (søn 22.11),1,0,"OPV B1 recovery. ST03. 4-ukers B1: FTP i profile? timer? Neste B2. UKESOPP + BIA.",recovery
+7,Other,Note,Ukentlig notat — uke 5 (søndag 1. november),1,0,"Hei William,
+
+Ny blokk (uke 5). Myr-løp og mer sykkel, men samme regel: rolig puls på de fleste økter.
+
+Styrke: mandag hjemme, torsdag 3T. Sykkel med lett beinteknikk på lørdag — ikke jage watt.
+
+Kropp: Oktober er ferdig — snitt skal ligge på eller under 89 kg. Fra november er taket 88 kg på 7-dagers snitt. Søndag: vekt på smartvekt inn i ukesnitt og push wellness.
+
+Til meg: Kort ukesopp — og én linje i ukesnitt-filen til meg (opv_line) om hvordan uka føltes.",re-etablering
+14,Other,Note,Ukentlig notat — uke 6 (søndag 8. november),1,0,"Hei William,
+
+Uke med FTP-test på sykkel onsdag. Oppdater FTP og soner i profilen etterpå — vær ærlig, ikke optimist.
+
+Styrke som planlagt. Dagen etter test skal ikke være tung bein på 3T hvis du er sliten.
+
+Kropp: November-tak 88 kg på snitt. Fett-trend mot 16–19 prosent på skala er grei hvis styrke og watt holder.
+
+Hvis vekten er fin men watt faller: mer mat, ikke mer intervaller.
+
+Til meg: Hva ble FTP? Føltes testen representativ?",re-etablering
+21,Other,Note,Ukentlig notat — uke 7 (søndag 15. november),1,0,"Hei William,
+
+Elghufs-uke. Fire ganger tre minutter i drag — puls rundt 155–163 i intervallene, ikke sprint ut av bakken.
+
+Styrke fortsatt to ganger. Ingen krasj-diett denne uken — du trenger fuel til bakke.
+
+Kropp: Fortsatt november-tak 88 kg på snitt. BIA søndag som vanlig.
+
+Til meg: Reagerte rygg eller isjasnerven etter bakkeintervallene?",re-etablering
+28,Other,Note,Ukentlig notat — uke 8 (søndag 22. november),1,0,"Hei William,
+
+Recovery-uke i blokken. Lett styrke hjemme, rolig svøm og sykkel.
+
+Kropp: November-tak fortsatt 88 kg. Desember blir tak 87 — vi tar det når du er der.
+
+Oppsummer 4 ukers trend: vekt, fett, fritt fett. Har du oppdatert FTP i profilen?
+
+Neste periode er base videre (B2).
+
+Til meg: Hva var den viktigste læringen fra disse fire ukene?",recovery

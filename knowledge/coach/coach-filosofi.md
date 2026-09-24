@@ -76,7 +76,7 @@ For hver uke agenten skriver til `plans/`:
 2. **Timer / TSS-mål** (range)
 3. **Tabell** man–søn med disiplin, varighet, nøkkelintensitet
 4. **Øktbeskrivelser** for alle kvalitetsøkter (oppvarming, main set, cooldown)
-5. **Styrke** (øvelser, sett, reps)
+5. **Styrke** (øvelser, sett, reps) — **3T vs hjemme** tydelig; full tekst til Intervals (`intervals-tekst-opv.md`)
 6. **Ernæring** kun hvis lang økt eller brick
 7. **Risiko** — hva som kan gå galt denne uken og Plan B
 8. **TrainingDojo/TP** — hvis William ber om import

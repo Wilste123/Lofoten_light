@@ -17,6 +17,7 @@ from intervals_lib import (  # noqa: E402
     SPORT_TO_INTERVALS_TYPE,
     api_key,
     post_events_bulk,
+    resolve_strength_description,
     resolve_zwo_path,
 )
 
@@ -97,6 +98,11 @@ def build_workout_event(
         # Fallback: simple steady block in Intervals workout text
         pct = "Z2 HR" if sport_key != "bike" else "68%"
         ev["description"] = f"- {duration_min}m {pct}\n\n{description}".strip()
+
+    if sport_key == "strength":
+        body = resolve_strength_description(description, repo_root)
+        if body:
+            ev["description"] = body
 
     return ev
 

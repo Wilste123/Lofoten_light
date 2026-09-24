@@ -80,6 +80,8 @@ Hent tilbake / analyse: `fetch_intervals_wellness.py` + `analyze_intervals_welln
 
 ## Hva du logger til OPV (ukentlig, søndag)
 
+**UKENOTE (søndag 19:00 i Intervals)** gjentar vekttak + BIA-rutine — se `plans/csv/trainingdojo-uke-notater-4uker-opv*.csv`.
+
 Fyll `opv_line` i `intervals-bia-ukesnitt.csv` (eller kommentar i Intervals). Eksempel:
 
 `Snitt 87,2 kg | fett 16,1 % | FFM 73,1 | vann 57 % | styrke ok`

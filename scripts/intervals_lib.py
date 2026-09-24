@@ -24,6 +24,38 @@ ZWO_PATH_RE = re.compile(
     r"(workouts/zwo/[^\s,\"')]+\.zwo)|(?:\b([A-Za-z0-9_-]+\.zwo)\b)"
 )
 
+STRENGTH_TXT_RE = re.compile(
+    r"(workouts/planned/strength/[A-Za-z0-9._-]+\.txt)"
+)
+
+
+def format_strength_txt_for_intervals(path: Path) -> str:
+    """Body after '---' is coach text for Intervals; else whole file minus metadata headers."""
+    raw = path.read_text(encoding="utf-8")
+    if "\n---\n" in raw:
+        return raw.split("\n---\n", 1)[1].strip()
+    lines: list[str] = []
+    for line in raw.splitlines():
+        if not line.strip():
+            if lines:
+                break
+            continue
+        if re.match(r"^[a-z_]+:\s", line):
+            continue
+        lines.append(line)
+    return "\n".join(lines).strip() if lines else raw.strip()
+
+
+def resolve_strength_description(description: str, repo_root: Path) -> str | None:
+    if not description:
+        return None
+    for m in STRENGTH_TXT_RE.finditer(description):
+        rel = m.group(1)
+        candidate = repo_root / rel
+        if candidate.is_file():
+            return format_strength_txt_for_intervals(candidate)
+    return None
+
 
 def api_key() -> str:
     """GitHub repo secret: INTERVALS_API. Local .env may use either name."""

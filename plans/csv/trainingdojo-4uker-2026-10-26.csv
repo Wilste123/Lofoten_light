@@ -1,32 +1,32 @@
 day,sport,subtype,title,duration_minutes,tss,description,phase,external_suffix,start_time
-1,Swim,technique,Svøm teknikk A (S01),50,35,"S01 B1. ZWO: S01-teknikk-a.zwo",re-etablering,,
-1,Strength,general,Prehab ST04 iskias/ankel,30,18,"ST04 prehab — ankel/iskias/støt. ST04-prehab-iskias-ankel.txt",re-etablering,st04,18:00
-2,Run,endurance,Myr-løp staver 65 (OPV),65,58,"OPV myr 81-89% LTHR (134-147). OPV-myr-loping-staver.txt",re-etablering,,
-3,Bike,endurance,Sykkel Z2 120 (B03),120,75,"endurance-120.zwo",re-etablering,,
-4,Strength,general,Styrke A (ST01),40,25,"Program A full. ST01-base.md",re-etablering,,18:00
-5,Swim,endurance,Svøm aerob 3x500 (S03),55,45,"S03.zwo",re-etablering,,
-6,Bike,technique,Sykkel rest-teknikk 75 (OPV),75,45,"OPV ettbens 4x1.5min i lett Z2. endurance-90.zwo",re-etablering,,
-7,Run,endurance,Løp easy + strides (R02),50,45,"81-89% LTHR (134-147). R02 zwo.",re-etablering,,
-8,Swim,technique,Svøm teknikk A (S01),50,35,"S01.",re-etablering,,
-8,Strength,general,Prehab ST04 iskias/ankel,30,18,"ST04.",re-etablering,st04,18:00
-9,Run,endurance,Løp easy 40 (R01),40,40,"Rolig før FTP. 81-89% LTHR. R01.",re-etablering,,
-10,Bike,test,FTP ramp test (B17),55,65,"ftp-ramp-test.zwo — oppdater profile FTP.",re-etablering,,
-11,Strength,general,Styrke A (ST01),40,25,"ST01 — ikke tung RDL dag etter test.",re-etablering,,18:00
-12,Swim,endurance,Svøm aerob 1500 (S04),60,50,"S04-aerob-1500.zwo",re-etablering,,
-13,Bike,endurance,Sykkel Z2 90 (B02),90,55,"endurance-90.zwo",re-etablering,,
-14,Run,endurance,Løp trail lett 55 (R03),55,50,"81-89% LTHR. R03.",re-etablering,,
-15,Swim,technique,Svøm teknikk skulder (S02),45,30,"S02.",re-etablering,,
-15,Strength,general,Prehab ST04 iskias/ankel,30,18,"ST04 før elghufs-uke.",re-etablering,st04,18:00
-16,Run,intervals,Elghufs 4x3 (OPV),70,75,"4x3min RPE7-8 HR ~94-99% LTHR (155-163) i drag. OPV-elghufs + R-OPV-elghufs-4x3.zwo. Plan B 3x3.",re-etablering,,
-17,Bike,endurance,Sykkel Z2 120 (B03),120,75,"B03.",re-etablering,,
-18,Strength,general,Styrke A (ST01),40,25,"ST01 — ikke tung ecc hamstring hvis iskias.",re-etablering,,18:00
-19,Swim,endurance,Svøm aerob 3x500 (S03),55,45,"S03.",re-etablering,,
-20,Bike,endurance,Sykkel Z2 90 (B02),90,55,"B02.",re-etablering,,
-21,Run,endurance,Løp long easy 80 (R04),80,72,"81-89% LTHR cap 147. R04.",re-etablering,,
-22,Swim,recovery,Svøm recovery (S09),35,20,"S09.",recovery,,
-23,Run,recovery,Løp easy 35 (R01),35,30,"<81% LTHR.",recovery,,
-24,Bike,recovery,Sykkel recovery 45 (B01),45,28,"B01.",recovery,,
-25,Strength,recovery,Styrke recovery (ST03),25,15,"ST03.",recovery,,18:00
-26,Swim,technique,Svøm teknikk lett (S02),40,28,"S02.",recovery,,
-27,Bike,recovery,Sykkel valgfri 30,30,18,"Z1.",recovery,,
-28,Run,recovery,Løp easy 30 + ukesopp,30,25,"UKENOTE 19:00 B1 oppsummering.",recovery,,
+1,Swim,technique,Svøm teknikk A (S01),50,35,S01 B1. ZWO: S01-teknikk-a.zwo,re-etablering,,
+1,Strength,general,"Styrke hjemme — rygg, isjas, ankel",35,18,workouts/planned/strength/ST04-prehab-rygg-isjas-hjemme.txt,re-etablering,st04,18:00
+2,Run,endurance,Myr-løp staver 65 (OPV),65,58,OPV myr 81-89% LTHR (134-147). OPV-myr-loping-staver.txt,re-etablering,,
+3,Bike,endurance,Sykkel Z2 120 (B03),120,75,endurance-120.zwo,re-etablering,,
+4,Strength,general,Styrke på 3T — maskiner,45,25,workouts/planned/strength/ST01-base-3t.txt,re-etablering,,18:00
+5,Swim,endurance,Svøm aerob 3x500 (S03),55,45,S03.zwo,re-etablering,,
+6,Bike,technique,Sykkel rest-teknikk 75 (OPV),75,45,OPV ettbens 4x1.5min i lett Z2. endurance-90.zwo,re-etablering,,
+7,Run,endurance,Løp easy + strides (R02),50,45,81-89% LTHR (134-147). R02 zwo.,re-etablering,,
+8,Swim,technique,Svøm teknikk A (S01),50,35,S01.,re-etablering,,
+8,Strength,general,"Styrke hjemme — rygg, isjas, ankel",35,18,workouts/planned/strength/ST04-prehab-rygg-isjas-hjemme.txt,re-etablering,st04,18:00
+9,Run,endurance,Løp easy 40 (R01),40,40,Rolig før FTP. 81-89% LTHR. R01.,re-etablering,,
+10,Bike,test,FTP ramp test (B17),55,65,ftp-ramp-test.zwo — oppdater profile FTP.,re-etablering,,
+11,Strength,general,Styrke på 3T — maskiner,45,25,workouts/planned/strength/ST01-base-3t.txt,re-etablering,,18:00
+12,Swim,endurance,Svøm aerob 1500 (S04),60,50,S04-aerob-1500.zwo,re-etablering,,
+13,Bike,endurance,Sykkel Z2 90 (B02),90,55,endurance-90.zwo,re-etablering,,
+14,Run,endurance,Løp trail lett 55 (R03),55,50,81-89% LTHR. R03.,re-etablering,,
+15,Swim,technique,Svøm teknikk skulder (S02),45,30,S02.,re-etablering,,
+15,Strength,general,"Styrke hjemme — rygg, isjas, ankel",35,18,workouts/planned/strength/ST04-prehab-rygg-isjas-hjemme.txt,re-etablering,st04,18:00
+16,Run,intervals,Elghufs 4x3 (OPV),70,75,4x3min RPE7-8 HR ~94-99% LTHR (155-163) i drag. OPV-elghufs + R-OPV-elghufs-4x3.zwo. Plan B 3x3.,re-etablering,,
+17,Bike,endurance,Sykkel Z2 120 (B03),120,75,B03.,re-etablering,,
+18,Strength,general,Styrke på 3T — maskiner,45,25,workouts/planned/strength/ST01-base-3t.txt,re-etablering,,18:00
+19,Swim,endurance,Svøm aerob 3x500 (S03),55,45,S03.,re-etablering,,
+20,Bike,endurance,Sykkel Z2 90 (B02),90,55,B02.,re-etablering,,
+21,Run,endurance,Løp long easy 80 (R04),80,72,81-89% LTHR cap 147. R04.,re-etablering,,
+22,Swim,recovery,Svøm recovery (S09),35,20,S09.,recovery,,
+23,Run,recovery,Løp easy 35 (R01),35,30,<81% LTHR.,recovery,,
+24,Bike,recovery,Sykkel recovery 45 (B01),45,28,B01.,recovery,,
+25,Strength,recovery,Styrke recovery — hjemme,28,15,workouts/planned/strength/ST03-recovery-hjemme.txt,recovery,,18:00
+26,Swim,technique,Svøm teknikk lett (S02),40,28,S02.,recovery,,
+27,Bike,recovery,Sykkel valgfri 30,30,18,Z1.,recovery,,
+28,Run,recovery,Løp easy 30 + ukesopp,30,25,UKENOTE 19:00 B1 oppsummering.,recovery,,

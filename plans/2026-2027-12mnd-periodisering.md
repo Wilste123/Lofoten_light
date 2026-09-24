@@ -9,6 +9,33 @@
 
 > Dette er en **grovmaskin** — juster ukentlig med agenten ut fra TP, søvn og plager. Recovery-uke **hver 3.–4. uke** gjennom hele året.
 
+**Kropp mot Lofoten:** race **&lt;80 kg** (sweet spot **78–79**). Smartvekt / BIA: [`docs/athlete/kroppssammensetning-smartvekt.md`](../docs/athlete/kroppssammensetning-smartvekt.md). **Månedstall = tak (ikke over)** — unntatt re-etablering mnd 1.
+
+---
+
+## Vekt og kroppssammensetning (månedlig tak)
+
+Snittvekt **morgen** (7-dagers snitt). Hvis du er **over tak** 2 uker: lett kaloriunderskudd + **ikke** kutte styrke. Hvis **under tak** og FTP faller: **mer mat**, ikke juble over vekt.
+
+| Mnd slutt | Dato (ca.) | **Maks snittvekt** | Fase | Fett % BIA (trend) | FFM (trend) |
+|-----------|------------|-------------------|------|-------------------|-------------|
+| 1 | Sep 2026 | **90** | Re-etablering | mål baseline (logg) | mål baseline |
+| 2 | Okt 2026 | **89** | Re-etablering | 17–20 % | stabil |
+| 3 | Nov 2026 | **88** | Base | 16–19 % | stabil |
+| 4 | Des 2026 | **87** | Base | 16–18 % | stabil |
+| 5 | Jan 2027 | **86** | Base | 15–18 % | stabil / + |
+| 6 | Feb 2027 | **85** | Base | 15–17 % | stabil |
+| 7 | Mar 2027 | **84** | Base → build | 14–17 % | ikke fall &gt;1 kg |
+| 8 | Apr 2027 | **83** | Build 1 | 14–16 % | hold |
+| 9 | Mai 2027 | **82** | Build 2 | 13–16 % | hold |
+| 10 | Jun 2027 | **81** | Build 3 | 13–15 % | hold |
+| 11 | Jul 2027 | **80** | Spesifikk | 12–15 % | hold |
+| 12 | Aug 2027 (race) | **&lt;80** (78–79 race week) | Taper + race | **12–15 %** BIA | hold |
+
+**Vann % (BIA):** ikke eget «mål» — følg **7-dagers snitt 55–60 %** morgen fastende. Sving 1–2 % dag til dag er normalt; dehydrering = falsk «lett vekt».
+
+**Vannmengde (drikke):** styr på **svette** på lange økter (`knowledge/ernaring/under-trening-og-lange-okter.md`), ikke på å jage høy «vann %» på skala.
+
 ---
 
 ## Årsoversikt

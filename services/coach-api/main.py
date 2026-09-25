@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -48,10 +48,13 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="Lofoten coach-api", version="0.1.0", lifespan=lifespan)
+# Starlette rejects allow_origins=["*"] together with allow_credentials=True
+_cors_origins = config.CORS_ORIGINS or ["*"]
+_cors_credentials = _cors_origins != ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=config.CORS_ORIGINS,
-    allow_credentials=True,
+    allow_origins=_cors_origins,
+    allow_credentials=_cors_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -462,15 +465,8 @@ def _mount_static_ui() -> None:
     if not static:
         return
     root = Path(static)
-    if not root.is_dir():
+    if not root.is_dir() or not (root / "index.html").is_file():
         return
-    index = root / "index.html"
-    if index.is_file():
-
-        @app.get("/")
-        def _spa_index() -> FileResponse:
-            return FileResponse(index)
-
     app.mount(
         "/",
         StaticFiles(directory=str(root), html=True),

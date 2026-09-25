@@ -1,6 +1,6 @@
 # Kroppssammensetning — smartvekt (BIA) + coach-mål
 
-William: **187 cm**, start **~90 kg** (sep 2026), **race &lt;80 kg** Half Extreme aug 2027. Smartvekt (BIA) brukes til **trend**, ikke til å styre livet dag for dag.
+William: **187 cm**, **baseline BIA 25.09.2026: 82,8 kg / 20,4 % fett** (FFM ca. **66 kg**), **race 72–74 kg** Half Extreme aug 2027. Smartvekt (BIA) brukes til **trend**, ikke til å styre livet dag for dag.
 
 ## Målerutine (ellers er tallene søppel)
 
@@ -16,15 +16,15 @@ William: **187 cm**, start **~90 kg** (sep 2026), **race &lt;80 kg** Half Extrem
 
 ---
 
-## Mål ved race (Half Extreme, ca. 78–79 kg)
+## Mål ved race (Half Extreme, 72–74 kg)
 
 Tallene under er **coach-mål for en høy mann (187 cm) som skal løpe/sykle bakke** — justeres hvis styrke eller FTP kollapser.
 
 | Parameter | Race (aug 2027) | Kommentar |
 |-----------|-----------------|-----------|
-| **Vekt** | **&lt;80 kg** (sweet spot **78–79**) | Avtale med William sep 2026 |
-| **Fett % (BIA)** | **12–15 %** på skala ≈ **~10–12 %** «ekte» | Under **10 % BIA** over tid: sjekk energi, skade, libido — ikke jakt |
-| **Fettfri masse (FFM)** | **Hold ~68–70 kg** (trend) | FFM **ned** &gt;1–2 kg fra base → brems vektnedgang, mer mat/styrke |
+| **Vekt** | **72–74 kg** (sweet spot **~73**) | Avtale med William **25.09.2026** |
+| **Fett % (BIA)** | **11–14 %** på skala ≈ **~9–12 %** «ekte» | Under **10 % BIA** over tid: sjekk energi, skade, libido — ikke jakt |
+| **Fettfri masse (FFM)** | **Hold ≥64–66 kg** (trend fra baseline **~66**) | FFM **ned** &gt;1–2 kg fra baseline → brems vektnedgang, mer mat/styrke |
 | **Vann % (total)** | **55–60 %** av kroppsvekt (morgen) | Ikke «mer er bedre» — **stabil snitt** viktigere enn tall |
 | **Muskelmasse (skala)** | **Stabil eller opp** mens kg faller | BIA overestimerer muskel; se styrkerom + FTP |
 | **Visceralt fett** (hvis skala viser) | **Nedover trend** | Mer helse enn prestasjon, men god indikator på recomp |
@@ -34,7 +34,8 @@ Tallene under er **coach-mål for en høy mann (187 cm) som skal løpe/sykle bak
 | Tidspunkt | Vekt | FTP | Merk |
 |-----------|------|-----|------|
 | Peak sykkel | **~74 kg** | **410 W** | ~5,5 W/kg — **ikke** automatisk race-mål for tri |
-| Sep 2026 | **~90 kg** | **210 W** | ~2,3 W/kg — re-trening + masse |
+| 25.09.2026 (BIA) | **82,8 kg**, **20,4 %** fett | **210 W** | ~2,5 W/kg — baseline Intervals wellness |
+| Sep 2026 (tidligere skala) | **~90 kg** | **210 W** | ~2,3 W/kg — ikke brukt som plan-baseline lenger |
 
 ---
 
@@ -42,9 +43,9 @@ Tallene under er **coach-mål for en høy mann (187 cm) som skal løpe/sykle bak
 
 | Periode | Fett % (BIA, trend) | Vekt (ca.) |
 |---------|---------------------|------------|
-| Re-etablering / base vinter | **16–20 %** ok | 86–90 |
-| Build (apr–jun) | **14–17 %** | 82–86 |
-| Spesifikk + taper | **12–15 %** | **78–80** |
+| Re-etablering / base vinter (fra 25.09) | **18–20 %** → **16–18 %** | **83 → 78** |
+| Build (apr–jun) | **14–16 %** | **77–75** |
+| Spesifikk + taper | **11–14 %** | **72–74** |
 
 **Rødt flagg (stopp/aggressiv nedjustering av underskudd):**
 

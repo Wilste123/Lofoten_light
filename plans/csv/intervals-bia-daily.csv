@@ -1,4 +1,5 @@
 date,weight_kg,body_fat_pct,body_water_pct,ffm_kg,muscle_kg,visceral,bone_kg,resting_hr,comment
 # Morgen fastende — én rad per dag. Eksempel (slett # og fyll inn):
+2026-09-25,82.769,20.4,,65.9,,,,87,Baseline Intervals wellness (FFM beregnet)
 # 2026-09-24,90.2,18.5,56.2,73.5,34.1,9,,58,
 # Push: python3 scripts/push_intervals_wellness.py plans/csv/intervals-bia-daily.csv

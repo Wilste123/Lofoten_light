@@ -9,7 +9,9 @@ Kilde for sannhet for agenten. Oppdater ved nye tester, skader eller endret tilg
 | | |
 |---|---|
 | Kjønn / alder | Mann, 24 år |
-| Høyde / vekt | Ca. 187 cm, **~90 kg** (sep 2026) |
+| Høyde / vekt | Ca. **187 cm**, **~82,8 kg** (BIA 25.09.2026) |
+| Kroppssammensetning (BIA) | **20,4 %** fett · FFM ca. **66 kg** (samme måling) |
+| Race-vekt (mål) | **72–74 kg** (Half Extreme aug 2027) |
 | Bosted | Trondheim / Trøndelag, Norge |
 
 ### Idrettsbakgrunn
@@ -48,7 +50,8 @@ Kilde for sannhet for agenten. Oppdater ved nye tester, skader eller endret tilg
 | 2019 (peak år) | **~1050 t** trening | Høyt strukturert volum |
 | 2019 (test) | **FTP 410 W** (rulle innendørs) | Peak FTP-referanse — **ikke** dagens FTP |
 | Ved opphør sykkel (ca.) | **~74 kg**, FTP **410 W** (~**5,5 W/kg**) | Landevei-vekt; **ikke** tri/Lofoten-mål å kopiere blindt |
-| Sep 2026 | **~90 kg**, FTP **210 W** (~**2,3 W/kg**) | Absolutt kraft + masse begge ned — vekt **og** re-trening |
+| Sep 2026 (25.09) | **82,8 kg**, **20,4 %** fett (BIA), FTP **210 W** (~**2,5 W/kg**) | BIA/Intervals wellness; tidligere skala **~90 kg** var sannsynlig overestimat / annen referanse |
+| Sep 2026 (plan) | FTP **210 W** | Absolutt kraft + re-trening — watt-test før intensitet |
 | 2019 | **5 sek peak ~1300 W** | Neuromuskulær kapasitet historisk |
 | 2026 hittil | **>50 t** trening | Re-etablering etter lang lav periode |
 | Neste 12 mnd (mål) | **750–800 t** totalt | Se volumplan under — ikke lineær jump fra lav uke til snitt |
@@ -75,7 +78,7 @@ Agenten skal **planlegge faser** (f.eks. start der William er nå → stabil bas
 | Planstart | **28.09.2026** — `plans/2026-09-28-uke-01.md` … `uke-04.md`; **Intervals:** `scripts/intervals_push_calendar.py --start 2026-09-28` (valgfri TP/Dojo) |
 | Innendørs / utendørs | Trondheim — **rulle nov 2025**; **PM ute våren**; **basseng 3T** vinter; **utesvøm til vår** |
 | Utstyr | Se **Utstyr (sep 2026)** under; **smartvekt (BIA)** — logg morgen snitt |
-| Kroppssammensetning | Race **&lt;80 kg**; BIA-mål: [`kroppssammensetning-smartvekt.md`](kroppssammensetning-smartvekt.md) |
+| Kroppssammensetning | Race **72–74 kg**; BIA baseline **25.09.2026** — [`kroppssammensetning-smartvekt.md`](kroppssammensetning-smartvekt.md) |
 
 ## Utstyr (sep 2026)
 
@@ -105,13 +108,14 @@ Agenten skal **planlegge faser** (f.eks. start der William er nå → stabil bas
 
 | Metrikk | Planlegging TP | Dato | Notater |
 |---------|----------------|------|---------|
-| **FTP sykkel** | **210 W** | 2026-09-24 | ~2,33 W/kg ved **~90 kg** — konservativ; ramp uke 6–8 |
+| **FTP sykkel** | **210 W** | 2026-09-24 | ~**2,5 W/kg** ved **82,8 kg** (BIA 25.09) — konservativ; ramp uke 6–8 |
 | **Max HR** | **191 bpm** | est. | Tanaka (klokke kan overstyre) |
-| **Hvilepuls** | **58 bpm** | antatt | Oppdater fra klokke |
+| **Hvilepuls** | **87 bpm** | 2026-09-25 | Intervals wellness (enkelt dag); mål **58** fra klokke-snitt — verifiser |
 | **LTHR / terskel HR** | **165 bpm** | 2026-09-24 | Brukes sykkel + løp inntil separate tester |
 | **Threshold pace løp** | **6:20 min/km** | 2026-09-24 | = 100 % terskel i TP Run zones |
 | **CSS / T-pace svøm** | **2:20 / 100 m** | est. | 1000 m test når klar |
-| Vekt (kg) | ~90 | | |
+| Vekt (kg) | **82,8** | 2026-09-25 | BIA morgen → Intervals |
+| Fett % (BIA) | **20,4** | 2026-09-25 | Trend viktigere enn absolutt |
 
 ### Sykkel — watt og puls (ved FTP 210 W, LTHR 165)
 
@@ -155,7 +159,9 @@ Agenten skal **planlegge faser** (f.eks. start der William er nå → stabil bas
 | Threshold HR sykkel (bpm) | **165** (guess) | 2026-09-24 | |
 | LTHR løp (bpm) | **165** (guess) | 2026-09-24 | |
 | CSS svøm (per 100 m) | *2:20 plan* | | |
-| Vekt (kg) | ~90 | | |
+| Vekt (kg) | **82,8** | 2026-09-25 | BIA |
+| Fett % (BIA) | **20,4 %** | 2026-09-25 | |
+| Race-vekt mål | **72–74 kg** | 2026-09-25 | William |
 
 ## Intensitetssoner løp (TrainingPeaks)
 

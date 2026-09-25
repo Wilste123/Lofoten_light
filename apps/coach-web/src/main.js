@@ -263,14 +263,20 @@ function bindOnboarding() {
           'coach_personality',
           'coach_style_note',
           'goal_text',
+          'schedule_notes',
           'injury_notes',
           'ftp_tested',
           'ftp_tested_at',
           'weight_kg',
           'age_years',
+          'nutrition_ibs',
+          'nutrition_gluten',
+          'nutrition_other_restrictions',
+          'nutrition_notes',
         ]) {
           if (fd.has(key)) state.onboarding[key] = String(fd.get(key) || '')
         }
+        state.onboarding.nutrition_lactose = fd.get('nutrition_lactose') === 'on'
       }
       state.onboarding.accent_color = btn.dataset.color
       setAccent(btn.dataset.color)

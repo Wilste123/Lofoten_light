@@ -15,6 +15,13 @@ const state = {
   tab: 'coach',
   messages: [],
   overview: null,
+  intervals: {
+    connected: false,
+    intervals_athlete_id: '',
+    api_key_hint: null,
+    form_athlete_id: '',
+    form_api_key: '',
+  },
   onboarding: {
     display_name: '',
     coach_display_name: 'Rocky',
@@ -36,6 +43,7 @@ const state = {
   },
   busy: false,
   error: '',
+  intervalsError: '',
 }
 
 const app = document.getElementById('app')
@@ -100,7 +108,7 @@ async function bootstrap() {
   state.athlete = data.athlete
   setAccent(data.athlete.accent_color)
   setAthleteId(data.athlete.id)
-  await refreshOverview()
+  await Promise.all([refreshOverview(), refreshIntervals()])
   render()
 }
 
@@ -109,6 +117,22 @@ async function refreshOverview() {
     state.overview = await api('/v1/overview')
   } catch {
     state.overview = null
+  }
+}
+
+async function refreshIntervals() {
+  try {
+    const data = await api('/v1/athlete/me/intervals')
+    state.intervals.connected = !!data.connected
+    state.intervals.intervals_athlete_id = data.intervals_athlete_id || ''
+    state.intervals.api_key_hint = data.api_key_hint || null
+    state.intervals.form_athlete_id = data.intervals_athlete_id || ''
+    // Never put the real key in state — leave blank for re-entry
+    state.intervals.form_api_key = ''
+  } catch {
+    state.intervals.connected = false
+    state.intervals.intervals_athlete_id = ''
+    state.intervals.api_key_hint = null
   }
 }
 
@@ -321,6 +345,7 @@ function bindOnboarding() {
         },
       ]
       await refreshOverview()
+      await refreshIntervals()
       toast('Profil lagret')
     } catch (err) {
       state.error = err.message || 'Kunne ikke lagre'
@@ -370,7 +395,16 @@ function renderOverview() {
     </div>
     <div class="card-block">
       <h2>Intervals</h2>
+      <div class="stat-row">
+        <span>Status</span>
+        <span>${o.intervals_linked ? 'Koblet' : 'Ikke koblet'}</span>
+      </div>
       <p class="muted">${escapeHtml(o.intervals_hint || 'Ikke koblet ennå.')}</p>
+      ${
+        o.intervals_linked
+          ? ''
+          : `<p class="muted" style="margin-top:0.5rem">Gå til <strong>Du</strong> og lim inn athlete ID + API-nøkkel.</p>`
+      }
       <p class="muted" style="margin-top:0.5rem">Detaljer og kalender lever i Intervals — appen eier mål og avtaler.</p>
     </div>
   `
@@ -443,6 +477,30 @@ function renderDu() {
       ${state.error && state.tab === 'du' ? `<p class="error">${escapeHtml(state.error)}</p>` : ''}
       <button class="btn" type="submit" ${state.busy ? 'disabled' : ''}>Lagre profil</button>
     </form>
+    <form id="intervals-form" class="card-block" style="margin-top:1rem">
+      <h2>Intervals</h2>
+      <p class="muted">
+        ${
+          state.intervals.connected
+            ? `Koblet${state.intervals.api_key_hint ? ` · nøkkel ${escapeHtml(state.intervals.api_key_hint)}` : ''}.`
+            : 'Ikke koblet. Hent nøkkel under Intervals → Settings → Developer.'
+        }
+      </p>
+      <div class="field">
+        <label for="intervals_athlete_id">Intervals athlete ID</label>
+        <input id="intervals_athlete_id" name="intervals_athlete_id" autocomplete="off"
+          value="${escapeHtml(state.intervals.form_athlete_id || '')}"
+          placeholder="f.eks. i123456" required />
+      </div>
+      <div class="field">
+        <label for="intervals_api_key">API-nøkkel</label>
+        <input id="intervals_api_key" name="intervals_api_key" type="password" autocomplete="off"
+          value="${escapeHtml(state.intervals.form_api_key || '')}"
+          placeholder="${state.intervals.api_key_hint ? 'Ny nøkkel for å bytte' : 'Lim inn API-nøkkel'}" required />
+      </div>
+      ${state.intervalsError ? `<p class="error">${escapeHtml(state.intervalsError)}</p>` : ''}
+      <button class="btn" type="submit" ${state.busy ? 'disabled' : ''}>Lagre Intervals</button>
+    </form>
   `
 }
 
@@ -451,7 +509,9 @@ function bindApp() {
     btn.addEventListener('click', async () => {
       state.tab = btn.dataset.tab
       state.error = ''
+      state.intervalsError = ''
       if (state.tab === 'overblikk') await refreshOverview()
+      if (state.tab === 'du') await refreshIntervals()
       render()
     })
   })
@@ -530,6 +590,43 @@ function bindApp() {
       await refreshOverview()
     } catch (err) {
       state.error = err.message || 'Lagring feilet'
+    } finally {
+      state.busy = false
+      render()
+    }
+  })
+
+  const intervalsForm = document.getElementById('intervals-form')
+  intervalsForm?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const fd = new FormData(intervalsForm)
+    const payload = {
+      intervals_athlete_id: String(fd.get('intervals_athlete_id') || '').trim(),
+      intervals_api_key: String(fd.get('intervals_api_key') || '').trim(),
+      verify: true,
+    }
+    state.intervals.form_athlete_id = payload.intervals_athlete_id
+    state.intervals.form_api_key = payload.intervals_api_key
+    state.busy = true
+    state.intervalsError = ''
+    render()
+    try {
+      const data = await api('/v1/athlete/me/intervals', { method: 'PUT', body: payload })
+      state.intervals.connected = !!data.connected
+      state.intervals.intervals_athlete_id = data.intervals_athlete_id || ''
+      state.intervals.api_key_hint = data.api_key_hint || null
+      state.intervals.form_athlete_id = data.intervals_athlete_id || ''
+      state.intervals.form_api_key = ''
+      if (data.verified === false && data.verify_error) {
+        toast(`Lagret — Intervals-sjekk feilet: ${data.verify_error}`)
+      } else if (data.verified) {
+        toast('Intervals lagret og verifisert')
+      } else {
+        toast('Intervals lagret')
+      }
+      await refreshOverview()
+    } catch (err) {
+      state.intervalsError = err.message || 'Kunne ikke lagre Intervals'
     } finally {
       state.busy = false
       render()

@@ -12,7 +12,8 @@
 | `athlete_context` (navn, trener, farge, mål, avtaler, skade, **ernæring/GI**, test-FTP, vekt/alder) | SQLite | Appens SoT — ikke Intervals |
 | Profilfil markdown | `data/athletes/{id}/profile.md` | Cursor-coach + LLM leser person, ikke bare William |
 | Chat-historikk (siste N turner) | SQLite | Kort minne for én LLM-tur |
-| Intervals API-nøkkel + athlete-id | SQLite (`athlete_secrets`) | Kun server; aldri `localStorage` |
+| Intervals API-nøkkel + athlete-id | SQLite (`athlete_secrets`) via **Du**-fane / `PUT /v1/athlete/me/intervals` | Kun server; aldri `localStorage` eller `.env` for web |
+| `OPENAI_API_KEY` | `services/coach-api/.env` | Server-wide chat — ikke per utøver |
 | Form-estimater | SQLite (felter på athlete) | Resultat av `form_estimates` |
 | Aktivitets-cache (90 d power) | SQLite eller fil under `data/athletes/{id}/` | Unngå full ICU-refetch |
 | Kunnskap / ukeplaner | Git (`knowledge/`, `plans/`) | Uendret |

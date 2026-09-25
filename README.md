@@ -51,6 +51,8 @@ cd apps/coach-web && npm install && npm run dev
 
 Åpne http://127.0.0.1:5173 — onboarding skriver `data/athletes/{id}/profile.md`.
 
+**Nøkler:** `OPENAI_API_KEY` i `services/coach-api/.env` (chat). Intervals athlete ID + API-nøkkel legges inn i appen under **Du** (lagres i SQLite, ikke i `.env`).
+
 ## Repo layout
 
 ```

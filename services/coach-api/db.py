@@ -296,3 +296,90 @@ def recent_messages(
     rows = [dict(r) for r in cur.fetchall()]
     rows.reverse()
     return rows
+
+
+def get_athlete_secrets(
+    conn: sqlite3.Connection, athlete_id: str
+) -> dict[str, Any] | None:
+    cur = conn.execute(
+        """
+        SELECT athlete_id, intervals_api_key, intervals_athlete_id, updated_at
+        FROM athlete_secrets WHERE athlete_id = ?
+        """,
+        (athlete_id,),
+    )
+    row = cur.fetchone()
+    return dict(row) if row else None
+
+
+def upsert_athlete_secrets(
+    conn: sqlite3.Connection,
+    athlete_id: str,
+    *,
+    intervals_api_key: str | None = None,
+    intervals_athlete_id: str | None = None,
+) -> dict[str, Any]:
+    """Insert or update Intervals credentials. None keeps existing value."""
+    existing = get_athlete_secrets(conn, athlete_id)
+    now = utc_now()
+    if existing is None:
+        key = intervals_api_key or None
+        aid = intervals_athlete_id or None
+        conn.execute(
+            """
+            INSERT INTO athlete_secrets (
+              athlete_id, intervals_api_key, intervals_athlete_id, updated_at
+            ) VALUES (?, ?, ?, ?)
+            """,
+            (athlete_id, key, aid, now),
+        )
+    else:
+        key = (
+            intervals_api_key
+            if intervals_api_key is not None
+            else existing.get("intervals_api_key")
+        )
+        aid = (
+            intervals_athlete_id
+            if intervals_athlete_id is not None
+            else existing.get("intervals_athlete_id")
+        )
+        conn.execute(
+            """
+            UPDATE athlete_secrets
+            SET intervals_api_key = ?, intervals_athlete_id = ?, updated_at = ?
+            WHERE athlete_id = ?
+            """,
+            (key, aid, now, athlete_id),
+        )
+    return get_athlete_secrets(conn, athlete_id)  # type: ignore[return-value]
+
+
+def mask_api_key(key: str | None) -> str | None:
+    """Never return full key — last 4 chars only when long enough."""
+    if not key:
+        return None
+    key = key.strip()
+    if len(key) <= 4:
+        return "••••"
+    return f"••••{key[-4:]}"
+
+
+def secrets_public_view(row: dict[str, Any] | None) -> dict[str, Any]:
+    """Safe payload for GET — no full API key."""
+    if not row:
+        return {
+            "connected": False,
+            "intervals_athlete_id": None,
+            "api_key_hint": None,
+            "updated_at": None,
+        }
+    key = (row.get("intervals_api_key") or "").strip()
+    aid = (row.get("intervals_athlete_id") or "").strip() or None
+    connected = bool(key and aid)
+    return {
+        "connected": connected,
+        "intervals_athlete_id": aid,
+        "api_key_hint": mask_api_key(key) if key else None,
+        "updated_at": row.get("updated_at"),
+    }

@@ -15,12 +15,16 @@ from db import (
     add_message,
     db_session,
     get_athlete,
+    get_athlete_secrets,
     init_db,
     insert_athlete,
     recent_messages,
+    secrets_public_view,
     update_athlete,
+    upsert_athlete_secrets,
 )
 from form_estimates import compute_form_estimates
+from intervals_smoke import smoke_test_intervals
 from profile import write_profile
 
 
@@ -104,6 +108,12 @@ class ChatIn(BaseModel):
     message: str = Field(min_length=1)
 
 
+class IntervalsCredentialsIn(BaseModel):
+    intervals_athlete_id: str = Field(min_length=1)
+    intervals_api_key: str = Field(min_length=1)
+    verify: bool = True
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -165,6 +175,51 @@ def patch_me(
     }
 
 
+@app.get("/v1/athlete/me/intervals")
+def get_intervals(x_athlete_id: str | None = Header(default=None)) -> dict[str, Any]:
+    """Return connection status — never the full API key."""
+    aid = _require_athlete(x_athlete_id)
+    with db_session(config.DATABASE_PATH) as conn:
+        if not get_athlete(conn, aid):
+            raise HTTPException(404, "Utøver ikke funnet")
+        secrets = get_athlete_secrets(conn, aid)
+    return secrets_public_view(secrets)
+
+
+@app.put("/v1/athlete/me/intervals")
+def put_intervals(
+    body: IntervalsCredentialsIn,
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Store Intervals athlete ID + API key in athlete_secrets (server only)."""
+    aid = _require_athlete(x_athlete_id)
+    icu_id = body.intervals_athlete_id.strip()
+    api_key = body.intervals_api_key.strip()
+    if not icu_id or not api_key:
+        raise HTTPException(400, "Intervals athlete ID og API-nøkkel kreves")
+
+    verified: bool | None = None
+    verify_error: str | None = None
+    if body.verify:
+        ok, err = smoke_test_intervals(api_key, icu_id)
+        verified = ok
+        verify_error = err
+
+    with db_session(config.DATABASE_PATH) as conn:
+        if not get_athlete(conn, aid):
+            raise HTTPException(404, "Utøver ikke funnet")
+        row = upsert_athlete_secrets(
+            conn,
+            aid,
+            intervals_api_key=api_key,
+            intervals_athlete_id=icu_id,
+        )
+    out = secrets_public_view(row)
+    out["verified"] = verified
+    out["verify_error"] = verify_error
+    return out
+
+
 @app.post("/v1/chat")
 def chat(
     body: ChatIn,
@@ -176,7 +231,8 @@ def chat(
         if not athlete:
             raise HTTPException(404, "Utøver ikke funnet")
         history = recent_messages(conn, aid, limit=12)
-        overview = _overview_payload(athlete)
+        secrets = get_athlete_secrets(conn, aid)
+        overview = _overview_payload(athlete, secrets)
         system = build_system_prompt(
             athlete, config.KNOWLEDGE_DIR, overview_stub=overview
         )
@@ -197,20 +253,32 @@ def overview(x_athlete_id: str | None = Header(default=None)) -> dict[str, Any]:
     aid = _require_athlete(x_athlete_id)
     with db_session(config.DATABASE_PATH) as conn:
         athlete = get_athlete(conn, aid)
-    if not athlete:
-        raise HTTPException(404, "Utøver ikke funnet")
-    return _overview_payload(athlete)
+        if not athlete:
+            raise HTTPException(404, "Utøver ikke funnet")
+        secrets = get_athlete_secrets(conn, aid)
+    return _overview_payload(athlete, secrets)
 
 
-def _overview_payload(athlete: dict[str, Any]) -> dict[str, Any]:
-    """Phase 1 stub: no ICU. form_estimates with empty activities → gate closed."""
+def _overview_payload(
+    athlete: dict[str, Any],
+    secrets: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Phase 1: form_estimates with empty activities → gate closed. Intervals status from secrets."""
     estimates = compute_form_estimates(
         [],
         ftp_tested=athlete.get("ftp_tested"),
         weight_kg=athlete.get("weight_kg"),
         age_years=athlete.get("age_years"),
     )
-    uplift = "Koble Intervals for belastning og fremgang — konteksten din er klar."
+    linked = secrets_public_view(secrets)
+    intervals_linked = bool(linked.get("connected"))
+    if intervals_linked:
+        icu = linked.get("intervals_athlete_id") or ""
+        intervals_hint = f"Koblet (athlete {icu}). Kalenderdetaljer hentes i fase 2."
+        uplift = "Intervals er koblet — kontekst klar for belastning når sync kommer."
+    else:
+        intervals_hint = "Ikke koblet ennå. Legg inn ID + API-nøkkel under Du → Intervals."
+        uplift = "Koble Intervals under Du for belastning og fremgang — konteksten din er klar."
     if athlete.get("weekly_focus"):
         uplift = f"Ukens fokus: {athlete['weekly_focus']}"
     elif athlete.get("goal_text"):
@@ -220,8 +288,9 @@ def _overview_payload(athlete: dict[str, Any]) -> dict[str, Any]:
         "plan_headline": None,
         "last_session": None,
         "load": None,
-        "intervals_linked": False,
-        "intervals_hint": "Koble Intervals for plan-hode og siste økt (fase 2).",
+        "intervals_linked": intervals_linked,
+        "intervals_hint": intervals_hint,
+        "intervals_athlete_id": linked.get("intervals_athlete_id"),
         "ftp_tested": athlete.get("ftp_tested"),
         "ftp_tested_at": athlete.get("ftp_tested_at"),
         "ftp_estimated": athlete.get("ftp_estimated") or estimates.get("ftp_estimated"),

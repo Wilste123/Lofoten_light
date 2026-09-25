@@ -21,8 +21,12 @@ Redigeres under **Du → Sesongmål**. Tomt felt = ingen rad / ingen target for 
 
 ### Med Intervals-credentials
 
-1. Hent aktiviteter for `[season_start_date … i dag]` (default: sesongstart = 1. jan inneværende år hvis felt mangler).
-2. Map `type` → disiplin:
+1. Hent aktiviteter for `[season_start_date … i dag]` via  
+   `GET https://intervals.icu/api/v1/athlete/{id}/activities?oldest=&newest=&limit=100&fields=…`  
+   (Basic auth `API_KEY:{nøkkel}`). Implementasjon: `services/coach-api/progress_compliance.py`.
+2. **Paginering:** hvis en side returnerer `limit` rader, hent eldre sider (`newest` = dagen før eldste `start_date_local` i siden) til vinduet er dekket. Dedup på `id`.
+3. **Cache:** kort TTL (~2 min) per atlet+vindu så Overblikk-fanen ikke hammerer ICU.
+4. Map `type` → disiplin:
 
 | Intervals `type` (eksempler) | Disiplin |
 |------------------------------|----------|
@@ -31,11 +35,17 @@ Redigeres under **Du → Sesongmål**. Tomt felt = ingen rad / ingen target for 
 | Run, VirtualRun, TrailRun | `run` |
 | WeightTraining, Workout, Strength | `strength` |
 
-3. Varighet: foretrekk `moving_time`, ellers `elapsed_time` / `duration` (sekunder → timer). Verdier &lt; 15 tolkes som allerede timer (CSV-quirk).
+5. Varighet: foretrekk `moving_time`, ellers `elapsed_time` / `duration` (sekunder → timer). Verdier &lt; 15 tolkes som allerede timer (CSV-quirk).
+
+Hvis `season_start_date` er **i fremtiden**: ingen ICU-kall; `source: "intervals"`, `season_not_started: true`, completed = 0.
 
 ### Uten credentials
 
 Stub/demo-tall returneres med `source: "demo"` og UI-merke **Demo**. Tallene er faste illustrasjoner — ikke ekte trening.
+
+### Credentials men fetch feilet
+
+`source: "demo"`, `fetch_error: true`, **completed = 0** (ikke fake demo-timer). UI: **Henting feilet**.
 
 ## Formler (MVP)
 
@@ -64,6 +74,11 @@ Valgfritt alternativ dokumentert her for historikk — **ikke implementert**:
   "progress": {
     "window": { "start": "2026-01-01", "end": "2026-09-25" },
     "source": "intervals" | "demo",
+    "estimate": false,
+    "season_not_started": false,
+    "activity_count": 42,
+    "formula": "completed_hours / season_target_hours (capped 100%)",
+    "fetch_error": false,
     "disciplines": [
       {
         "id": "bike",
@@ -71,7 +86,8 @@ Valgfritt alternativ dokumentert her for historikk — **ikke implementert**:
         "completed_hours": 175.0,
         "target_hours": 500.0,
         "progress_pct": 35.0,
-        "compliance_pct": 35.0
+        "compliance_pct": 35.0,
+        "session_count": 40
       }
     ]
   }
@@ -82,5 +98,7 @@ Valgfritt alternativ dokumentert her for historikk — **ikke implementert**:
 
 | Merke | Når |
 |-------|-----|
-| **Demo** | Ingen Intervals-nøkkel, eller fetch feilet → stub |
+| **Demo** | Ingen Intervals-nøkkel |
+| **Henting feilet** | Credentials finnes, men ICU-kall feilet → 0 t |
+| **Intervals** | Ekte summer fra aktiviteter |
 | **Estimat** | Data tynn (&lt; 3 økter i vinduet) — fortsatt reell sum, men usikker |

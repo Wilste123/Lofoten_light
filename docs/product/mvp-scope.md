@@ -38,9 +38,9 @@ Intervals.icu forblir stedet for **full kalender, øktdetaljer og grafer**.
 | Fase | Leveranse |
 |------|-----------|
 | 0–1 | Docs + onboarding → profil + chat + Du + Intervals-settings |
-| 2 | ICU les + overview + form_estimates + compliance-bars |
-| 2b | Grovplan / `plan_blocks` på Overblikk |
-| 2c | UX-polish |
+| 2 | ~~ICU activity-les + compliance-bars~~ (live når credentials) |
+| 2b | ~~Grovplan / `plan_blocks` på Overblikk~~ |
+| 2c | UX-polish leftovers |
 | 3 | Invite + `training_pair` |
 | 4 | Valgfri Intervals-write |
 | 5 | Proaktiv post-MVP |

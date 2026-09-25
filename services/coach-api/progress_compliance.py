@@ -1,15 +1,24 @@
 """Season volume progress + compliance (deterministic, no LLM).
 
 See docs/product/progress-compliance.md.
+
+Formula (MVP, stable):
+  completed_h   = sum(duration_hours for discipline in [season_start … today])
+  target_h      = season_{discipline}_hours_target
+  progress_pct  = 0 if target_h <= 0 else min(100, 100 * completed_h / target_h)
+  compliance_pct = progress_pct
 """
 
 from __future__ import annotations
 
 import base64
 import json
+import threading
+import time
 import urllib.error
+import urllib.parse
 import urllib.request
-from datetime import date
+from datetime import date, datetime, timedelta
 from typing import Any
 
 API_BASE = "https://intervals.icu/api/v1"
@@ -54,6 +63,15 @@ DEFAULT_TARGETS: dict[str, float] = {
     "strength": 50.0,
 }
 
+# Intervals list endpoint can truncate; page with limit + shrinking newest.
+_PAGE_LIMIT = 100
+_ACTIVITY_FIELDS = "id,type,sport,moving_time,elapsed_time,duration,start_date_local"
+_FETCH_TIMEOUT = 12
+_CACHE_TTL_SEC = 120
+
+_cache_lock = threading.Lock()
+_progress_cache: dict[str, tuple[float, dict[str, Any]]] = {}
+
 
 def compliance_pct(completed_hours: float, target_hours: float | None) -> float | None:
     """MVP: completed / target * 100, capped at 100. None if no target."""
@@ -71,7 +89,7 @@ def parse_duration_hours(raw: Any, field_hint: str = "") -> float | None:
     """Convert Intervals duration field to hours.
 
     Seconds if field name contains 'time' and value > 24, or value >= 15.
-    Values < 15 treated as already-hours (CSV quirk).
+    Values < 15 treated as already-hours (CSV-quirk).
     """
     if raw is None or raw == "":
         return None
@@ -124,6 +142,21 @@ def _parse_iso_date(s: str | None) -> date | None:
         return None
 
 
+def _activity_local_date(act: dict[str, Any]) -> date | None:
+    raw = act.get("start_date_local") or act.get("start_date") or act.get("date")
+    if not raw:
+        return None
+    text = str(raw).strip()
+    if not text:
+        return None
+    try:
+        if "T" in text:
+            return datetime.fromisoformat(text.replace("Z", "+00:00")).date()
+        return date.fromisoformat(text[:10])
+    except ValueError:
+        return None
+
+
 def season_window(athlete: dict[str, Any], today: date | None = None) -> tuple[date, date]:
     today = today or date.today()
     start = _parse_iso_date(athlete.get("season_start_date"))
@@ -131,7 +164,8 @@ def season_window(athlete: dict[str, Any], today: date | None = None) -> tuple[d
         start = date(today.year, 1, 1)
     end = today
     if start > end:
-        start = end
+        # Sesong ikke startet — tomt vindu (ingen fetch-trøbbel på fremtidig start)
+        return start, start
     return start, end
 
 
@@ -157,9 +191,15 @@ def build_progress_payload(
     source: str,
     session_counts: dict[str, int] | None = None,
     today: date | None = None,
+    fetch_error: bool = False,
+    fetch_error_detail: str | None = None,
+    activity_count: int | None = None,
 ) -> dict[str, Any]:
     """Assemble overview.progress from completed hours + athlete targets."""
+    today = today or date.today()
     start, end = season_window(athlete, today)
+    season_start = _parse_iso_date(athlete.get("season_start_date"))
+    season_not_started = bool(season_start and season_start > today)
     demo = source == "demo"
     session_counts = session_counts or {}
     disciplines: list[dict[str, Any]] = []
@@ -182,12 +222,25 @@ def build_progress_payload(
                 "session_count": count,
             }
         )
-    return {
+    total_sessions = (
+        activity_count
+        if activity_count is not None
+        else sum(session_counts.values())
+    )
+    payload: dict[str, Any] = {
         "window": {"start": start.isoformat(), "end": end.isoformat()},
         "source": source,
         "estimate": thin,
+        "season_not_started": season_not_started,
+        "activity_count": total_sessions,
+        "formula": "completed_hours / season_target_hours (capped 100%)",
         "disciplines": disciplines,
     }
+    if fetch_error:
+        payload["fetch_error"] = True
+        if fetch_error_detail:
+            payload["fetch_error_detail"] = fetch_error_detail[:200]
+    return payload
 
 
 def demo_progress(athlete: dict[str, Any], today: date | None = None) -> dict[str, Any]:
@@ -200,39 +253,136 @@ def demo_progress(athlete: dict[str, Any], today: date | None = None) -> dict[st
     )
 
 
+def empty_progress(
+    athlete: dict[str, Any],
+    *,
+    source: str,
+    today: date | None = None,
+    fetch_error: bool = False,
+    fetch_error_detail: str | None = None,
+) -> dict[str, Any]:
+    """Zero completed hours — used when linked but no data / fetch failed."""
+    zeros_h = {d[0]: 0.0 for d in DISCIPLINES}
+    zeros_n = {d[0]: 0 for d in DISCIPLINES}
+    return build_progress_payload(
+        athlete,
+        completed=zeros_h,
+        source=source,
+        session_counts=zeros_n,
+        today=today,
+        fetch_error=fetch_error,
+        fetch_error_detail=fetch_error_detail,
+        activity_count=0,
+    )
+
+
+def _auth_headers(api_key: str) -> dict[str, str]:
+    token = base64.b64encode(f"API_KEY:{api_key}".encode()).decode()
+    return {
+        "Authorization": f"Basic {token}",
+        "User-Agent": "LofotenCoachApi/0.1 (progress)",
+        "Accept": "application/json",
+    }
+
+
+def _http_get_json(url: str, api_key: str, *, timeout: int = _FETCH_TIMEOUT) -> Any:
+    req = urllib.request.Request(
+        url,
+        method="GET",
+        headers=_auth_headers(api_key),
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        raw = resp.read().decode("utf-8", errors="replace")
+    if not raw:
+        return []
+    return json.loads(raw)
+
+
+def fetch_intervals_activities_page(
+    api_key: str,
+    athlete_id: str,
+    oldest: str,
+    newest: str,
+    *,
+    limit: int = _PAGE_LIMIT,
+    timeout: int = _FETCH_TIMEOUT,
+) -> list[dict[str, Any]]:
+    """Single page GET /athlete/{id}/activities."""
+    key = (api_key or "").strip()
+    aid = (athlete_id or "").strip()
+    if not key or not aid:
+        raise ValueError("Mangler Intervals-credentials")
+    qs = urllib.parse.urlencode(
+        {
+            "oldest": oldest,
+            "newest": newest,
+            "limit": str(limit),
+            "fields": _ACTIVITY_FIELDS,
+        }
+    )
+    url = f"{API_BASE}/athlete/{aid}/activities?{qs}"
+    data = _http_get_json(url, key, timeout=timeout)
+    if isinstance(data, dict):
+        data = data.get("activities") or data.get("data") or []
+    if not isinstance(data, list):
+        return []
+    return [a for a in data if isinstance(a, dict)]
+
+
 def fetch_intervals_activities(
     api_key: str,
     athlete_id: str,
     oldest: str,
     newest: str,
     *,
-    timeout: int = 20,
+    timeout: int = _FETCH_TIMEOUT,
+    page_limit: int = _PAGE_LIMIT,
 ) -> list[dict[str, Any]]:
-    """GET /athlete/{id}/activities?oldest=&newest= — returns list of activity dicts."""
-    key = (api_key or "").strip()
-    aid = (athlete_id or "").strip()
-    if not key or not aid:
-        raise ValueError("Mangler Intervals-credentials")
-    token = base64.b64encode(f"API_KEY:{key}".encode()).decode()
-    url = f"{API_BASE}/athlete/{aid}/activities?oldest={oldest}&newest={newest}"
-    req = urllib.request.Request(
-        url,
-        method="GET",
-        headers={
-            "Authorization": f"Basic {token}",
-            "User-Agent": "LofotenCoachApi/0.1 (progress)",
-            "Accept": "application/json",
-        },
-    )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        raw = resp.read().decode("utf-8", errors="replace")
-    data = json.loads(raw) if raw else []
-    if isinstance(data, dict):
-        # Some endpoints wrap list
-        data = data.get("activities") or data.get("data") or []
-    if not isinstance(data, list):
+    """GET activities for [oldest, newest], paging when Intervals truncates.
+
+    Walks newest→oldest in pages of ``page_limit``. Dedupes by activity id.
+    """
+    oldest_d = date.fromisoformat(oldest[:10])
+    newest_d = date.fromisoformat(newest[:10])
+    if oldest_d > newest_d:
         return []
-    return data
+
+    collected: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    cursor_newest = newest_d
+    # Safety: season-long fetch should not loop forever
+    for _ in range(40):
+        batch = fetch_intervals_activities_page(
+            api_key,
+            athlete_id,
+            oldest_d.isoformat(),
+            cursor_newest.isoformat(),
+            limit=page_limit,
+            timeout=timeout,
+        )
+        if not batch:
+            break
+        new_in_batch = 0
+        oldest_in_batch: date | None = None
+        for act in batch:
+            aid = str(act.get("id") or "")
+            if aid and aid in seen:
+                continue
+            if aid:
+                seen.add(aid)
+            collected.append(act)
+            new_in_batch += 1
+            ad = _activity_local_date(act)
+            if ad is not None and (oldest_in_batch is None or ad < oldest_in_batch):
+                oldest_in_batch = ad
+        if len(batch) < page_limit or oldest_in_batch is None:
+            break
+        # Next page: everything strictly older than oldest in this page
+        next_newest = oldest_in_batch - timedelta(days=1)
+        if next_newest < oldest_d or new_in_batch == 0:
+            break
+        cursor_newest = next_newest
+    return collected
 
 
 def count_sessions_by_discipline(activities: list[dict[str, Any]]) -> dict[str, int]:
@@ -244,13 +394,27 @@ def count_sessions_by_discipline(activities: list[dict[str, Any]]) -> dict[str, 
     return counts
 
 
+def _cache_key(athlete_id: str, api_key: str, start: date, end: date) -> str:
+    # Key includes key suffix so rotated credentials bust cache
+    return f"{athlete_id}|{api_key[-6:]}|{start.isoformat()}|{end.isoformat()}"
+
+
+def clear_progress_cache() -> None:
+    with _cache_lock:
+        _progress_cache.clear()
+
+
 def resolve_progress(
     athlete: dict[str, Any],
     secrets: dict[str, Any] | None,
     *,
     today: date | None = None,
+    use_cache: bool = True,
 ) -> dict[str, Any]:
-    """Prefer Intervals when credentials exist; else demo. Soft-fail to demo on error."""
+    """Prefer Intervals when credentials exist; else demo.
+
+    Soft-fail when linked: zeros + fetch_error (not fake demo hours).
+    """
     today = today or date.today()
     start, end = season_window(athlete, today)
     key = ((secrets or {}).get("intervals_api_key") or "").strip()
@@ -258,24 +422,55 @@ def resolve_progress(
     if not key or not aid:
         return demo_progress(athlete, today)
 
+    # Sesong ikke startet — ingen ICU-kall, tomme tall merket Intervals
+    season_start = _parse_iso_date(athlete.get("season_start_date"))
+    if season_start and season_start > today:
+        return empty_progress(athlete, source="intervals", today=today)
+
+    cache_id = _cache_key(aid, key, start, end)
+    if use_cache:
+        with _cache_lock:
+            hit = _progress_cache.get(cache_id)
+            if hit and (time.time() - hit[0]) < _CACHE_TTL_SEC:
+                return dict(hit[1])
+
     try:
         activities = fetch_intervals_activities(
             key, aid, start.isoformat(), end.isoformat()
         )
         completed = sum_hours_by_discipline(activities)
         counts = count_sessions_by_discipline(activities)
-        return build_progress_payload(
+        payload = build_progress_payload(
             athlete,
             completed=completed,
             source="intervals",
             session_counts=counts,
             today=today,
+            activity_count=len(activities),
         )
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ValueError, json.JSONDecodeError, OSError):
-        payload = demo_progress(athlete, today)
-        payload["source"] = "demo"
-        payload["fetch_error"] = True
+        if use_cache:
+            with _cache_lock:
+                _progress_cache[cache_id] = (time.time(), dict(payload))
         return payload
+    except (
+        urllib.error.URLError,
+        urllib.error.HTTPError,
+        TimeoutError,
+        ValueError,
+        json.JSONDecodeError,
+        OSError,
+    ) as exc:
+        detail = str(exc) or exc.__class__.__name__
+        if isinstance(exc, urllib.error.HTTPError):
+            detail = f"HTTP {exc.code}"
+        # Linked but failed: do NOT show fake demo hours
+        return empty_progress(
+            athlete,
+            source="demo",
+            today=today,
+            fetch_error=True,
+            fetch_error_detail=detail,
+        )
 
 
 def days_to_goal(athlete: dict[str, Any], today: date | None = None) -> int | None:

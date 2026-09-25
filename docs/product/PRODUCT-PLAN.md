@@ -61,9 +61,9 @@ Gate ≥ 5 sykkeløkter med watt. Se [form-estimates.md](form-estimates.md).
 | Fase | Innhold |
 |------|---------|
 | 0–1 | ~~Docs + onboarding + chat + Du + Intervals-settings~~ (landet på PR #13) |
-| 2 | ICU les + overview + form_estimates + **fremskritt/compliance bars** |
-| 2b | **Grovplan / periodisering / bulk-oversikt** (read-first; mål-timer per disiplin) |
-| 2c | **UX-polish** (knapper, farger, overblikk-layout) |
+| 2 | ~~ICU activity-les + fremskritt/compliance~~ (Intervals når credentials; demo ellers) |
+| 2b | ~~Grovplan-strip~~ (current/next + dager til race); form_estimates fortsatt gated |
+| 2c | UX-polish leftovers (unngå konflikt med Du/Intervals Lagre-fix) |
 | 3 | Invite + training_pair |
 | 4 | Valgfri Intervals-write |
 | 5 | Proaktiv post-MVP |

@@ -467,8 +467,10 @@ function renderProgressSection(o) {
   const progress = o.progress || {}
   const rows = progress.disciplines || []
   const source = progress.source || 'demo'
-  const badge =
-    source === 'demo'
+  const fetchFailed = Boolean(progress.fetch_error)
+  const badge = fetchFailed
+    ? `<span class="badge badge-demo">Henting feilet</span>`
+    : source === 'demo'
       ? `<span class="badge badge-demo">Demo</span>`
       : progress.estimate
         ? `<span class="badge badge-est">Estimat</span>`
@@ -480,15 +482,21 @@ function renderProgressSection(o) {
   const bars = rows
     .map((d) => {
       const pct = d.progress_pct != null ? d.progress_pct : 0
+      const sessions =
+        d.session_count != null && source === 'intervals'
+          ? ` · ${d.session_count} økter`
+          : ''
       const target =
-        d.target_hours != null ? `${formatHours(d.completed_hours)} / ${formatHours(d.target_hours)} t` : `${formatHours(d.completed_hours)} t · sett mål i Du`
+        d.target_hours != null
+          ? `${formatHours(d.completed_hours)} / ${formatHours(d.target_hours)} t`
+          : `${formatHours(d.completed_hours)} t · sett mål i Du`
       const compliance =
         d.compliance_pct != null ? `${d.compliance_pct} %` : '—'
       return `
         <div class="progress-row">
           <div class="progress-meta">
             <span class="progress-label">${escapeHtml(d.label)}</span>
-            <span class="progress-nums">${escapeHtml(target)}</span>
+            <span class="progress-nums">${escapeHtml(target)}${escapeHtml(sessions)}</span>
             <span class="progress-pct">${escapeHtml(compliance)}</span>
           </div>
           <div class="progress-track" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="${escapeHtml(d.label)}">
@@ -497,14 +505,25 @@ function renderProgressSection(o) {
         </div>`
     })
     .join('')
+  let blurb = 'Sesongvolum vs mål (fullført / mål).'
+  if (fetchFailed) {
+    blurb = `Kunne ikke hente Intervals — viser 0 t. ${progress.fetch_error_detail || ''} Prøv igjen snart.`
+  } else if (source === 'demo') {
+    blurb = 'Illustrasjonstall — koble Intervals under Du for ekte volum.'
+  } else if (progress.season_not_started) {
+    blurb = 'Sesongen er ikke startet ennå — volum er 0 til sesongstart.'
+  } else if (progress.activity_count != null) {
+    blurb = `Sesongvolum vs mål · ${progress.activity_count} aktiviteter i vinduet.`
+  }
   return `
     <section class="section-block">
       <div class="section-head">
         <h2>Fremskritt</h2>
         ${badge}
       </div>
-      <p class="muted tight">${source === 'demo' ? 'Illustrasjonstall — koble Intervals for ekte volum.' : 'Sesongvolum vs mål.'}${windowLabel ? ` <span class="dim">(${escapeHtml(windowLabel)})</span>` : ''}</p>
+      <p class="muted tight">${escapeHtml(blurb.trim())}${windowLabel ? ` <span class="dim">(${escapeHtml(windowLabel)})</span>` : ''}</p>
       <div class="progress-list">${bars || `<p class="muted">Ingen disipliner.</p>`}</div>
+      <p class="muted tight dim formula-note">Formel: completed / season_target · maks 100&nbsp;%</p>
     </section>`
 }
 
@@ -513,12 +532,17 @@ function renderPlanStrip(o) {
   const cur = p.current_block
   const next = p.next_block
   const days = p.days_to_goal
+  const raceDate = p.goal_race_date
   const daysLabel =
     days == null
       ? 'Sett racedato i Du'
       : days < 0
         ? `${Math.abs(days)} dager siden mål`
         : `${days} dager til mål`
+  const raceSub =
+    raceDate && days != null
+      ? `<p class="muted tight race-sub">${escapeHtml(raceDate)}</p>`
+      : ''
   const curHtml = cur
     ? `<div class="plan-current">
         <p class="plan-kicker">Nåværende blokk</p>
@@ -535,7 +559,7 @@ function renderPlanStrip(o) {
     ? `<div class="plan-next">
         <p class="plan-kicker">Neste</p>
         <p class="plan-next-title">${escapeHtml(next.title || 'Uten tittel')}</p>
-        <p class="muted tight">fra ${escapeHtml(next.start_date || '?')}</p>
+        <p class="muted tight">fra ${escapeHtml(next.start_date || '?')}${next.theme ? ` · ${escapeHtml(next.theme)}` : ''}</p>
       </div>`
     : `<div class="plan-next">
         <p class="plan-kicker">Neste</p>
@@ -545,7 +569,10 @@ function renderPlanStrip(o) {
     <section class="section-block plan-strip">
       <div class="section-head">
         <h2>Periodisering</h2>
-        <span class="days-pill">${escapeHtml(daysLabel)}</span>
+        <div class="days-block">
+          <span class="days-pill">${escapeHtml(daysLabel)}</span>
+          ${raceSub}
+        </div>
       </div>
       <div class="plan-grid">
         ${curHtml}

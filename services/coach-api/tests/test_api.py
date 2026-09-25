@@ -356,3 +356,76 @@ def test_plan_blocks_crud_and_overview_strip(client):
     assert deleted.status_code == 200
     left = c.get("/v1/athlete/me/plan-blocks", headers=headers)
     assert len(left.json()["blocks"]) == 1
+
+
+def test_overview_progress_from_intervals_when_linked(client, monkeypatch):
+    """Credentials + mocked ICU activities → source intervals (not demo hours)."""
+    c, _ = client
+    aid = _onboard(c)
+    headers = {"X-Athlete-Id": aid}
+
+    monkeypatch.setattr(
+        main_mod,
+        "smoke_test_intervals",
+        lambda key, icu: (True, None),
+    )
+    put = c.put(
+        "/v1/athlete/me/intervals",
+        headers=headers,
+        json={
+            "intervals_athlete_id": "i42",
+            "intervals_api_key": "live-key-for-progress",
+            "verify": False,
+        },
+    )
+    assert put.status_code == 200
+
+    c.patch(
+        "/v1/athlete/me",
+        headers=headers,
+        json={
+            "season_bike_hours_target": 500,
+            "season_swim_hours_target": 100,
+            "season_run_hours_target": 150,
+            "season_strength_hours_target": 50,
+            "season_start_date": "2026-01-01",
+            "goal_race_date": "2027-08-20",
+        },
+    )
+
+    acts = [
+        {
+            "id": "r1",
+            "type": "Ride",
+            "moving_time": 3600 * 10,
+            "start_date_local": "2026-03-01T08:00:00",
+        },
+        {
+            "id": "s1",
+            "type": "Swim",
+            "moving_time": 3600,
+            "start_date_local": "2026-03-02T07:00:00",
+        },
+    ]
+
+    def _fake_fetch(api_key, athlete_id, oldest, newest, **kwargs):
+        assert athlete_id == "i42"
+        assert api_key == "live-key-for-progress"
+        return acts
+
+    import progress_compliance as pc
+
+    monkeypatch.setattr(pc, "fetch_intervals_activities", _fake_fetch)
+    pc.clear_progress_cache()
+
+    ov = c.get("/v1/overview", headers=headers)
+    assert ov.status_code == 200
+    progress = ov.json()["progress"]
+    assert progress["source"] == "intervals"
+    assert progress["activity_count"] == 2
+    bike = next(d for d in progress["disciplines"] if d["id"] == "bike")
+    assert bike["completed_hours"] == 10.0
+    assert bike["compliance_pct"] == 2.0
+    peri = ov.json()["periodization"]
+    assert peri["days_to_goal"] is not None
+    assert peri["goal_race_date"] == "2027-08-20"

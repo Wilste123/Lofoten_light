@@ -433,7 +433,7 @@ def _overview_payload(
     if intervals_linked:
         icu = linked.get("intervals_athlete_id") or ""
         intervals_hint = f"Koblet (athlete {icu}). Detaljer og kalender lever i Intervals."
-        uplift = "Intervals er koblet — volum beregnes fra aktiviteter når sync lykkes."
+        uplift = "Intervals er koblet — sesongvolum hentes fra aktiviteter."
     else:
         intervals_hint = "Ikke koblet ennå. Legg inn ID + API-nøkkel under Du → Intervals."
         uplift = "Koble Intervals under Du for ekte volum — demo-tall vises inntil da."
@@ -443,6 +443,17 @@ def _overview_payload(
         uplift = f"Retning: {athlete['goal_text'][:120]}"
 
     progress = resolve_progress(athlete, secrets)
+    if progress.get("fetch_error"):
+        uplift = "Intervals-henting feilet — fremskritt viser 0 t til neste forsøk."
+    elif (
+        not athlete.get("weekly_focus")
+        and not athlete.get("goal_text")
+        and progress.get("source") == "intervals"
+        and intervals_linked
+    ):
+        n = progress.get("activity_count")
+        if n is not None:
+            uplift = f"Volum fra Intervals ({n} aktiviteter i sesongvinduet)."
     block_list = blocks or []
     picked = pick_current_and_next(block_list)
     days = days_to_goal(athlete)

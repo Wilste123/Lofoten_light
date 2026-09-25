@@ -1,0 +1,14 @@
+name: Sykkel sweet spot innføring 2×12
+sport: bike
+zwo: workouts/zwo/bike/sweet-spot-2x20.zwo
+---
+Onsdag B06 — første SS i B3. **Kun to blokker** à 12 min @ 88–92 % FTP (ca. 184–193 W ved 210 W). RPE 6–7.
+
+Ingen tredje blokk. Jul/stress: kutt til én blokk.
+
+---intervals---
+- 15m 68% FTP
+Main Set 2x
+- 12m 90% FTP
+- 5m 65% FTP
+- 15m 55% FTP

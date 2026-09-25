@@ -1,0 +1,20 @@
+name: CSS-test (400 + 200)
+sport: swim
+intervals_target: Pace
+---
+Fredag CSS-test. Maks jevn på 400 og 200 — ikke sprint start. Noter tider.
+
+Etterpå: CSS = (T400 + T200) / 6 per 100 m. Oppdater profil og svømsoner.
+
+Plan B: dropp test → S04 8×100 aerob RPE 5.
+
+---intervals---
+- Warmup 300mtr 89% Pace
+- 4x 50mtr 85% Pace 15s rest
+
+Main Set
+- 400mtr 100% Pace
+- 5m rest
+- 200mtr 100% Pace
+
+- Cooldown 200mtr 85% Pace

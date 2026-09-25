@@ -1,0 +1,10 @@
+date,weekday,workout_id,zwo_path,ftp_pct_summary,notes
+2026-11-25,Wednesday,B03,workouts/zwo/bike/endurance-120.zwo,"~68-70% FTP","Uke 9 ons 105 min"
+2026-11-28,Saturday,B02,workouts/zwo/bike/endurance-90.zwo,"~68%","Uke 9 lør"
+2026-12-02,Wednesday,B04,workouts/zwo/bike/endurance-180.zwo,"Z2 lang","Uke 10 ons 135 min"
+2026-12-05,Saturday,B02,workouts/zwo/bike/endurance-90.zwo,"~68%","Uke 10 lør 75 min"
+2026-12-09,Wednesday,B04,workouts/zwo/bike/endurance-180.zwo,"Z2 lang","Uke 11 ons 150 min"
+2026-12-12,Saturday,B03,workouts/zwo/bike/endurance-120.zwo,"~70%","Uke 11 lør 90 min"
+2026-12-16,Wednesday,B01,workouts/zwo/bike/recovery-spin-45.zwo,"Recovery","Uke 12 ons"
+2026-12-23,Wednesday,B06,workouts/zwo/bike/sweet-spot-2x20.zwo,"2×12 @ 90% — kun 2 blokker","Uke 13 B06 innføring"
+2026-12-26,Saturday,B04,workouts/zwo/bike/endurance-120.zwo,"Z2 lang","Uke 13 lør 120 min"

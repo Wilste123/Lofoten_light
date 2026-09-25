@@ -1,0 +1,14 @@
+name: Løp long easy 85
+sport: run
+intervals_target: HR
+---
+Søndag lang rolig. Flatt om isjas/rygg murrer. Ingen tempo.
+
+6×15 s strides etter ca. 50 min er valgfritt.
+
+---intervals---
+- Warmup 10m 81-89% LTHR
+
+- 65m 81-89% LTHR
+
+- Cooldown 10m 75-80% LTHR

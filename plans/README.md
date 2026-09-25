@@ -11,6 +11,7 @@ Store meso/micro cycles as markdown, e.g. `2026-09-28-uke-01.md`.
 | **CSV ukentlige coach-notater** | **`csv/trainingdojo-uke-notater-4uker-opv.csv`** |
 | Lesbare ukenotater | `uke-notater/2026-09-28-blokk-4uker.md` |
 | **Blokk / tanke bak fasene** | **`blokker-periodisering-2026-2027.md`** |
+| **Uke 8 → des 2026 (bolk per uke)** | **`2026-uke08-til-arsende.md`** · `calendar/2026-uke-bolk.csv` · `calendar/2026-bolk-markers.ics` |
 | Makro (månedstabell) | `2026-2027-12mnd-periodisering.md` |
 | CSV årsoversikt | `csv/12mnd-periodisering.csv` |
 

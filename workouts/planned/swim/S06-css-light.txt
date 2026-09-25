@@ -1,0 +1,15 @@
+name: Svøm CSS-intervaller lett
+sport: swim
+intervals_target: Pace
+---
+Lett CSS-arbeid etter test. Jevn teknikk — ikke helt ut.
+
+Hvis CSS ukjent: 6×100 @ RPE 6–7, 25 s pause.
+
+---intervals---
+- Warmup 300mtr 89% Pace
+
+Main Set 6x
+- 100mtr 96% Pace 20s rest
+
+- Cooldown 200mtr 85% Pace

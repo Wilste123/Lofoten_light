@@ -32,3 +32,5 @@ CORS_ORIGINS = [
     ).split(",")
     if o.strip()
 ]
+# Optional: POST /v1/admin/seed-from-repo with header X-Admin-Seed-Token
+ADMIN_SEED_TOKEN = os.environ.get("ADMIN_SEED_TOKEN", "").strip()

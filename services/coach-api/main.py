@@ -268,7 +268,10 @@ def chat(
         secrets = get_athlete_secrets(conn, aid)
         overview = _overview_payload(athlete, secrets)
         system = build_system_prompt(
-            athlete, config.KNOWLEDGE_DIR, overview_stub=overview
+            athlete,
+            config.KNOWLEDGE_DIR,
+            overview_stub=overview,
+            athletes_dir=config.ATHLETES_DATA_DIR,
         )
         reply = call_llm(
             api_key=config.OPENAI_API_KEY,
@@ -347,6 +350,37 @@ def remove_plan_block(
     if not ok:
         raise HTTPException(404, "Blokk ikke funnet")
     return {"ok": True}
+
+
+class SeedFromRepoIn(BaseModel):
+    dry_run: bool = False
+    display_name: str = "William"
+    coach_name: str = "Ole"
+    seed_id: str = "william-lofoten"
+
+
+@app.post("/v1/admin/seed-from-repo")
+def admin_seed_from_repo(
+    body: SeedFromRepoIn,
+    x_admin_seed_token: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Optional: seed William from docs/athlete. Requires ADMIN_SEED_TOKEN."""
+    expected = config.ADMIN_SEED_TOKEN
+    if not expected:
+        raise HTTPException(
+            503,
+            "ADMIN_SEED_TOKEN er ikke satt — bruk CLI scripts/seed_william_from_repo.py",
+        )
+    if not x_admin_seed_token or x_admin_seed_token != expected:
+        raise HTTPException(401, "Ugyldig eller manglende X-Admin-Seed-Token")
+    from seed_from_repo import seed_athlete
+
+    return seed_athlete(
+        display_name=body.display_name,
+        coach_name=body.coach_name,
+        seed_id=body.seed_id,
+        dry_run=body.dry_run,
+    )
 
 
 def _overview_payload(

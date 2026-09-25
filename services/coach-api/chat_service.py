@@ -5,8 +5,10 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from pathlib import Path
+
 from knowledge_ctx import load_knowledge_bundle
-from profile import render_profile_md
+from profile import load_profile_md
 
 
 PERSONALITY_HINTS = {
@@ -21,12 +23,13 @@ def build_system_prompt(
     athlete: dict[str, Any],
     knowledge_dir,
     overview_stub: dict[str, Any] | None = None,
+    athletes_dir: Path | None = None,
 ) -> str:
     personality = athlete.get("coach_personality") or "direkte"
     hint = PERSONALITY_HINTS.get(personality, PERSONALITY_HINTS["direkte"])
     coach = athlete.get("coach_display_name") or "Trener"
     name = athlete.get("display_name") or "utøveren"
-    profile_md = render_profile_md(athlete)
+    profile_md = load_profile_md(athletes_dir or Path("."), athlete)
     knowledge = load_knowledge_bundle(knowledge_dir)
     overview_json = json.dumps(overview_stub or {}, ensure_ascii=False)
 

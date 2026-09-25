@@ -34,6 +34,17 @@ Aldri commit `.env` eller fulle Intervals-nøkler. GET på secrets returnerer ba
 
 Onboarding og PATCH skriver `data/athletes/{id}/profile.md`.
 
+Chat leser on-disk `profile.md` (inkl. seedet rik profil) via `load_profile_md`.
+
+## Seed William fra repo
+
+```bash
+python3 services/coach-api/scripts/seed_william_from_repo.py
+python3 services/coach-api/scripts/seed_william_from_repo.py --dry-run
+```
+
+Se `docs/product/import-from-repo.md`. Valgfri `POST /v1/admin/seed-from-repo` krever `ADMIN_SEED_TOKEN`.
+
 `PUT /v1/athlete/me/intervals` body: `{ "intervals_athlete_id", "intervals_api_key", "verify": true }`.  
 Ved `verify: true` gjøres en soft smoke-test mot Intervals; nøkkel lagres uansett. Svar inkluderer `verified` / `verify_error`.
 

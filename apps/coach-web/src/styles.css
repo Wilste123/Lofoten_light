@@ -476,6 +476,40 @@ main {
   cursor: wait;
 }
 
+.badge-off {
+  color: var(--muted);
+}
+
+.intervals-section {
+  margin-top: 0.5rem;
+}
+
+.intervals-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.15rem;
+}
+
+.intervals-actions .btn {
+  flex: 1 1 8rem;
+  min-height: 2.75rem;
+}
+
+.intervals-status {
+  margin: 0 0 0.65rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.intervals-status.is-ok {
+  color: var(--accent);
+}
+
+.intervals-status.is-warn {
+  color: #c45c26;
+}
+
 .field {
   margin-bottom: 0.75rem;
 }

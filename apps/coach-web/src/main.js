@@ -43,6 +43,8 @@ const state = {
     nutrition_notes: '',
   },
   busy: false,
+  intervalsBusy: false,
+  intervalsStatus: '',
   error: '',
   intervalsError: '',
   planError: '',
@@ -58,19 +60,47 @@ function setAthleteId(id) {
   localStorage.setItem(STORAGE_KEY, id)
 }
 
-async function api(path, { method = 'GET', body, athleteId } = {}) {
+async function api(path, { method = 'GET', body, athleteId, timeoutMs } = {}) {
   const headers = { 'Content-Type': 'application/json' }
   const id = athleteId ?? getAthleteId()
   if (id) headers['X-Athlete-Id'] = id
-  const res = await fetch(`${API}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  })
+  const ctrl = typeof timeoutMs === 'number' ? new AbortController() : null
+  const timer =
+    ctrl && timeoutMs > 0
+      ? setTimeout(() => ctrl.abort(), timeoutMs)
+      : null
+  let res
+  try {
+    res = await fetch(`${API}${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+      signal: ctrl?.signal,
+    })
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      throw new Error('Tidsavbrudd — prøv igjen')
+    }
+    throw err
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.detail || data.message || `Feil ${res.status}`)
+  if (!res.ok) {
+    const detail = data.detail
+    const msg =
+      typeof detail === 'string'
+        ? detail
+        : Array.isArray(detail)
+          ? detail.map((d) => d.msg || d).join('; ')
+          : data.message || `Feil ${res.status}`
+    throw new Error(msg)
+  }
   return data
 }
+
+/** Client wall budget for Intervals save/verify — must exceed server soft-verify (~5s). */
+const INTERVALS_CLIENT_TIMEOUT_MS = 10000
 
 function setAccent(color) {
   document.documentElement.style.setProperty('--accent', color || ACCENTS[0])
@@ -682,29 +712,59 @@ function renderDu() {
       <button class="btn btn-primary" type="submit" ${state.busy ? 'disabled' : ''}>Lagre profil</button>
     </form>
     ${renderPlanBlocksEditor()}
-    <form id="intervals-form" class="section-block" style="margin-top:1rem">
-      <h2>Intervals</h2>
-      <p class="muted">
+    <form id="intervals-form" class="section-block intervals-section">
+      <div class="section-head">
+        <h2>Intervals</h2>
+        <span class="badge ${state.intervals.connected ? 'badge-live' : 'badge-off'}" id="intervals-status-badge">
+          ${state.intervals.connected ? 'Koblet' : 'Ikke koblet'}
+        </span>
+      </div>
+      <p class="muted tight">
         ${
           state.intervals.connected
-            ? `Koblet${state.intervals.api_key_hint ? ` · nøkkel ${escapeHtml(state.intervals.api_key_hint)}` : ''}.`
-            : 'Ikke koblet. Hent nøkkel under Intervals → Settings → Developer.'
+            ? `ID ${escapeHtml(state.intervals.intervals_athlete_id || '—')}${
+                state.intervals.api_key_hint
+                  ? ` · nøkkel ${escapeHtml(state.intervals.api_key_hint)}`
+                  : ''
+              }. Nøkkel lagres kun på server.`
+            : 'Hent nøkkel under Intervals → Settings → Developer Settings. Lagres kun på server.'
         }
       </p>
       <div class="field">
-        <label for="intervals_athlete_id">Intervals athlete ID</label>
+        <label for="intervals_athlete_id">Athlete ID</label>
         <input id="intervals_athlete_id" name="intervals_athlete_id" autocomplete="off"
+          inputmode="text" enterkeyhint="next"
           value="${escapeHtml(state.intervals.form_athlete_id || '')}"
-          placeholder="f.eks. i123456" required />
+          placeholder="f.eks. i123456" required ${state.intervalsBusy ? 'disabled' : ''} />
       </div>
       <div class="field">
         <label for="intervals_api_key">API-nøkkel</label>
         <input id="intervals_api_key" name="intervals_api_key" type="password" autocomplete="off"
+          enterkeyhint="done"
           value="${escapeHtml(state.intervals.form_api_key || '')}"
-          placeholder="${state.intervals.api_key_hint ? 'Ny nøkkel for å bytte' : 'Lim inn API-nøkkel'}" required />
+          placeholder="${
+            state.intervals.api_key_hint
+              ? `Lagret ${escapeHtml(state.intervals.api_key_hint)} — tomt = behold`
+              : 'Lim inn API-nøkkel'
+          }"
+          ${state.intervals.connected ? '' : 'required'}
+          ${state.intervalsBusy ? 'disabled' : ''} />
       </div>
+      ${
+        state.intervalsStatus
+          ? `<p class="intervals-status ${state.intervalsError ? 'is-warn' : 'is-ok'}">${escapeHtml(state.intervalsStatus)}</p>`
+          : ''
+      }
       ${state.intervalsError ? `<p class="error">${escapeHtml(state.intervalsError)}</p>` : ''}
-      <button class="btn btn-primary" type="submit" ${state.busy ? 'disabled' : ''}>Lagre Intervals</button>
+      <div class="intervals-actions">
+        <button class="btn btn-primary" type="submit" ${state.intervalsBusy ? 'disabled' : ''}>
+          ${state.intervalsBusy ? 'Lagrer…' : 'Lagre'}
+        </button>
+        <button class="btn secondary" type="button" id="intervals-test"
+          ${state.intervalsBusy || !state.intervals.connected ? 'disabled' : ''}>
+          Test tilkobling
+        </button>
+      </div>
     </form>
   `
 }
@@ -715,6 +775,7 @@ function bindApp() {
       state.tab = btn.dataset.tab
       state.error = ''
       state.intervalsError = ''
+      state.intervalsStatus = ''
       state.planError = ''
       if (state.tab === 'overblikk') await refreshOverview()
       if (state.tab === 'du') {
@@ -899,39 +960,97 @@ function bindApp() {
     })
   })
 
+  const applyIntervalsPublic = (data) => {
+    state.intervals.connected = !!data.connected
+    state.intervals.intervals_athlete_id = data.intervals_athlete_id || ''
+    state.intervals.api_key_hint = data.api_key_hint || null
+    state.intervals.form_athlete_id = data.intervals_athlete_id || ''
+    state.intervals.form_api_key = ''
+  }
+
   const intervalsForm = document.getElementById('intervals-form')
   intervalsForm?.addEventListener('submit', async (e) => {
     e.preventDefault()
+    if (state.intervalsBusy) return
     const fd = new FormData(intervalsForm)
     const payload = {
       intervals_athlete_id: String(fd.get('intervals_athlete_id') || '').trim(),
       intervals_api_key: String(fd.get('intervals_api_key') || '').trim(),
       verify: true,
     }
+    if (!payload.intervals_athlete_id) {
+      state.intervalsError = 'Athlete ID mangler'
+      state.intervalsStatus = ''
+      render()
+      return
+    }
+    if (!payload.intervals_api_key && !state.intervals.connected) {
+      state.intervalsError = 'API-nøkkel mangler'
+      state.intervalsStatus = ''
+      render()
+      return
+    }
     state.intervals.form_athlete_id = payload.intervals_athlete_id
     state.intervals.form_api_key = payload.intervals_api_key
-    state.busy = true
+    state.intervalsBusy = true
     state.intervalsError = ''
+    state.intervalsStatus = 'Lagrer…'
     render()
     try {
-      const data = await api('/v1/athlete/me/intervals', { method: 'PUT', body: payload })
-      state.intervals.connected = !!data.connected
-      state.intervals.intervals_athlete_id = data.intervals_athlete_id || ''
-      state.intervals.api_key_hint = data.api_key_hint || null
-      state.intervals.form_athlete_id = data.intervals_athlete_id || ''
-      state.intervals.form_api_key = ''
+      const data = await api('/v1/athlete/me/intervals', {
+        method: 'PUT',
+        body: payload,
+        timeoutMs: INTERVALS_CLIENT_TIMEOUT_MS,
+      })
+      applyIntervalsPublic(data)
       if (data.verified === false && data.verify_error) {
-        toast(`Lagret — Intervals-sjekk feilet: ${data.verify_error}`)
+        state.intervalsStatus = `Lagret, men tilkobling feilet: ${data.verify_error}`
+        toast('Lagret — tilkobling feilet')
       } else if (data.verified) {
-        toast('Intervals lagret og verifisert')
+        state.intervalsStatus = 'Lagret og tilkobling OK'
+        toast('Intervals lagret')
       } else {
+        state.intervalsStatus = 'Lagret'
         toast('Intervals lagret')
       }
-      await refreshOverview()
+      try {
+        await refreshOverview()
+      } catch {
+        /* overview is best-effort after save */
+      }
     } catch (err) {
       state.intervalsError = err.message || 'Kunne ikke lagre Intervals'
+      state.intervalsStatus = ''
     } finally {
-      state.busy = false
+      state.intervalsBusy = false
+      render()
+    }
+  })
+
+  document.getElementById('intervals-test')?.addEventListener('click', async () => {
+    if (state.intervalsBusy || !state.intervals.connected) return
+    state.intervalsBusy = true
+    state.intervalsError = ''
+    state.intervalsStatus = 'Tester tilkobling…'
+    render()
+    try {
+      const data = await api('/v1/athlete/me/intervals/verify', {
+        method: 'POST',
+        timeoutMs: INTERVALS_CLIENT_TIMEOUT_MS,
+      })
+      applyIntervalsPublic(data)
+      if (data.verified) {
+        state.intervalsStatus = 'Tilkobling OK'
+        toast('Tilkobling OK')
+      } else {
+        state.intervalsStatus = `Tilkobling feilet: ${data.verify_error || 'ukjent feil'}`
+        toast('Tilkobling feilet')
+      }
+    } catch (err) {
+      state.intervalsError = err.message || 'Test feilet'
+      state.intervalsStatus = ''
+    } finally {
+      state.intervalsBusy = false
       render()
     }
   })

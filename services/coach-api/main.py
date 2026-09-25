@@ -131,7 +131,8 @@ class ChatIn(BaseModel):
 
 class IntervalsCredentialsIn(BaseModel):
     intervals_athlete_id: str = Field(min_length=1)
-    intervals_api_key: str = Field(min_length=1)
+    # Empty string keeps existing key when already connected (phone UX).
+    intervals_api_key: str = ""
     verify: bool = True
 
 
@@ -230,12 +231,28 @@ def put_intervals(
     body: IntervalsCredentialsIn,
     x_athlete_id: str | None = Header(default=None),
 ) -> dict[str, Any]:
-    """Store Intervals athlete ID + API key in athlete_secrets (server only)."""
+    """Store Intervals credentials first, then soft-verify (never blocks forever)."""
     aid = _require_athlete(x_athlete_id)
     icu_id = body.intervals_athlete_id.strip()
-    api_key = body.intervals_api_key.strip()
-    if not icu_id or not api_key:
-        raise HTTPException(400, "Intervals athlete ID og API-nøkkel kreves")
+    api_key_in = body.intervals_api_key.strip()
+    if not icu_id:
+        raise HTTPException(400, "Intervals athlete ID kreves")
+
+    with db_session(config.DATABASE_PATH) as conn:
+        if not get_athlete(conn, aid):
+            raise HTTPException(404, "Utøver ikke funnet")
+        existing = get_athlete_secrets(conn, aid)
+        existing_key = ((existing or {}).get("intervals_api_key") or "").strip()
+        # Prefer new key; empty keeps stored key so phone users can re-save ID only.
+        api_key = api_key_in or existing_key
+        if not api_key:
+            raise HTTPException(400, "API-nøkkel kreves (eller lagre en nøkkel først)")
+        row = upsert_athlete_secrets(
+            conn,
+            aid,
+            intervals_api_key=api_key,
+            intervals_athlete_id=icu_id,
+        )
 
     verified: bool | None = None
     verify_error: str | None = None
@@ -244,18 +261,29 @@ def put_intervals(
         verified = ok
         verify_error = err
 
-    with db_session(config.DATABASE_PATH) as conn:
-        if not get_athlete(conn, aid):
-            raise HTTPException(404, "Utøver ikke funnet")
-        row = upsert_athlete_secrets(
-            conn,
-            aid,
-            intervals_api_key=api_key,
-            intervals_athlete_id=icu_id,
-        )
     out = secrets_public_view(row)
     out["verified"] = verified
     out["verify_error"] = verify_error
+    return out
+
+
+@app.post("/v1/athlete/me/intervals/verify")
+def verify_intervals(x_athlete_id: str | None = Header(default=None)) -> dict[str, Any]:
+    """Soft-test stored Intervals credentials (5s cap). Does not change secrets."""
+    aid = _require_athlete(x_athlete_id)
+    with db_session(config.DATABASE_PATH) as conn:
+        if not get_athlete(conn, aid):
+            raise HTTPException(404, "Utøver ikke funnet")
+        secrets = get_athlete_secrets(conn, aid)
+    view = secrets_public_view(secrets)
+    if not view.get("connected"):
+        raise HTTPException(400, "Ingen Intervals-opplysninger lagret ennå")
+    key = ((secrets or {}).get("intervals_api_key") or "").strip()
+    icu_id = ((secrets or {}).get("intervals_athlete_id") or "").strip()
+    ok, err = smoke_test_intervals(key, icu_id)
+    out = dict(view)
+    out["verified"] = ok
+    out["verify_error"] = err
     return out
 
 

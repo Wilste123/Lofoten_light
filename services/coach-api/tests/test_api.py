@@ -191,6 +191,77 @@ def test_intervals_stores_even_when_verify_fails(client, monkeypatch):
     assert "401" in (r.json().get("verify_error") or "")
 
 
+def test_intervals_keeps_key_when_blank_and_verify_endpoint(client, monkeypatch):
+    c, _ = client
+    aid = _onboard(c)
+    headers = {"X-Athlete-Id": aid}
+    calls = {"n": 0}
+
+    def _ok(key, icu, **_kw):
+        calls["n"] += 1
+        assert key == "keep-me-secret-key99"
+        return True, None
+
+    monkeypatch.setattr(main_mod, "smoke_test_intervals", _ok)
+
+    put1 = c.put(
+        "/v1/athlete/me/intervals",
+        headers=headers,
+        json={
+            "intervals_athlete_id": "i42",
+            "intervals_api_key": "keep-me-secret-key99",
+            "verify": False,
+        },
+    )
+    assert put1.status_code == 200
+    assert put1.json()["verified"] is None
+
+    put2 = c.put(
+        "/v1/athlete/me/intervals",
+        headers=headers,
+        json={
+            "intervals_athlete_id": "i42",
+            "intervals_api_key": "",
+            "verify": True,
+        },
+    )
+    assert put2.status_code == 200, put2.text
+    assert put2.json()["connected"] is True
+    assert put2.json()["verified"] is True
+    assert put2.json()["api_key_hint"] == "••••ey99"
+
+    with db_session(config.DATABASE_PATH) as conn:
+        row = get_athlete_secrets(conn, aid)
+    assert row["intervals_api_key"] == "keep-me-secret-key99"
+
+    v = c.post("/v1/athlete/me/intervals/verify", headers=headers)
+    assert v.status_code == 200
+    assert v.json()["verified"] is True
+    assert calls["n"] >= 2
+
+
+def test_intervals_verify_requires_stored(client):
+    c, _ = client
+    aid = _onboard(c)
+    r = c.post("/v1/athlete/me/intervals/verify", headers={"X-Athlete-Id": aid})
+    assert r.status_code == 400
+
+
+def test_smoke_test_intervals_hard_timeout(monkeypatch):
+    import intervals_smoke as smoke
+
+    def _hang(*_a, **_k):
+        import time
+
+        time.sleep(30)
+        return True, None
+
+    monkeypatch.setattr(smoke, "_request_athlete", _hang)
+    ok, err = smoke.smoke_test_intervals("k", "i1", timeout_s=0.3)
+    assert ok is False
+    assert err and "Tidsavbrudd" in err
+
+
 def test_overview_progress_demo_and_season_targets(client):
     c, _ = client
     aid = _onboard(c)

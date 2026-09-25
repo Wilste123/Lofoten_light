@@ -19,5 +19,6 @@ if [ "${SEED_ON_BOOT:-1}" = "1" ]; then
   ) &
 fi
 
-echo "boot: uvicorn"
-exec uvicorn main:app --host 0.0.0.0 --port "${PORT:-8080}"
+echo "boot: uvicorn on 0.0.0.0:8080 (fly http_service.internal_port)"
+# Hardcode 8080 — do not trust injected PORT=3000 from older Fly defaults
+exec uvicorn main:app --host 0.0.0.0 --port 8080

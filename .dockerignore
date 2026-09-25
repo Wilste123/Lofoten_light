@@ -1,0 +1,17 @@
+.git
+.venv
+**/__pycache__
+**/.pytest_cache
+**/node_modules
+apps/coach-web/dist
+data/coach.db
+data/athletes
+*.env
+.env
+services/coach-api/.venv
+services/coach-api/tests/_tmp
+reports
+workouts
+data/trainingpeaks
+data/intervals
+.cursor

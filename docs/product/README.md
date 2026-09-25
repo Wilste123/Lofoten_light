@@ -17,6 +17,7 @@
 | [form-estimates.md](form-estimates.md) | 5-økt-gate, MMP-FTP, VO₂ |
 | [partner-sync.md](partner-sync.md) | To trenere, delte tid/sted-vinduer |
 | [import-from-repo.md](import-from-repo.md) | Seed William fra `docs/athlete/` + `plans/` |
+| [fly-deploy.md](fly-deploy.md) | Fly.io deploy + secrets + telefon-test |
 
 ## Kode
 

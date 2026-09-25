@@ -7,10 +7,14 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Repo root = services/coach-api/../..
-REPO_ROOT = Path(__file__).resolve().parents[2]
+# Repo root = services/coach-api/../.. locally; /app in Docker (docs/athlete next to API)
+_API_DIR = Path(__file__).resolve().parent
+if (_API_DIR / "docs" / "athlete").is_dir():
+    REPO_ROOT = _API_DIR
+else:
+    REPO_ROOT = _API_DIR.parents[2]
 load_dotenv(REPO_ROOT / ".env")
-load_dotenv(Path(__file__).resolve().parent / ".env")
+load_dotenv(_API_DIR / ".env")
 
 DATABASE_PATH = Path(
     os.environ.get("DATABASE_PATH", str(REPO_ROOT / "data" / "coach.db"))
@@ -34,3 +38,8 @@ CORS_ORIGINS = [
 ]
 # Optional: POST /v1/admin/seed-from-repo with header X-Admin-Seed-Token
 ADMIN_SEED_TOKEN = os.environ.get("ADMIN_SEED_TOKEN", "").strip()
+# Built web UI (Fly / Docker). Empty → API only.
+STATIC_DIR = Path(os.environ["STATIC_DIR"]) if os.environ.get("STATIC_DIR") else None
+if STATIC_DIR is None:
+    _candidate = Path(__file__).resolve().parents[2] / "apps" / "coach-web" / "dist"
+    STATIC_DIR = _candidate if _candidate.is_dir() else None

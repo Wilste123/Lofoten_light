@@ -96,6 +96,11 @@ function escapeHtml(s) {
 }
 
 async function bootstrap() {
+  const params = new URLSearchParams(location.search)
+  const fromQuery = params.get('athlete')
+  if (fromQuery && fromQuery !== getAthleteId()) {
+    setAthleteId(fromQuery)
+  }
   const id = getAthleteId()
   const data = await api('/v1/session/bootstrap', {
     method: 'POST',
@@ -282,11 +287,51 @@ function renderOnboarding() {
         ${state.error ? `<p class="error">${escapeHtml(state.error)}</p>` : ''}
         <button class="btn btn-primary" type="submit" ${state.busy ? 'disabled' : ''}>Start med treneren</button>
       </form>
+      <p class="muted" style="margin-top:1.25rem">Allerede seedet fra repo (Fly / lokal)?</p>
+      <button type="button" class="btn" id="use-seed-william" ${state.busy ? 'disabled' : ''}>
+        Bruk seedet William-profil
+      </button>
     </div>
   `
 }
 
 function bindOnboarding() {
+  document.getElementById('use-seed-william')?.addEventListener('click', async () => {
+    state.busy = true
+    state.error = ''
+    render()
+    try {
+      const seedId = 'william-lofoten'
+      const data = await api('/v1/session/bootstrap', {
+        method: 'POST',
+        body: { athlete_id: seedId },
+        athleteId: null,
+      })
+      if (data.needs_onboarding || !data.athlete) {
+        throw new Error(
+          'Fant ikke william-lofoten. Kjør seed / fly deploy med SEED_ON_BOOT=1.'
+        )
+      }
+      setAthleteId(seedId)
+      state.athlete = data.athlete
+      setAccent(data.athlete.accent_color)
+      state.messages = [
+        {
+          role: 'assistant',
+          content: `Hei ${data.athlete.display_name}. Jeg er ${data.athlete.coach_display_name}. Profilen er seedet fra repo — spør om avtaler, rygg eller ukens fokus.`,
+        },
+      ]
+      await refreshOverview()
+      await refreshIntervals()
+      await refreshPlanBlocks()
+      toast('Seedet William lastet')
+      render()
+    } catch (err) {
+      state.error = err.message || 'Kunne ikke loade seed'
+      state.busy = false
+      render()
+    }
+  })
   document.querySelectorAll('.swatch').forEach((btn) => {
     btn.addEventListener('click', () => {
       const form = document.getElementById('onboard-form')

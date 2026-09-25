@@ -7,6 +7,8 @@ from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 import config
@@ -452,3 +454,29 @@ def _overview_payload(
             "goal_race_date": athlete.get("goal_race_date"),
         },
     }
+
+
+def _mount_static_ui() -> None:
+    """Serve Vite build from STATIC_DIR (Fly: same origin as /v1)."""
+    static = config.STATIC_DIR
+    if not static:
+        return
+    root = Path(static)
+    if not root.is_dir():
+        return
+    index = root / "index.html"
+    if index.is_file():
+
+        @app.get("/")
+        def _spa_index() -> FileResponse:
+            return FileResponse(index)
+
+    app.mount(
+        "/",
+        StaticFiles(directory=str(root), html=True),
+        name="ui",
+    )
+
+
+_mount_static_ui()
+

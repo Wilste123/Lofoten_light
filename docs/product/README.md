@@ -7,12 +7,13 @@
 
 | Fil | Innhold |
 |-----|---------|
-| [PRODUCT-PLAN.md](PRODUCT-PLAN.md) | Kanonisk produktplan (faser, prinsipper, onboarding → profilfil) |
+| [PRODUCT-PLAN.md](PRODUCT-PLAN.md) | Kanonisk produktplan (faser, onboarding → profil + GI) |
 | [mvp-scope.md](mvp-scope.md) | MVP-suksess: chat + overblikk; non-goals |
-| [anti-patterns.md](anti-patterns.md) | Ingen Pondus `coach_bot`, Slack, tool-loop chat |
-| [data-storage.md](data-storage.md) | SQLite + Fly volume; schema inkl. fremtidige `training_pairs` |
-| [form-estimates.md](form-estimates.md) | 5-økt-gate, MMP-FTP, VO₂-regler + kilder |
-| [partner-sync.md](partner-sync.md) | To trenere, delte tid/sted-vinduer (ikke delte økter) |
+| [anti-patterns.md](anti-patterns.md) | Pondus, tool-loop, diagnose — hva vi unngår |
+| [data-storage.md](data-storage.md) | SQLite + Fly volume; schema inkl. `training_pairs` |
+| [athlete-profile.md](athlete-profile.md) | Profilfil-felter inkl. IBS/gluten/laktose |
+| [form-estimates.md](form-estimates.md) | 5-økt-gate, MMP-FTP, VO₂ |
+| [partner-sync.md](partner-sync.md) | To trenere, delte tid/sted-vinduer |
 
 ## Kode
 
@@ -20,8 +21,8 @@
 |-----|--------|
 | `apps/coach-web/` | Vite-frontend (Coach / Overblikk / Du) |
 | `services/coach-api/` | FastAPI + SQLite |
-| `data/athletes/{id}/profile.md` | Profilfil skrevet ved onboarding / Du-lagring |
-| `knowledge/ernaring/` | Ernæring inkl. IBS/gluten — **ikke** onboarding-wizard |
+| `data/athletes/{id}/profile.md` | Profilfil ved onboarding / Du-lagring |
+| `knowledge/ernaring/` | Ernæringskunnskap for chat (inkl. IBS/gluten) |
 
 ## Hurtigstart
 

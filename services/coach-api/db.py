@@ -32,6 +32,13 @@ CREATE TABLE IF NOT EXISTS athletes (
   estimate_source TEXT,
   weight_kg REAL,
   age_years INTEGER,
+  sport TEXT DEFAULT 'triathlon',
+  schedule_notes TEXT DEFAULT '',
+  nutrition_ibs TEXT DEFAULT 'no',
+  nutrition_gluten TEXT DEFAULT 'none',
+  nutrition_lactose INTEGER DEFAULT 0,
+  nutrition_other_restrictions TEXT DEFAULT '',
+  nutrition_notes TEXT DEFAULT '',
   notes TEXT DEFAULT '',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -103,9 +110,27 @@ def connect(db_path: Path) -> sqlite3.Connection:
     return conn
 
 
+_EXTRA_COLUMNS = [
+    ("sport", "TEXT DEFAULT 'triathlon'"),
+    ("schedule_notes", "TEXT DEFAULT ''"),
+    ("nutrition_ibs", "TEXT DEFAULT 'no'"),
+    ("nutrition_gluten", "TEXT DEFAULT 'none'"),
+    ("nutrition_lactose", "INTEGER DEFAULT 0"),
+    ("nutrition_other_restrictions", "TEXT DEFAULT ''"),
+    ("nutrition_notes", "TEXT DEFAULT ''"),
+]
+
+
 def init_db(db_path: Path) -> None:
     with connect(db_path) as conn:
         conn.executescript(SCHEMA)
+        existing = {
+            r[1]
+            for r in conn.execute("PRAGMA table_info(athletes)").fetchall()
+        }
+        for name, decl in _EXTRA_COLUMNS:
+            if name not in existing:
+                conn.execute(f"ALTER TABLE athletes ADD COLUMN {name} {decl}")
         conn.commit()
 
 
@@ -131,6 +156,7 @@ def row_to_athlete(row: sqlite3.Row | None) -> dict[str, Any] | None:
         d["agreements"] = json.loads(raw)
     except json.JSONDecodeError:
         d["agreements"] = []
+    d["nutrition_lactose"] = bool(d.get("nutrition_lactose"))
     return d
 
 
@@ -148,9 +174,12 @@ def insert_athlete(conn: sqlite3.Connection, data: dict[str, Any]) -> dict[str, 
         INSERT INTO athletes (
           id, display_name, timezone, coach_display_name, coach_personality,
           coach_style_note, accent_color, goal_text, injury_notes, agreements_json,
-          weekly_focus, ftp_tested, ftp_tested_at, weight_kg, age_years, notes,
+          weekly_focus, ftp_tested, ftp_tested_at, weight_kg, age_years,
+          sport, schedule_notes,
+          nutrition_ibs, nutrition_gluten, nutrition_lactose,
+          nutrition_other_restrictions, nutrition_notes, notes,
           created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             athlete_id,
@@ -168,6 +197,13 @@ def insert_athlete(conn: sqlite3.Connection, data: dict[str, Any]) -> dict[str, 
             data.get("ftp_tested_at"),
             data.get("weight_kg"),
             data.get("age_years"),
+            data.get("sport") or "triathlon",
+            data.get("schedule_notes") or "",
+            data.get("nutrition_ibs") or "no",
+            data.get("nutrition_gluten") or "none",
+            1 if data.get("nutrition_lactose") else 0,
+            data.get("nutrition_other_restrictions") or "",
+            data.get("nutrition_notes") or "",
             data.get("notes") or "",
             now,
             now,
@@ -201,6 +237,12 @@ def update_athlete(
         "estimate_source",
         "weight_kg",
         "age_years",
+        "sport",
+        "schedule_notes",
+        "nutrition_ibs",
+        "nutrition_gluten",
+        "nutrition_other_restrictions",
+        "nutrition_notes",
         "notes",
     }
     fields: list[str] = []
@@ -209,6 +251,9 @@ def update_athlete(
         if key == "agreements":
             fields.append("agreements_json = ?")
             values.append(json.dumps(val, ensure_ascii=False))
+        elif key == "nutrition_lactose":
+            fields.append("nutrition_lactose = ?")
+            values.append(1 if val else 0)
         elif key in allowed:
             fields.append(f"{key} = ?")
             values.append(val)

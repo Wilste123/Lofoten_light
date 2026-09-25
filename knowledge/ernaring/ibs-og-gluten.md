@@ -2,7 +2,7 @@
 
 **Ikke medisinsk råd.** Coach diagnostiserer ikke. Ved sterke smerter, blødning, uforklarlig vekttap eller mistanke om cøliaki → lege / klinisk ernæringsfysiolog.
 
-Denne filen er for **chat-kontekst**: praktiske spørsmål og trygge tips når utøveren nevner mage, IBS eller gluten. Lagring av personlige begrensninger skjer via **Du / avtaler**, ikke onboarding-wizard.
+Denne filen er for **chat-kontekst**: praktiske tips når utøveren har mage-/GI-begrensninger. Personlige felter (IBS/gluten/laktose) samles i **onboarding + Du** og speiles i `profile.md` — chat diagnostiserer ikke.
 
 ## Hva coach kan spørre (naturlig)
 

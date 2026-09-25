@@ -23,10 +23,16 @@ const state = {
     accent_color: ACCENTS[0],
     goal_text: '',
     injury_notes: '',
+    schedule_notes: '',
     ftp_tested: '',
     ftp_tested_at: '',
     weight_kg: '',
     age_years: '',
+    nutrition_ibs: 'no',
+    nutrition_gluten: 'none',
+    nutrition_lactose: false,
+    nutrition_other_restrictions: '',
+    nutrition_notes: '',
   },
   busy: false,
   error: '',
@@ -155,7 +161,7 @@ function renderOnboarding() {
   return `
     <div class="onboarding">
       <h1>Din trener</h1>
-      <p class="lead">Sett opp profilen — vi skriver en profilfil treneren bruker (også for andre enn William). Ingen ernærings-wizard her.</p>
+      <p class="lead">Sett opp profilen — vi skriver <code>profile.md</code> treneren bruker (også for andre enn William), inkl. ernæring/GI så råd blir tryggere.</p>
       <form id="onboard-form">
         <div class="field">
           <label for="display_name">Ditt navn</label>
@@ -184,8 +190,12 @@ function renderOnboarding() {
           <textarea id="goal_text" name="goal_text" rows="2" placeholder="f.eks. Half Extreme Lofoten 2027">${escapeHtml(o.goal_text)}</textarea>
         </div>
         <div class="field">
+          <label for="schedule_notes">Tilgjengelighet / timeplan</label>
+          <textarea id="schedule_notes" name="schedule_notes" rows="2" placeholder="f.eks. basseng tir/tor kveld">${escapeHtml(o.schedule_notes)}</textarea>
+        </div>
+        <div class="field">
           <label for="injury_notes">Skade / begrensninger</label>
-          <textarea id="injury_notes" name="injury_notes" rows="2" placeholder="Generelt — ikke IBS-wizard">${escapeHtml(o.injury_notes)}</textarea>
+          <textarea id="injury_notes" name="injury_notes" rows="2" placeholder="f.eks. isjas, skuldre">${escapeHtml(o.injury_notes)}</textarea>
         </div>
         <div class="grid-2">
           <div class="field">
@@ -206,6 +216,33 @@ function renderOnboarding() {
             <label for="age_years">Alder (valgfritt)</label>
             <input id="age_years" name="age_years" type="number" inputmode="numeric" value="${escapeHtml(o.age_years)}" />
           </div>
+        </div>
+        <div class="field">
+          <label for="nutrition_ibs">IBS</label>
+          <select id="nutrition_ibs" name="nutrition_ibs">
+            <option value="no" ${o.nutrition_ibs === 'no' ? 'selected' : ''}>Nei</option>
+            <option value="yes" ${o.nutrition_ibs === 'yes' ? 'selected' : ''}>Ja</option>
+            <option value="unsure" ${o.nutrition_ibs === 'unsure' ? 'selected' : ''}>Usikker</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="nutrition_gluten">Gluten</label>
+          <select id="nutrition_gluten" name="nutrition_gluten">
+            <option value="none" ${o.nutrition_gluten === 'none' ? 'selected' : ''}>Ingen restriksjon</option>
+            <option value="sensitive" ${o.nutrition_gluten === 'sensitive' ? 'selected' : ''}>Sensitivitet</option>
+            <option value="celiac" ${o.nutrition_gluten === 'celiac' ? 'selected' : ''}>Cøliaki</option>
+          </select>
+        </div>
+        <div class="field">
+          <label><input type="checkbox" name="nutrition_lactose" ${o.nutrition_lactose ? 'checked' : ''} /> Laktoseproblemer</label>
+        </div>
+        <div class="field">
+          <label for="nutrition_other_restrictions">Andre matrestriksjoner</label>
+          <textarea id="nutrition_other_restrictions" name="nutrition_other_restrictions" rows="2">${escapeHtml(o.nutrition_other_restrictions)}</textarea>
+        </div>
+        <div class="field">
+          <label for="nutrition_notes">Ernæringsnotater</label>
+          <textarea id="nutrition_notes" name="nutrition_notes" rows="2" placeholder="Treneren tilpasser — diagnostiserer ikke">${escapeHtml(o.nutrition_notes)}</textarea>
         </div>
         ${state.error ? `<p class="error">${escapeHtml(state.error)}</p>` : ''}
         <button class="btn" type="submit" ${state.busy ? 'disabled' : ''}>Start med treneren</button>
@@ -251,11 +288,17 @@ function bindOnboarding() {
       coach_style_note: String(fd.get('coach_style_note') || ''),
       accent_color: state.onboarding.accent_color,
       goal_text: String(fd.get('goal_text') || ''),
+      schedule_notes: String(fd.get('schedule_notes') || ''),
       injury_notes: String(fd.get('injury_notes') || ''),
       ftp_tested: fd.get('ftp_tested') ? Number(fd.get('ftp_tested')) : null,
       ftp_tested_at: String(fd.get('ftp_tested_at') || '') || null,
       weight_kg: fd.get('weight_kg') ? Number(fd.get('weight_kg')) : null,
       age_years: fd.get('age_years') ? Number(fd.get('age_years')) : null,
+      nutrition_ibs: String(fd.get('nutrition_ibs') || 'no'),
+      nutrition_gluten: String(fd.get('nutrition_gluten') || 'none'),
+      nutrition_lactose: fd.get('nutrition_lactose') === 'on',
+      nutrition_other_restrictions: String(fd.get('nutrition_other_restrictions') || ''),
+      nutrition_notes: String(fd.get('nutrition_notes') || ''),
     }
     state.busy = true
     state.error = ''
@@ -354,7 +397,31 @@ function renderDu() {
         <div class="field"><label>Ukens fokus</label><input name="weekly_focus" value="${escapeHtml(a.weekly_focus || '')}" /></div>
         <div class="field"><label>Skade / begrensninger</label><textarea name="injury_notes" rows="2">${escapeHtml(a.injury_notes || '')}</textarea></div>
         <div class="field"><label>Avtaler (én per linje)</label><textarea name="agreements" rows="3" placeholder="f.eks. Ingen langløp denne uka">${escapeHtml(agreements)}</textarea></div>
-        <div class="field"><label>Notater (f.eks. mat/IBS — lagres her, ikke i onboarding)</label><textarea name="notes" rows="2">${escapeHtml(a.notes || '')}</textarea></div>
+        <div class="field"><label>Notater</label><textarea name="notes" rows="2">${escapeHtml(a.notes || '')}</textarea></div>
+      </div>
+      <div class="card-block">
+        <h2>Ernæring / GI</h2>
+        <div class="field">
+          <label>IBS</label>
+          <select name="nutrition_ibs">
+            <option value="no" ${a.nutrition_ibs === 'no' ? 'selected' : ''}>Nei</option>
+            <option value="yes" ${a.nutrition_ibs === 'yes' ? 'selected' : ''}>Ja</option>
+            <option value="unsure" ${a.nutrition_ibs === 'unsure' ? 'selected' : ''}>Usikker</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Gluten</label>
+          <select name="nutrition_gluten">
+            <option value="none" ${a.nutrition_gluten === 'none' ? 'selected' : ''}>Ingen</option>
+            <option value="sensitive" ${a.nutrition_gluten === 'sensitive' ? 'selected' : ''}>Sensitivitet</option>
+            <option value="celiac" ${a.nutrition_gluten === 'celiac' ? 'selected' : ''}>Cøliaki</option>
+          </select>
+        </div>
+        <div class="field">
+          <label><input type="checkbox" name="nutrition_lactose" ${a.nutrition_lactose ? 'checked' : ''} /> Laktoseproblemer</label>
+        </div>
+        <div class="field"><label>Andre restriksjoner</label><textarea name="nutrition_other_restrictions" rows="2">${escapeHtml(a.nutrition_other_restrictions || '')}</textarea></div>
+        <div class="field"><label>Ernæringsnotater</label><textarea name="nutrition_notes" rows="2">${escapeHtml(a.nutrition_notes || '')}</textarea></div>
       </div>
       <div class="card-block">
         <h2>Form</h2>
@@ -432,6 +499,11 @@ function bindApp() {
       weekly_focus: String(fd.get('weekly_focus') || ''),
       injury_notes: String(fd.get('injury_notes') || ''),
       notes: String(fd.get('notes') || ''),
+      nutrition_ibs: String(fd.get('nutrition_ibs') || 'no'),
+      nutrition_gluten: String(fd.get('nutrition_gluten') || 'none'),
+      nutrition_lactose: fd.get('nutrition_lactose') === 'on',
+      nutrition_other_restrictions: String(fd.get('nutrition_other_restrictions') || ''),
+      nutrition_notes: String(fd.get('nutrition_notes') || ''),
       agreements: agreementsRaw
         .split('\n')
         .map((s) => s.trim())

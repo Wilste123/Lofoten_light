@@ -43,13 +43,24 @@ def test_onboarding_writes_profile(client):
             "goal_text": "Base",
             "injury_notes": "Ingen",
             "ftp_tested": 200,
+            "nutrition_ibs": "yes",
+            "nutrition_gluten": "sensitive",
+            "nutrition_lactose": True,
+            "nutrition_notes": "Unngår gels med gluten før langøkt",
         },
     )
     assert r.status_code == 200, r.text
     data = r.json()
     aid = data["athlete"]["id"]
+    assert data["athlete"]["nutrition_ibs"] == "yes"
+    assert data["athlete"]["nutrition_gluten"] == "sensitive"
+    assert data["athlete"]["nutrition_lactose"] is True
+    profile_text = (athletes / aid / "profile.md").read_text(encoding="utf-8")
     assert (athletes / aid / "profile.md").is_file()
-    assert "Testa" in (athletes / aid / "profile.md").read_text(encoding="utf-8")
+    assert "Testa" in profile_text
+    assert "IBS" in profile_text
+    assert "Sensitivitet" in profile_text or "sensitive" in profile_text.lower()
+    assert "Unngår gels" in profile_text
 
     boot = c.post("/v1/session/bootstrap", json={"athlete_id": aid})
     assert boot.json()["needs_onboarding"] is False
@@ -66,9 +77,14 @@ def test_onboarding_writes_profile(client):
     patch = c.patch(
         "/v1/athlete/me",
         headers={"X-Athlete-Id": aid},
-        json={"weekly_focus": "Z2 + svømteknikk", "notes": "Tåler dårlig gluten før langøkt"},
+        json={
+            "weekly_focus": "Z2 + svømteknikk",
+            "nutrition_gluten": "celiac",
+            "notes": "Oppdatert notat",
+        },
     )
     assert patch.status_code == 200
     text = (athletes / aid / "profile.md").read_text(encoding="utf-8")
     assert "Z2 + svømteknikk" in text
-    assert "gluten" in text.lower()
+    assert "Cøliaki" in text
+    assert "Oppdatert notat" in text

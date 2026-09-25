@@ -26,7 +26,11 @@ def test_render_contains_name_and_coach():
         "timezone": "Europe/Oslo",
         "agreements": ["Ingen langløp denne uka"],
         "weekly_focus": "Z2 base",
-        "notes": "IBS — lav FODMAP før intervall",
+        "notes": "Generelt notat",
+        "nutrition_ibs": "yes",
+        "nutrition_gluten": "celiac",
+        "nutrition_lactose": False,
+        "nutrition_notes": "Lav FODMAP før intervall",
     }
     md = render_profile_md(athlete)
     assert "Ada" in md
@@ -34,8 +38,9 @@ def test_render_contains_name_and_coach():
     assert "210" in md
     assert "Half Extreme" in md
     assert "Ingen langløp" in md
+    assert "Cøliaki" in md
+    assert "Lav FODMAP" in md
     assert "ikke anta Williams historikk" in md.lower() or "Williams historikk" in md
-
 
 def test_write_profile_creates_file(tmp_path: Path):
     athlete = {

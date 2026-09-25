@@ -65,6 +65,13 @@ class OnboardingIn(BaseModel):
     age_years: int | None = None
     timezone: str = "Europe/Oslo"
     weekly_focus: str = ""
+    sport: str = "triathlon"
+    schedule_notes: str = ""
+    nutrition_ibs: str = "no"
+    nutrition_gluten: str = "none"
+    nutrition_lactose: bool = False
+    nutrition_other_restrictions: str = ""
+    nutrition_notes: str = ""
     notes: str = ""
 
 
@@ -82,6 +89,13 @@ class AthletePatch(BaseModel):
     ftp_tested_at: str | None = None
     weight_kg: float | None = None
     age_years: int | None = None
+    sport: str | None = None
+    schedule_notes: str | None = None
+    nutrition_ibs: str | None = None
+    nutrition_gluten: str | None = None
+    nutrition_lactose: bool | None = None
+    nutrition_other_restrictions: str | None = None
+    nutrition_notes: str | None = None
     notes: str | None = None
     agreements: list[str] | None = None
 
@@ -137,7 +151,7 @@ def patch_me(
     x_athlete_id: str | None = Header(default=None),
 ) -> dict[str, Any]:
     aid = _require_athlete(x_athlete_id)
-    patch = {k: v for k, v in body.model_dump().items() if v is not None}
+    patch = body.model_dump(exclude_unset=True)
     with db_session(config.DATABASE_PATH) as conn:
         athlete = update_athlete(conn, aid, patch)
     if not athlete:

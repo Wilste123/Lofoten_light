@@ -30,6 +30,18 @@ def render_profile_md(athlete: dict[str, Any]) -> str:
     if ftp and ftp_at:
         ftp_line += f" ({ftp_at})"
 
+    ibs_map = {"no": "Nei", "yes": "Ja", "unsure": "Usikker"}
+    gluten_map = {
+        "none": "Ingen restriksjon",
+        "sensitive": "Sensitivitet",
+        "celiac": "Cøliaki",
+    }
+    ibs = ibs_map.get(athlete.get("nutrition_ibs") or "no", athlete.get("nutrition_ibs"))
+    gluten = gluten_map.get(
+        athlete.get("nutrition_gluten") or "none", athlete.get("nutrition_gluten")
+    )
+    lactose = "Ja" if athlete.get("nutrition_lactose") else "Nei"
+
     return f"""# Athlete profile — {name}
 
 Kilde for sannhet for coach (app + Cursor). Oppdateres ved onboarding og når Du-fanen lagres.
@@ -41,9 +53,11 @@ Kilde for sannhet for coach (app + Cursor). Oppdateres ved onboarding og når Du
 | | |
 |---|---|
 | Visningsnavn | {name} |
+| Sport | {_fmt(athlete.get("sport"), "triathlon")} |
 | Tidssone | {_fmt(athlete.get("timezone"), "Europe/Oslo")} |
 | Alder | {_fmt(athlete.get("age_years"))} |
 | Vekt (kg) | {_fmt(athlete.get("weight_kg"))} |
+| Tilgjengelighet | {_fmt(athlete.get("schedule_notes"), "(ikke satt)")} |
 
 ### Trener (app)
 
@@ -75,6 +89,18 @@ Kilde for sannhet for coach (app + Cursor). Oppdateres ved onboarding og når Du
 
 {_fmt(athlete.get("injury_notes"), "(ingen notert)")}
 
+## Ernæring / mage-tarm
+
+| | |
+|---|---|
+| IBS | {ibs} |
+| Gluten | {gluten} |
+| Laktose | {lactose} |
+| Andre restriksjoner | {_fmt(athlete.get("nutrition_other_restrictions"), "(ingen)")} |
+| Notater | {_fmt(athlete.get("nutrition_notes"), "(ingen)")} |
+
+**Viktig:** Tilpass råd ut fra feltene over og `knowledge/ernaring/`. **Aldri diagnostiser.** Ved usikkerhet: henvis til lege / klinisk ernæringsfysiolog.
+
 ## Avtaler
 
 {agr_lines}
@@ -87,6 +113,7 @@ Kilde for sannhet for coach (app + Cursor). Oppdateres ved onboarding og når Du
 
 - Tilpass råd til **{name}** — ikke anta Williams historikk (FTP 410, NTG, osv.) med mindre det står her.
 - Trenerstemme: **{coach}**, personlighet «{_fmt(athlete.get("coach_personality"), "direkte")}».
+- Respekter ernæring/GI-feltene; bruk `knowledge/ernaring/` generelt.
 - Intervals.icu eier øktdetaljer; denne filen eier menneskelig kontekst.
 """
 

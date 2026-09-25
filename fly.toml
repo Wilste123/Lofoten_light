@@ -2,7 +2,8 @@
 # Docs: docs/product/fly-deploy.md
 
 app = 'lofoten-coach'
-primary_region = 'arn'
+# Matches existing Fly app machines (ams). Prefer arn later if you migrate.
+primary_region = 'ams'
 
 [build]
   dockerfile = 'Dockerfile'

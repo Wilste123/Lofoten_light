@@ -2,37 +2,35 @@
 
 Én Fly-app serverer **API + web** (samme origin). SQLite på volume `/data`. William-seed kjører ved boot.
 
-**Branch:** `cursor/web-coach-mvp-42ac` · app-navn i `fly.toml`: `lofoten-coach` · region `arn` (Stockholm).
+**Branch:** `cursor/web-coach-mvp-42ac` · app-navn i `fly.toml`: `lofoten-coach` · region `ams` (eksisterende app; bytt til `arn` senere om du vil).
 
 Cloud-agenten har **ikke** Fly-login — du kjører deploy fra egen PC (eller limer inn `FLY_API_TOKEN` senere).
 
 ## Første gang (fra laptop)
 
 ```bash
-# 1) Branch + tools
+# 1) Branch + tools — MÅ stå i repo-roten (cd ~/Lofoten_light)
 git checkout cursor/web-coach-mvp-42ac
 git pull
 # installer flyctl: https://fly.io/docs/hands-on/install-flyctl/
 fly auth login
 
-# 2) Opprett app (hopp over hvis den finnes)
-fly apps create lofoten-coach --org personal   # eller ditt org-navn
+# 2) App finnes ofte allerede — ignorer "Name has already been taken"
+fly apps list   # skal vise lofoten-coach
 
-# 3) Volume for SQLite + profilfiler
-fly volumes create coach_data --app lofoten-coach --region arn --size 1
+# 3) Volume i SAMME region som maskinen (sjekk: fly status -a lofoten-coach)
+fly volumes list -a lofoten-coach
+# Hvis maskin er i ams og volume mangler der:
+fly volumes create coach_data --app lofoten-coach --region ams --size 1
 
-# 4) Secrets (chat)
-fly secrets set OPENAI_API_KEY=sk-... --app lofoten-coach
-# valgfritt:
-# fly secrets set OPENAI_MODEL=gpt-4o-mini --app lofoten-coach
-# fly secrets set ADMIN_SEED_TOKEN=velg-en-lang-streng --app lofoten-coach
+# 4) Secrets — BRUK ANFØRSELSTEGN; lim aldri nøkkel i Slack/Cursor-chat
+fly secrets set OPENAI_API_KEY='sk-...' --app lofoten-coach
 
 # 5) Deploy
 fly deploy --app lofoten-coach
 ```
 
-URL: **https://lofoten-coach.fly.dev** (eller `fly status` / `fly apps open`).
-
+Hvis deploy sier `ams=1` mangler volume: opprett volume i **ams**, ikke arn.
 ## På telefon
 
 1. Åpne https://lofoten-coach.fly.dev  

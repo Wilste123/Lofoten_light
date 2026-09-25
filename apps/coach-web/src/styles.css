@@ -118,6 +118,16 @@ main {
   z-index: 20;
 }
 
+.tabs.tabs-five {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.tabs.tabs-five button {
+  font-size: 0.68rem;
+  padding: 0.55rem 0.15rem;
+  letter-spacing: 0;
+}
+
 .tabs button {
   border: 0;
   background: transparent;
@@ -706,4 +716,117 @@ button.linkish:hover {
 
 .toast.show {
   opacity: 1;
+}
+
+.tab-hero {
+  padding: 0.15rem 0 0.85rem;
+  margin-bottom: 0.35rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.tab-hero h2 {
+  font-family: var(--display);
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 0.15rem 0 0.25rem;
+}
+
+.progress-sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.28rem;
+  font-size: 0.75rem;
+  min-height: 0.9rem;
+}
+
+.pace-note {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.pace-note.ok {
+  color: color-mix(in srgb, var(--accent) 75%, #8f8);
+}
+
+.pace-note.behind {
+  color: color-mix(in srgb, var(--danger) 80%, #fff);
+}
+
+.jump-hint {
+  margin: 1rem 0 0.5rem;
+}
+
+.sync-panel .sync-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0.65rem 0 0.5rem;
+}
+
+.confirm-card {
+  margin: 0.75rem 0;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line));
+  border-radius: var(--radius);
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--accent) 12%, transparent),
+      color-mix(in srgb, var(--bg2) 80%, transparent)
+    );
+  box-shadow: var(--shadow-soft);
+}
+
+.confirm-card p {
+  margin: 0 0 0.35rem;
+}
+
+.sync-sample {
+  margin: 0.35rem 0 0.55rem;
+  padding-left: 1.1rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.sync-sample code {
+  font-size: 0.72rem;
+  color: var(--text);
+}
+
+.sync-status-box {
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius);
+  background: var(--bg2);
+  border: 1px solid var(--line);
+}
+
+.btn.danger-outline {
+  border-color: color-mix(in srgb, var(--danger) 55%, var(--line));
+  color: color-mix(in srgb, var(--danger) 85%, var(--text));
+}
+
+.form-card .stat-row span:last-child {
+  max-width: 62%;
+}
+
+.plan-strip .plan-grid {
+  gap: 0.75rem;
+}
+
+.plan-current,
+.plan-next {
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--bg2) 88%, var(--accent) 4%);
+  border: 1px solid var(--line);
+}
+
+.plan-current h3 {
+  font-family: var(--display);
+  font-size: 1.15rem;
+  margin: 0.1rem 0 0.25rem;
+  letter-spacing: -0.02em;
 }

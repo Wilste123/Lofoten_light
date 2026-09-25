@@ -47,7 +47,7 @@ Stub/demo-tall returneres med `source: "demo"` og UI-merke **Demo**. Tallene er 
 
 `source: "demo"`, `fetch_error: true`, **completed = 0** (ikke fake demo-timer). UI: **Henting feilet**.
 
-## Formler (MVP)
+## Formler
 
 Én definisjon — hold den stabil:
 
@@ -55,17 +55,27 @@ Stub/demo-tall returneres med `source: "demo"` og UI-merke **Demo**. Tallene er 
 completed_h   = sum(duration_hours for discipline in window)
 target_h      = season_{discipline}_hours_target
 progress_pct  = 0 if target_h <= 0 else min(100, 100 * completed_h / target_h)
-compliance_pct = progress_pct   # MVP: samme ratio
+compliance_pct = progress_pct   # «fullført av sesongmål»
 ```
 
-Visning: «Sykkel **175 / 500 t**» + progress-bar fylt til `progress_pct` + «**35 %**» compliance.
+Visning: «Sykkel **175 / 500 t**» + progress-bar + «**35 %**» compliance.
 
-### Senere (ikke MVP)
+### On-pace (når `season_start_date` + `goal_race_date` finnes)
 
-Valgfritt alternativ dokumentert her for historikk — **ikke implementert**:
+```
+elapsed_days = max(1, (today − season_start).days + 1)   # capped to season_days
+season_days  = max(1, (goal_race − season_start).days)
+expected_h   = target_h * elapsed_days / season_days
+on_pace_pct  = 100 * completed_h / expected_h            # ikke capped
+on_pace      = on_pace_pct >= 95
+on_pace_note = «På plan» | «Foran plan (+N %)» | «Bak plan (−N %)»
+```
+
+Implementasjon: `progress_compliance.on_pace_metrics` · vist under Compliance-fanen og kompakt på Overblikk.
+
+### Senere
 
 - `sessions_done / sessions_planned` siste 4 uker (krever planlagte events fra Intervals).
-- On-pace: `completed / (target * elapsed_days / season_days)`.
 
 ## API-felt (overview)
 
@@ -87,7 +97,11 @@ Valgfritt alternativ dokumentert her for historikk — **ikke implementert**:
         "target_hours": 500.0,
         "progress_pct": 35.0,
         "compliance_pct": 35.0,
-        "session_count": 40
+        "session_count": 40,
+        "expected_hours": 180.0,
+        "on_pace_pct": 97.2,
+        "on_pace": true,
+        "on_pace_note": "På plan"
       }
     ]
   }

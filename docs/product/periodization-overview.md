@@ -11,7 +11,7 @@ Appen eier **makro- og meso-nivå**. Intervals eier **mikro** (dagsøkter, kalen
 | Mikro / uke | Kun «detaljer i Intervals»-hint | Kalender, ZWO, TSS, formkurver |
 | Chat-kontekst | Leser blokk + mål inn i prompt-stub | — |
 
-**Ikke** i MVP: full ukeplan-UI, drag-drop kalender, automatisk sync av blokker til Intervals events.
+**Valgfri sync:** Plan-fanen kan pushe ukenoter (`ll-coach-…`) til Intervals etter preview + bekreftelse — se API `/v1/athlete/me/intervals/calendar/*`. Appen eier fortsatt ikke full ukeplan/ZWO-push fra CSV (det er CLI `scripts/intervals_push_calendar.py`).
 
 ## Datamodell
 

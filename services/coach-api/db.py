@@ -110,9 +110,22 @@ CREATE TABLE IF NOT EXISTS coordinated_sessions (
   created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS pending_actions (
+  id TEXT PRIMARY KEY,
+  athlete_id TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,
+  payload_json TEXT NOT NULL DEFAULT '{}',
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at TEXT NOT NULL,
+  expires_at TEXT,
+  confirmed_at TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_messages_athlete ON messages(athlete_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_plan_blocks_athlete ON plan_blocks(athlete_id, start_date);
+CREATE INDEX IF NOT EXISTS idx_pending_actions_athlete ON pending_actions(athlete_id, created_at);
 """
+
 
 
 def utc_now() -> str:
@@ -585,3 +598,66 @@ def invite_token_valid(conn: sqlite3.Connection, token: str) -> bool:
     if expires and expires < utc_now():
         return False
     return True
+
+
+def insert_pending_action(
+    conn: sqlite3.Connection,
+    athlete_id: str,
+    kind: str,
+    payload: dict[str, Any],
+    *,
+    expires_minutes: int = 30,
+) -> dict[str, Any]:
+    from datetime import timedelta
+
+    pid = new_id()
+    now = utc_now()
+    expires = (
+        datetime.now(timezone.utc) + timedelta(minutes=expires_minutes)
+    ).isoformat()
+    conn.execute(
+        """
+        INSERT INTO pending_actions (
+          id, athlete_id, kind, payload_json, status, created_at, expires_at
+        ) VALUES (?, ?, ?, ?, 'pending', ?, ?)
+        """,
+        (pid, athlete_id, kind, json.dumps(payload, ensure_ascii=False), now, expires),
+    )
+    return get_pending_action(conn, athlete_id, pid)  # type: ignore[return-value]
+
+
+def get_pending_action(
+    conn: sqlite3.Connection, athlete_id: str, action_id: str
+) -> dict[str, Any] | None:
+    cur = conn.execute(
+        "SELECT * FROM pending_actions WHERE id = ? AND athlete_id = ?",
+        (action_id, athlete_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        return None
+    data = dict(row)
+    try:
+        data["payload"] = json.loads(data.get("payload_json") or "{}")
+    except json.JSONDecodeError:
+        data["payload"] = {}
+    return data
+
+
+def mark_pending_action(
+    conn: sqlite3.Connection,
+    athlete_id: str,
+    action_id: str,
+    status: str,
+) -> dict[str, Any] | None:
+    now = utc_now()
+    conn.execute(
+        """
+        UPDATE pending_actions
+        SET status = ?, confirmed_at = ?
+        WHERE id = ? AND athlete_id = ?
+        """,
+        (status, now if status == "confirmed" else None, action_id, athlete_id),
+    )
+    return get_pending_action(conn, athlete_id, action_id)
+

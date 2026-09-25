@@ -19,18 +19,32 @@ from db import (
     delete_plan_block,
     get_athlete,
     get_athlete_secrets,
+    get_pending_action,
     init_db,
     insert_athlete,
+    insert_pending_action,
     insert_plan_block,
     invite_token_valid,
     list_plan_blocks,
+    mark_pending_action,
     recent_messages,
     secrets_public_view,
     update_athlete,
     update_plan_block,
     upsert_athlete_secrets,
+    utc_now,
 )
-from form_estimates import compute_form_estimates
+from form_from_intervals import clear_form_caches, persist_estimates_patch, resolve_form_estimates
+from intervals_calendar import (
+    build_block_note_events,
+    delete_events_bulk,
+    fetch_events,
+    filter_coach_events,
+    post_events_bulk,
+    public_event_preview,
+    select_blocks,
+    status_window_for_blocks,
+)
 from intervals_smoke import smoke_test_intervals
 from profile import write_profile
 from progress_compliance import (
@@ -158,6 +172,19 @@ class PlanBlockPatch(BaseModel):
     end_date: str | None = None
     weekly_hours: float | None = None
     sort_order: int | None = None
+
+
+class CalendarSyncPreviewIn(BaseModel):
+    """Preview push or delete — never writes to Intervals until confirm."""
+
+    op: str = Field(description="push | delete")
+    block_ids: list[str] | None = None
+    start: str | None = None
+    end: str | None = None
+
+
+class CalendarConfirmIn(BaseModel):
+    pending_id: str = Field(min_length=1)
 
 
 @app.get("/health")
@@ -410,6 +437,202 @@ def remove_plan_block(
     return {"ok": True}
 
 
+def _require_intervals_secrets(aid: str) -> tuple[dict[str, Any], str, str]:
+    with db_session(config.DATABASE_PATH) as conn:
+        athlete = get_athlete(conn, aid)
+        secrets = get_athlete_secrets(conn, aid)
+    if not athlete:
+        raise HTTPException(404, "Utøver ikke funnet")
+    key = ((secrets or {}).get("intervals_api_key") or "").strip()
+    icu = ((secrets or {}).get("intervals_athlete_id") or "").strip()
+    if not key or not icu:
+        raise HTTPException(400, "Koble Intervals under Du først")
+    return athlete, key, icu
+
+
+@app.post("/v1/form/recompute")
+def form_recompute(x_athlete_id: str | None = Header(default=None)) -> dict[str, Any]:
+    """Recompute FTP/VO₂ estimates from Intervals bike+power (90d) and persist."""
+    aid = _require_athlete(x_athlete_id)
+    with db_session(config.DATABASE_PATH) as conn:
+        athlete = get_athlete(conn, aid)
+        secrets = get_athlete_secrets(conn, aid)
+        if not athlete:
+            raise HTTPException(404, "Utøver ikke funnet")
+    clear_form_caches()
+    estimates = resolve_form_estimates(athlete, secrets, use_cache=False)
+    patch = persist_estimates_patch(estimates)
+    if patch:
+        with db_session(config.DATABASE_PATH) as conn:
+            athlete = update_athlete(conn, aid, patch) or athlete
+    return {
+        "athlete": {
+            "ftp_estimated": athlete.get("ftp_estimated"),
+            "vo2_estimate": athlete.get("vo2_estimate"),
+            "estimate_confidence": athlete.get("estimate_confidence"),
+            "estimate_updated_at": athlete.get("estimate_updated_at"),
+            "estimate_source": athlete.get("estimate_source"),
+        },
+        "estimates": estimates,
+    }
+
+
+@app.post("/v1/athlete/me/intervals/calendar/preview")
+def calendar_preview(
+    body: CalendarSyncPreviewIn,
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Build pending push/delete — confirm required before ICU write."""
+    aid = _require_athlete(x_athlete_id)
+    op = (body.op or "").strip().lower()
+    if op not in ("push", "delete"):
+        raise HTTPException(400, "op må være push eller delete")
+    _athlete, key, icu = _require_intervals_secrets(aid)
+    with db_session(config.DATABASE_PATH) as conn:
+        blocks = list_plan_blocks(conn, aid)
+    selected = select_blocks(
+        blocks, block_ids=body.block_ids, start=body.start, end=body.end
+    )
+    if not selected:
+        raise HTTPException(400, "Ingen planblokker i utvalget")
+
+    if op == "push":
+        events = build_block_note_events(selected)
+        if not events:
+            raise HTTPException(400, "Blokkene mangler start/slutt-dato")
+        payload = {
+            "op": "push",
+            "block_ids": [b["id"] for b in selected],
+            "events": events,
+            "intervals_athlete_id": icu,
+        }
+        summary = [public_event_preview(e) for e in events]
+        count = len(events)
+    else:
+        events = build_block_note_events(selected)
+        external_ids = [e["external_id"] for e in events]
+        # Also include any coach events already on calendar in the window
+        win_start, win_end = status_window_for_blocks(selected)
+        try:
+            existing = filter_coach_events(
+                fetch_events(key, icu, win_start.isoformat(), win_end.isoformat())
+            )
+        except RuntimeError:
+            existing = []
+        for ev in existing:
+            eid = ev.get("external_id")
+            if eid and eid not in external_ids:
+                external_ids.append(eid)
+        if not external_ids:
+            raise HTTPException(400, "Ingen agent-noter å fjerne i utvalget")
+        payload = {
+            "op": "delete",
+            "block_ids": [b["id"] for b in selected],
+            "external_ids": external_ids,
+            "intervals_athlete_id": icu,
+        }
+        summary = [{"external_id": eid} for eid in external_ids]
+        count = len(external_ids)
+
+    with db_session(config.DATABASE_PATH) as conn:
+        pending = insert_pending_action(conn, aid, f"intervals_calendar_{op}", payload)
+    return {
+        "pending_id": pending["id"],
+        "op": op,
+        "count": count,
+        "expires_at": pending.get("expires_at"),
+        "blocks": [
+            {
+                "id": b.get("id"),
+                "title": b.get("title"),
+                "start_date": b.get("start_date"),
+                "end_date": b.get("end_date"),
+            }
+            for b in selected
+        ],
+        "events": summary[:40],
+        "events_truncated": max(0, count - 40),
+        "confirm_required": True,
+        "message": (
+            f"Bekreft for å {'synce' if op == 'push' else 'fjerne'} "
+            f"{count} Intervals-hendelser."
+        ),
+    }
+
+
+@app.post("/v1/athlete/me/intervals/calendar/confirm")
+def calendar_confirm(
+    body: CalendarConfirmIn,
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Execute a previously previewed push/delete against Intervals."""
+    aid = _require_athlete(x_athlete_id)
+    _athlete, key, icu = _require_intervals_secrets(aid)
+    with db_session(config.DATABASE_PATH) as conn:
+        pending = get_pending_action(conn, aid, body.pending_id)
+    if not pending:
+        raise HTTPException(404, "Pending handling ikke funnet")
+    if pending.get("status") != "pending":
+        raise HTTPException(400, f"Handling allerede {pending.get('status')}")
+    expires = pending.get("expires_at")
+    if expires:
+        from datetime import datetime, timezone
+
+        try:
+            exp = datetime.fromisoformat(str(expires).replace("Z", "+00:00"))
+            if exp.tzinfo is None:
+                exp = exp.replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) > exp:
+                with db_session(config.DATABASE_PATH) as conn:
+                    mark_pending_action(conn, aid, body.pending_id, "expired")
+                raise HTTPException(400, "Forhåndsvisning utløpt — lag ny")
+        except ValueError:
+            pass
+
+    payload = pending.get("payload") or {}
+    op = payload.get("op")
+    try:
+        if op == "push":
+            events = payload.get("events") or []
+            result = post_events_bulk(key, icu, events, upsert=True)
+            outcome = {"pushed": result.get("count", len(events)), "result": result}
+        elif op == "delete":
+            ids = payload.get("external_ids") or []
+            result = delete_events_bulk(key, icu, ids)
+            deleted = result.get("eventsDeleted", len(ids))
+            outcome = {"deleted": deleted, "result": result}
+        else:
+            raise HTTPException(400, "Ugyldig pending op")
+    except RuntimeError as exc:
+        raise HTTPException(502, str(exc)[:500]) from exc
+
+    with db_session(config.DATABASE_PATH) as conn:
+        mark_pending_action(conn, aid, body.pending_id, "confirmed")
+    return {"ok": True, "op": op, "pending_id": body.pending_id, **outcome}
+
+
+@app.get("/v1/athlete/me/intervals/calendar/status")
+def calendar_status(x_athlete_id: str | None = Header(default=None)) -> dict[str, Any]:
+    """List coach-pushed calendar notes currently on Intervals."""
+    aid = _require_athlete(x_athlete_id)
+    _athlete, key, icu = _require_intervals_secrets(aid)
+    with db_session(config.DATABASE_PATH) as conn:
+        blocks = list_plan_blocks(conn, aid)
+    win_start, win_end = status_window_for_blocks(blocks)
+    try:
+        events = filter_coach_events(
+            fetch_events(key, icu, win_start.isoformat(), win_end.isoformat())
+        )
+    except RuntimeError as exc:
+        raise HTTPException(502, str(exc)[:500]) from exc
+    return {
+        "window": {"start": win_start.isoformat(), "end": win_end.isoformat()},
+        "count": len(events),
+        "events": events,
+        "external_prefix": "ll-coach-",
+    }
+
+
 class SeedFromRepoIn(BaseModel):
     dry_run: bool = False
     display_name: str = "William"
@@ -447,12 +670,30 @@ def _overview_payload(
     blocks: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Form estimates + progress/compliance + plan strip."""
-    estimates = compute_form_estimates(
-        [],
-        ftp_tested=athlete.get("ftp_tested"),
-        weight_kg=athlete.get("weight_kg"),
-        age_years=athlete.get("age_years"),
-    )
+    estimates = resolve_form_estimates(athlete, secrets)
+    # Persist only when gate opens with a fresh estimate (don't wipe on thin fetch)
+    if (
+        estimates.get("fetch_source") == "intervals"
+        and estimates.get("gate_open")
+        and estimates.get("ftp_estimated") is not None
+    ):
+        patch = {
+            "ftp_estimated": estimates.get("ftp_estimated"),
+            "vo2_estimate": estimates.get("vo2_estimate"),
+            "estimate_confidence": estimates.get("estimate_confidence"),
+            "estimate_source": estimates.get("estimate_source") or "intervals",
+            "estimate_updated_at": utc_now(),
+        }
+        aid = athlete.get("id")
+        if aid:
+            try:
+                with db_session(config.DATABASE_PATH) as conn:
+                    updated = update_athlete(conn, aid, patch)
+                    if updated:
+                        athlete = updated
+            except Exception:
+                pass
+
     linked = secrets_public_view(secrets)
     intervals_linked = bool(linked.get("connected"))
     if intervals_linked:
@@ -483,6 +724,16 @@ def _overview_payload(
     picked = pick_current_and_next(block_list)
     days = days_to_goal(athlete)
 
+    ftp_est = athlete.get("ftp_estimated")
+    if ftp_est is None:
+        ftp_est = estimates.get("ftp_estimated")
+    vo2 = athlete.get("vo2_estimate")
+    if vo2 is None:
+        vo2 = estimates.get("vo2_estimate")
+    confidence = athlete.get("estimate_confidence") or estimates.get(
+        "estimate_confidence"
+    )
+
     return {
         "plan_headline": (picked["current"] or {}).get("title") if picked.get("current") else None,
         "last_session": None,
@@ -492,12 +743,14 @@ def _overview_payload(
         "intervals_athlete_id": linked.get("intervals_athlete_id"),
         "ftp_tested": athlete.get("ftp_tested"),
         "ftp_tested_at": athlete.get("ftp_tested_at"),
-        "ftp_estimated": athlete.get("ftp_estimated") or estimates.get("ftp_estimated"),
-        "vo2_estimate": athlete.get("vo2_estimate") or estimates.get("vo2_estimate"),
-        "estimate_confidence": estimates.get("estimate_confidence"),
+        "ftp_estimated": ftp_est,
+        "vo2_estimate": vo2,
+        "estimate_confidence": confidence,
         "estimate_disclaimer": estimates.get("disclaimer"),
+        "estimate_source": estimates.get("fetch_source") or athlete.get("estimate_source"),
         "gate_open": estimates.get("gate_open"),
         "qualifying_sessions": estimates.get("qualifying_sessions"),
+        "required_sessions": estimates.get("required_sessions"),
         "weekly_focus": athlete.get("weekly_focus"),
         "goal_text": athlete.get("goal_text"),
         "injury_notes": athlete.get("injury_notes"),

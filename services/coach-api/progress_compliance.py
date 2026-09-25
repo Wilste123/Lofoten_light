@@ -2,11 +2,18 @@
 
 See docs/product/progress-compliance.md.
 
-Formula (MVP, stable):
+Formula (stable):
   completed_h   = sum(duration_hours for discipline in [season_start … today])
   target_h      = season_{discipline}_hours_target
   progress_pct  = 0 if target_h <= 0 else min(100, 100 * completed_h / target_h)
-  compliance_pct = progress_pct
+  compliance_pct = progress_pct   # same ratio — «fullført av sesongmål»
+
+On-pace (when season_start + goal_race_date exist):
+  elapsed_days = max(1, (today − season_start).days + 1)
+  season_days  = max(1, (goal_race_date − season_start).days)
+  expected_h   = target_h * elapsed_days / season_days
+  on_pace_pct  = 100 * completed_h / expected_h   (not capped; shows ahead/behind)
+  on_pace_note = Norwegian short status vs expected
 """
 
 from __future__ import annotations
@@ -74,15 +81,82 @@ _progress_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 
 
 def compliance_pct(completed_hours: float, target_hours: float | None) -> float | None:
-    """MVP: completed / target * 100, capped at 100. None if no target."""
+    """completed / target * 100, capped at 100. None if no target."""
     if target_hours is None or target_hours <= 0:
         return None
     return round(min(100.0, 100.0 * float(completed_hours) / float(target_hours)), 1)
 
 
 def progress_pct(completed_hours: float, target_hours: float | None) -> float | None:
-    """Same ratio as compliance in MVP — kept as alias for clarity in callers/tests."""
+    """Same ratio as compliance — alias for callers/tests."""
     return compliance_pct(completed_hours, target_hours)
+
+
+def on_pace_metrics(
+    completed_hours: float,
+    target_hours: float | None,
+    *,
+    season_start: date | None,
+    goal_race: date | None,
+    today: date | None = None,
+) -> dict[str, Any]:
+    """Compare completed hours to linear expected volume toward race day.
+
+    Formula:
+      expected_h = target_h * elapsed_days / season_days
+      on_pace_pct = 100 * completed_h / expected_h
+    """
+    today = today or date.today()
+    empty: dict[str, Any] = {
+        "expected_hours": None,
+        "on_pace_pct": None,
+        "on_pace": None,
+        "on_pace_note": None,
+        "elapsed_days": None,
+        "season_days": None,
+    }
+    if (
+        target_hours is None
+        or target_hours <= 0
+        or season_start is None
+        or goal_race is None
+    ):
+        return empty
+    if goal_race <= season_start:
+        return empty
+    if today < season_start:
+        return {
+            **empty,
+            "expected_hours": 0.0,
+            "on_pace_pct": None,
+            "on_pace": True,
+            "on_pace_note": "Sesong ikke startet",
+            "elapsed_days": 0,
+            "season_days": (goal_race - season_start).days,
+        }
+    season_days = max(1, (goal_race - season_start).days)
+    elapsed_days = max(1, (today - season_start).days + 1)
+    elapsed_days = min(elapsed_days, season_days)
+    expected = float(target_hours) * float(elapsed_days) / float(season_days)
+    if expected <= 0:
+        return empty
+    ratio_pct = round(100.0 * float(completed_hours) / expected, 1)
+    delta_pct = round(ratio_pct - 100.0, 1)
+    on_pace = ratio_pct >= 95.0
+    if abs(delta_pct) < 5:
+        note = "På plan"
+    elif delta_pct > 0:
+        note = f"Foran plan (+{delta_pct:.0f} %)"
+    else:
+        note = f"Bak plan ({delta_pct:.0f} %)"
+    return {
+        "expected_hours": round(expected, 1),
+        "on_pace_pct": ratio_pct,
+        "on_pace": on_pace,
+        "on_pace_note": note,
+        "elapsed_days": elapsed_days,
+        "season_days": season_days,
+    }
 
 
 def parse_duration_hours(raw: Any, field_hint: str = "") -> float | None:
@@ -202,12 +276,20 @@ def build_progress_payload(
     season_not_started = bool(season_start and season_start > today)
     demo = source == "demo"
     session_counts = session_counts or {}
+    race = _parse_iso_date(athlete.get("goal_race_date"))
     disciplines: list[dict[str, Any]] = []
     thin = False
     for disc_id, label, field in DISCIPLINES:
         completed_h = float(completed.get(disc_id) or 0.0)
         target_h = target_for(athlete, field, demo=demo)
         pct = compliance_pct(completed_h, target_h)
+        pace = on_pace_metrics(
+            completed_h,
+            target_h,
+            season_start=season_start,
+            goal_race=race,
+            today=today,
+        )
         count = session_counts.get(disc_id, 0)
         if source == "intervals" and count < 3 and (target_h or completed_h):
             thin = True
@@ -220,6 +302,10 @@ def build_progress_payload(
                 "progress_pct": pct,
                 "compliance_pct": pct,
                 "session_count": count,
+                "expected_hours": pace["expected_hours"],
+                "on_pace_pct": pace["on_pace_pct"],
+                "on_pace": pace["on_pace"],
+                "on_pace_note": pace["on_pace_note"],
             }
         )
     total_sessions = (
@@ -234,6 +320,10 @@ def build_progress_payload(
         "season_not_started": season_not_started,
         "activity_count": total_sessions,
         "formula": "completed_hours / season_target_hours (capped 100%)",
+        "on_pace_formula": (
+            "expected = target * elapsed_days / season_days; "
+            "on_pace_pct = 100 * completed / expected"
+        ),
         "disciplines": disciplines,
     }
     if fetch_error:

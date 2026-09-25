@@ -29,6 +29,14 @@ const state = {
     form_athlete_id: '',
     form_api_key: '',
   },
+  sync: {
+    status: null,
+    statusError: '',
+    busy: false,
+    pending: null,
+    message: '',
+    error: '',
+  },
   onboarding: {
     display_name: '',
     coach_display_name: 'Rocky',
@@ -287,13 +295,21 @@ function render() {
       <section class="panel ${state.tab === 'overblikk' ? 'active' : ''}" data-panel="overblikk">
         ${renderOverview()}
       </section>
+      <section class="panel ${state.tab === 'plan' ? 'active' : ''}" data-panel="plan">
+        ${renderPlanTab()}
+      </section>
+      <section class="panel ${state.tab === 'compliance' ? 'active' : ''}" data-panel="compliance">
+        ${renderComplianceTab()}
+      </section>
       <section class="panel ${state.tab === 'du' ? 'active' : ''}" data-panel="du">
         ${renderDu()}
       </section>
     </main>
-    <nav class="tabs" aria-label="Hovedfaner">
+    <nav class="tabs tabs-five" aria-label="Hovedfaner">
       <button type="button" data-tab="coach" class="${state.tab === 'coach' ? 'active' : ''}">Coach</button>
       <button type="button" data-tab="overblikk" class="${state.tab === 'overblikk' ? 'active' : ''}">Overblikk</button>
+      <button type="button" data-tab="plan" class="${state.tab === 'plan' ? 'active' : ''}">Plan</button>
+      <button type="button" data-tab="compliance" class="${state.tab === 'compliance' ? 'active' : ''}">Compliance</button>
       <button type="button" data-tab="du" class="${state.tab === 'du' ? 'active' : ''}">Du</button>
     </nav>
   `
@@ -644,7 +660,7 @@ function formatHours(n) {
   return Number.isInteger(v) ? String(v) : v.toFixed(1)
 }
 
-function renderProgressSection(o) {
+function renderProgressSection(o, { compact = false } = {}) {
   const progress = o.progress || {}
   const rows = progress.disciplines || []
   const source = progress.source || 'demo'
@@ -673,6 +689,13 @@ function renderProgressSection(o) {
           : `${formatHours(d.completed_hours)} t · sett mål i Du`
       const compliance =
         d.compliance_pct != null ? `${d.compliance_pct} %` : '—'
+      const paceNote = d.on_pace_note
+        ? `<span class="pace-note ${d.on_pace === false ? 'behind' : d.on_pace ? 'ok' : ''}">${escapeHtml(d.on_pace_note)}</span>`
+        : ''
+      const expected =
+        !compact && d.expected_hours != null
+          ? `<span class="dim">forventet ${formatHours(d.expected_hours)} t</span>`
+          : ''
       return `
         <div class="progress-row">
           <div class="progress-meta">
@@ -683,6 +706,7 @@ function renderProgressSection(o) {
           <div class="progress-track" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="${escapeHtml(d.label)}">
             <div class="progress-fill" style="width:${Math.min(100, Math.max(0, pct))}%"></div>
           </div>
+          <div class="progress-sub">${paceNote}${expected}</div>
         </div>`
     })
     .join('')
@@ -696,15 +720,47 @@ function renderProgressSection(o) {
   } else if (progress.activity_count != null) {
     blurb = `Sesongvolum vs mål · ${progress.activity_count} aktiviteter i vinduet.`
   }
+  const formula = compact
+    ? ''
+    : `<p class="muted tight dim formula-note">Compliance: completed / season_target (maks 100&nbsp;%). On-pace: completed / (target × elapsed/season).</p>`
   return `
     <section class="section-block">
       <div class="section-head">
-        <h2>Fremskritt</h2>
+        <h2>${compact ? 'Sesongvolum' : 'Fremskritt & compliance'}</h2>
         ${badge}
       </div>
       <p class="muted tight">${escapeHtml(blurb.trim())}${windowLabel ? ` <span class="dim">(${escapeHtml(windowLabel)})</span>` : ''}</p>
       <div class="progress-list">${bars || `<p class="muted">Ingen disipliner.</p>`}</div>
-      <p class="muted tight dim formula-note">Formel: completed / season_target · maks 100&nbsp;%</p>
+      ${formula}
+    </section>`
+}
+
+function renderFormCard(o) {
+  const q = o.qualifying_sessions
+  const req = o.required_sessions || 5
+  const gate = o.gate_open
+  const ftpEst =
+    o.ftp_estimated != null
+      ? `${o.ftp_estimated} W${o.estimate_confidence ? ` · ${o.estimate_confidence}` : ''}`
+      : o.estimate_disclaimer || `Estimat etter ${req} sykkeløkter med watt`
+  const gateLabel =
+    gate === true
+      ? `<span class="badge badge-live">Gate åpen</span>`
+      : `<span class="badge badge-off">${q != null ? `${q}/${req}` : '—'} økter</span>`
+  return `
+    <section class="section-block form-card">
+      <div class="section-head">
+        <h2>Form</h2>
+        ${gateLabel}
+      </div>
+      <div class="stat-row"><span>Testet FTP</span><span>${o.ftp_tested != null ? `${o.ftp_tested} W` : '—'}</span></div>
+      <div class="stat-row"><span>Estimert FTP</span><span>${escapeHtml(String(ftpEst))}</span></div>
+      <div class="stat-row"><span>VO₂</span><span>${o.vo2_estimate != null ? o.vo2_estimate : '—'}</span></div>
+      ${
+        o.estimate_disclaimer && o.ftp_estimated != null
+          ? `<p class="muted tight">${escapeHtml(o.estimate_disclaimer)}</p>`
+          : ''
+      }
     </section>`
 }
 
@@ -765,10 +821,6 @@ function renderPlanStrip(o) {
 
 function renderOverview() {
   const o = state.overview || {}
-  const ftpEst =
-    o.ftp_estimated != null
-      ? `${o.ftp_estimated} W${o.estimate_confidence ? ` (${o.estimate_confidence})` : ''}`
-      : o.estimate_disclaimer || 'Estimat etter 5 sykkeløkter med watt'
   return `
     <div class="overview-hero">
       <p class="brand-mark">Lofoten Coach</p>
@@ -776,32 +828,114 @@ function renderOverview() {
       <p class="muted">${escapeHtml(o.uplift_line || '')}</p>
     </div>
     ${renderPlanStrip(o)}
-    ${renderProgressSection(o)}
-    <section class="section-block">
-      <h2>Form</h2>
-      <div class="stat-row"><span>Testet FTP</span><span>${o.ftp_tested != null ? `${o.ftp_tested} W` : '—'}</span></div>
-      <div class="stat-row"><span>Estimert FTP</span><span>${escapeHtml(String(ftpEst))}</span></div>
-      <div class="stat-row"><span>VO₂</span><span>${o.vo2_estimate != null ? o.vo2_estimate : '—'}</span></div>
-    </section>
+    ${renderFormCard(o)}
+    ${renderProgressSection(o, { compact: true })}
     <section class="section-block">
       <h2>Kontekst</h2>
       <div class="stat-row"><span>Mål</span><span>${escapeHtml(o.goal_text || '—')}</span></div>
       <div class="stat-row"><span>Ukens fokus</span><span>${escapeHtml(o.weekly_focus || '—')}</span></div>
       <div class="stat-row"><span>Skade</span><span>${escapeHtml(o.injury_notes || '—')}</span></div>
     </section>
-    <section class="section-block">
-      <h2>Intervals</h2>
-      <div class="stat-row">
-        <span>Status</span>
-        <span>${o.intervals_linked ? 'Koblet' : 'Ikke koblet'}</span>
+    <p class="muted tight jump-hint">Full grovplan under <strong>Plan</strong> · detaljerte barer under <strong>Compliance</strong>.</p>
+  `
+}
+
+function renderSyncPanel() {
+  const linked = state.intervals.connected
+  const pending = state.sync.pending
+  const status = state.sync.status
+  let confirmHtml = ''
+  if (pending) {
+    const sample = (pending.events || [])
+      .slice(0, 5)
+      .map(
+        (e) =>
+          `<li><code>${escapeHtml(e.external_id || e.name || '')}</code> ${escapeHtml(e.name || e.day || '')}</li>`
+      )
+      .join('')
+    confirmHtml = `
+      <div class="confirm-card" role="dialog" aria-label="Bekreft Intervals-sync">
+        <p><strong>${escapeHtml(pending.message || 'Bekreft handling')}</strong></p>
+        <p class="muted tight">${escapeHtml(pending.op)} · ${pending.count} hendelser</p>
+        <ul class="sync-sample">${sample}</ul>
+        ${pending.events_truncated ? `<p class="muted tight">+${pending.events_truncated} til</p>` : ''}
+        <div class="row-actions">
+          <button type="button" class="btn btn-primary" id="sync-confirm-yes" ${state.sync.busy ? 'disabled' : ''}>Ja, kjør</button>
+          <button type="button" class="btn secondary" id="sync-confirm-no" ${state.sync.busy ? 'disabled' : ''}>Avbryt</button>
+        </div>
+      </div>`
+  }
+  const statusList = (status?.events || [])
+    .slice(0, 8)
+    .map(
+      (e) =>
+        `<li>${escapeHtml(e.name || 'Note')} · <span class="dim">${escapeHtml((e.start_date_local || '').slice(0, 10))}</span></li>`
+    )
+    .join('')
+  return `
+    <section class="section-block sync-panel">
+      <div class="section-head">
+        <h2>Sync til Intervals</h2>
+        <span class="badge ${linked ? 'badge-live' : 'badge-off'}">${linked ? 'Koblet' : 'Ikke koblet'}</span>
       </div>
-      <p class="muted">${escapeHtml(o.intervals_hint || 'Ikke koblet ennå.')}</p>
-      ${
-        o.intervals_linked
-          ? ''
-          : `<p class="muted tight">Gå til <strong>Du</strong> og lim inn athlete ID + API-nøkkel.</p>`
-      }
+      <p class="muted tight">Pusher ukenoter for grovplan-blokker (<code>ll-coach-…</code>). Aldri stille auto-push — forhåndsvis, så Ja/Avbryt.</p>
+      <div class="sync-actions">
+        <button type="button" class="btn btn-primary" id="sync-push" ${!linked || state.sync.busy ? 'disabled' : ''}>Sync til Intervals</button>
+        <button type="button" class="btn secondary" id="sync-refresh" ${!linked || state.sync.busy ? 'disabled' : ''}>Oppdater status</button>
+        <button type="button" class="btn secondary danger-outline" id="sync-delete" ${!linked || state.sync.busy ? 'disabled' : ''}>Fjern fra Intervals</button>
+      </div>
+      ${state.sync.message ? `<p class="intervals-status is-ok">${escapeHtml(state.sync.message)}</p>` : ''}
+      ${state.sync.error ? `<p class="error">${escapeHtml(state.sync.error)}</p>` : ''}
+      ${confirmHtml}
+      <div class="sync-status-box">
+        <p class="plan-kicker">På Intervals nå</p>
+        ${
+          state.sync.statusError
+            ? `<p class="error">${escapeHtml(state.sync.statusError)}</p>`
+            : status
+              ? `<p class="muted tight">${status.count} agent-noter (${escapeHtml(status.window?.start || '')} – ${escapeHtml(status.window?.end || '')})</p>
+                 <ul class="sync-sample">${statusList || '<li class="muted">Ingen</li>'}</ul>`
+              : `<p class="muted tight">Trykk Oppdater for å hente status.</p>`
+        }
+      </div>
+    </section>`
+}
+
+function renderPlanTab() {
+  const o = state.overview || {}
+  return `
+    <div class="tab-hero">
+      <p class="brand-mark">Grovplan</p>
+      <h2>Plan &amp; Intervals</h2>
+      <p class="muted">Makro/meso her — dagsøkter i Intervals.</p>
+    </div>
+    ${renderPlanStrip(o)}
+    ${renderPlanBlocksEditor()}
+    ${renderSyncPanel()}
+  `
+}
+
+function renderComplianceTab() {
+  const o = state.overview || {}
+  const targets = o.season_targets || {}
+  return `
+    <div class="tab-hero">
+      <p class="brand-mark">Compliance</p>
+      <h2>Sesongmål</h2>
+      <p class="muted">Fullført vs mål, plus on-pace mot racedato.</p>
+    </div>
+    ${renderProgressSection(o)}
+    <section class="section-block">
+      <h2>Mål-oppsummering</h2>
+      <div class="stat-row"><span>Sesongstart</span><span>${escapeHtml(targets.season_start_date || '—')}</span></div>
+      <div class="stat-row"><span>Race</span><span>${escapeHtml(targets.goal_race_date || '—')}</span></div>
+      <div class="stat-row"><span>Svøm</span><span>${targets.swim != null ? `${targets.swim} t` : '—'}</span></div>
+      <div class="stat-row"><span>Sykkel</span><span>${targets.bike != null ? `${targets.bike} t` : '—'}</span></div>
+      <div class="stat-row"><span>Løp</span><span>${targets.run != null ? `${targets.run} t` : '—'}</span></div>
+      <div class="stat-row"><span>Styrke</span><span>${targets.strength != null ? `${targets.strength} t` : '—'}</span></div>
+      <p class="muted tight">Juster under <strong>Du → Sesongmål</strong>.</p>
     </section>
+    ${renderFormCard(o)}
   `
 }
 
@@ -927,7 +1061,6 @@ function renderDu() {
       ${state.error && state.tab === 'du' ? `<p class="error">${escapeHtml(state.error)}</p>` : ''}
       <button class="btn btn-primary" type="submit" ${state.busy ? 'disabled' : ''}>Lagre profil</button>
     </form>
-    ${renderPlanBlocksEditor()}
     <form id="intervals-form" class="section-block intervals-section">
       <div class="section-head">
         <h2>Intervals</h2>
@@ -993,10 +1126,16 @@ function bindApp() {
       state.intervalsError = ''
       state.intervalsStatus = ''
       state.planError = ''
-      if (state.tab === 'overblikk') await refreshOverview()
+      state.sync.error = ''
+      state.sync.message = ''
+      if (state.tab === 'overblikk' || state.tab === 'compliance') await refreshOverview()
+      if (state.tab === 'plan') {
+        await refreshOverview()
+        await refreshPlanBlocks()
+        await refreshIntervals()
+      }
       if (state.tab === 'du') {
         await refreshIntervals()
-        await refreshPlanBlocks()
       }
       render()
     })
@@ -1282,6 +1421,96 @@ function bindApp() {
       state.intervalsStatus = ''
     } finally {
       state.intervalsBusy = false
+      render()
+    }
+  })
+
+  const runSyncPreview = async (op) => {
+    if (state.sync.busy || !state.intervals.connected) return
+    state.sync.busy = true
+    state.sync.error = ''
+    state.sync.message = ''
+    state.sync.pending = null
+    render()
+    try {
+      const data = await api('/v1/athlete/me/intervals/calendar/preview', {
+        method: 'POST',
+        body: { op },
+        timeoutMs: 20000,
+      })
+      state.sync.pending = data
+      state.sync.message = data.message || 'Bekreft handling'
+    } catch (err) {
+      state.sync.error = err.message || 'Forhåndsvisning feilet'
+    } finally {
+      state.sync.busy = false
+      render()
+    }
+  }
+
+  document.getElementById('sync-push')?.addEventListener('click', () => runSyncPreview('push'))
+  document.getElementById('sync-delete')?.addEventListener('click', () => runSyncPreview('delete'))
+
+  document.getElementById('sync-refresh')?.addEventListener('click', async () => {
+    if (state.sync.busy || !state.intervals.connected) return
+    state.sync.busy = true
+    state.sync.statusError = ''
+    state.sync.message = 'Henter status…'
+    render()
+    try {
+      const data = await api('/v1/athlete/me/intervals/calendar/status', {
+        timeoutMs: 20000,
+      })
+      state.sync.status = data
+      state.sync.message = `${data.count} agent-noter på Intervals`
+      toast('Status oppdatert')
+    } catch (err) {
+      state.sync.statusError = err.message || 'Status feilet'
+      state.sync.message = ''
+    } finally {
+      state.sync.busy = false
+      render()
+    }
+  })
+
+  document.getElementById('sync-confirm-no')?.addEventListener('click', () => {
+    state.sync.pending = null
+    state.sync.message = 'Avbrutt'
+    render()
+  })
+
+  document.getElementById('sync-confirm-yes')?.addEventListener('click', async () => {
+    const pending = state.sync.pending
+    if (!pending?.pending_id || state.sync.busy) return
+    state.sync.busy = true
+    state.sync.error = ''
+    state.sync.message = 'Kjører…'
+    render()
+    try {
+      const data = await api('/v1/athlete/me/intervals/calendar/confirm', {
+        method: 'POST',
+        body: { pending_id: pending.pending_id },
+        timeoutMs: 120000,
+      })
+      state.sync.pending = null
+      const n = data.pushed ?? data.deleted ?? pending.count
+      state.sync.message =
+        data.op === 'delete'
+          ? `Fjernet ${n} hendelser fra Intervals`
+          : `Synct ${n} hendelser til Intervals`
+      toast(state.sync.message)
+      try {
+        state.sync.status = await api('/v1/athlete/me/intervals/calendar/status', {
+          timeoutMs: 20000,
+        })
+      } catch {
+        /* status best-effort */
+      }
+    } catch (err) {
+      state.sync.error = err.message || 'Bekreftelse feilet'
+      state.sync.message = ''
+    } finally {
+      state.sync.busy = false
       render()
     }
   })

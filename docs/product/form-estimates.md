@@ -41,9 +41,10 @@ Formel (ACSM-inspirert submax → ekstrapolert; dokumenter enheter i kode):
 
 ## API / lagring
 
-- Modul: `services/coach-api/form_estimates.py`
-- `POST /v1/form/recompute` (etter sync) oppdaterer lagrede felter
-- Overblikk/chat leser **lagrede** estimater + disclaimer ved lav confidence
+- Modul: `services/coach-api/form_estimates.py` + `form_from_intervals.py` (ICU 90d + power-curve)
+- Overview kaller `resolve_form_estimates` (ikke tom liste) og persisterer når gate ≥5
+- `POST /v1/form/recompute` oppdaterer lagrede felter eksplisitt
+- Overblikk/Compliance/chat leser **lagrede** estimater + disclaimer ved lav confidence
 
 ## Kilder
 

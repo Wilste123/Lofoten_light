@@ -189,3 +189,99 @@ def test_intervals_stores_even_when_verify_fails(client, monkeypatch):
     assert r.json()["connected"] is True
     assert r.json()["verified"] is False
     assert "401" in (r.json().get("verify_error") or "")
+
+
+def test_overview_progress_demo_and_season_targets(client):
+    c, _ = client
+    aid = _onboard(c)
+    headers = {"X-Athlete-Id": aid}
+
+    ov = c.get("/v1/overview", headers=headers)
+    assert ov.status_code == 200
+    data = ov.json()
+    assert data["progress"]["source"] == "demo"
+    bike = next(d for d in data["progress"]["disciplines"] if d["id"] == "bike")
+    assert bike["completed_hours"] == 175.0
+    assert bike["target_hours"] == 500.0  # demo default
+    assert bike["compliance_pct"] == 35.0
+    assert data["periodization"]["current_block"] is None
+    assert data["periodization"]["days_to_goal"] is None
+
+    patch = c.patch(
+        "/v1/athlete/me",
+        headers=headers,
+        json={
+            "season_bike_hours_target": 500,
+            "season_swim_hours_target": 100,
+            "season_run_hours_target": 150,
+            "season_strength_hours_target": 50,
+            "season_start_date": "2026-01-01",
+            "goal_race_date": "2027-08-20",
+        },
+    )
+    assert patch.status_code == 200
+    a = patch.json()["athlete"]
+    assert a["season_bike_hours_target"] == 500
+    assert a["goal_race_date"] == "2027-08-20"
+
+    ov2 = c.get("/v1/overview", headers=headers)
+    assert ov2.json()["season_targets"]["bike"] == 500
+    assert ov2.json()["periodization"]["goal_race_date"] == "2027-08-20"
+    assert ov2.json()["periodization"]["days_to_goal"] is not None
+
+
+def test_plan_blocks_crud_and_overview_strip(client):
+    c, _ = client
+    aid = _onboard(c)
+    headers = {"X-Athlete-Id": aid}
+
+    empty = c.get("/v1/athlete/me/plan-blocks", headers=headers)
+    assert empty.status_code == 200
+    assert empty.json()["blocks"] == []
+
+    created = c.post(
+        "/v1/athlete/me/plan-blocks",
+        headers=headers,
+        json={
+            "title": "Base 1",
+            "theme": "Aerob + svøm",
+            "start_date": "2026-09-01",
+            "end_date": "2026-09-28",
+            "weekly_hours": 8,
+        },
+    )
+    assert created.status_code == 200, created.text
+    bid = created.json()["block"]["id"]
+    assert created.json()["block"]["title"] == "Base 1"
+
+    c.post(
+        "/v1/athlete/me/plan-blocks",
+        headers=headers,
+        json={
+            "title": "Base 2",
+            "theme": "Bygg",
+            "start_date": "2026-09-29",
+            "end_date": "2026-10-26",
+            "weekly_hours": 10,
+        },
+    )
+
+    patched = c.patch(
+        f"/v1/athlete/me/plan-blocks/{bid}",
+        headers=headers,
+        json={"theme": "Aerob kapasitet"},
+    )
+    assert patched.status_code == 200
+    assert patched.json()["block"]["theme"] == "Aerob kapasitet"
+
+    ov = c.get("/v1/overview", headers=headers)
+    assert ov.status_code == 200
+    peri = ov.json()["periodization"]
+    assert peri["blocks_count"] == 2
+    # Current depends on today's date; at least one of current/next should be set
+    assert peri["current_block"] is not None or peri["next_block"] is not None
+
+    deleted = c.delete(f"/v1/athlete/me/plan-blocks/{bid}", headers=headers)
+    assert deleted.status_code == 200
+    left = c.get("/v1/athlete/me/plan-blocks", headers=headers)
+    assert len(left.json()["blocks"]) == 1

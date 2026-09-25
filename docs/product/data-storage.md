@@ -9,7 +9,8 @@
 
 | Data | Hvor i MVP | Hvorfor |
 |------|------------|---------|
-| `athlete_context` (navn, trener, farge, mål, avtaler, skade, **ernæring/GI**, test-FTP, vekt/alder) | SQLite | Appens SoT — ikke Intervals |
+| `athlete_context` (navn, trener, farge, mål, avtaler, skade, **ernæring/GI**, test-FTP, vekt/alder, **sesongmål**) | SQLite | Appens SoT — ikke Intervals |
+| `plan_blocks` (grovplan / bulk) | SQLite | Makro/meso — se [periodization-overview.md](periodization-overview.md) |
 | Profilfil markdown | `data/athletes/{id}/profile.md` | Cursor-coach + LLM leser person, ikke bare William |
 | Chat-historikk (siste N turner) | SQLite | Kort minne for én LLM-tur |
 | Intervals API-nøkkel + athlete-id | SQLite (`athlete_secrets`) via **Du**-fane / `PUT /v1/athlete/me/intervals` | Kun server; aldri `localStorage` eller `.env` for web |
@@ -42,7 +43,14 @@ Browser → coach-api → SQLite (volume)
 --   goal_text, injury_notes, agreements_json, weekly_focus,
 --   ftp_tested, ftp_tested_at, ftp_estimated, vo2_estimate,
 --   estimate_confidence, estimate_updated_at, estimate_source,
---   weight_kg, age_years, notes, created_at, updated_at
+--   weight_kg, age_years, notes,
+--   season_swim_hours_target, season_bike_hours_target,
+--   season_run_hours_target, season_strength_hours_target,
+--   season_start_date, goal_race_date,
+--   created_at, updated_at
+
+-- plan_blocks: id, athlete_id, title, theme, start_date, end_date,
+--   weekly_hours, sort_order, created_at, updated_at
 
 -- athlete_secrets: athlete_id, intervals_api_key, intervals_athlete_id, updated_at
 

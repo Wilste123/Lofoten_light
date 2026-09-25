@@ -7,7 +7,9 @@
 
 | Fil | Innhold |
 |-----|---------|
-| [PRODUCT-PLAN.md](PRODUCT-PLAN.md) | Kanonisk produktplan (faser, onboarding → profil + GI) |
+| [PRODUCT-PLAN.md](PRODUCT-PLAN.md) | Kanonisk produktplan (faser, fremskritt, grovplan, UX) |
+| [progress-compliance.md](progress-compliance.md) | Volummål, formler, demo vs Intervals |
+| [periodization-overview.md](periodization-overview.md) | App vs Intervals; `plan_blocks` |
 | [mvp-scope.md](mvp-scope.md) | MVP-suksess: chat + overblikk; non-goals |
 | [anti-patterns.md](anti-patterns.md) | Pondus, tool-loop, diagnose — hva vi unngår |
 | [data-storage.md](data-storage.md) | SQLite + Fly volume; schema inkl. `training_pairs` |

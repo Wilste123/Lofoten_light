@@ -40,6 +40,25 @@ CREATE TABLE IF NOT EXISTS athletes (
   nutrition_other_restrictions TEXT DEFAULT '',
   nutrition_notes TEXT DEFAULT '',
   notes TEXT DEFAULT '',
+  season_swim_hours_target REAL,
+  season_bike_hours_target REAL,
+  season_run_hours_target REAL,
+  season_strength_hours_target REAL,
+  season_start_date TEXT,
+  goal_race_date TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS plan_blocks (
+  id TEXT PRIMARY KEY,
+  athlete_id TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+  title TEXT NOT NULL DEFAULT '',
+  theme TEXT DEFAULT '',
+  start_date TEXT,
+  end_date TEXT,
+  weekly_hours REAL,
+  sort_order INTEGER DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -91,6 +110,7 @@ CREATE TABLE IF NOT EXISTS coordinated_sessions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_messages_athlete ON messages(athlete_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_plan_blocks_athlete ON plan_blocks(athlete_id, start_date);
 """
 
 
@@ -118,6 +138,12 @@ _EXTRA_COLUMNS = [
     ("nutrition_lactose", "INTEGER DEFAULT 0"),
     ("nutrition_other_restrictions", "TEXT DEFAULT ''"),
     ("nutrition_notes", "TEXT DEFAULT ''"),
+    ("season_swim_hours_target", "REAL"),
+    ("season_bike_hours_target", "REAL"),
+    ("season_run_hours_target", "REAL"),
+    ("season_strength_hours_target", "REAL"),
+    ("season_start_date", "TEXT"),
+    ("goal_race_date", "TEXT"),
 ]
 
 
@@ -244,6 +270,12 @@ def update_athlete(
         "nutrition_other_restrictions",
         "nutrition_notes",
         "notes",
+        "season_swim_hours_target",
+        "season_bike_hours_target",
+        "season_run_hours_target",
+        "season_strength_hours_target",
+        "season_start_date",
+        "goal_race_date",
     }
     fields: list[str] = []
     values: list[Any] = []
@@ -383,3 +415,113 @@ def secrets_public_view(row: dict[str, Any] | None) -> dict[str, Any]:
         "api_key_hint": mask_api_key(key) if key else None,
         "updated_at": row.get("updated_at"),
     }
+
+
+def _row_to_block(row: sqlite3.Row | None) -> dict[str, Any] | None:
+    if row is None:
+        return None
+    return dict(row)
+
+
+def list_plan_blocks(
+    conn: sqlite3.Connection, athlete_id: str
+) -> list[dict[str, Any]]:
+    cur = conn.execute(
+        """
+        SELECT * FROM plan_blocks
+        WHERE athlete_id = ?
+        ORDER BY
+          CASE WHEN start_date IS NULL OR start_date = '' THEN 1 ELSE 0 END,
+          start_date ASC,
+          sort_order ASC,
+          created_at ASC
+        """,
+        (athlete_id,),
+    )
+    return [dict(r) for r in cur.fetchall()]
+
+
+def get_plan_block(
+    conn: sqlite3.Connection, athlete_id: str, block_id: str
+) -> dict[str, Any] | None:
+    cur = conn.execute(
+        "SELECT * FROM plan_blocks WHERE id = ? AND athlete_id = ?",
+        (block_id, athlete_id),
+    )
+    return _row_to_block(cur.fetchone())
+
+
+def insert_plan_block(
+    conn: sqlite3.Connection, athlete_id: str, data: dict[str, Any]
+) -> dict[str, Any]:
+    now = utc_now()
+    block_id = data.get("id") or new_id()
+    conn.execute(
+        """
+        INSERT INTO plan_blocks (
+          id, athlete_id, title, theme, start_date, end_date,
+          weekly_hours, sort_order, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            block_id,
+            athlete_id,
+            data.get("title") or "",
+            data.get("theme") or "",
+            data.get("start_date") or None,
+            data.get("end_date") or None,
+            data.get("weekly_hours"),
+            int(data.get("sort_order") or 0),
+            now,
+            now,
+        ),
+    )
+    return get_plan_block(conn, athlete_id, block_id)  # type: ignore[return-value]
+
+
+def update_plan_block(
+    conn: sqlite3.Connection,
+    athlete_id: str,
+    block_id: str,
+    patch: dict[str, Any],
+) -> dict[str, Any] | None:
+    existing = get_plan_block(conn, athlete_id, block_id)
+    if not existing:
+        return None
+    allowed = {
+        "title",
+        "theme",
+        "start_date",
+        "end_date",
+        "weekly_hours",
+        "sort_order",
+    }
+    fields: list[str] = []
+    values: list[Any] = []
+    for key, val in patch.items():
+        if key not in allowed:
+            continue
+        if key == "sort_order" and val is not None:
+            val = int(val)
+        fields.append(f"{key} = ?")
+        values.append(val)
+    if not fields:
+        return existing
+    fields.append("updated_at = ?")
+    values.append(utc_now())
+    values.extend([block_id, athlete_id])
+    conn.execute(
+        f"UPDATE plan_blocks SET {', '.join(fields)} WHERE id = ? AND athlete_id = ?",
+        values,
+    )
+    return get_plan_block(conn, athlete_id, block_id)
+
+
+def delete_plan_block(
+    conn: sqlite3.Connection, athlete_id: str, block_id: str
+) -> bool:
+    cur = conn.execute(
+        "DELETE FROM plan_blocks WHERE id = ? AND athlete_id = ?",
+        (block_id, athlete_id),
+    )
+    return cur.rowcount > 0

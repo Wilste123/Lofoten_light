@@ -14,18 +14,28 @@ from chat_service import build_system_prompt, call_llm
 from db import (
     add_message,
     db_session,
+    delete_plan_block,
     get_athlete,
     get_athlete_secrets,
     init_db,
     insert_athlete,
+    insert_plan_block,
+    list_plan_blocks,
     recent_messages,
     secrets_public_view,
     update_athlete,
+    update_plan_block,
     upsert_athlete_secrets,
 )
 from form_estimates import compute_form_estimates
 from intervals_smoke import smoke_test_intervals
 from profile import write_profile
+from progress_compliance import (
+    days_to_goal,
+    pick_current_and_next,
+    public_block,
+    resolve_progress,
+)
 
 
 @asynccontextmanager
@@ -102,6 +112,12 @@ class AthletePatch(BaseModel):
     nutrition_notes: str | None = None
     notes: str | None = None
     agreements: list[str] | None = None
+    season_swim_hours_target: float | None = None
+    season_bike_hours_target: float | None = None
+    season_run_hours_target: float | None = None
+    season_strength_hours_target: float | None = None
+    season_start_date: str | None = None
+    goal_race_date: str | None = None
 
 
 class ChatIn(BaseModel):
@@ -112,6 +128,24 @@ class IntervalsCredentialsIn(BaseModel):
     intervals_athlete_id: str = Field(min_length=1)
     intervals_api_key: str = Field(min_length=1)
     verify: bool = True
+
+
+class PlanBlockIn(BaseModel):
+    title: str = ""
+    theme: str = ""
+    start_date: str | None = None
+    end_date: str | None = None
+    weekly_hours: float | None = None
+    sort_order: int = 0
+
+
+class PlanBlockPatch(BaseModel):
+    title: str | None = None
+    theme: str | None = None
+    start_date: str | None = None
+    end_date: str | None = None
+    weekly_hours: float | None = None
+    sort_order: int | None = None
 
 
 @app.get("/health")
@@ -256,14 +290,71 @@ def overview(x_athlete_id: str | None = Header(default=None)) -> dict[str, Any]:
         if not athlete:
             raise HTTPException(404, "Utøver ikke funnet")
         secrets = get_athlete_secrets(conn, aid)
-    return _overview_payload(athlete, secrets)
+        blocks = list_plan_blocks(conn, aid)
+    return _overview_payload(athlete, secrets, blocks)
+
+
+@app.get("/v1/athlete/me/plan-blocks")
+def get_plan_blocks(x_athlete_id: str | None = Header(default=None)) -> dict[str, Any]:
+    aid = _require_athlete(x_athlete_id)
+    with db_session(config.DATABASE_PATH) as conn:
+        if not get_athlete(conn, aid):
+            raise HTTPException(404, "Utøver ikke funnet")
+        blocks = list_plan_blocks(conn, aid)
+    return {"blocks": [public_block(b) for b in blocks]}
+
+
+@app.post("/v1/athlete/me/plan-blocks")
+def create_plan_block(
+    body: PlanBlockIn,
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    aid = _require_athlete(x_athlete_id)
+    with db_session(config.DATABASE_PATH) as conn:
+        if not get_athlete(conn, aid):
+            raise HTTPException(404, "Utøver ikke funnet")
+        block = insert_plan_block(conn, aid, body.model_dump())
+    return {"block": public_block(block)}
+
+
+@app.patch("/v1/athlete/me/plan-blocks/{block_id}")
+def patch_plan_block(
+    block_id: str,
+    body: PlanBlockPatch,
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    aid = _require_athlete(x_athlete_id)
+    patch = body.model_dump(exclude_unset=True)
+    with db_session(config.DATABASE_PATH) as conn:
+        if not get_athlete(conn, aid):
+            raise HTTPException(404, "Utøver ikke funnet")
+        block = update_plan_block(conn, aid, block_id, patch)
+    if not block:
+        raise HTTPException(404, "Blokk ikke funnet")
+    return {"block": public_block(block)}
+
+
+@app.delete("/v1/athlete/me/plan-blocks/{block_id}")
+def remove_plan_block(
+    block_id: str,
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    aid = _require_athlete(x_athlete_id)
+    with db_session(config.DATABASE_PATH) as conn:
+        if not get_athlete(conn, aid):
+            raise HTTPException(404, "Utøver ikke funnet")
+        ok = delete_plan_block(conn, aid, block_id)
+    if not ok:
+        raise HTTPException(404, "Blokk ikke funnet")
+    return {"ok": True}
 
 
 def _overview_payload(
     athlete: dict[str, Any],
     secrets: dict[str, Any] | None = None,
+    blocks: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Phase 1: form_estimates with empty activities → gate closed. Intervals status from secrets."""
+    """Form estimates + progress/compliance + plan strip."""
     estimates = compute_form_estimates(
         [],
         ftp_tested=athlete.get("ftp_tested"),
@@ -274,18 +365,23 @@ def _overview_payload(
     intervals_linked = bool(linked.get("connected"))
     if intervals_linked:
         icu = linked.get("intervals_athlete_id") or ""
-        intervals_hint = f"Koblet (athlete {icu}). Kalenderdetaljer hentes i fase 2."
-        uplift = "Intervals er koblet — kontekst klar for belastning når sync kommer."
+        intervals_hint = f"Koblet (athlete {icu}). Detaljer og kalender lever i Intervals."
+        uplift = "Intervals er koblet — volum beregnes fra aktiviteter når sync lykkes."
     else:
         intervals_hint = "Ikke koblet ennå. Legg inn ID + API-nøkkel under Du → Intervals."
-        uplift = "Koble Intervals under Du for belastning og fremgang — konteksten din er klar."
+        uplift = "Koble Intervals under Du for ekte volum — demo-tall vises inntil da."
     if athlete.get("weekly_focus"):
         uplift = f"Ukens fokus: {athlete['weekly_focus']}"
     elif athlete.get("goal_text"):
         uplift = f"Retning: {athlete['goal_text'][:120]}"
 
+    progress = resolve_progress(athlete, secrets)
+    block_list = blocks or []
+    picked = pick_current_and_next(block_list)
+    days = days_to_goal(athlete)
+
     return {
-        "plan_headline": None,
+        "plan_headline": (picked["current"] or {}).get("title") if picked.get("current") else None,
         "last_session": None,
         "load": None,
         "intervals_linked": intervals_linked,
@@ -304,4 +400,21 @@ def _overview_payload(
         "injury_notes": athlete.get("injury_notes"),
         "uplift_line": uplift,
         "partner_slots": [],
+        "progress": progress,
+        "periodization": {
+            "current_block": public_block(picked.get("current")),
+            "next_block": public_block(picked.get("next")),
+            "days_to_goal": days,
+            "goal_race_date": athlete.get("goal_race_date"),
+            "season_start_date": athlete.get("season_start_date"),
+            "blocks_count": len(block_list),
+        },
+        "season_targets": {
+            "swim": athlete.get("season_swim_hours_target"),
+            "bike": athlete.get("season_bike_hours_target"),
+            "run": athlete.get("season_run_hours_target"),
+            "strength": athlete.get("season_strength_hours_target"),
+            "season_start_date": athlete.get("season_start_date"),
+            "goal_race_date": athlete.get("goal_race_date"),
+        },
     }

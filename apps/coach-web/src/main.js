@@ -15,6 +15,7 @@ const state = {
   tab: 'coach',
   messages: [],
   overview: null,
+  planBlocks: [],
   intervals: {
     connected: false,
     intervals_athlete_id: '',
@@ -44,6 +45,7 @@ const state = {
   busy: false,
   error: '',
   intervalsError: '',
+  planError: '',
 }
 
 const app = document.getElementById('app')
@@ -108,7 +110,7 @@ async function bootstrap() {
   state.athlete = data.athlete
   setAccent(data.athlete.accent_color)
   setAthleteId(data.athlete.id)
-  await Promise.all([refreshOverview(), refreshIntervals()])
+  await Promise.all([refreshOverview(), refreshIntervals(), refreshPlanBlocks()])
   render()
 }
 
@@ -117,6 +119,15 @@ async function refreshOverview() {
     state.overview = await api('/v1/overview')
   } catch {
     state.overview = null
+  }
+}
+
+async function refreshPlanBlocks() {
+  try {
+    const data = await api('/v1/athlete/me/plan-blocks')
+    state.planBlocks = data.blocks || []
+  } catch {
+    state.planBlocks = []
   }
 }
 
@@ -269,7 +280,7 @@ function renderOnboarding() {
           <textarea id="nutrition_notes" name="nutrition_notes" rows="2" placeholder="Treneren tilpasser — diagnostiserer ikke">${escapeHtml(o.nutrition_notes)}</textarea>
         </div>
         ${state.error ? `<p class="error">${escapeHtml(state.error)}</p>` : ''}
-        <button class="btn" type="submit" ${state.busy ? 'disabled' : ''}>Start med treneren</button>
+        <button class="btn btn-primary" type="submit" ${state.busy ? 'disabled' : ''}>Start med treneren</button>
       </form>
     </div>
   `
@@ -346,6 +357,7 @@ function bindOnboarding() {
       ]
       await refreshOverview()
       await refreshIntervals()
+      await refreshPlanBlocks()
       toast('Profil lagret')
     } catch (err) {
       state.error = err.message || 'Kunne ikke lagre'
@@ -364,10 +376,108 @@ function renderChat() {
     <div class="chat-log" id="chat-log">${bubbles || `<p class="muted">Skriv til ${escapeHtml(state.athlete.coach_display_name)}.</p>`}</div>
     <form class="chat-form" id="chat-form">
       <input id="chat-input" autocomplete="off" placeholder="Spør treneren…" ${state.busy ? 'disabled' : ''} />
-      <button class="btn" type="submit" ${state.busy ? 'disabled' : ''}>Send</button>
+      <button class="btn btn-primary" type="submit" ${state.busy ? 'disabled' : ''}>Send</button>
     </form>
     ${state.error && state.tab === 'coach' ? `<p class="error">${escapeHtml(state.error)}</p>` : ''}
   `
+}
+
+function formatHours(n) {
+  if (n == null || Number.isNaN(Number(n))) return '—'
+  const v = Number(n)
+  return Number.isInteger(v) ? String(v) : v.toFixed(1)
+}
+
+function renderProgressSection(o) {
+  const progress = o.progress || {}
+  const rows = progress.disciplines || []
+  const source = progress.source || 'demo'
+  const badge =
+    source === 'demo'
+      ? `<span class="badge badge-demo">Demo</span>`
+      : progress.estimate
+        ? `<span class="badge badge-est">Estimat</span>`
+        : `<span class="badge badge-live">Intervals</span>`
+  const windowLabel =
+    progress.window?.start && progress.window?.end
+      ? `${progress.window.start} – ${progress.window.end}`
+      : ''
+  const bars = rows
+    .map((d) => {
+      const pct = d.progress_pct != null ? d.progress_pct : 0
+      const target =
+        d.target_hours != null ? `${formatHours(d.completed_hours)} / ${formatHours(d.target_hours)} t` : `${formatHours(d.completed_hours)} t · sett mål i Du`
+      const compliance =
+        d.compliance_pct != null ? `${d.compliance_pct} %` : '—'
+      return `
+        <div class="progress-row">
+          <div class="progress-meta">
+            <span class="progress-label">${escapeHtml(d.label)}</span>
+            <span class="progress-nums">${escapeHtml(target)}</span>
+            <span class="progress-pct">${escapeHtml(compliance)}</span>
+          </div>
+          <div class="progress-track" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="${escapeHtml(d.label)}">
+            <div class="progress-fill" style="width:${Math.min(100, Math.max(0, pct))}%"></div>
+          </div>
+        </div>`
+    })
+    .join('')
+  return `
+    <section class="section-block">
+      <div class="section-head">
+        <h2>Fremskritt</h2>
+        ${badge}
+      </div>
+      <p class="muted tight">${source === 'demo' ? 'Illustrasjonstall — koble Intervals for ekte volum.' : 'Sesongvolum vs mål.'}${windowLabel ? ` <span class="dim">(${escapeHtml(windowLabel)})</span>` : ''}</p>
+      <div class="progress-list">${bars || `<p class="muted">Ingen disipliner.</p>`}</div>
+    </section>`
+}
+
+function renderPlanStrip(o) {
+  const p = o.periodization || {}
+  const cur = p.current_block
+  const next = p.next_block
+  const days = p.days_to_goal
+  const daysLabel =
+    days == null
+      ? 'Sett racedato i Du'
+      : days < 0
+        ? `${Math.abs(days)} dager siden mål`
+        : `${days} dager til mål`
+  const curHtml = cur
+    ? `<div class="plan-current">
+        <p class="plan-kicker">Nåværende blokk</p>
+        <h3>${escapeHtml(cur.title || 'Uten tittel')}</h3>
+        <p class="plan-theme">${escapeHtml(cur.theme || '—')}</p>
+        <p class="muted tight">${escapeHtml(cur.start_date || '?')} – ${escapeHtml(cur.end_date || '?')}${cur.weekly_hours != null ? ` · ${formatHours(cur.weekly_hours)} t/uke` : ''}</p>
+      </div>`
+    : `<div class="plan-current">
+        <p class="plan-kicker">Grovplan</p>
+        <h3>Ingen blokk ennå</h3>
+        <p class="muted tight">Legg til under Du — appen eier makro, Intervals eier dagsøkter.</p>
+      </div>`
+  const nextHtml = next
+    ? `<div class="plan-next">
+        <p class="plan-kicker">Neste</p>
+        <p class="plan-next-title">${escapeHtml(next.title || 'Uten tittel')}</p>
+        <p class="muted tight">fra ${escapeHtml(next.start_date || '?')}</p>
+      </div>`
+    : `<div class="plan-next">
+        <p class="plan-kicker">Neste</p>
+        <p class="muted tight">Ingen neste blokk</p>
+      </div>`
+  return `
+    <section class="section-block plan-strip">
+      <div class="section-head">
+        <h2>Periodisering</h2>
+        <span class="days-pill">${escapeHtml(daysLabel)}</span>
+      </div>
+      <div class="plan-grid">
+        ${curHtml}
+        ${nextHtml}
+      </div>
+      <p class="muted tight plan-footnote">Detaljer i Intervals — her bare grovplan / bulk.</p>
+    </section>`
 }
 
 function renderOverview() {
@@ -377,23 +487,26 @@ function renderOverview() {
       ? `${o.ftp_estimated} W${o.estimate_confidence ? ` (${o.estimate_confidence})` : ''}`
       : o.estimate_disclaimer || 'Estimat etter 5 sykkeløkter med watt'
   return `
-    <div class="card-block">
+    <div class="overview-hero">
+      <p class="brand-mark">Lofoten Coach</p>
       <h2>Kjapt overblikk</h2>
       <p class="muted">${escapeHtml(o.uplift_line || '')}</p>
     </div>
-    <div class="card-block">
+    ${renderPlanStrip(o)}
+    ${renderProgressSection(o)}
+    <section class="section-block">
       <h2>Form</h2>
       <div class="stat-row"><span>Testet FTP</span><span>${o.ftp_tested != null ? `${o.ftp_tested} W` : '—'}</span></div>
       <div class="stat-row"><span>Estimert FTP</span><span>${escapeHtml(String(ftpEst))}</span></div>
       <div class="stat-row"><span>VO₂</span><span>${o.vo2_estimate != null ? o.vo2_estimate : '—'}</span></div>
-    </div>
-    <div class="card-block">
+    </section>
+    <section class="section-block">
       <h2>Kontekst</h2>
       <div class="stat-row"><span>Mål</span><span>${escapeHtml(o.goal_text || '—')}</span></div>
       <div class="stat-row"><span>Ukens fokus</span><span>${escapeHtml(o.weekly_focus || '—')}</span></div>
       <div class="stat-row"><span>Skade</span><span>${escapeHtml(o.injury_notes || '—')}</span></div>
-    </div>
-    <div class="card-block">
+    </section>
+    <section class="section-block">
       <h2>Intervals</h2>
       <div class="stat-row">
         <span>Status</span>
@@ -403,11 +516,43 @@ function renderOverview() {
       ${
         o.intervals_linked
           ? ''
-          : `<p class="muted" style="margin-top:0.5rem">Gå til <strong>Du</strong> og lim inn athlete ID + API-nøkkel.</p>`
+          : `<p class="muted tight">Gå til <strong>Du</strong> og lim inn athlete ID + API-nøkkel.</p>`
       }
-      <p class="muted" style="margin-top:0.5rem">Detaljer og kalender lever i Intervals — appen eier mål og avtaler.</p>
-    </div>
+    </section>
   `
+}
+
+function renderPlanBlocksEditor() {
+  const rows = (state.planBlocks || [])
+    .map(
+      (b, i) => `
+      <div class="block-edit" data-block-id="${escapeHtml(b.id)}">
+        <div class="grid-2">
+          <div class="field"><label>Tittel</label><input name="title" value="${escapeHtml(b.title || '')}" /></div>
+          <div class="field"><label>Uketimer</label><input name="weekly_hours" type="number" step="0.5" value="${b.weekly_hours ?? ''}" /></div>
+        </div>
+        <div class="field"><label>Tema</label><input name="theme" value="${escapeHtml(b.theme || '')}" /></div>
+        <div class="grid-2">
+          <div class="field"><label>Start</label><input name="start_date" type="date" value="${escapeHtml(b.start_date || '')}" /></div>
+          <div class="field"><label>Slutt</label><input name="end_date" type="date" value="${escapeHtml(b.end_date || '')}" /></div>
+        </div>
+        <div class="row-actions">
+          <button type="button" class="btn btn-sm" data-save-block="${escapeHtml(b.id)}">Lagre blokk</button>
+          <button type="button" class="btn btn-sm secondary" data-delete-block="${escapeHtml(b.id)}">Slett</button>
+        </div>
+      </div>`
+    )
+    .join('')
+  return `
+    <div class="section-block">
+      <div class="section-head">
+        <h2>Grovplan / blokker</h2>
+      </div>
+      <p class="muted tight">Makro og meso — ikke ukeplan. Tom liste er OK for MVP.</p>
+      ${rows || `<p class="muted">Ingen blokker ennå.</p>`}
+      ${state.planError ? `<p class="error">${escapeHtml(state.planError)}</p>` : ''}
+      <button type="button" class="btn secondary" id="add-plan-block" ${state.busy ? 'disabled' : ''}>Legg til blokk</button>
+    </div>`
 }
 
 function renderDu() {
@@ -422,7 +567,7 @@ function renderDu() {
   const agreements = (a.agreements || []).join('\n')
   return `
     <form id="du-form">
-      <div class="card-block">
+      <div class="section-block">
         <h2>Profil</h2>
         <div class="field"><label>Navn</label><input name="display_name" value="${escapeHtml(a.display_name || '')}" /></div>
         <div class="grid-2">
@@ -431,7 +576,7 @@ function renderDu() {
         </div>
         <div class="field"><label>Aksentfarge</label><div class="swatches" id="du-swatches">${swatches}</div></div>
       </div>
-      <div class="card-block">
+      <div class="section-block">
         <h2>Mål & avtaler</h2>
         <div class="field"><label>Mål</label><textarea name="goal_text" rows="2">${escapeHtml(a.goal_text || '')}</textarea></div>
         <div class="field"><label>Ukens fokus</label><input name="weekly_focus" value="${escapeHtml(a.weekly_focus || '')}" /></div>
@@ -439,7 +584,21 @@ function renderDu() {
         <div class="field"><label>Avtaler (én per linje)</label><textarea name="agreements" rows="3" placeholder="f.eks. Ingen langløp denne uka">${escapeHtml(agreements)}</textarea></div>
         <div class="field"><label>Notater</label><textarea name="notes" rows="2">${escapeHtml(a.notes || '')}</textarea></div>
       </div>
-      <div class="card-block">
+      <div class="section-block">
+        <h2>Sesongmål (timer)</h2>
+        <p class="muted tight">Volummål for fremskritt / compliance på Overblikk.</p>
+        <div class="grid-2">
+          <div class="field"><label>Svøm (t)</label><input name="season_swim_hours_target" type="number" step="1" min="0" value="${a.season_swim_hours_target ?? ''}" placeholder="100" /></div>
+          <div class="field"><label>Sykkel (t)</label><input name="season_bike_hours_target" type="number" step="1" min="0" value="${a.season_bike_hours_target ?? ''}" placeholder="500" /></div>
+          <div class="field"><label>Løp (t)</label><input name="season_run_hours_target" type="number" step="1" min="0" value="${a.season_run_hours_target ?? ''}" placeholder="150" /></div>
+          <div class="field"><label>Styrke (t)</label><input name="season_strength_hours_target" type="number" step="1" min="0" value="${a.season_strength_hours_target ?? ''}" placeholder="50" /></div>
+        </div>
+        <div class="grid-2">
+          <div class="field"><label>Sesongstart</label><input name="season_start_date" type="date" value="${escapeHtml(a.season_start_date || '')}" /></div>
+          <div class="field"><label>Racedato / mål</label><input name="goal_race_date" type="date" value="${escapeHtml(a.goal_race_date || '')}" /></div>
+        </div>
+      </div>
+      <div class="section-block">
         <h2>Ernæring / GI</h2>
         <div class="field">
           <label>IBS</label>
@@ -463,7 +622,7 @@ function renderDu() {
         <div class="field"><label>Andre restriksjoner</label><textarea name="nutrition_other_restrictions" rows="2">${escapeHtml(a.nutrition_other_restrictions || '')}</textarea></div>
         <div class="field"><label>Ernæringsnotater</label><textarea name="nutrition_notes" rows="2">${escapeHtml(a.nutrition_notes || '')}</textarea></div>
       </div>
-      <div class="card-block">
+      <div class="section-block">
         <h2>Form</h2>
         <div class="grid-2">
           <div class="field"><label>Testet FTP</label><input name="ftp_tested" type="number" value="${a.ftp_tested ?? ''}" /></div>
@@ -475,9 +634,10 @@ function renderDu() {
         </div>
       </div>
       ${state.error && state.tab === 'du' ? `<p class="error">${escapeHtml(state.error)}</p>` : ''}
-      <button class="btn" type="submit" ${state.busy ? 'disabled' : ''}>Lagre profil</button>
+      <button class="btn btn-primary" type="submit" ${state.busy ? 'disabled' : ''}>Lagre profil</button>
     </form>
-    <form id="intervals-form" class="card-block" style="margin-top:1rem">
+    ${renderPlanBlocksEditor()}
+    <form id="intervals-form" class="section-block" style="margin-top:1rem">
       <h2>Intervals</h2>
       <p class="muted">
         ${
@@ -499,7 +659,7 @@ function renderDu() {
           placeholder="${state.intervals.api_key_hint ? 'Ny nøkkel for å bytte' : 'Lim inn API-nøkkel'}" required />
       </div>
       ${state.intervalsError ? `<p class="error">${escapeHtml(state.intervalsError)}</p>` : ''}
-      <button class="btn" type="submit" ${state.busy ? 'disabled' : ''}>Lagre Intervals</button>
+      <button class="btn btn-primary" type="submit" ${state.busy ? 'disabled' : ''}>Lagre Intervals</button>
     </form>
   `
 }
@@ -510,8 +670,12 @@ function bindApp() {
       state.tab = btn.dataset.tab
       state.error = ''
       state.intervalsError = ''
+      state.planError = ''
       if (state.tab === 'overblikk') await refreshOverview()
-      if (state.tab === 'du') await refreshIntervals()
+      if (state.tab === 'du') {
+        await refreshIntervals()
+        await refreshPlanBlocks()
+      }
       render()
     })
   })
@@ -551,6 +715,13 @@ function bindApp() {
     })
   })
 
+  const numOrNull = (v) => {
+    const s = String(v ?? '').trim()
+    if (!s) return null
+    const n = Number(s)
+    return Number.isFinite(n) ? n : null
+  }
+
   const duForm = document.getElementById('du-form')
   duForm?.addEventListener('submit', async (e) => {
     e.preventDefault()
@@ -578,6 +749,12 @@ function bindApp() {
       ftp_tested_at: String(fd.get('ftp_tested_at') || '') || null,
       weight_kg: fd.get('weight_kg') ? Number(fd.get('weight_kg')) : null,
       age_years: fd.get('age_years') ? Number(fd.get('age_years')) : null,
+      season_swim_hours_target: numOrNull(fd.get('season_swim_hours_target')),
+      season_bike_hours_target: numOrNull(fd.get('season_bike_hours_target')),
+      season_run_hours_target: numOrNull(fd.get('season_run_hours_target')),
+      season_strength_hours_target: numOrNull(fd.get('season_strength_hours_target')),
+      season_start_date: String(fd.get('season_start_date') || '') || null,
+      goal_race_date: String(fd.get('goal_race_date') || '') || null,
     }
     state.busy = true
     state.error = ''
@@ -594,6 +771,87 @@ function bindApp() {
       state.busy = false
       render()
     }
+  })
+
+  document.getElementById('add-plan-block')?.addEventListener('click', async () => {
+    state.busy = true
+    state.planError = ''
+    render()
+    try {
+      const today = new Date()
+      const start = today.toISOString().slice(0, 10)
+      const endD = new Date(today)
+      endD.setDate(endD.getDate() + 27)
+      const end = endD.toISOString().slice(0, 10)
+      await api('/v1/athlete/me/plan-blocks', {
+        method: 'POST',
+        body: {
+          title: 'Ny blokk',
+          theme: '',
+          start_date: start,
+          end_date: end,
+          weekly_hours: 8,
+          sort_order: state.planBlocks.length,
+        },
+      })
+      await refreshPlanBlocks()
+      await refreshOverview()
+      toast('Blokk lagt til')
+    } catch (err) {
+      state.planError = err.message || 'Kunne ikke legge til blokk'
+    } finally {
+      state.busy = false
+      render()
+    }
+  })
+
+  document.querySelectorAll('[data-save-block]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-save-block')
+      const wrap = document.querySelector(`.block-edit[data-block-id="${id}"]`)
+      if (!wrap) return
+      const payload = {
+        title: wrap.querySelector('[name="title"]')?.value || '',
+        theme: wrap.querySelector('[name="theme"]')?.value || '',
+        start_date: wrap.querySelector('[name="start_date"]')?.value || null,
+        end_date: wrap.querySelector('[name="end_date"]')?.value || null,
+        weekly_hours: numOrNull(wrap.querySelector('[name="weekly_hours"]')?.value),
+      }
+      state.busy = true
+      state.planError = ''
+      render()
+      try {
+        await api(`/v1/athlete/me/plan-blocks/${id}`, { method: 'PATCH', body: payload })
+        await refreshPlanBlocks()
+        await refreshOverview()
+        toast('Blokk lagret')
+      } catch (err) {
+        state.planError = err.message || 'Kunne ikke lagre blokk'
+      } finally {
+        state.busy = false
+        render()
+      }
+    })
+  })
+
+  document.querySelectorAll('[data-delete-block]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-delete-block')
+      state.busy = true
+      state.planError = ''
+      render()
+      try {
+        await api(`/v1/athlete/me/plan-blocks/${id}`, { method: 'DELETE' })
+        await refreshPlanBlocks()
+        await refreshOverview()
+        toast('Blokk slettet')
+      } catch (err) {
+        state.planError = err.message || 'Kunne ikke slette'
+      } finally {
+        state.busy = false
+        render()
+      }
+    })
   })
 
   const intervalsForm = document.getElementById('intervals-form')

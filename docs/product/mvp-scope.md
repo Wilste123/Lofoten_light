@@ -6,8 +6,8 @@ Brukeren kan:
 
 1. **Onboarde** (navn, trener, personlighet, aksent, mål, skade, **ernæring/GI**, valgfri test-FTP, vekt/alder) → SQLite + `profile.md`.
 2. **Chatte** med treneren som husker *sin* kontekst (ikke William-only hardcoding).
-3. **Se kjapt overblikk** — stub i fase 1; ICU + form_estimates i fase 2.
-4. **Eie egen kontekst** under Du (mål, avtaler, skade, GI, tema).
+3. **Se kjapt overblikk** — fremskritt/compliance-barer, grovplan-strip, form_estimates.
+4. **Eie egen kontekst** under Du (mål, sesongvolum, plan-blokker, avtaler, skade, GI).
 
 Intervals.icu forblir stedet for **full kalender, øktdetaljer og grafer**.
 
@@ -37,9 +37,10 @@ Intervals.icu forblir stedet for **full kalender, øktdetaljer og grafer**.
 
 | Fase | Leveranse |
 |------|-----------|
-| 0 | Branch + product docs |
-| 1 | Onboarding → profilfil (+ GI) + chat + Du (uten ICU) |
-| 2 | ICU les + overview + `form_estimates` |
+| 0–1 | Docs + onboarding → profil + chat + Du + Intervals-settings |
+| 2 | ICU les + overview + form_estimates + compliance-bars |
+| 2b | Grovplan / `plan_blocks` på Overblikk |
+| 2c | UX-polish |
 | 3 | Invite + `training_pair` |
 | 4 | Valgfri Intervals-write |
 | 5 | Proaktiv post-MVP |

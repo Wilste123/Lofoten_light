@@ -217,6 +217,24 @@ function renderOnboarding() {
 function bindOnboarding() {
   document.querySelectorAll('.swatch').forEach((btn) => {
     btn.addEventListener('click', () => {
+      const form = document.getElementById('onboard-form')
+      if (form) {
+        const fd = new FormData(form)
+        for (const key of [
+          'display_name',
+          'coach_display_name',
+          'coach_personality',
+          'coach_style_note',
+          'goal_text',
+          'injury_notes',
+          'ftp_tested',
+          'ftp_tested_at',
+          'weight_kg',
+          'age_years',
+        ]) {
+          if (fd.has(key)) state.onboarding[key] = String(fd.get(key) || '')
+        }
+      }
       state.onboarding.accent_color = btn.dataset.color
       setAccent(btn.dataset.color)
       render()

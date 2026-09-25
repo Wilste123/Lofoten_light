@@ -101,6 +101,8 @@ python3 scripts/intervals_push_calendar.py --start 2026-10-26 \
 
 4. **Cloud Agent:** Legg `INTERVALS_API_KEY` som **secret** i Cursor-miljøet hvis du vil at agenten skal hente uten manuell CSV. Uten secret: last ned **activities.csv** fra Intervals (eller kjør fetch lokalt) og legg i `data/intervals/exports/` / lim inn i chat.
 
+   **Coach-kommentar på fullført økt:** `scripts/intervals_post_coach_comment.py` → Intervals aktivitetsmeldinger, signert **— Ole** (`knowledge/coach/intervals-tekst-opv.md`).
+
 **Auth:** Personlig nøkkel = HTTP Basic, brukernavn `API_KEY`, passord = nøkkelen ([Intervals API-guide](https://forum.intervals.icu/t/api-access-to-intervals-icu/609)).
 
 ---

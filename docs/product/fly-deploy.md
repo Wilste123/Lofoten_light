@@ -34,9 +34,11 @@ Hvis deploy sier `ams=1` mangler volume: opprett volume i **ams**, ikke arn.
 ## På telefon
 
 1. Åpne https://lofoten-coach.fly.dev  
-2. Trykk **«Bruk seedet William-profil»** på onboarding — eller bookmark  
+2. **«Jeg har allerede profil»** → lim inn `william-lofoten` (eller Din profil-ID fra Du),  
+   eller **«Bruk seedet William-profil»**, eller bookmark  
    `https://lofoten-coach.fly.dev/?athlete=william-lofoten`
 3. Intervals: **Du**-fanen (nøkkel lagres på Fly-volume, ikke i telefonen).
+4. Lagre **Din profil-ID** under Du — trengs etter tømt nettleser. Se [returning-login.md](returning-login.md).
 
 ## Oppdater etter kodeendring
 

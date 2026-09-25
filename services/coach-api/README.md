@@ -26,13 +26,14 @@ Aldri commit `.env` eller fulle Intervals-nøkler. GET på secrets returnerer ba
 | Metode | Sti | Auth |
 |--------|-----|------|
 | POST | `/v1/session/bootstrap` | body `athlete_id` |
+| POST | `/v1/session/login` | body `athlete_id` + valgfri `invite_token` (oppretter ikke) |
 | POST | `/v1/onboarding` | — |
 | GET/PATCH | `/v1/athlete/me` | header `X-Athlete-Id` |
 | GET/PUT | `/v1/athlete/me/intervals` | header `X-Athlete-Id` |
 | POST | `/v1/chat` | header `X-Athlete-Id` |
 | GET | `/v1/overview` | header `X-Athlete-Id` |
 
-Onboarding og PATCH skriver `data/athletes/{id}/profile.md`.
+Onboarding og PATCH skriver `data/athletes/{id}/profile.md`. Login: se `docs/product/returning-login.md`.
 
 Chat leser on-disk `profile.md` (inkl. seedet rik profil) via `load_profile_md`.
 

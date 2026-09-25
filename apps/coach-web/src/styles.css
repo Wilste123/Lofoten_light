@@ -577,6 +577,53 @@ main {
   margin: 0 0 1.1rem;
 }
 
+.entry-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 0.35rem;
+}
+
+.entry-actions .btn,
+.onboarding .btn {
+  width: 100%;
+}
+
+.profile-id-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.profile-id-row input {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+}
+
+.profile-id-row .btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+button.linkish {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: inherit;
+  font-weight: 600;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+button.linkish:hover {
+  color: var(--text);
+}
+
 .grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -12,6 +12,12 @@ const PERSONALITIES = [
 
 const state = {
   athlete: null,
+  /** null = logged in; entry | login | onboarding before session */
+  gate: null,
+  login: {
+    athlete_id: '',
+    invite_token: '',
+  },
   tab: 'coach',
   messages: [],
   overview: null,
@@ -58,6 +64,10 @@ function getAthleteId() {
 
 function setAthleteId(id) {
   localStorage.setItem(STORAGE_KEY, id)
+}
+
+function clearAthleteId() {
+  localStorage.removeItem(STORAGE_KEY)
 }
 
 async function api(path, { method = 'GET', body, athleteId, timeoutMs } = {}) {
@@ -125,28 +135,89 @@ function escapeHtml(s) {
     .replace(/>/g, '&gt;')
 }
 
+async function enterApp(athlete, { welcome } = {}) {
+  state.athlete = athlete
+  state.gate = null
+  state.error = ''
+  state.busy = false
+  setAccent(athlete.accent_color)
+  setAthleteId(athlete.id)
+  if (welcome) {
+    state.messages = [{ role: 'assistant', content: welcome }]
+  }
+  await Promise.all([refreshOverview(), refreshIntervals(), refreshPlanBlocks()])
+  render()
+}
+
+/**
+ * Reconnect to existing athlete via POST /v1/session/login.
+ * Does not create profiles.
+ */
+async function loginWithId(athleteId, inviteToken) {
+  const id = String(athleteId || '').trim()
+  if (!id) {
+    throw new Error('Skriv inn profil-ID')
+  }
+  const body = { athlete_id: id }
+  const token = String(inviteToken || '').trim()
+  if (token) body.invite_token = token
+  const data = await api('/v1/session/login', {
+    method: 'POST',
+    body,
+    athleteId: null,
+  })
+  if (!data.athlete) {
+    throw new Error('Ukjent profil-ID. Sjekk at ID er riktig, eller opprett ny bruker.')
+  }
+  return data.athlete
+}
+
 async function bootstrap() {
   const params = new URLSearchParams(location.search)
   const fromQuery = params.get('athlete')
-  if (fromQuery && fromQuery !== getAthleteId()) {
-    setAthleteId(fromQuery)
+  if (fromQuery) {
+    state.busy = true
+    state.error = ''
+    try {
+      const athlete = await loginWithId(fromQuery)
+      await enterApp(athlete, {
+        welcome: `Hei ${athlete.display_name}. Jeg er ${athlete.coach_display_name}. Velkommen tilbake.`,
+      })
+      // Drop ?athlete= so refresh uses localStorage
+      if (location.search) {
+        history.replaceState({}, '', location.pathname)
+      }
+    } catch (err) {
+      clearAthleteId()
+      state.athlete = null
+      state.gate = 'login'
+      state.login.athlete_id = fromQuery
+      state.error = err.message || 'Kunne ikke logge inn'
+      state.busy = false
+      render()
+    }
+    return
   }
+
   const id = getAthleteId()
-  const data = await api('/v1/session/bootstrap', {
-    method: 'POST',
-    body: { athlete_id: id },
-    athleteId: null,
-  })
-  if (data.needs_onboarding || !data.athlete) {
+  if (!id) {
     state.athlete = null
+    state.gate = 'entry'
     render()
     return
   }
-  state.athlete = data.athlete
-  setAccent(data.athlete.accent_color)
-  setAthleteId(data.athlete.id)
-  await Promise.all([refreshOverview(), refreshIntervals(), refreshPlanBlocks()])
-  render()
+
+  try {
+    const athlete = await loginWithId(id)
+    await enterApp(athlete)
+  } catch (err) {
+    clearAthleteId()
+    state.athlete = null
+    state.gate = 'login'
+    state.login.athlete_id = id
+    state.error = err.message || 'Ukjent profil-ID'
+    render()
+  }
 }
 
 async function refreshOverview() {
@@ -184,8 +255,18 @@ async function refreshIntervals() {
 
 function render() {
   if (!state.athlete) {
-    app.innerHTML = renderOnboarding()
-    bindOnboarding()
+    if (state.gate === 'login') {
+      app.innerHTML = renderLogin()
+      bindLogin()
+      return
+    }
+    if (state.gate === 'onboarding') {
+      app.innerHTML = renderOnboarding()
+      bindOnboarding()
+      return
+    }
+    app.innerHTML = renderEntry()
+    bindEntry()
     return
   }
   const a = state.athlete
@@ -217,6 +298,141 @@ function render() {
     </nav>
   `
   bindApp()
+}
+
+function renderEntry() {
+  return `
+    <div class="onboarding entry-gate">
+      <p class="brand-mark">Lofoten coach</p>
+      <h1>Velkommen</h1>
+      <p class="lead">Ny her, eller tilbake etter ny enhet / tømt nettleser?</p>
+      ${state.error ? `<p class="error">${escapeHtml(state.error)}</p>` : ''}
+      <div class="entry-actions">
+        <button type="button" class="btn btn-primary" id="gate-new" ${state.busy ? 'disabled' : ''}>
+          Ny bruker
+        </button>
+        <button type="button" class="btn" id="gate-returning" ${state.busy ? 'disabled' : ''}>
+          Jeg har allerede profil
+        </button>
+      </div>
+      <p class="muted" style="margin-top:1.5rem">Allerede seedet fra repo (Fly / lokal)?</p>
+      <button type="button" class="btn secondary" id="use-seed-william" ${state.busy ? 'disabled' : ''}>
+        Bruk seedet William-profil
+      </button>
+    </div>
+  `
+}
+
+function bindEntry() {
+  document.getElementById('gate-new')?.addEventListener('click', () => {
+    state.gate = 'onboarding'
+    state.error = ''
+    render()
+  })
+  document.getElementById('gate-returning')?.addEventListener('click', () => {
+    state.gate = 'login'
+    state.error = ''
+    render()
+  })
+  document.getElementById('use-seed-william')?.addEventListener('click', () => {
+    void runSeedWilliamLogin()
+  })
+}
+
+function renderLogin() {
+  const L = state.login
+  return `
+    <div class="onboarding">
+      <p class="brand-mark">Lofoten coach</p>
+      <h1>Logg inn</h1>
+      <p class="lead">Lim inn profil-ID (fra Du-fanen, eller f.eks. <code>william-lofoten</code>). Ingen passord.</p>
+      <form id="login-form">
+        <div class="field">
+          <label for="login_athlete_id">Profil-ID</label>
+          <input id="login_athlete_id" name="athlete_id" required autocomplete="username"
+            value="${escapeHtml(L.athlete_id)}"
+            placeholder="william-lofoten eller UUID" ${state.busy ? 'disabled' : ''} />
+        </div>
+        <div class="field">
+          <label for="login_invite_token">Invite-token (valgfritt)</label>
+          <input id="login_invite_token" name="invite_token" autocomplete="off"
+            value="${escapeHtml(L.invite_token)}"
+            placeholder="Kun hvis du har fått token" ${state.busy ? 'disabled' : ''} />
+        </div>
+        ${state.error ? `<p class="error">${escapeHtml(state.error)}</p>` : ''}
+        <button class="btn btn-primary" type="submit" ${state.busy ? 'disabled' : ''}>
+          ${state.busy ? 'Logger inn…' : 'Fortsett'}
+        </button>
+      </form>
+      <p class="muted" style="margin-top:1.25rem">
+        <button type="button" class="linkish" id="login-back">Tilbake</button>
+        ·
+        <button type="button" class="linkish" id="login-to-onboard">Ny bruker</button>
+      </p>
+      <p class="muted" style="margin-top:1rem">Snarvei:</p>
+      <button type="button" class="btn secondary" id="use-seed-william" ${state.busy ? 'disabled' : ''}>
+        Bruk seedet William-profil
+      </button>
+    </div>
+  `
+}
+
+function bindLogin() {
+  document.getElementById('login-back')?.addEventListener('click', () => {
+    state.gate = 'entry'
+    state.error = ''
+    render()
+  })
+  document.getElementById('login-to-onboard')?.addEventListener('click', () => {
+    state.gate = 'onboarding'
+    state.error = ''
+    render()
+  })
+  document.getElementById('use-seed-william')?.addEventListener('click', () => {
+    void runSeedWilliamLogin()
+  })
+  document.getElementById('login-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const fd = new FormData(e.target)
+    const athleteId = String(fd.get('athlete_id') || '').trim()
+    const inviteToken = String(fd.get('invite_token') || '').trim()
+    state.login.athlete_id = athleteId
+    state.login.invite_token = inviteToken
+    state.busy = true
+    state.error = ''
+    render()
+    try {
+      const athlete = await loginWithId(athleteId, inviteToken)
+      await enterApp(athlete, {
+        welcome: `Hei ${athlete.display_name}. Jeg er ${athlete.coach_display_name}. Velkommen tilbake — spør om mål, skade eller ukens fokus.`,
+      })
+      toast('Innlogget')
+    } catch (err) {
+      state.error = err.message || 'Kunne ikke logge inn'
+      state.busy = false
+      render()
+    }
+  })
+}
+
+async function runSeedWilliamLogin() {
+  state.busy = true
+  state.error = ''
+  render()
+  try {
+    const athlete = await loginWithId('william-lofoten')
+    await enterApp(athlete, {
+      welcome: `Hei ${athlete.display_name}. Jeg er ${athlete.coach_display_name}. Profilen er seedet fra repo — spør om avtaler, rygg eller ukens fokus.`,
+    })
+    toast('Seedet William lastet')
+  } catch (err) {
+    state.error =
+      err.message ||
+      'Fant ikke william-lofoten. Kjør seed / fly deploy med SEED_ON_BOOT=1.'
+    state.busy = false
+    if (!state.gate) state.gate = 'login'
+    render()
+  }
 }
 
 function renderOnboarding() {
@@ -317,50 +533,25 @@ function renderOnboarding() {
         ${state.error ? `<p class="error">${escapeHtml(state.error)}</p>` : ''}
         <button class="btn btn-primary" type="submit" ${state.busy ? 'disabled' : ''}>Start med treneren</button>
       </form>
-      <p class="muted" style="margin-top:1.25rem">Allerede seedet fra repo (Fly / lokal)?</p>
-      <button type="button" class="btn" id="use-seed-william" ${state.busy ? 'disabled' : ''}>
-        Bruk seedet William-profil
-      </button>
+      <p class="muted" style="margin-top:1.25rem">
+        <button type="button" class="linkish" id="onboard-back">Tilbake</button>
+        ·
+        <button type="button" class="linkish" id="onboard-to-login">Jeg har allerede profil</button>
+      </p>
     </div>
   `
 }
 
 function bindOnboarding() {
-  document.getElementById('use-seed-william')?.addEventListener('click', async () => {
-    state.busy = true
+  document.getElementById('onboard-back')?.addEventListener('click', () => {
+    state.gate = 'entry'
     state.error = ''
     render()
-    try {
-      const seedId = 'william-lofoten'
-      const data = await api('/v1/session/bootstrap', {
-        method: 'POST',
-        body: { athlete_id: seedId },
-        athleteId: null,
-      })
-      if (data.needs_onboarding || !data.athlete) {
-        throw new Error(
-          'Fant ikke william-lofoten. Kjør seed / fly deploy med SEED_ON_BOOT=1.'
-        )
-      }
-      setAthleteId(seedId)
-      state.athlete = data.athlete
-      setAccent(data.athlete.accent_color)
-      state.messages = [
-        {
-          role: 'assistant',
-          content: `Hei ${data.athlete.display_name}. Jeg er ${data.athlete.coach_display_name}. Profilen er seedet fra repo — spør om avtaler, rygg eller ukens fokus.`,
-        },
-      ]
-      await refreshOverview()
-      await refreshIntervals()
-      await refreshPlanBlocks()
-      toast('Seedet William lastet')
-      render()
-    } catch (err) {
-      state.error = err.message || 'Kunne ikke loade seed'
-      state.busy = false
-      render()
-    }
+  })
+  document.getElementById('onboard-to-login')?.addEventListener('click', () => {
+    state.gate = 'login'
+    state.error = ''
+    render()
   })
   document.querySelectorAll('.swatch').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -421,22 +612,12 @@ function bindOnboarding() {
     render()
     try {
       const data = await api('/v1/onboarding', { method: 'POST', body: payload, athleteId: null })
-      state.athlete = data.athlete
-      setAthleteId(data.athlete.id)
-      setAccent(data.athlete.accent_color)
-      state.messages = [
-        {
-          role: 'assistant',
-          content: `Hei ${data.athlete.display_name}. Jeg er ${data.athlete.coach_display_name}. Si ifra hva du vil prioritere — mål, skade, eller ukens fokus.`,
-        },
-      ]
-      await refreshOverview()
-      await refreshIntervals()
-      await refreshPlanBlocks()
+      await enterApp(data.athlete, {
+        welcome: `Hei ${data.athlete.display_name}. Jeg er ${data.athlete.coach_display_name}. Si ifra hva du vil prioritere — mål, skade, eller ukens fokus.`,
+      })
       toast('Profil lagret')
     } catch (err) {
       state.error = err.message || 'Kunne ikke lagre'
-    } finally {
       state.busy = false
       render()
     }
@@ -671,6 +852,14 @@ function renderDu() {
     <form id="du-form">
       <div class="section-block">
         <h2>Profil</h2>
+        <div class="field profile-id-field">
+          <label for="profile_id_display">Din profil-ID</label>
+          <div class="profile-id-row">
+            <input id="profile_id_display" type="text" readonly value="${escapeHtml(a.id || '')}" />
+            <button type="button" class="btn secondary" id="copy-profile-id">Kopier</button>
+          </div>
+          <p class="muted tight">Lagre denne — trengs for «Jeg har allerede profil» på ny enhet.</p>
+        </div>
         <div class="field"><label>Navn</label><input name="display_name" value="${escapeHtml(a.display_name || '')}" /></div>
         <div class="grid-2">
           <div class="field"><label>Trener</label><input name="coach_display_name" value="${escapeHtml(a.coach_display_name || '')}" /></div>
@@ -811,6 +1000,21 @@ function bindApp() {
       }
       render()
     })
+  })
+
+  document.getElementById('copy-profile-id')?.addEventListener('click', async () => {
+    const id = state.athlete?.id || ''
+    if (!id) return
+    try {
+      await navigator.clipboard.writeText(id)
+      toast('Profil-ID kopiert')
+    } catch {
+      const input = document.getElementById('profile_id_display')
+      if (input) {
+        input.select()
+        toast('Marker ID og kopier manuelt')
+      }
+    }
   })
 
   const chatForm = document.getElementById('chat-form')

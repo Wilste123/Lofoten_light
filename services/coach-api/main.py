@@ -22,6 +22,7 @@ from db import (
     init_db,
     insert_athlete,
     insert_plan_block,
+    invite_token_valid,
     list_plan_blocks,
     recent_messages,
     secrets_public_view,
@@ -68,6 +69,11 @@ def _require_athlete(athlete_id: str | None) -> str:
 
 class BootstrapIn(BaseModel):
     athlete_id: str | None = None
+
+
+class LoginIn(BaseModel):
+    athlete_id: str = Field(min_length=1)
+    invite_token: str | None = None
 
 
 class OnboardingIn(BaseModel):
@@ -169,6 +175,25 @@ def session_bootstrap(body: BootstrapIn) -> dict[str, Any]:
     if not athlete:
         return {"needs_onboarding": True, "athlete": None}
     return {"needs_onboarding": False, "athlete": athlete}
+
+
+@app.post("/v1/session/login")
+def session_login(body: LoginIn) -> dict[str, Any]:
+    """Reconnect to an existing athlete. Never creates a new profile."""
+    aid = body.athlete_id.strip()
+    if not aid:
+        raise HTTPException(404, "Ukjent profil-ID. Sjekk at ID er riktig, eller opprett ny bruker.")
+    token = (body.invite_token or "").strip() or None
+    with db_session(config.DATABASE_PATH) as conn:
+        athlete = get_athlete(conn, aid)
+        if not athlete:
+            raise HTTPException(
+                404,
+                "Ukjent profil-ID. Sjekk at ID er riktig, eller opprett ny bruker.",
+            )
+        if token is not None and not invite_token_valid(conn, token):
+            raise HTTPException(401, "Ugyldig invite-token.")
+    return {"athlete": athlete, "needs_onboarding": False}
 
 
 @app.post("/v1/onboarding")

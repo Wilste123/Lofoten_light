@@ -52,6 +52,16 @@ SQLite + Fly volume. Secrets: OpenAI i `.env`; Intervals ID+nøkkel i Du → `at
 
 Sesongmål (`season_*_hours_target`) og `plan_blocks` lever i SQLite — appens SoT for makro.
 
+## Innlogging (returning user)
+
+Uten passord / OAuth. Se [returning-login.md](returning-login.md).
+
+- Start: **Ny bruker** | **Jeg har allerede profil**
+- Login: lim inn **profil-ID** (+ valgfri invite-token)
+- `POST /v1/session/login` — oppretter ikke ny atlet
+- Under **Du**: vis/kopier **Din profil-ID**
+- Snarveier: `?athlete=` og «Bruk seedet William-profil»
+
 ## Smarte estimater
 
 Gate ≥ 5 sykkeløkter med watt. Se [form-estimates.md](form-estimates.md).
@@ -64,6 +74,7 @@ Gate ≥ 5 sykkeløkter med watt. Se [form-estimates.md](form-estimates.md).
 | 2 | ~~ICU activity-les + fremskritt/compliance~~ (Intervals når credentials; demo ellers) |
 | 2b | ~~Grovplan-strip~~ (current/next + dager til race); form_estimates fortsatt gated |
 | 2c | UX-polish leftovers (unngå konflikt med Du/Intervals Lagre-fix) |
+| 2d | ~~Returning-user login~~ (profil-ID + `POST /v1/session/login`) |
 | 3 | Invite + training_pair |
 | 4 | Valgfri Intervals-write |
 | 5 | Proaktiv post-MVP |
@@ -74,4 +85,4 @@ Ingen Pondus-import, ingen Slack i MVP, ingen tool-spam-chat, ingen full kalende
 
 ## Relaterte docs
 
-[mvp-scope.md](mvp-scope.md) · [progress-compliance.md](progress-compliance.md) · [periodization-overview.md](periodization-overview.md) · [athlete-profile.md](athlete-profile.md) · [partner-sync.md](partner-sync.md) · [README.md](README.md)
+[mvp-scope.md](mvp-scope.md) · [progress-compliance.md](progress-compliance.md) · [periodization-overview.md](periodization-overview.md) · [athlete-profile.md](athlete-profile.md) · [partner-sync.md](partner-sync.md) · [returning-login.md](returning-login.md) · [README.md](README.md)

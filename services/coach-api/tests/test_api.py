@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 
 import config
 import main as main_mod
-from db import db_session, get_athlete_secrets, init_db
+from db import db_session, get_athlete_secrets, init_db, insert_invite
 
 
 @pytest.fixture()
@@ -102,6 +102,55 @@ def test_onboarding_writes_profile(client):
     assert "Z2 + svømteknikk" in text
     assert "Cøliaki" in text
     assert "Oppdatert notat" in text
+
+
+def test_session_login_success_and_fail(client):
+    c, _athletes = client
+    aid = _onboard(c)
+
+    ok = c.post("/v1/session/login", json={"athlete_id": aid})
+    assert ok.status_code == 200, ok.text
+    body = ok.json()
+    assert body["needs_onboarding"] is False
+    assert body["athlete"]["id"] == aid
+    assert body["athlete"]["display_name"] == "Testa"
+
+    missing = c.post("/v1/session/login", json={"athlete_id": "finnes-ikke-xyz"})
+    assert missing.status_code == 404
+    assert "Ukjent profil-ID" in missing.json()["detail"]
+
+    # Login must not create athletes
+    after = c.post("/v1/session/bootstrap", json={"athlete_id": "finnes-ikke-xyz"})
+    assert after.json()["needs_onboarding"] is True
+    assert after.json()["athlete"] is None
+
+
+def test_session_login_invite_token(client):
+    c, _athletes = client
+    aid = _onboard(c)
+    with db_session(config.DATABASE_PATH) as conn:
+        insert_invite(conn, "hemmelig-token-42", created_by=aid, status="pending")
+
+    bad = c.post(
+        "/v1/session/login",
+        json={"athlete_id": aid, "invite_token": "feil"},
+    )
+    assert bad.status_code == 401
+    assert "invite" in bad.json()["detail"].lower()
+
+    good = c.post(
+        "/v1/session/login",
+        json={"athlete_id": aid, "invite_token": "hemmelig-token-42"},
+    )
+    assert good.status_code == 200
+    assert good.json()["athlete"]["id"] == aid
+
+    # Empty token string = no invite check
+    plain = c.post(
+        "/v1/session/login",
+        json={"athlete_id": aid, "invite_token": "  "},
+    )
+    assert plain.status_code == 200
 
 
 def test_intervals_secrets_get_put_masked(client, monkeypatch):

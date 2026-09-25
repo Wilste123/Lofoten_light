@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sqlite3
 import uuid
@@ -525,3 +526,62 @@ def delete_plan_block(
         (block_id, athlete_id),
     )
     return cur.rowcount > 0
+
+
+def hash_invite_token(token: str) -> str:
+    return hashlib.sha256(token.strip().encode("utf-8")).hexdigest()
+
+
+def insert_invite(
+    conn: sqlite3.Connection,
+    token: str,
+    *,
+    created_by: str | None = None,
+    status: str = "pending",
+    expires_at: str | None = None,
+) -> dict[str, Any]:
+    """Store a hashed invite token (plain token never persisted)."""
+    now = utc_now()
+    invite_id = new_id()
+    token_hash = hash_invite_token(token)
+    conn.execute(
+        """
+        INSERT INTO invites (id, token_hash, created_by, status, expires_at, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (invite_id, token_hash, created_by, status, expires_at, now),
+    )
+    return {
+        "id": invite_id,
+        "token_hash": token_hash,
+        "created_by": created_by,
+        "status": status,
+        "expires_at": expires_at,
+        "created_at": now,
+    }
+
+
+def invite_token_valid(conn: sqlite3.Connection, token: str) -> bool:
+    """True if a matching invite exists and is not expired."""
+    raw = (token or "").strip()
+    if not raw:
+        return False
+    cur = conn.execute(
+        """
+        SELECT status, expires_at FROM invites
+        WHERE token_hash = ?
+        ORDER BY created_at DESC
+        LIMIT 1
+        """,
+        (hash_invite_token(raw),),
+    )
+    row = cur.fetchone()
+    if not row:
+        return False
+    status = (row["status"] or "").lower()
+    if status not in ("pending", "accepted", "active"):
+        return False
+    expires = row["expires_at"]
+    if expires and expires < utc_now():
+        return False
+    return True

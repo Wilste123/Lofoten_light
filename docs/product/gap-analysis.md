@@ -27,7 +27,7 @@ Dette er en **brukbar telefon-pilot**, ikke et ferdig produkt. Chat, Du, seed, F
 | **UX-polish (2c)** | Mye landet (`680c0f7`); fortsatt enkel SPA, ikke «ferdig» polish-pass. |
 | **Intervals Lagre** | Hang fikset (`efc80b3`); avhengig av soft-verify-timeout (~5–10 s). |
 | **Fly live** | Kode + docs klare; agent har ikke Fly-login — William må `fly deploy` for å bekrefte prod. Cold start dempet med warm machine. |
-| **Auth** | Kun `X-Athlete-Id` / `localStorage` — invite-tabell finnes, ingen invite-flow. |
+| **Auth** | `POST /v1/session/login` + profil-ID i `localStorage`; valgfri invite-token. Ingen passord/OAuth. Se [returning-login.md](returning-login.md). |
 | **last_session / load** | Alltid `null` i overview — ikke plan-kritisk. |
 | **Compliance** | Kun `completed/target`; on-pace og sessions_planned er bevisst «ikke MVP» ([progress-compliance.md](progress-compliance.md)). |
 | **partner_slots** | Alltid `[]` i API. |

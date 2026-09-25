@@ -49,7 +49,7 @@ uvicorn main:app --reload --port 8000
 cd apps/coach-web && npm install && npm run dev
 ```
 
-Åpne http://127.0.0.1:5173 — onboarding skriver `data/athletes/{id}/profile.md`.
+Åpne http://127.0.0.1:5173 — **Ny bruker** skriver `data/athletes/{id}/profile.md`; returning users: **Jeg har allerede profil** ([docs/product/returning-login.md](docs/product/returning-login.md)).
 
 **Fly (telefon):** se [`docs/product/fly-deploy.md`](docs/product/fly-deploy.md) — `fly deploy` fra laptop; secrets via `fly secrets set OPENAI_API_KEY=…`.
 

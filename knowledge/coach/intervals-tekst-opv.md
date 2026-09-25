@@ -23,6 +23,18 @@ Sykkel: ZWO (% FTP) + coach-tekst fra `workouts/planned/bike/*.txt`.
 - «OPV UKE 3» som tittel i teksten — han vet hvem treneren er.
 - Markere plan ferdig før økter har **full** beskrivelse og Intervals er oppdatert.
 
+## Kommentar på fullført økt (Intervals meldinger)
+
+Når William ber om coach-tilbakemelding på en **aktivitet** (ikke kalender-event): legg inn via API (`POST /activity/{id}/messages`) eller:
+
+```bash
+python3 scripts/intervals_post_coach_comment.py --activity i123456789 --file kommentar.md
+python3 scripts/intervals_post_coach_comment.py --activity i123456789 -m "Kort vurdering …"
+```
+
+- Signatur på slutten: **— Ole** (ikke «repo-agent» / «Coach»).
+- Tone: samme som over — ærlig, kort, ingen telegram.
+
 ## Teknisk
 
 ```bash

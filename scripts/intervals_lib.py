@@ -12,6 +12,9 @@ from pathlib import Path
 
 API_BASE = "https://intervals.icu/api/v1"
 
+# Activity chat messages (post-workout coach feedback)
+COACH_ACTIVITY_SIGNOFF = "Ole"
+
 SPORT_TO_INTERVALS_TYPE: dict[str, str] = {
     "bike": "Ride",
     "run": "Run",
@@ -319,6 +322,44 @@ def put_wellness_bulk(rows: list[dict]) -> dict | list:
     )
     try:
         with urllib.request.urlopen(req, timeout=120) as resp:
+            raw = resp.read().decode()
+            return json.loads(raw) if raw else {"status": resp.status}
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode()[:2000]
+        raise RuntimeError(f"Intervals API {e.code}: {detail}") from e
+
+
+def format_coach_activity_message(body: str, *, signoff: str = COACH_ACTIVITY_SIGNOFF) -> str:
+    """Normalize coach note and append sign-off for Intervals activity messages."""
+    text = body.strip()
+    if not text:
+        raise ValueError("empty coach message")
+    suffix = f"— {signoff}"
+    if text.endswith(suffix) or text.rstrip().endswith(f"\n{suffix}"):
+        return text
+    return f"{text}\n\n{suffix}"
+
+
+def post_activity_message(activity_id: str, content: str, *, sign: bool = True) -> dict:
+    """Post a note/comment on a completed activity (Intervals activity messages)."""
+    aid = (activity_id or "").strip()
+    if not aid:
+        raise ValueError("activity_id required")
+    text = format_coach_activity_message(content) if sign else content.strip()
+    url = f"{API_BASE}/activity/{aid}/messages"
+    body = json.dumps({"content": text}).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=body,
+        method="POST",
+        headers={
+            "Authorization": auth_header(),
+            "Content-Type": "application/json",
+            "User-Agent": "LofotenLightAgent/1.0 (intervals activity message)",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
             raw = resp.read().decode()
             return json.loads(raw) if raw else {"status": resp.status}
     except urllib.error.HTTPError as e:

@@ -34,9 +34,29 @@ Kode på **Origin** (Cursor) og **GitHub** [`Wilste123/Lofoten_light`](https://g
 
 TrainingPeaks does not offer a public API for personal hobby projects. This repo focuses on **files and exports** that work without partner credentials. If you later get API access, `docs/trainingpeaks-api.md` describes the integration path.
 
+## Coach web MVP (branch `cursor/web-coach-mvp-42ac`)
+
+Produktplan: [`docs/product/`](docs/product/). Lokal kjøring:
+
+```bash
+# API
+cd services/coach-api
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+
+# Web (ny terminal)
+cd apps/coach-web && npm install && npm run dev
+```
+
+Åpne http://127.0.0.1:5173 — onboarding skriver `data/athletes/{id}/profile.md`.
+
 ## Repo layout
 
 ```
+apps/coach-web/        Vite PWA-flate (Coach / Overblikk / Du)
+services/coach-api/    FastAPI + SQLite
+docs/product/          MVP produktplan og scope
 docs/athlete/          Your profile, zones, constraints (source of truth)
 docs/xtri/             Synced copies of Xtri project docs (after sync script)
 docs/trainingpeaks/    Import/export how-tos
@@ -44,7 +64,7 @@ knowledge/             Stable coaching reference (load, intensity, tri balance)
 plans/                 Meso/micro cycles (markdown)
 workouts/zwo/          Workout library (ZWO: bike, swim, run, strength, brick)
 scripts/               sync, export, analysis
-data/                  Local exports only (not committed; see .gitignore)
+data/                  Local exports + coach.db / athletes/ (gitignored)
 ```
 
 ## Talking to the coach

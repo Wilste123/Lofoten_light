@@ -1,0 +1,339 @@
+:root {
+  --accent: #1a6b4a;
+  --accent-soft: color-mix(in srgb, var(--accent) 18%, transparent);
+  --bg0: #0f1412;
+  --bg1: #171e1b;
+  --bg2: #1f2924;
+  --text: #e8efe9;
+  --muted: #8fa398;
+  --line: #2a3830;
+  --danger: #c45c4a;
+  --radius: 14px;
+  --font: "DM Sans", system-ui, sans-serif;
+  --display: "Fraunces", Georgia, serif;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg0: #f3f6f2;
+    --bg1: #ffffff;
+    --bg2: #e7eee8;
+    --text: #14201a;
+    --muted: #5a6e62;
+    --line: #d0ddd4;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family: var(--font);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, var(--accent-soft), transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 50%),
+    var(--bg0);
+  color: var(--text);
+}
+
+#app {
+  max-width: 720px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 env(safe-area-inset-bottom);
+}
+
+header.app-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem 0.6rem;
+}
+
+.coach-avatar {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+header h1 {
+  font-family: var(--display);
+  font-size: 1.25rem;
+  margin: 0;
+  line-height: 1.2;
+}
+
+header p {
+  margin: 0.15rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+main {
+  flex: 1;
+  padding: 0.5rem 1.1rem 5.5rem;
+}
+
+.tabs {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 0.75rem;
+  width: min(680px, calc(100% - 1.5rem));
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+  padding: 0.35rem;
+  background: color-mix(in srgb, var(--bg1) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  z-index: 20;
+}
+
+.tabs button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 0.7rem 0.5rem;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tabs button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.panel {
+  display: none;
+  animation: fade 0.25s ease;
+}
+
+.panel.active {
+  display: block;
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.card-block {
+  background: var(--bg1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+  margin-bottom: 0.85rem;
+}
+
+.card-block h2 {
+  font-family: var(--display);
+  font-size: 1.05rem;
+  margin: 0 0 0.55rem;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.chat-log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-height: 42vh;
+  max-height: calc(100dvh - 14rem);
+  overflow-y: auto;
+  padding-bottom: 0.5rem;
+}
+
+.bubble {
+  max-width: 88%;
+  padding: 0.75rem 0.9rem;
+  border-radius: 1rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  font-size: 0.95rem;
+}
+
+.bubble.user {
+  align-self: flex-end;
+  background: var(--accent);
+  color: #fff;
+  border-bottom-right-radius: 0.3rem;
+}
+
+.bubble.assistant {
+  align-self: flex-start;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-bottom-left-radius: 0.3rem;
+}
+
+.chat-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.chat-form input,
+.field input,
+.field textarea,
+.field select {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--bg2);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 0.7rem 0.8rem;
+  font: inherit;
+}
+
+.chat-form button,
+.btn {
+  border: 0;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  padding: 0.7rem 1rem;
+  border-radius: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn.secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.field {
+  margin-bottom: 0.85rem;
+}
+
+.field label {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-bottom: 0.3rem;
+  font-weight: 600;
+}
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.swatches button {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+
+.swatches button.selected {
+  border-color: var(--text);
+  outline: 2px solid var(--accent);
+}
+
+.onboarding {
+  padding: 1.5rem 1.1rem 2rem;
+}
+
+.onboarding h1 {
+  font-family: var(--display);
+  font-size: 1.8rem;
+  margin: 0 0 0.35rem;
+}
+
+.onboarding .lead {
+  color: var(--muted);
+  margin: 0 0 1.25rem;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+@media (max-width: 520px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.95rem;
+}
+
+.stat-row:last-child {
+  border-bottom: 0;
+}
+
+.stat-row span:last-child {
+  font-weight: 600;
+  text-align: right;
+}
+
+.error {
+  color: var(--danger);
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.toast {
+  position: fixed;
+  top: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: #fff;
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  z-index: 40;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.toast.show {
+  opacity: 1;
+}

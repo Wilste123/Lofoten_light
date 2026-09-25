@@ -172,13 +172,21 @@ ZWO: `workouts/zwo/bike/B06-sweet-spot.zwo` (eller tilsvarende i `zwo/bike/`).
 
 ## Import av bolk-markører
 
+**Intervals (anbefalt):** [`docs/integrations/intervals-import.md`](../docs/integrations/intervals-import.md) — push økter + bolk i riktig rekkefølge.
+
+```bash
+./scripts/intervals_push_uke8_arsende.sh --dry-run   # test
+./scripts/intervals_push_uke8_arsende.sh             # krever INTERVALS_API
+python3 scripts/intervals_push_bolk.py --ics plans/calendar/2026-bolk-markers.ics --only-block-boundaries
+```
+
 ### CSV (`plans/calendar/2026-uke-bolk.csv`)
 
 | Verktøy | Steg |
 |---------|------|
 | **Excel / Google** | Åpne CSV; filtrer på `week_start` for å se bolk per uke. |
 | **TrainingPeaks** | Calendar → Import → velg CSV hvis kolonner matcher (evt. lag **Custom Event**-mal med `bolk_name` i tittel). Alternativ: kopier `notes` inn som **ukentlig NOTE** søndag 19:00 (som B1-notater). |
-| **Intervals.icu** | Settings → Import calendar (ICS foretrukket for hendelser) eller manuell **Note** per uke fra `phase_theme`. |
+| **Intervals.icu** | Settings → Import calendar (ICS) **eller** `intervals_push_bolk.py` / [`docs/integrations/intervals-import.md`](../docs/integrations/intervals-import.md) |
 | **Google/Apple Calendar** | Importer **`2026-bolk-markers.ics`** (blokkgrenser + ukesammendrag). |
 
 ### ICS (`plans/calendar/2026-bolk-markers.ics`)
@@ -188,7 +196,7 @@ ZWO: `workouts/zwo/bike/B06-sweet-spot.zwo` (eller tilsvarende i `zwo/bike/`).
 3. Valgfritt eget kalender «Lofoten bolker» så det ikke kludrer jobbkalender.  
 4. Hendelser: **B1 slutt**, **B2 start/slutt**, **B3 start**, pluss **all-day** per uke med `bolk_name` i tittel.
 
-**Agent push (valgfritt):** `python3 scripts/intervals_push_calendar.py --start 2026-11-16` når det finnes plan-CSV for disse ukene (ikke automatisk i denne leveransen).
+**Agent push:** `./scripts/intervals_push_uke8_arsende.sh` (plan-CSV uke 8–13 + bolk-grenser). Se [`docs/integrations/intervals-import.md`](../docs/integrations/intervals-import.md).
 
 ---
 

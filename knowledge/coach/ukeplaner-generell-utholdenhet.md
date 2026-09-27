@@ -42,3 +42,12 @@ Rasjonale: «Tre faste knagger. Resten av uka er liv — ikke treningshull som s
 - Klar HM-dato → `half_marathon_runner` + `lop/halvmaraton-periodisering.md`.
 - Eksplisitt tri/Lofoten → tri-periodisering — ikke før.
 - Mutasjon krever bekreftelse (ingen stille omskrivning av plan).
+
+## 5–6 økter (generell / lett tri-intro)
+
+Ikke default. Kun når utøver har compliance og søvn.
+
+**5:** 2–3 easy · 1 lengre · 1 styrke · evt. 1 lett Q i build.  
+**6:** samme + én ekstra easy/teknikk — ikke ekstra hard.
+
+Tri-intro på lav dose: fordel svøm/sykkel/løp; maks 1 hard totalt. Long-course på 2–3 økter: se `maalrealisme.md` før du lover half.

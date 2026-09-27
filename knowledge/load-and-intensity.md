@@ -1,10 +1,12 @@
-# Belastning, intensitet og TSS
+# Belastning, intensitet, periodisering og TSS
 
-Grunnmur for all planlegging. Les med `docs/athlete/profile.md` og `skader/belastningsstyring-acwr.md`.
+Grunnmur for all planlegging. Les med `docs/athlete/profile.md`, `skader/belastningsstyring-acwr.md`, `coach/maalrealisme.md`.
+
+**Evidens:** intensitetsfordeling (Seiler; Stöggl & Sperlich); load/skade (IOC Soligard 2016; Gabbett 2016); taper (Mujika & Padilla). Uketall/% = *praksis* der ikke annet er sagt.
 
 ## Intensitetsmodeller
 
-William kan bruke **power (sykkel)**, **puls**, **pace (løp)**, **CSS (svøm)** og **RPE (1–10)**. Inntil FTP/CSS/LTHR 2026 er dokumentert: **RPE + HR** leder, watt følger etter test.
+Power (sykkel), puls, pace (løp), CSS (svøm), **RPE (1–10)**. Inntil FTP/CSS/LTHR er testet: **RPE + HR** leder (Foster session-RPE-tradisjon).
 
 ### RPE-skala (praktisk)
 
@@ -13,11 +15,30 @@ William kan bruke **power (sykkel)**, **puls**, **pace (løp)**, **CSS (svøm)**
 | 2–3 | Veldig lett | Recovery, svøm drill |
 | 4–5 | Easy / samtale | Z2 bulk |
 | 6 | Moderat | Tempo lav, svøm steady |
-| 7 | Hard men kontrollert | Threshold blokker |
+| 7 | Hard men kontrollert | Threshold |
 | 8 | Tung | VO2, korte intervaller |
-| 9–10 | Maks | Strides, sprints (sjeldent) |
+| 9–10 | Maks | Strides/sprints (sjeldent) |
 
-### Sykkel — intensitetsfordeling (årsnivå, tri-orientert)
+## Intensitetsfordeling (polarisert / pyramidal / 80/20)
+
+| Modell | Ca. fordeling | Når |
+|--------|---------------|-----|
+| **Polarisert** | Mye Z1–Z2, lite Z3, tydelig Z4–Z5 | Godt trent, nok tid til easy |
+| **Pyramidal** | Mye Z2, noe Z3 (tempo/SS), lite Z5 | Comeback, tri, tidsklemma |
+| **Terskel-tung** | Stor Z3–Z4-andel | **Ikke** default for amatør |
+
+**80/20** ≈ retning at ~80 % av tid ligger under terskel hos mange godt trente (Seiler 2010) — ikke ukentlig lov.
+
+| Profil | Default |
+|--------|---------|
+| Nybegynner / comeback | Nesten bare Z2 + strides; pyramidal senere |
+| Lav frekvens (3–4) | ≤1 Q/uke |
+| HM/maraton/tri long | 80/20-retning; sparsom hard løp |
+| William tri-comeback | Pyramidal med Z2-fundament — ikke «all threshold» |
+
+**Gray zone:** alle økter «litt hardt» → senk majoriteten til snakkefart; én ærlig hard.
+
+### Sykkel — årsfordeling (tri-orientert, *praksis*)
 
 | Fase | Z1–Z2 | Z3 | Z4+ |
 |------|-------|-----|-----|
@@ -27,67 +48,61 @@ William kan bruke **power (sykkel)**, **puls**, **pace (løp)**, **CSS (svøm)**
 | Spesifikk | 70–78 % | 10–15 % | 12–18 % |
 | Taper | 75–85 % | 5–10 % | 5–8 % kort |
 
-**Polarisert vs pyramidal:** William tåler struktur fra sykkelkarriere — pyramidal med tydelig Z2-fundament passer comeback; ikke «all threshold» fordi det er tidseffektivt på papiret.
+### Løp / svøm
 
-### Løp — intensitet
+- Løp: 80/20-start; 1 hard i base, 1–2 i build; høyere impact per minutt enn sykkel.
+- Svøm: teknikk + aerob (RPE 4–6); CSS-sett når test finnes; unngå «rød svøm» uke etter uke.
 
-- **80/20-prinsipp** som start: ~80 % volum under threshold (nasjonalt snitt for utholdenhet).
-- Hard løp: **1–2 økter/uke** i build; 1 i base.
-- Løp har høyere impact per minutt enn sykkel — timer ≠ ekvivalent belastning.
+## Periodisering — base → build → peak → taper
 
-### Svøm — intensitet
+| Fase | Typisk lengde | Hovedmål |
+|------|---------------|----------|
+| Etablering / re-etablering | 2–8 uker | Vane, vev, teknikk; 0 hard (+ strides) |
+| Base | 6–16 uker | Aerob; langøkt; styrke |
+| Build | 4–10 uker | Race-relevant Q; 1–2 hard/uke |
+| Peak / spesifikk | 2–4 uker | Race-sim; volum −10–20 % |
+| Taper | 7–21 d | Volum −30–50 %, noe skarphet (Mujika) |
+| Transition | 1–4 uker | Reset |
 
-- Mye **teknikk + aerob** (RPE 4–6).
-- CSS-intervaller når test finnes: typisk **CSS til CSS+5 s/100 m** for threshold sett.
-- Unngå «rød svøm» uke etter uke — skuldre.
+**Mesosyklus:** 3:1 last:deload (trent); 2:1 nybegynner/comeback/skade.  
+**Progression:** øk forsiktig; unngå load-spike (IOC). ~10 %/uke er heuristikk, ikke lov.
 
-## TSS og CTL (TrainingPeaks)
+William/Lofoten-årshjul: `triathlon/periodisering-mot-2027.md` · ukemaler: `coach/ukemaler.md`.  
+HM/maraton: `lop/halvmaraton-periodisering.md`, `lop/maraton-periodisering.md`.
 
-### Sykkel (når power finnes)
+## TSS og CTL
 
-`TSS ≈ (sekunder × NP × IF) / (FTP × 3600) × 100`  
-Enkelt: `TSS ≈ timer × IF² × 100`.
+Sykkel: `TSS ≈ timer × IF² × 100` (når power finnes). Løp/svøm: HR- eller RPE-TSS — **trend** > perfekt tall.
 
-| Økt | Ca. TSS |
-|-----|---------|
-| 1 h Z2 | 40–55 |
-| 1 h sweet spot | 65–85 |
-| 3 h Z2 lang | 150–180 |
-| 5 h Z2 | 250–320 |
-
-### Løp / svøm uten power
-
-Bruk HR-basert TSS eller **manuell RPE-TSS** i TP — viktigere at **trend** er konsistent enn perfekt tall.
-
-## CTL-ramp (William, comeback)
+### CTL-ramp (William, comeback)
 
 | Situasjon | Veiledning |
 |-----------|------------|
-| Nå (lav kronisk load) | CTL kanskje 30–60 — ikke sammenlign med 2019 |
-| 3 mnd god kontinent | +3–5 CTL/uke kan være ok |
-| Aggressiv | +8–10 CTL/uke flere uker → flagg risiko |
-| Mål ved 15 t/uke steady | CTL ofte 80–110 avhengig av intensitet (indikativ) |
-
-**Regel:** Hvis William vil «ta igjen» tapte uker med TSS-bombe — **nei**; planlegg 2 uker gradvis.
+| Lav kronisk load | Ikke sammenlign med 2019 |
+| Stabil kontinent | +3–5 CTL/uke kan være ok |
+| Aggressiv | +8–10 flere uker → risiko |
+| «Ta igjen» med TSS-bombe | **Nei** — 2 uker gradvis |
 
 ## ACWR (kort)
 
-Akutt/kronisk belastning — se `skader/belastningsstyring-acwr.md`.  
-Praktisk uten matte: **ikke mer enn ~10 % flere timer** enn snitt siste 3 uker (unntak: recovery etter recovery-uke).
+Se `skader/belastningsstyring-acwr.md`. Praktisk: ikke mer enn ~10 % flere timer enn snitt siste 3 uker (unntak: etter recovery-uke).
 
-## Ukestruktur — hard/easy
+## Hard/easy og recovery / deload
 
 | Mønster | Eksempel |
 |---------|----------|
-| Hard–easy | Man Q, tir E, ons Q, tor E … |
-| Consecutive hard | Unngå harde løp på rad tidlig comeback |
-| Brick | Fre hard-ish (sykkel+ løp), lør lang easy sykkel |
+| Hard–easy | Q, deretter E |
+| Consecutive hard | Unngå harde løp på rad tidlig |
+| Brick | Én hard-ish dag; dagen etter ofte easier |
 
-## Recovery-uke
+**Deload / recovery-uke** (hver 3.–4. i base/build):
 
-−30 til −40 % TSS/timer; **ikke** full stopp (kontinuitet).
+- −25 til −40 % timer/TSS; behold **antall** økter om mulig.
+- Dropp Q; lett styrke OK.
+- Taper før race = spesiell deload (volum ned, noe intensitet beholdes).
+- Søvn/stress: `restitusjon/sovn-stress.md`.
 
-## Kobling til 750–800 t
+## Kobling til 750–800 t (William)
 
 | Snitt t/uke | Ca. årstimer |
 |-------------|--------------|
@@ -96,10 +111,15 @@ Praktisk uten matte: **ikke mer enn ~10 % flere timer** enn snitt siste 3 uker (
 | 14 | 728 |
 | 15,5 | 806 |
 
-Plan: måneder på 10–11 t → 12–13 t → 14–15 t med recovery innimellom.
+## Tester
 
-## Tester som styrer soner
+FTP, LTHR, CSS, 5 km — dokumenter i profile; re-test 8–12 uke i build, ikke i taper.
 
-Dokumenter i profile: FTP, LTHR, CSS, 5 km tempo. Re-test hver 8–12 uke i build, ikke i taper.
+## Kilder (utvalg)
 
-Se `coach/ukemaler.md` for konkrete uker.
+- Seiler S. *Int J Sports Physiol Perform* 2010.  
+- Stöggl T, Sperlich B. *Front Physiol* 2014/15.  
+- Soligard T et al. IOC load & injury. *BJSM* 2016.  
+- Gabbett TJ. *BJSM* 2016.  
+- Mujika I, Padilla S. Tapering reviews.  
+- Foster C et al. Session RPE.

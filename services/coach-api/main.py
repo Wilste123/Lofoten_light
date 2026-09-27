@@ -1189,6 +1189,7 @@ def chat(
         config.KNOWLEDGE_DIR,
         overview_stub=overview,
         athletes_dir=config.ATHLETES_DATA_DIR,
+        query_text=body.message or "",
     )
     raw_reply = call_llm(
         api_key=config.OPENAI_API_KEY,

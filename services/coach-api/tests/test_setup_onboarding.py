@@ -65,6 +65,28 @@ def test_knowledge_paths_diverge():
     )
     assert "triathlon/periodisering-mot-2027.md" in tri
     assert "load-and-intensity.md" in beginner
+    # Goal feasibility always injected for setup/plan
+    assert "coach/maalrealisme.md" in beginner
+    assert "coach/maalrealisme.md" in select_knowledge_paths(
+        mode="setup", query_text="første tri 2 økter til mai"
+    )
+
+
+def test_knowledge_hm_not_full_marathon():
+    hm = select_knowledge_paths(
+        mode="plan",
+        query_text="halvmaraton",
+        draft={"athlete_type": "half_marathon_runner"},
+    )
+    assert "lop/halvmaraton-periodisering.md" in hm
+    assert "lop/maraton-periodisering.md" not in hm
+    mar = select_knowledge_paths(
+        mode="plan",
+        query_text="første maraton om 28 uker",
+        draft={"athlete_type": "marathon_runner"},
+    )
+    assert "lop/maraton-periodisering.md" in mar
+    assert "coach/maalrealisme.md" in mar
 
 def test_preview_beginner_differs_from_returning(tmp_path):
     # Use real knowledge dir from repo

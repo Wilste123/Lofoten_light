@@ -39,13 +39,37 @@ def build_system_prompt(
     knowledge_dir,
     overview_stub: dict[str, Any] | None = None,
     athletes_dir: Path | None = None,
+    query_text: str = "",
 ) -> str:
     personality = athlete.get("coach_personality") or "direkte"
     hint = PERSONALITY_HINTS.get(personality, PERSONALITY_HINTS["direkte"])
     coach = athlete.get("coach_display_name") or "Trener"
     name = athlete.get("display_name") or "utøveren"
     profile_md = load_profile_md(athletes_dir or Path("."), athlete)
-    knowledge = load_knowledge_bundle(knowledge_dir)
+    draft = {
+        "goal_text": athlete.get("goal_text") or "",
+        "injury_notes": athlete.get("injury_notes") or "",
+        "schedule_notes": athlete.get("schedule_notes") or "",
+        "background_notes": athlete.get("notes") or "",
+        "notes": athlete.get("notes") or "",
+        "fitness_notes": athlete.get("fitness_notes") or "",
+        "athlete_type": athlete.get("athlete_type") or "",
+        "allowed_disciplines": athlete.get("allowed_disciplines") or "",
+        "sessions_per_week": athlete.get("sessions_per_week") or "",
+    }
+    q = (query_text or "").strip()
+    if overview_stub and overview_stub.get("focused_session"):
+        q = f"{q} denne økten focused økt-detalj".strip()
+    knowledge = load_knowledge_bundle(
+        knowledge_dir,
+        query_text=q
+        or " ".join(
+            str(draft.get(k) or "")
+            for k in ("goal_text", "athlete_type", "injury_notes", "schedule_notes")
+        ),
+        draft=draft,
+        mode="chat",
+    )
     overview_json = json.dumps(overview_stub or {}, ensure_ascii=False)
     atype = athlete.get("athlete_type") or "(ikke satt)"
 
@@ -57,6 +81,7 @@ Nåværende hovedprofil / utøvertype: {atype}
 
 Regler:
 - Én klar anbefaling; ikke generisk motivasjonsprat.
+- Vurder målrealisme (erfaring × form × økter/uke × tid til race × tidmål) før du lover race/PB — se knowledge maalrealisme; foreslå alternativ ved urealistisk mål.
 - Ikke still medisinsk diagnose. Ved smerte/GI: tilpass råd og anbefal fagperson ved behov.
 - Ikke anta Williams historikk med mindre det står i profilen.
 - Ernæring/IBS: les GI-feltene i profilen; bruk knowledge/ernaring; aldri diagnostiser.

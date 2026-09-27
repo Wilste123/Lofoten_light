@@ -1,6 +1,11 @@
 """Load trimmed knowledge snippets — adaptive by athlete signals / chat text.
 
 Thin retrieval: keyword heuristics pick files from knowledge/. No vector DB / Pondus.
+
+Prefer extending existing knowledge files; only list paths that exist.
+Clear-gap new docs: coach/maalrealisme.md, lop/maraton-periodisering.md.
+Periodization/intensity/deload live in load-and-intensity.md;
+session/adjust/«hvorfor» in coach-filosofi.md; 5–6 økter in ukeplaner-*.
 """
 
 from __future__ import annotations
@@ -17,27 +22,44 @@ CORE_COACH = [
     "coach/feil-og-fixes.md",
 ]
 
-# Periodization / load science — always for plan generation
+# Honest goal scope — setup / plan / chat before prescribing
+CORE_FEASIBILITY = [
+    "coach/maalrealisme.md",
+]
+
+# Periodization / load — plan generation (tri default)
 CORE_PLAN = [
+    "coach/maalrealisme.md",
     "triathlon/periodisering-mot-2027.md",
     "coach/ukemaler.md",
     "load-and-intensity.md",
 ]
 
-# Run / HM / low-frequency — injected when athlete is not multi-sport default
 CORE_RUN_PLAN = [
+    "coach/maalrealisme.md",
     "lop/ukeplaner-lav-frekvens.md",
     "lop/styrke-og-lop.md",
     "load-and-intensity.md",
 ]
 
 CORE_HM_PLAN = [
+    "coach/maalrealisme.md",
     "lop/halvmaraton-periodisering.md",
     "lop/ukeplaner-lav-frekvens.md",
     "lop/styrke-og-lop.md",
+    "load-and-intensity.md",
+]
+
+CORE_MARATHON_PLAN = [
+    "coach/maalrealisme.md",
+    "lop/maraton-periodisering.md",
+    "lop/ukeplaner-lav-frekvens.md",
+    "lop/styrke-og-lop.md",
+    "load-and-intensity.md",
 ]
 
 CORE_GENERAL_PLAN = [
+    "coach/maalrealisme.md",
     "coach/ukeplaner-generell-utholdenhet.md",
     "lop/ukeplaner-lav-frekvens.md",
     "load-and-intensity.md",
@@ -68,6 +90,7 @@ CONDITIONAL_PACKS: list[tuple[list[str], list[str]]] = [
         ],
         [
             "svom/nybegynner-til-triatlet.md",
+            "coach/maalrealisme.md",
             "mental/kontinuitet-motivasjon.md",
             "utstyr/triatlon-grunnpakke.md",
         ],
@@ -90,6 +113,7 @@ CONDITIONAL_PACKS: list[tuple[list[str], list[str]]] = [
         ],
         [
             "lop/oppbygging-etter-pause.md",
+            "coach/maalrealisme.md",
             "coach/ole-petter-vibekken-referanse.md",
             "sykkel/kraft-og-utholdenhet.md",
         ],
@@ -133,9 +157,99 @@ CONDITIONAL_PACKS: list[tuple[list[str], list[str]]] = [
             "få timer",
         ],
         [
+            "coach/maalrealisme.md",
             "coach/ukemaler.md",
+            "lop/ukeplaner-lav-frekvens.md",
             "mental/kontinuitet-motivasjon.md",
             "restitusjon/sovn-stress.md",
+        ],
+    ),
+    (
+        [
+            "realistisk",
+            "urealistisk",
+            "rekker jeg",
+            "hinne",
+            "for ambisiøst",
+            "for aggressivt",
+            "sub-",
+            "pb ",
+            "personlig rekord",
+            "feasibility",
+            "realistic",
+            "ambitious goal",
+            "første maraton",
+            "første tri",
+            "første halv",
+            "om to måneder",
+            "om tre måneder",
+            "til mai",
+            "til juni",
+        ],
+        [
+            "coach/maalrealisme.md",
+            "load-and-intensity.md",
+            "lop/ukeplaner-lav-frekvens.md",
+        ],
+    ),
+    (
+        [
+            "hvorfor denne",
+            "hvorfor uka",
+            "ukens jobb",
+            "rationale",
+            "forklar planen",
+            "hvorfor trener jeg",
+            "juster plan",
+            "endre plan",
+            "planjustering",
+            "oppdatert profil",
+            "adjust plan",
+            "denne økten",
+            "focused",
+            "økt-detalj",
+            "spør om økten",
+            "kan jeg droppe",
+            "kan jeg kjøre hardere",
+        ],
+        [
+            "coach/coach-filosofi.md",
+            "coach/maalrealisme.md",
+            "load-and-intensity.md",
+        ],
+    ),
+    (
+        [
+            "deload",
+            "cut-back",
+            "cutback",
+            "recovery-uke",
+            "restitusjonsuke",
+            "lett uke",
+            "hvileuke",
+            "polarisert",
+            "pyramidal",
+            "80/20",
+            "gray zone",
+            "gråsone",
+        ],
+        [
+            "load-and-intensity.md",
+            "restitusjon/sovn-stress.md",
+            "skader/belastningsstyring-acwr.md",
+        ],
+    ),
+    (
+        [
+            "styrke og utholdenhet",
+            "concurrent",
+            "styrkeøkt",
+            "interference",
+            "interferens",
+        ],
+        [
+            "skader/forebygging-styrke-mobilitet.md",
+            "lop/styrke-og-lop.md",
         ],
     ),
     (
@@ -156,10 +270,31 @@ CONDITIONAL_PACKS: list[tuple[list[str], list[str]]] = [
     ),
     (
         [
+            "fullmaraton",
+            "full maraton",
+            "første maraton",
+            "mot maraton",
+            "maraton om",
+            "maraton 42",
+            "full marathon",
+            "first marathon",
+            "marathon om",
+            "42 km",
+            "42,2",
+            "42.2",
+        ],
+        [
+            "lop/maraton-periodisering.md",
+            "coach/maalrealisme.md",
+            "lop/ukeplaner-lav-frekvens.md",
+            "lop/styrke-og-lop.md",
+        ],
+    ),
+    (
+        [
             "løp",
             "lop",
             "run",
-            "maraton",
             "terreng",
             "trail",
         ],
@@ -183,6 +318,7 @@ CONDITIONAL_PACKS: list[tuple[list[str], list[str]]] = [
         ],
         [
             "lop/halvmaraton-periodisering.md",
+            "coach/maalrealisme.md",
             "lop/ukeplaner-lav-frekvens.md",
             "lop/styrke-og-lop.md",
             "lop/intervaller-og-fart.md",
@@ -195,6 +331,8 @@ CONDITIONAL_PACKS: list[tuple[list[str], list[str]]] = [
             "tre økter",
             "2 økter",
             "4 økter",
+            "5 økter",
+            "6 økter",
             "få økter",
             "kun løp",
             "bare løp",
@@ -209,6 +347,7 @@ CONDITIONAL_PACKS: list[tuple[list[str], list[str]]] = [
             "lop/ukeplaner-lav-frekvens.md",
             "lop/styrke-og-lop.md",
             "coach/ukeplaner-generell-utholdenhet.md",
+            "coach/maalrealisme.md",
             "restitusjon/sovn-stress.md",
         ],
     ),
@@ -224,6 +363,7 @@ CONDITIONAL_PACKS: list[tuple[list[str], list[str]]] = [
             "lop/nybegynner-lop.md",
             "lop/ukeplaner-lav-frekvens.md",
             "skader/lop-skadeprofiler.md",
+            "coach/maalrealisme.md",
         ],
     ),
     (
@@ -256,6 +396,7 @@ CONDITIONAL_PACKS: list[tuple[list[str], list[str]]] = [
             "triathlon/lofoten-half-extreme.md",
             "triathlon/brick-og-overgang.md",
             "triathlon/periodisering-mot-2027.md",
+            "coach/maalrealisme.md",
         ],
     ),
     (
@@ -381,6 +522,10 @@ def _athlete_type_plan_paths(draft: dict[str, Any] | None, blob: str) -> list[st
     out: list[str] = []
     if "half_marathon" in atype or re.search(r"halv\s*maraton|half[\s-]?marathon", blob):
         out.extend(CORE_HM_PLAN)
+    elif (
+        "marathon" in atype and "half_marathon" not in atype
+    ) or re.search(r"\bmaraton\b|\bmarathon\b|42[,.]2\s*km|\b42\s*km\b", blob):
+        out.extend(CORE_MARATHON_PLAN)
     elif run_primary or re.search(r"\bløper\b|\bløping\b|running", blob):
         out.extend(CORE_RUN_PLAN)
         if re.search(r"nybegynner|aldri trent|starte å løpe", blob):
@@ -421,6 +566,7 @@ def select_knowledge_paths(
     """Ordered unique relative paths under knowledge/."""
     paths: list[str] = []
     paths.extend(CORE_COACH)
+    paths.extend(CORE_FEASIBILITY)
 
     blob = _norm(query_text)
     if draft:
@@ -440,8 +586,8 @@ def select_knowledge_paths(
     if mode == "plan":
         paths.extend(_athlete_type_plan_paths(draft, blob))
     elif mode in ("setup", "chat"):
-        # Lighter core + type-aware hints
-        paths.extend(_athlete_type_plan_paths(draft, blob)[:4])
+        # Lighter core + type-aware hints; feasibility already in CORE_FEASIBILITY
+        paths.extend(_athlete_type_plan_paths(draft, blob)[:5])
         paths.append("load-and-intensity.md")
 
     paths.extend(ERNARING_CORE)

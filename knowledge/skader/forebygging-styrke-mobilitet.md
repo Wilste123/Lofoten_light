@@ -62,3 +62,17 @@
 ## Når til fysio
 
 Smerte >3/10 som varer 48 t etter økt, eller lokalisert én side — ikke «tren gjennom».
+
+## Concurrent training (styrke + utholdenhet)
+
+**Evidens:** styrke reduserer idrettsskader (Lauersen et al. *BJSM* 2014). Kan forbedre løpsøkonomi (Blagrove m.fl.). Samtidig hard styrke + hard utholdenhet kan hemme *styrke*adaptasjon (Hickson; Fyfe reviews) — for utholdenhetsmål er det sjelden grunn til å droppe styrke, men grunn til timing.
+
+| Regel | |
+|-------|--|
+| 1–2×/uke base; 1× sen build/taper | |
+| Ikke maks knebøy dagen før lang/Q-løp | |
+| Etter easy svøm/sykkel eller egen dag | |
+| Same-day: utholdenhet først når den er prioritert | |
+| Teknikk > last; ingen powerlifting-peak i taper | |
+
+Løpsspesifikt: `lop/styrke-og-lop.md`.

@@ -57,3 +57,18 @@ Uten restitusjon er 750–800 t **skadeår**, ikke progresjonsår.
 ## Coach-spørsmål hver mandag
 
 «Hvor mange timer søvn i snitt sist uke?» — svaret styrer ukeplan.
+
+## Deload / recovery-uke (planlagt)
+
+**Evidens:** planlagt redusert load demper skaderisiko og lar adaptasjon skje (IOC 2016; periodiseringslærebøker). −25–40 % = *praksis*. Taper: Mujika & Padilla.
+
+| Trigger | Handling |
+|---------|----------|
+| Hver 3.–4. lastuke | Planlagt cut-back |
+| Nybegynner/comeback | Ofte hver 2.–3. |
+| Dårlig søvn ≥3 netter / verk / «motivasjonståke» | Tidlig deload; kutt Q først |
+| Etter topp-langtur / race-sim | Lett uke |
+
+**Hvordan:** behold frekvens om mulig; kutt varighet; dropp hard Q; lett styrke OK.  
+**Ikke** «tap av form»-narrativ — si overskudd til neste blokk.  
+Detaljert load: `load-and-intensity.md`. Sykdom med feber: stopp hard trening; henvis ved behov — retur gradvis (tabell over).

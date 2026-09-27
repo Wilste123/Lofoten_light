@@ -67,3 +67,5 @@ Hviledager mellom — ikke fyll kalenderen.
 - Threshold hver uke fra uke 1.
 - «Halvmaraton = halvparten av maratonvolum» uten å sjekke skadehistorikk.
 - Svøm/sykkel-fyll fordi biblioteket har økter — kun hvis avtalen sier det.
+
+Maraton som mål: `lop/maraton-periodisering.md`. Mål vs dose/tid: `coach/maalrealisme.md`.

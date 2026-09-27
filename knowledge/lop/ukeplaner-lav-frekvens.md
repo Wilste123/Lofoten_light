@@ -83,3 +83,31 @@ Ved skadehistorikk: hold fre 100 % easy.
 | Lang | `run/R04-long-easy-75.txt` |
 | Styrke base | `strength/ST01-base.txt` |
 | Styrke lett / prehab | `strength/ST03-recovery.txt`, `ST04-…` ved rygg/isjas |
+
+## 5 økter/uke (løperfokus)
+
+| Dag | Økt | Notat |
+|-----|-----|-------|
+| Man | Easy | |
+| Tir | Q ELLER easy+strides | Q først i build |
+| Ons | Styrke | Ikke tung før Q/lang |
+| Tor | Easy / recovery | |
+| Lør | Lang | |
+| Ellers | R | |
+
+Intensitetsbudsjett: 1 hard, 1 lang, 1 styrke, resten easy (`load-and-intensity.md`).
+
+## 6 økter/uke
+
+Q én dag, lang én dag, styrke 1×, resten easy. Krever stabil søvn/skadestatus. Ved skadehistorikk: hold 5 «ekte» økter.  
+6× moderate økter slår ofte 3× ekstrem varighet for skadevern (impact-dose; IOC load-logikk).
+
+## Bytt frekvens
+
+| Fra → til | Hvordan |
+|-----------|---------|
+| 3 → 5 | +1 easy i 2 uker, deretter +1 |
+| 5 → 6 | Kun ved høy compliance ≥3 uker |
+| Ned | Behold lang + (evt.) Q + styrke; dropp filler |
+
+Avtale = loft. Mål vs dose: `coach/maalrealisme.md`.

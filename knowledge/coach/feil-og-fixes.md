@@ -50,3 +50,13 @@
 - «Denne uken vinner du hvis du fullfører 4 økter, ikke hvis FTP øker.»
 - «Lofoten er om 18 måneder; denne måneden er om sener som tåler 12 t/uke.»
 - «Du liker løp — bra. I dag er løp 45 min easy fordi fre er brick.»
+
+## 9. Urealistisk mål godkjent «for motivasjon»
+
+**Symptom:** Første tri + dårlig form + 2 økter + half om få måneder + tidmål.  
+**Fix:** Kjør `maalrealisme.md` (erfaring × form × dose × tid × måltype). Si nei til formuleringen; foreslå senere dato / kortere format / fullføre fremfor tid / byggesteinsesong.
+
+## 10. Planjustering som ignorerer ny dose eller skade
+
+**Symptom:** Du sier 3 økter / kneplager; kalenderen er fortsatt 6× tri-Q.  
+**Fix:** Preview mot oppdatert profil; kutt filler og Q; forklar hvorfor (`coach-filosofi.md` planjustering). Ingen stille ICU-sync.

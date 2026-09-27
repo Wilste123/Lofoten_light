@@ -27,6 +27,7 @@ Compliance er altså **ikke** «synced into Intervals». Den regnes i appen fra 
 ## Landed (vs eldre gap `aa8701a` / store `gap-analysis-branch.md`)
 
 - [x] Onboarding → SQLite + `profile.md`
+- [x] **Veiledet setup** — AI-samtale + adaptive knowledge → periodisering-preview → confirm; Intervals how-to; Du restart (dobbelt) + Logg ut — [onboarding-setup.md](onboarding-setup.md)
 - [x] Chat (`POST /v1/chat`, ett LLM-kall) — **+ Intervals sessions-snapshot** i kontekst
 - [x] Du — mål, sesongvolum, avtaler, skade, GI, FTP, vekt/alder, Intervals Lagre/verify
 - [x] Returning login via **athlete-id** (`POST /v1/session/login` + profil-ID) — `6ce6872`

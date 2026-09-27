@@ -5,6 +5,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from pathlib import Path
 from datetime import date
+import re
 from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, Query
@@ -16,8 +17,10 @@ import config
 from chat_service import build_system_prompt, call_llm, extract_workout_proposal
 from db import (
     add_message,
+    clear_messages,
     completions_by_external_id,
     db_session,
+    delete_all_plan_blocks,
     delete_plan_block,
     get_athlete,
     get_athlete_by_username,
@@ -33,6 +36,7 @@ from db import (
     mark_pending_action,
     normalize_username,
     recent_messages,
+    replace_plan_blocks,
     secrets_public_view,
     update_athlete,
     update_plan_block,
@@ -65,6 +69,13 @@ from progress_compliance import (
     pick_current_and_next,
     public_block,
     resolve_progress,
+)
+from setup_plan import (
+    build_setup_chat_system,
+    build_setup_preview,
+    events_preview_for_blocks,
+    extract_setup_fields,
+    merge_draft,
 )
 from sessions_service import (
     completion_note_line,
@@ -136,6 +147,68 @@ class OnboardingIn(BaseModel):
     nutrition_other_restrictions: str = ""
     nutrition_notes: str = ""
     notes: str = ""
+
+
+class SetupDraftIn(BaseModel):
+    """Guided setup draft — preview only until /v1/setup/confirm."""
+
+    display_name: str = ""
+    username: str = ""
+    coach_display_name: str = "Rocky"
+    coach_personality: str = "direkte"
+    coach_style_note: str = ""
+    accent_color: str = "#1a6b4a"
+    goal_text: str = ""
+    injury_notes: str = ""
+    schedule_notes: str = ""
+    background_notes: str = ""
+    coach_respect_notes: str = ""
+    notes: str = ""
+    weekly_focus: str = ""
+    weekly_hours_target: float | None = None
+    season_start_date: str | None = None
+    goal_race_date: str | None = None
+    ftp_tested: float | None = None
+    ftp_tested_at: str | None = None
+    weight_kg: float | None = None
+    age_years: int | None = None
+    sport: str = "triathlon"
+    nutrition_ibs: str = "no"
+    nutrition_gluten: str = "none"
+    nutrition_lactose: bool = False
+    nutrition_other_restrictions: str = ""
+    nutrition_notes: str = ""
+    agreements: list[str] = Field(default_factory=list)
+    # Optional Intervals — stored only on confirm; used to preview NOTE events.
+    intervals_athlete_id: str = ""
+    intervals_api_key: str = ""
+    enrich_with_llm: bool = True
+
+
+class SetupChatIn(BaseModel):
+    """One adaptive coach turn during landing setup."""
+
+    message: str = Field(min_length=1)
+    draft: SetupDraftIn = Field(default_factory=SetupDraftIn)
+    history: list[dict[str, str]] = Field(default_factory=list)
+
+
+class SetupConfirmIn(SetupDraftIn):
+    """Persist profile + plan_blocks after athlete reviewed preview."""
+
+    plan_blocks: list[dict[str, Any]] = Field(default_factory=list)
+    athlete_patch: dict[str, Any] = Field(default_factory=dict)
+    # Existing athlete (restart flow) — never creates a second row.
+    athlete_id: str | None = None
+    # If true AND credentials present: create calendar pending (still needs confirm).
+    prepare_intervals_sync: bool = False
+
+
+class SetupResetIn(BaseModel):
+    """Two-step wipe: both flags required before deleting plan/goals."""
+
+    acknowledge_wipe: bool = False
+    confirm_phrase: str = ""
 
 
 class AthletePatch(BaseModel):
@@ -298,6 +371,342 @@ def onboarding(body: OnboardingIn) -> dict[str, Any]:
         "profile_path": str(path.relative_to(config.REPO_ROOT))
         if path.is_relative_to(config.REPO_ROOT)
         else str(path),
+    }
+
+
+@app.post("/v1/setup/plan/preview")
+def setup_plan_preview(body: SetupDraftIn) -> dict[str, Any]:
+    """Build adaptive periodization + training outline. No SQLite / Intervals writes."""
+    draft = body.model_dump()
+    preview = build_setup_preview(
+        draft,
+        knowledge_dir=config.KNOWLEDGE_DIR,
+        api_key=config.OPENAI_API_KEY or "",
+        model=config.OPENAI_MODEL or "gpt-4o-mini",
+        enrich=bool(body.enrich_with_llm),
+    )
+    # Optional: show what Intervals NOTE sync would look like (still no write).
+    events = events_preview_for_blocks(preview["plan_blocks"])
+    preview["intervals_sync"] = {
+        "will_push": False,
+        "kind": "calendar_notes",
+        "description": (
+            "Forhåndsvisning av grovplan-noter (NOTE). Ingenting synces før du "
+            "bekrefter plan lokalt og deretter Sync til Intervals."
+        ),
+        "events_count": len(events),
+        "events_preview": events[:40],
+        "events_truncated": max(0, len(events) - 40),
+        "credentials_present": bool(
+            (body.intervals_athlete_id or "").strip()
+            and (body.intervals_api_key or "").strip()
+        ),
+    }
+    return preview
+
+
+@app.post("/v1/setup/chat")
+def setup_chat(body: SetupChatIn) -> dict[str, Any]:
+    """Adaptive onboarding turn — knowledge-grounded, extracts fields, no persist."""
+    draft = body.draft.model_dump()
+    history = [
+        {"role": m.get("role", ""), "content": m.get("content", "")}
+        for m in (body.history or [])
+        if m.get("role") in ("user", "assistant") and m.get("content")
+    ][-12:]
+    history_blob = " ".join(m["content"] for m in history)
+    system, knowledge_meta = build_setup_chat_system(
+        draft,
+        knowledge_dir=config.KNOWLEDGE_DIR,
+        history_blob=history_blob + " " + body.message,
+    )
+    raw = call_llm(
+        api_key=config.OPENAI_API_KEY or "",
+        model=config.OPENAI_MODEL or "gpt-4o-mini",
+        system=system,
+        history=history,
+        user_message=body.message,
+    )
+    display, extracted = extract_setup_fields(raw)
+    if not config.OPENAI_API_KEY:
+        # Stub still teaches the flow when no key
+        display = (
+            display
+            or (
+                f"(Utviklingsmodus.) Fortell meg om mål, erfaring (nybegynner/comeback), "
+                f"skader og hvor mange timer du har i uka. Jeg hørte: «{body.message[:180]}»."
+            )
+        )
+        # Lightweight heuristic extract without LLM
+        low = body.message.lower()
+        if "nybegynner" in low or "aldri" in low:
+            extracted.setdefault("background_notes", body.message[:400])
+        if any(w in low for w in ("skade", "isjas", "rygg", "kne")):
+            extracted.setdefault("injury_notes", body.message[:400])
+        if "mål" in low or "lofoten" in low or "triatlon" in low:
+            extracted.setdefault("goal_text", body.message[:400])
+        if re.search(r"\d+\s*t", low):
+            extracted.setdefault("schedule_notes", body.message[:400])
+        if len(history) >= 2 and (
+            draft.get("goal_text") or extracted.get("goal_text")
+        ):
+            extracted["ready_for_plan"] = True
+
+    merged = merge_draft(draft, extracted)
+    ready = bool(extracted.get("ready_for_plan"))
+    return {
+        "reply": display,
+        "extracted": extracted,
+        "draft": merged,
+        "ready_for_plan": ready,
+        "knowledge": knowledge_meta,
+    }
+
+
+@app.post("/v1/setup/confirm")
+def setup_confirm(
+    body: SetupConfirmIn,
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Persist athlete + plan_blocks + profile.md after explicit preview confirm.
+
+    Never writes to Intervals here. If prepare_intervals_sync + credentials:
+    creates a pending calendar push (same confirm gate as Plan-fanen).
+    """
+    draft = body.model_dump()
+    existing_id = (body.athlete_id or x_athlete_id or "").strip() or None
+
+    # Prefer client-reviewed blocks; else rebuild deterministically.
+    blocks = list(body.plan_blocks or [])
+    if not blocks:
+        rebuilt = build_setup_preview(
+            draft,
+            knowledge_dir=config.KNOWLEDGE_DIR,
+            api_key="",
+            enrich=False,
+        )
+        blocks = rebuilt["plan_blocks"]
+        patch = rebuilt["athlete_patch"]
+    else:
+        patch = dict(body.athlete_patch or {})
+        if not patch:
+            rebuilt = build_setup_preview(
+                draft,
+                knowledge_dir=config.KNOWLEDGE_DIR,
+                api_key="",
+                enrich=False,
+            )
+            patch = rebuilt["athlete_patch"]
+
+    display_name = (body.display_name or "").strip()
+    if not display_name and not existing_id:
+        raise HTTPException(422, "Navn er påkrevd for ny bruker.")
+
+    uname = normalize_username(body.username)
+    intervals_pending: dict[str, Any] | None = None
+
+    with db_session(config.DATABASE_PATH) as conn:
+        if existing_id:
+            athlete = get_athlete(conn, existing_id)
+            if not athlete:
+                raise HTTPException(404, "Utøver ikke funnet")
+            # Restart / continue setup: update fields, replace blocks
+            update_fields = {
+                k: v
+                for k, v in {
+                    "display_name": display_name or athlete.get("display_name"),
+                    "coach_display_name": body.coach_display_name,
+                    "coach_personality": body.coach_personality,
+                    "coach_style_note": body.coach_style_note,
+                    "accent_color": body.accent_color,
+                    "sport": body.sport,
+                    **patch,
+                }.items()
+                if v is not None
+            }
+            athlete = update_athlete(conn, existing_id, update_fields) or athlete
+            saved_blocks = replace_plan_blocks(conn, existing_id, blocks)
+            aid = existing_id
+        else:
+            if not uname:
+                raise HTTPException(422, "Brukernavn er påkrevd.")
+            err = validate_username(uname)
+            if err:
+                raise HTTPException(422, err)
+            if get_athlete_by_username(conn, uname):
+                raise HTTPException(409, "Brukernavnet er opptatt. Velg et annet.")
+            try:
+                athlete = insert_athlete(
+                    conn,
+                    {
+                        "display_name": display_name,
+                        "username": uname,
+                        "coach_display_name": body.coach_display_name,
+                        "coach_personality": body.coach_personality,
+                        "coach_style_note": body.coach_style_note,
+                        "accent_color": body.accent_color,
+                        "sport": body.sport,
+                        "goal_text": patch.get("goal_text") or body.goal_text,
+                        "injury_notes": patch.get("injury_notes") or body.injury_notes,
+                        "schedule_notes": patch.get("schedule_notes")
+                        or body.schedule_notes,
+                        "notes": patch.get("notes") or "",
+                        "ftp_tested": patch.get("ftp_tested"),
+                        "ftp_tested_at": patch.get("ftp_tested_at"),
+                        "weight_kg": patch.get("weight_kg"),
+                        "age_years": patch.get("age_years"),
+                        "nutrition_ibs": patch.get("nutrition_ibs") or "no",
+                        "nutrition_gluten": patch.get("nutrition_gluten") or "none",
+                        "nutrition_lactose": bool(patch.get("nutrition_lactose")),
+                        "nutrition_other_restrictions": patch.get(
+                            "nutrition_other_restrictions"
+                        )
+                        or "",
+                        "nutrition_notes": patch.get("nutrition_notes") or "",
+                        "agreements": patch.get("agreements") or [],
+                    },
+                )
+            except ValueError as exc:
+                raise HTTPException(422, str(exc)) from exc
+            aid = athlete["id"]
+            season_patch = {
+                k: patch[k]
+                for k in (
+                    "weekly_focus",
+                    "season_start_date",
+                    "goal_race_date",
+                    "season_swim_hours_target",
+                    "season_bike_hours_target",
+                    "season_run_hours_target",
+                    "season_strength_hours_target",
+                    "notes",
+                    "goal_text",
+                    "injury_notes",
+                    "schedule_notes",
+                )
+                if k in patch
+            }
+            if season_patch:
+                athlete = update_athlete(conn, aid, season_patch) or athlete
+            saved_blocks = replace_plan_blocks(conn, aid, blocks)
+
+        # Optional Intervals credentials (store only — soft verify)
+        icu_id = (body.intervals_athlete_id or "").strip()
+        api_key_in = (body.intervals_api_key or "").strip()
+        intervals_view: dict[str, Any] | None = None
+        if icu_id and api_key_in:
+            row = upsert_athlete_secrets(
+                conn,
+                aid,
+                intervals_api_key=api_key_in,
+                intervals_athlete_id=icu_id,
+            )
+            intervals_view = secrets_public_view(row)
+            ok, err = smoke_test_intervals(api_key_in, icu_id)
+            if intervals_view is not None:
+                intervals_view["verified"] = ok
+                intervals_view["verify_error"] = err
+
+        if body.prepare_intervals_sync:
+            secrets = get_athlete_secrets(conn, aid)
+            key = ((secrets or {}).get("intervals_api_key") or "").strip()
+            icu = ((secrets or {}).get("intervals_athlete_id") or "").strip()
+            if key and icu and saved_blocks:
+                events = build_block_note_events(saved_blocks)
+                if events:
+                    payload = {
+                        "op": "push",
+                        "block_ids": [b["id"] for b in saved_blocks],
+                        "events": events,
+                        "intervals_athlete_id": icu,
+                    }
+                    pending = insert_pending_action(
+                        conn, aid, "intervals_calendar_push", payload
+                    )
+                    summary = [public_event_preview(e) for e in events]
+                    intervals_pending = {
+                        "pending_id": pending["id"],
+                        "op": "push",
+                        "count": len(events),
+                        "expires_at": pending.get("expires_at"),
+                        "events": summary[:40],
+                        "events_truncated": max(0, len(events) - 40),
+                        "confirm_required": True,
+                        "message": (
+                            f"Bekreft for å synce {len(events)} grovplan-noter "
+                            "til Intervals. Avbryt = plan beholdes kun i appen."
+                        ),
+                    }
+
+    path = write_profile(config.ATHLETES_DATA_DIR, athlete)
+    return {
+        "athlete": athlete,
+        "plan_blocks": saved_blocks,
+        "profile_path": str(path.relative_to(config.REPO_ROOT))
+        if path.is_relative_to(config.REPO_ROOT)
+        else str(path),
+        "intervals": intervals_view,
+        "intervals_pending": intervals_pending,
+        "written_to_intervals": False,
+        "message": (
+            "Profil og grovplan lagret lokalt."
+            + (
+                " Bekreft Intervals-sync for å speile noter."
+                if intervals_pending
+                else " Intervals urørt."
+            )
+        ),
+    }
+
+
+@app.post("/v1/athlete/me/setup/reset")
+def setup_reset(
+    body: SetupResetIn,
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Wipe plan + coaching setup fields. Requires double confirmation payload."""
+    aid = _require_athlete(x_athlete_id)
+    phrase = (body.confirm_phrase or "").strip().upper()
+    if not body.acknowledge_wipe or phrase != "SLETT":
+        raise HTTPException(
+            400,
+            "Dobbeltbekreftelse kreves: acknowledge_wipe=true og confirm_phrase=SLETT.",
+        )
+    with db_session(config.DATABASE_PATH) as conn:
+        athlete = get_athlete(conn, aid)
+        if not athlete:
+            raise HTTPException(404, "Utøver ikke funnet")
+        n_blocks = delete_all_plan_blocks(conn, aid)
+        n_msgs = clear_messages(conn, aid)
+        cleared = update_athlete(
+            conn,
+            aid,
+            {
+                "goal_text": "",
+                "injury_notes": "",
+                "weekly_focus": "",
+                "schedule_notes": "",
+                "notes": "",
+                "agreements": [],
+                "season_swim_hours_target": None,
+                "season_bike_hours_target": None,
+                "season_run_hours_target": None,
+                "season_strength_hours_target": None,
+                "season_start_date": None,
+                "goal_race_date": None,
+            },
+        )
+    assert cleared is not None
+    path = write_profile(config.ATHLETES_DATA_DIR, cleared)
+    return {
+        "athlete": cleared,
+        "deleted_plan_blocks": n_blocks,
+        "cleared_messages": n_msgs,
+        "profile_path": str(path.relative_to(config.REPO_ROOT))
+        if path.is_relative_to(config.REPO_ROOT)
+        else str(path),
+        "needs_setup": True,
+        "message": "Setup nullstilt. Start veiledet oppsett på nytt.",
     }
 
 

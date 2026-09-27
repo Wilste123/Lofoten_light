@@ -75,11 +75,13 @@ Dedikert (eller utvidet Overblikk) **training status**-flate — fortsatt compan
 
 ## Onboarding → profilfil
 
-Ved fullført onboarding **skriver API** `data/athletes/{id}/profile.md`. Oppdateres fra Du.
+Ved fullført setup **skriver API** `data/athletes/{id}/profile.md` + `plan_blocks`. Oppdateres fra Du.
 
-**Ikke i onboarding-wizard:** dypt IBS/ernæring-kurs — knowledge i `knowledge/ernaring/`; matbegrensninger kan ligge i profil/Du.
+**Flyt:** veiledet AI-samtale (knowledge-grounded) → forhåndsvis periodisering → bekreft. Se [onboarding-setup.md](onboarding-setup.md).
 
-GI-felter (IBS/gluten/laktose) samles i onboarding/Du → SQLite + `profile.md`. Chat diagnostiserer aldri.
+**Ikke** rigid one-size wizard: nybegynner / comeback / skade / tidsklemma divergerer via knowledge + LLM (fallback signal-aware).
+
+GI-felter kan komme fra samtale eller Du → SQLite + `profile.md`. Chat diagnostiserer aldri.
 
 ## Datalagring
 
@@ -117,6 +119,7 @@ Gate ≥ 5 sykkeløkter med watt. Se [form-estimates.md](form-estimates.md).
 | 2d+ | ~~Username login~~ — unik slug; login med brukernavn; athlete-id valgfritt |
 | 2e | ~~Dashboard + Økter~~ (wellness/søvn, kropp-toggle, øktlogg) — se [dashboard-okter.md](dashboard-okter.md) |
 | 2e+ | **Dashboard periode** — 7d/14d/30d/90d/custom; trening vs sesong compliance separert |
+| 2f | **Veiledet setup** — AI-samtale + knowledge → plan-preview → confirm; restart/logout under Du |
 | 3 | Invite + training_pair |
 | 4 | Intervals-write: plan-noter + chat WORKOUT (beskrivelse) landet; ZWO/CSV fortsatt CLI |
 | 5 | Proaktiv post-MVP |
@@ -129,4 +132,4 @@ Ingen Pondus-import, ingen Slack i MVP, ingen tool-spam-chat, ingen full kalende
 
 ## Relaterte docs
 
-[gap-analysis-2026-09-27.md](gap-analysis-2026-09-27.md) · [competitor-humango.md](competitor-humango.md) · [mvp-scope.md](mvp-scope.md) · [progress-compliance.md](progress-compliance.md) · [dashboard-okter.md](dashboard-okter.md) · [periodization-overview.md](periodization-overview.md) · [athlete-profile.md](athlete-profile.md) · [partner-sync.md](partner-sync.md) · [returning-login.md](returning-login.md) · [README.md](README.md)
+[gap-analysis-2026-09-27.md](gap-analysis-2026-09-27.md) · [competitor-humango.md](competitor-humango.md) · [mvp-scope.md](mvp-scope.md) · [progress-compliance.md](progress-compliance.md) · [dashboard-okter.md](dashboard-okter.md) · [periodization-overview.md](periodization-overview.md) · [onboarding-setup.md](onboarding-setup.md) · [athlete-profile.md](athlete-profile.md) · [partner-sync.md](partner-sync.md) · [returning-login.md](returning-login.md) · [README.md](README.md)

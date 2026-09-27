@@ -3,6 +3,14 @@ import {
   renderLoadLines,
   renderVolumeBars,
 } from './charts.js'
+import {
+  SETUP_STEPS,
+  applyExtractedToDraft,
+  draftPayload,
+  emptySetupDraft,
+  readSetupForm,
+  renderSetupWizard,
+} from './setup.js'
 
 const API = import.meta.env.VITE_API_URL || ''
 const STORAGE_KEY = 'lofoten_athlete_id'
@@ -61,27 +69,19 @@ const state = {
     message: '',
     error: '',
   },
-  onboarding: {
-    display_name: '',
-    username: '',
-    username_touched: false,
-    coach_display_name: 'Rocky',
-    coach_personality: 'direkte',
-    coach_style_note: '',
-    accent_color: ACCENTS[0],
-    goal_text: '',
-    injury_notes: '',
-    schedule_notes: '',
-    ftp_tested: '',
-    ftp_tested_at: '',
-    weight_kg: '',
-    age_years: '',
-    nutrition_ibs: 'no',
-    nutrition_gluten: 'none',
-    nutrition_lactose: false,
-    nutrition_other_restrictions: '',
-    nutrition_notes: '',
+  /** Guided setup (new user or restart) — conversation-first */
+  setup: {
+    mode: 'new',
+    step: 'account',
+    draft: emptySetupDraft({ accent_color: ACCENTS[0] }),
+    messages: [],
+    chatDraft: '',
+    readyForPlan: false,
+    preview: null,
+    prepareIntervals: false,
   },
+  /** Du → restart setup: 0 idle, 1 first confirm, 2 type SLETT */
+  resetConfirm: 0,
   busy: false,
   intervalsBusy: false,
   intervalsStatus: '',
@@ -423,6 +423,16 @@ function renderEntry() {
 
 function bindEntry() {
   document.getElementById('gate-new')?.addEventListener('click', () => {
+    state.setup = {
+      mode: 'new',
+      step: 'account',
+      draft: emptySetupDraft({ accent_color: ACCENTS[0] }),
+      messages: [],
+      chatDraft: '',
+      readyForPlan: false,
+      preview: null,
+      prepareIntervals: false,
+    }
     state.gate = 'onboarding'
     state.error = ''
     render()
@@ -492,6 +502,16 @@ function bindLogin() {
     render()
   })
   document.getElementById('login-to-onboard')?.addEventListener('click', () => {
+    state.setup = {
+      mode: 'new',
+      step: 'account',
+      draft: emptySetupDraft({ accent_color: ACCENTS[0] }),
+      messages: [],
+      chatDraft: '',
+      readyForPlan: false,
+      preview: null,
+      prepareIntervals: false,
+    }
     state.gate = 'onboarding'
     state.error = ''
     render()
@@ -554,219 +574,303 @@ async function runSeedWilliamLogin() {
 }
 
 function renderOnboarding() {
-  const o = state.onboarding
-  const swatches = ACCENTS.map(
-    (c) =>
-      `<button type="button" class="swatch ${o.accent_color === c ? 'selected' : ''}" data-color="${c}" style="background:${c}" aria-label="Farge ${c}"></button>`
-  ).join('')
-  const pers = PERSONALITIES.map(
-    (p) => `<option value="${p.id}" ${o.coach_personality === p.id ? 'selected' : ''}>${p.label}</option>`
-  ).join('')
-  return `
-    <div class="onboarding">
-      <h1>Din trener</h1>
-      <p class="lead">Sett opp profilen — vi skriver <code>profile.md</code> treneren bruker (også for andre enn William), inkl. ernæring/GI så råd blir tryggere.</p>
-      <form id="onboard-form">
-        <div class="field">
-          <label for="display_name">Ditt navn</label>
-          <input id="display_name" name="display_name" required value="${escapeHtml(o.display_name)}" placeholder="f.eks. William" />
-        </div>
-        <div class="field">
-          <label for="username">Brukernavn</label>
-          <input id="username" name="username" required autocomplete="username"
-            value="${escapeHtml(o.username)}"
-            placeholder="f.eks. william"
-            pattern="[a-z0-9]([a-z0-9-]{0,30}[a-z0-9])?"
-            title="Små bokstaver, tall og bindestrek (2–32 tegn)" />
-          <p class="muted tight">Brukes for innlogging — ingen passord. Foreslås fra navnet.</p>
-        </div>
-        <div class="grid-2">
-          <div class="field">
-            <label for="coach_display_name">Trenerens navn</label>
-            <input id="coach_display_name" name="coach_display_name" value="${escapeHtml(o.coach_display_name)}" />
-          </div>
-          <div class="field">
-            <label for="coach_personality">Personlighet</label>
-            <select id="coach_personality" name="coach_personality">${pers}</select>
-          </div>
-        </div>
-        <div class="field">
-          <label for="coach_style_note">Stil (valgfritt, én setning)</label>
-          <input id="coach_style_note" name="coach_style_note" value="${escapeHtml(o.coach_style_note)}" placeholder="Kort og konkret" />
-        </div>
-        <div class="field">
-          <label>Aksentfarge</label>
-          <div class="swatches">${swatches}</div>
-        </div>
-        <div class="field">
-          <label for="goal_text">Mål</label>
-          <textarea id="goal_text" name="goal_text" rows="2" placeholder="f.eks. Half Extreme Lofoten 2027">${escapeHtml(o.goal_text)}</textarea>
-        </div>
-        <div class="field">
-          <label for="schedule_notes">Tilgjengelighet / timeplan</label>
-          <textarea id="schedule_notes" name="schedule_notes" rows="2" placeholder="f.eks. basseng tir/tor kveld">${escapeHtml(o.schedule_notes)}</textarea>
-        </div>
-        <div class="field">
-          <label for="injury_notes">Skade / begrensninger</label>
-          <textarea id="injury_notes" name="injury_notes" rows="2" placeholder="f.eks. isjas, skuldre">${escapeHtml(o.injury_notes)}</textarea>
-        </div>
-        <div class="grid-2">
-          <div class="field">
-            <label for="ftp_tested">Testet FTP (valgfritt)</label>
-            <input id="ftp_tested" name="ftp_tested" type="number" inputmode="decimal" value="${escapeHtml(o.ftp_tested)}" placeholder="W" />
-          </div>
-          <div class="field">
-            <label for="ftp_tested_at">FTP-dato</label>
-            <input id="ftp_tested_at" name="ftp_tested_at" type="date" value="${escapeHtml(o.ftp_tested_at)}" />
-          </div>
-        </div>
-        <div class="grid-2">
-          <div class="field">
-            <label for="weight_kg">Vekt kg (valgfritt)</label>
-            <input id="weight_kg" name="weight_kg" type="number" inputmode="decimal" value="${escapeHtml(o.weight_kg)}" />
-          </div>
-          <div class="field">
-            <label for="age_years">Alder (valgfritt)</label>
-            <input id="age_years" name="age_years" type="number" inputmode="numeric" value="${escapeHtml(o.age_years)}" />
-          </div>
-        </div>
-        <div class="field">
-          <label for="nutrition_ibs">IBS</label>
-          <select id="nutrition_ibs" name="nutrition_ibs">
-            <option value="no" ${o.nutrition_ibs === 'no' ? 'selected' : ''}>Nei</option>
-            <option value="yes" ${o.nutrition_ibs === 'yes' ? 'selected' : ''}>Ja</option>
-            <option value="unsure" ${o.nutrition_ibs === 'unsure' ? 'selected' : ''}>Usikker</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="nutrition_gluten">Gluten</label>
-          <select id="nutrition_gluten" name="nutrition_gluten">
-            <option value="none" ${o.nutrition_gluten === 'none' ? 'selected' : ''}>Ingen restriksjon</option>
-            <option value="sensitive" ${o.nutrition_gluten === 'sensitive' ? 'selected' : ''}>Sensitivitet</option>
-            <option value="celiac" ${o.nutrition_gluten === 'celiac' ? 'selected' : ''}>Cøliaki</option>
-          </select>
-        </div>
-        <div class="field">
-          <label><input type="checkbox" name="nutrition_lactose" ${o.nutrition_lactose ? 'checked' : ''} /> Laktoseproblemer</label>
-        </div>
-        <div class="field">
-          <label for="nutrition_other_restrictions">Andre matrestriksjoner</label>
-          <textarea id="nutrition_other_restrictions" name="nutrition_other_restrictions" rows="2">${escapeHtml(o.nutrition_other_restrictions)}</textarea>
-        </div>
-        <div class="field">
-          <label for="nutrition_notes">Ernæringsnotater</label>
-          <textarea id="nutrition_notes" name="nutrition_notes" rows="2" placeholder="Treneren tilpasser — diagnostiserer ikke">${escapeHtml(o.nutrition_notes)}</textarea>
-        </div>
-        ${state.error ? `<p class="error">${escapeHtml(state.error)}</p>` : ''}
-        <button class="btn btn-primary" type="submit" ${state.busy ? 'disabled' : ''}>Start med treneren</button>
-      </form>
-      <p class="muted" style="margin-top:1.25rem">
-        <button type="button" class="linkish" id="onboard-back">Tilbake</button>
-        ·
-        <button type="button" class="linkish" id="onboard-to-login">Jeg har allerede profil</button>
-      </p>
-    </div>
-  `
+  setAccent(state.setup.draft.accent_color)
+  return renderSetupWizard({
+    state,
+    accents: ACCENTS,
+    personalities: PERSONALITIES,
+    escapeHtml,
+  })
+}
+
+function startRestartSetup() {
+  const a = state.athlete || {}
+  const aid = a.id || getAthleteId()
+  if (aid) setAthleteId(aid)
+  state.setup = {
+    mode: 'restart',
+    step: 'chat',
+    draft: emptySetupDraft({
+      display_name: a.display_name,
+      username: a.username,
+      coach_display_name: a.coach_display_name,
+      coach_personality: a.coach_personality,
+      coach_style_note: a.coach_style_note,
+      accent_color: a.accent_color || ACCENTS[0],
+    }),
+    messages: [
+      {
+        role: 'assistant',
+        content: `Hei ${a.display_name || ''}. Vi nullstiller planen og bygger på nytt. Fortell mål, erfaring og begrensninger — jeg tilpasser (ikke én mal for alle).`,
+      },
+    ],
+    chatDraft: '',
+    readyForPlan: false,
+    preview: null,
+    prepareIntervals: false,
+  }
+  state.athlete = null
+  state.gate = 'onboarding'
+  state.resetConfirm = 0
+  state.error = ''
+  state.tab = 'coach'
+  render()
+}
+
+function logoutLocal() {
+  clearAthleteId()
+  state.athlete = null
+  state.messages = []
+  state.overview = null
+  state.dashboard = null
+  state.sessions = null
+  state.planBlocks = []
+  state.workoutProposal = null
+  state.sync.pending = null
+  state.gate = 'entry'
+  state.resetConfirm = 0
+  state.error = ''
+  toast('Logget ut')
+  render()
+}
+
+async function runSetupReset() {
+  state.busy = true
+  state.error = ''
+  render()
+  try {
+    await api('/v1/athlete/me/setup/reset', {
+      method: 'POST',
+      body: { acknowledge_wipe: true, confirm_phrase: 'SLETT' },
+    })
+    startRestartSetup()
+    toast('Setup nullstilt')
+  } catch (err) {
+    state.error = err.message || 'Kunne ikke nullstille'
+    state.busy = false
+    state.resetConfirm = 0
+    render()
+  }
+}
+
+async function generateSetupPreview() {
+  state.busy = true
+  state.error = ''
+  render()
+  try {
+    const data = await api('/v1/setup/plan/preview', {
+      method: 'POST',
+      body: draftPayload(state.setup.draft),
+      athleteId: null,
+    })
+    state.setup.preview = data
+    state.busy = false
+    render()
+  } catch (err) {
+    state.error = err.message || 'Kunne ikke generere plan'
+    state.busy = false
+    render()
+  }
+}
+
+async function confirmSetupPlan() {
+  state.busy = true
+  state.error = ''
+  render()
+  try {
+    const preview = state.setup.preview
+    const draft = state.setup.draft
+    const payload = {
+      ...draftPayload(draft),
+      plan_blocks: preview.plan_blocks || [],
+      athlete_patch: preview.athlete_patch || {},
+      prepare_intervals_sync: Boolean(state.setup.prepareIntervals),
+    }
+    if (state.setup.mode === 'restart') {
+      payload.athlete_id = getAthleteId()
+    }
+    const data = await api('/v1/setup/confirm', {
+      method: 'POST',
+      body: payload,
+      athleteId: state.setup.mode === 'restart' ? getAthleteId() : null,
+    })
+    const welcome =
+      state.setup.mode === 'restart'
+        ? `Planen er satt opp på nytt. Jeg er ${data.athlete.coach_display_name}. Si ifra om noe skal justeres.`
+        : `Hei ${data.athlete.display_name}. Jeg er ${data.athlete.coach_display_name}. Grovplanen er lagret — spør gjerne om første uke.`
+    await enterApp(data.athlete, { welcome })
+    if (data.intervals_pending) {
+      state.tab = 'plan'
+      state.sync.pending = data.intervals_pending
+      state.sync.message = data.intervals_pending.message || ''
+      render()
+    }
+    toast(data.message || 'Plan lagret')
+  } catch (err) {
+    state.error = err.message || 'Kunne ikke lagre setup'
+    state.busy = false
+    render()
+  }
 }
 
 function bindOnboarding() {
-  document.getElementById('onboard-back')?.addEventListener('click', () => {
-    state.gate = 'entry'
-    state.error = ''
-    render()
-  })
-  document.getElementById('onboard-to-login')?.addEventListener('click', () => {
+  document.getElementById('setup-to-login')?.addEventListener('click', () => {
     state.gate = 'login'
     state.error = ''
     render()
   })
-  const nameInput = document.getElementById('display_name')
-  const userInput = document.getElementById('username')
-  nameInput?.addEventListener('input', () => {
-    const name = nameInput.value || ''
-    state.onboarding.display_name = name
-    if (!state.onboarding.username_touched) {
-      const suggested = slugifyUsername(name)
-      state.onboarding.username = suggested
-      if (userInput) userInput.value = suggested
+  document.getElementById('setup-back')?.addEventListener('click', () => {
+    const idx = SETUP_STEPS.indexOf(state.setup.step)
+    if (idx <= 0) {
+      state.gate = 'entry'
+      state.error = ''
+      render()
+      return
     }
+    if (state.setup.step === 'preview') state.setup.preview = null
+    state.setup.step = SETUP_STEPS[idx - 1]
+    state.error = ''
+    render()
   })
-  userInput?.addEventListener('input', () => {
-    state.onboarding.username_touched = true
-    state.onboarding.username = userInput.value
-  })
-  document.querySelectorAll('.swatch').forEach((btn) => {
+
+  const form = document.getElementById('setup-form')
+  document.querySelectorAll('#setup-swatches .swatch, .setup-flow .swatch').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const form = document.getElementById('onboard-form')
-      if (form) {
-        const fd = new FormData(form)
-        for (const key of [
-          'display_name',
-          'username',
-          'coach_display_name',
-          'coach_personality',
-          'coach_style_note',
-          'goal_text',
-          'schedule_notes',
-          'injury_notes',
-          'ftp_tested',
-          'ftp_tested_at',
-          'weight_kg',
-          'age_years',
-          'nutrition_ibs',
-          'nutrition_gluten',
-          'nutrition_other_restrictions',
-          'nutrition_notes',
-        ]) {
-          if (fd.has(key)) state.onboarding[key] = String(fd.get(key) || '')
-        }
-        state.onboarding.nutrition_lactose = fd.get('nutrition_lactose') === 'on'
-      }
-      state.onboarding.accent_color = btn.dataset.color
+      if (form) state.setup.draft = readSetupForm(form, state.setup.draft)
+      state.setup.draft.accent_color = btn.dataset.color
       setAccent(btn.dataset.color)
       render()
     })
   })
-  const form = document.getElementById('onboard-form')
+  const nameInput = document.getElementById('display_name')
+  const userInput = document.getElementById('username')
+  nameInput?.addEventListener('input', () => {
+    state.setup.draft.display_name = nameInput.value
+    if (!state.setup.draft.username_touched && userInput && state.setup.mode === 'new') {
+      const suggested = slugifyUsername(nameInput.value)
+      state.setup.draft.username = suggested
+      userInput.value = suggested
+    }
+  })
+  userInput?.addEventListener('input', () => {
+    state.setup.draft.username_touched = true
+    state.setup.draft.username = userInput.value
+  })
+  form?.querySelector('[name=skip_intervals]')?.addEventListener('change', () => {
+    state.setup.draft = readSetupForm(form, state.setup.draft)
+    render()
+  })
+
   form?.addEventListener('submit', async (e) => {
     e.preventDefault()
-    const fd = new FormData(form)
-    const displayName = String(fd.get('display_name') || '').trim()
-    let username = String(fd.get('username') || '').trim().toLowerCase()
-    if (!username) username = slugifyUsername(displayName)
-    const payload = {
-      display_name: displayName,
-      username,
-      coach_display_name: String(fd.get('coach_display_name') || 'Rocky').trim(),
-      coach_personality: String(fd.get('coach_personality') || 'direkte'),
-      coach_style_note: String(fd.get('coach_style_note') || ''),
-      accent_color: state.onboarding.accent_color,
-      goal_text: String(fd.get('goal_text') || ''),
-      schedule_notes: String(fd.get('schedule_notes') || ''),
-      injury_notes: String(fd.get('injury_notes') || ''),
-      ftp_tested: fd.get('ftp_tested') ? Number(fd.get('ftp_tested')) : null,
-      ftp_tested_at: String(fd.get('ftp_tested_at') || '') || null,
-      weight_kg: fd.get('weight_kg') ? Number(fd.get('weight_kg')) : null,
-      age_years: fd.get('age_years') ? Number(fd.get('age_years')) : null,
-      nutrition_ibs: String(fd.get('nutrition_ibs') || 'no'),
-      nutrition_gluten: String(fd.get('nutrition_gluten') || 'none'),
-      nutrition_lactose: fd.get('nutrition_lactose') === 'on',
-      nutrition_other_restrictions: String(fd.get('nutrition_other_restrictions') || ''),
-      nutrition_notes: String(fd.get('nutrition_notes') || ''),
+    state.setup.draft = readSetupForm(form, state.setup.draft)
+    const step = state.setup.step
+    const draft = state.setup.draft
+    if (step === 'account') {
+      if (!draft.display_name.trim()) {
+        state.error = 'Skriv inn navnet ditt'
+        render()
+        return
+      }
+      if (state.setup.mode === 'new') {
+        let username = (draft.username || '').trim().toLowerCase()
+        if (!username) username = slugifyUsername(draft.display_name)
+        draft.username = username
+        if (username.length < 2) {
+          state.error = 'Brukernavn må være minst 2 tegn'
+          render()
+          return
+        }
+      }
+      state.setup.step = 'chat'
+      if (!(state.setup.messages || []).length) {
+        state.setup.messages = [
+          {
+            role: 'assistant',
+            content: `Hei ${draft.display_name}. Jeg er ${draft.coach_display_name}. Fortell om mål og bakgrunn — nybegynner, comeback, skade, lite tid, eller noe annet. Vi lager planen etterpå med forhåndsvisning.`,
+          },
+        ]
+      }
+      state.error = ''
+      render()
+      return
     }
-    state.onboarding.display_name = displayName
-    state.onboarding.username = username
+    if (step === 'intervals') {
+      if (!draft.skip_intervals) {
+        const hasId = Boolean((draft.intervals_athlete_id || '').trim())
+        const hasKey = Boolean((draft.intervals_api_key || '').trim())
+        if ((hasId && !hasKey) || (!hasId && hasKey)) {
+          state.error = 'Fyll inn både athlete ID og API-nøkkel, eller huk av «Hopp over».'
+          render()
+          return
+        }
+      }
+      state.setup.step = 'preview'
+      state.setup.preview = null
+      state.error = ''
+      render()
+      void generateSetupPreview()
+    }
+  })
+
+  document.getElementById('setup-to-intervals')?.addEventListener('click', () => {
+    state.setup.step = 'intervals'
+    state.error = ''
+    render()
+  })
+  document.getElementById('setup-gen-preview')?.addEventListener('click', () => {
+    void generateSetupPreview()
+  })
+  document.getElementById('prepare_intervals_sync')?.addEventListener('change', (e) => {
+    state.setup.prepareIntervals = e.target.checked
+  })
+  document.getElementById('setup-confirm-plan')?.addEventListener('click', () => {
+    const box = document.getElementById('prepare_intervals_sync')
+    if (box) state.setup.prepareIntervals = box.checked
+    void confirmSetupPlan()
+  })
+
+  const chatForm = document.getElementById('setup-chat-form')
+  chatForm?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const input = document.getElementById('setup-chat-input')
+    const text = (input?.value || '').trim()
+    if (!text || state.busy) return
+    state.setup.chatDraft = ''
+    state.setup.messages = [...(state.setup.messages || []), { role: 'user', content: text }]
     state.busy = true
     state.error = ''
     render()
     try {
-      const data = await api('/v1/onboarding', { method: 'POST', body: payload, athleteId: null })
-      await enterApp(data.athlete, {
-        welcome: `Hei ${data.athlete.display_name}. Jeg er ${data.athlete.coach_display_name}. Si ifra hva du vil prioritere — mål, skade, eller ukens fokus.`,
+      const data = await api('/v1/setup/chat', {
+        method: 'POST',
+        body: {
+          message: text,
+          draft: draftPayload(state.setup.draft),
+          history: (state.setup.messages || []).slice(0, -1).map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+        },
+        athleteId: null,
       })
-      toast('Profil lagret')
+      state.setup.draft = applyExtractedToDraft(
+        { ...state.setup.draft, ...(data.draft || {}) },
+        data.extracted || {},
+      )
+      // Keep account fields
+      if (data.draft?.goal_text) state.setup.draft.goal_text = data.draft.goal_text
+      state.setup.readyForPlan = Boolean(data.ready_for_plan)
+      state.setup.messages = [
+        ...(state.setup.messages || []),
+        { role: 'assistant', content: data.reply || '…' },
+      ]
+      state.busy = false
+      render()
+      const log = document.getElementById('setup-chat-log')
+      if (log) log.scrollTop = log.scrollHeight
     } catch (err) {
-      state.error = err.message || 'Kunne ikke lagre'
+      state.error = err.message || 'Samtale feilet'
       state.busy = false
       render()
     }
@@ -1600,6 +1704,42 @@ function renderDu() {
         </button>
       </div>
     </form>
+    <div class="section-block settings-danger">
+      <h2>Innstillinger / sesjon</h2>
+      <p class="muted tight">Logg ut tømmer lokal sesjon på denne enheten. Nullstill setup sletter grovplan og mål (krever dobbelt bekreftelse).</p>
+      <div class="setup-nav" style="margin-top:0.75rem">
+        <button type="button" class="btn secondary" id="btn-logout" ${state.busy ? 'disabled' : ''}>Logg ut</button>
+        <button type="button" class="btn secondary danger-outline" id="btn-restart-setup" ${state.busy ? 'disabled' : ''}>
+          Start setup på nytt
+        </button>
+      </div>
+      ${
+        state.resetConfirm === 1
+          ? `<div class="confirm-card" role="dialog" aria-label="Bekreft nullstilling steg 1">
+              <p><strong>Steg 1/2:</strong> Dette sletter grovplan-blokker, sesongmål, avtaler og chat-historikk for profilen. Intervals-kalenderen røres ikke her.</p>
+              <div class="sync-actions">
+                <button type="button" class="btn btn-primary" id="reset-confirm-1">Ja, fortsett</button>
+                <button type="button" class="btn secondary" id="reset-cancel">Avbryt</button>
+              </div>
+            </div>`
+          : ''
+      }
+      ${
+        state.resetConfirm === 2
+          ? `<div class="confirm-card" role="dialog" aria-label="Bekreft nullstilling steg 2">
+              <p><strong>Steg 2/2:</strong> Skriv <code>SLETT</code> for å bekrefte.</p>
+              <div class="field">
+                <input id="reset-phrase" autocomplete="off" placeholder="SLETT" ${state.busy ? 'disabled' : ''} />
+              </div>
+              <div class="sync-actions">
+                <button type="button" class="btn btn-primary" id="reset-confirm-2" ${state.busy ? 'disabled' : ''}>Nullstill nå</button>
+                <button type="button" class="btn secondary" id="reset-cancel" ${state.busy ? 'disabled' : ''}>Avbryt</button>
+              </div>
+            </div>`
+          : ''
+      }
+      ${state.error && state.tab === 'du' && state.resetConfirm ? `<p class="error">${escapeHtml(state.error)}</p>` : ''}
+    </div>
   `
 }
 
@@ -2253,6 +2393,34 @@ function bindApp() {
       state.sync.busy = false
       render()
     }
+  })
+
+  document.getElementById('btn-logout')?.addEventListener('click', () => {
+    logoutLocal()
+  })
+  document.getElementById('btn-restart-setup')?.addEventListener('click', () => {
+    state.resetConfirm = 1
+    state.error = ''
+    render()
+  })
+  document.getElementById('reset-cancel')?.addEventListener('click', () => {
+    state.resetConfirm = 0
+    state.error = ''
+    render()
+  })
+  document.getElementById('reset-confirm-1')?.addEventListener('click', () => {
+    state.resetConfirm = 2
+    state.error = ''
+    render()
+  })
+  document.getElementById('reset-confirm-2')?.addEventListener('click', () => {
+    const phrase = (document.getElementById('reset-phrase')?.value || '').trim().toUpperCase()
+    if (phrase !== 'SLETT') {
+      state.error = 'Skriv SLETT (store bokstaver) for å bekrefte.'
+      render()
+      return
+    }
+    void runSetupReset()
   })
 }
 

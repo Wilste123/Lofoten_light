@@ -23,6 +23,7 @@
 | [import-from-repo.md](import-from-repo.md) | Seed William fra `docs/athlete/` + `plans/` |
 | [fly-deploy.md](fly-deploy.md) | Fly.io deploy + secrets + telefon-test |
 | [returning-login.md](returning-login.md) | Reconnect: **username** (mål) + athlete-id; uten passord |
+| [onboarding-setup.md](onboarding-setup.md) | AI-samtale + knowledge → plan-preview → confirm; restart/logout |
 
 ## Kode
 

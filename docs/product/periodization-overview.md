@@ -63,7 +63,7 @@ next    = first block with start_date > today
           (if current exists: first with start_date > current.end_date)
 ```
 
-## William vs andre
+William vs andre:
 
-- William: blokker kan speile `plans/` i repo manuelt (coach limer inn).
-- Andre: redigerbart i Du uten git.
+- William: blokker kan speile `plans/` i repo manuelt (coach limer inn) eller seed.
+- Andre: **veiledet setup** genererer adaptive `plan_blocks` (knowledge + AI) med preview før lagring — se [onboarding-setup.md](onboarding-setup.md). Redigerbart i Plan/Du etterpå.

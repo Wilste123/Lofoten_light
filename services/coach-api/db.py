@@ -704,6 +704,44 @@ def delete_plan_block(
     return cur.rowcount > 0
 
 
+def delete_all_plan_blocks(conn: sqlite3.Connection, athlete_id: str) -> int:
+    cur = conn.execute(
+        "DELETE FROM plan_blocks WHERE athlete_id = ?",
+        (athlete_id,),
+    )
+    return cur.rowcount
+
+
+def replace_plan_blocks(
+    conn: sqlite3.Connection,
+    athlete_id: str,
+    blocks: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Wipe existing meso-blocks and insert the new set (setup confirm / restart)."""
+    delete_all_plan_blocks(conn, athlete_id)
+    out: list[dict[str, Any]] = []
+    for i, raw in enumerate(blocks):
+        data = {
+            "id": raw.get("id") or f"{athlete_id}-{raw.get('key') or i}",
+            "title": raw.get("title") or "",
+            "theme": raw.get("theme") or "",
+            "start_date": raw.get("start_date"),
+            "end_date": raw.get("end_date"),
+            "weekly_hours": raw.get("weekly_hours"),
+            "sort_order": int(raw.get("sort_order") if raw.get("sort_order") is not None else i),
+        }
+        out.append(insert_plan_block(conn, athlete_id, data))
+    return out
+
+
+def clear_messages(conn: sqlite3.Connection, athlete_id: str) -> int:
+    cur = conn.execute(
+        "DELETE FROM messages WHERE athlete_id = ?",
+        (athlete_id,),
+    )
+    return cur.rowcount
+
+
 def hash_invite_token(token: str) -> str:
     return hashlib.sha256(token.strip().encode("utf-8")).hexdigest()
 

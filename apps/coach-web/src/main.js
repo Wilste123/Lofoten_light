@@ -21,6 +21,10 @@ const state = {
   tab: 'coach',
   messages: [],
   overview: null,
+  dashboard: null,
+  sessions: null,
+  sessionDetail: null,
+  chatDraft: '',
   planBlocks: [],
   intervals: {
     connected: false,
@@ -153,7 +157,13 @@ async function enterApp(athlete, { welcome } = {}) {
   if (welcome) {
     state.messages = [{ role: 'assistant', content: welcome }]
   }
-  await Promise.all([refreshOverview(), refreshIntervals(), refreshPlanBlocks()])
+  await Promise.all([
+    refreshOverview(),
+    refreshIntervals(),
+    refreshPlanBlocks(),
+    refreshDashboard(),
+    refreshSessions(),
+  ])
   render()
 }
 
@@ -236,6 +246,22 @@ async function refreshOverview() {
   }
 }
 
+async function refreshDashboard() {
+  try {
+    state.dashboard = await api('/v1/dashboard')
+  } catch {
+    state.dashboard = null
+  }
+}
+
+async function refreshSessions() {
+  try {
+    state.sessions = await api('/v1/sessions')
+  } catch {
+    state.sessions = null
+  }
+}
+
 async function refreshPlanBlocks() {
   try {
     const data = await api('/v1/athlete/me/plan-blocks')
@@ -292,14 +318,14 @@ function render() {
       <section class="panel ${state.tab === 'coach' ? 'active' : ''}" data-panel="coach">
         ${renderChat()}
       </section>
-      <section class="panel ${state.tab === 'overblikk' ? 'active' : ''}" data-panel="overblikk">
-        ${renderOverview()}
+      <section class="panel ${state.tab === 'dashboard' ? 'active' : ''}" data-panel="dashboard">
+        ${renderDashboard()}
       </section>
       <section class="panel ${state.tab === 'plan' ? 'active' : ''}" data-panel="plan">
         ${renderPlanTab()}
       </section>
-      <section class="panel ${state.tab === 'compliance' ? 'active' : ''}" data-panel="compliance">
-        ${renderComplianceTab()}
+      <section class="panel ${state.tab === 'okter' ? 'active' : ''}" data-panel="okter">
+        ${renderOkterTab()}
       </section>
       <section class="panel ${state.tab === 'du' ? 'active' : ''}" data-panel="du">
         ${renderDu()}
@@ -307,9 +333,9 @@ function render() {
     </main>
     <nav class="tabs tabs-five" aria-label="Hovedfaner">
       <button type="button" data-tab="coach" class="${state.tab === 'coach' ? 'active' : ''}">Coach</button>
-      <button type="button" data-tab="overblikk" class="${state.tab === 'overblikk' ? 'active' : ''}">Overblikk</button>
+      <button type="button" data-tab="dashboard" class="${state.tab === 'dashboard' ? 'active' : ''}">Dashboard</button>
       <button type="button" data-tab="plan" class="${state.tab === 'plan' ? 'active' : ''}">Plan</button>
-      <button type="button" data-tab="compliance" class="${state.tab === 'compliance' ? 'active' : ''}">Compliance</button>
+      <button type="button" data-tab="okter" class="${state.tab === 'okter' ? 'active' : ''}">Økter</button>
       <button type="button" data-tab="du" class="${state.tab === 'du' ? 'active' : ''}">Du</button>
     </nav>
   `
@@ -641,13 +667,14 @@ function bindOnboarding() {
 }
 
 function renderChat() {
+  const draft = state.chatDraft || ''
   const bubbles = state.messages
     .map((m) => `<div class="bubble ${m.role}">${escapeHtml(m.content)}</div>`)
     .join('')
   return `
-    <div class="chat-log" id="chat-log">${bubbles || `<p class="muted">Skriv til ${escapeHtml(state.athlete.coach_display_name)}.</p>`}</div>
+    <div class="chat-log" id="chat-log">${bubbles || `<p class="muted">Skriv til ${escapeHtml(state.athlete.coach_display_name)} — eller åpne en økt under Økter.</p>`}</div>
     <form class="chat-form" id="chat-form">
-      <input id="chat-input" autocomplete="off" placeholder="Spør treneren…" ${state.busy ? 'disabled' : ''} />
+      <input id="chat-input" autocomplete="off" placeholder="Spør treneren…" value="${escapeHtml(draft)}" ${state.busy ? 'disabled' : ''} />
       <button class="btn btn-primary" type="submit" ${state.busy ? 'disabled' : ''}>Send</button>
     </form>
     ${state.error && state.tab === 'coach' ? `<p class="error">${escapeHtml(state.error)}</p>` : ''}
@@ -836,7 +863,227 @@ function renderOverview() {
       <div class="stat-row"><span>Ukens fokus</span><span>${escapeHtml(o.weekly_focus || '—')}</span></div>
       <div class="stat-row"><span>Skade</span><span>${escapeHtml(o.injury_notes || '—')}</span></div>
     </section>
-    <p class="muted tight jump-hint">Full grovplan under <strong>Plan</strong> · detaljerte barer under <strong>Compliance</strong>.</p>
+    <p class="muted tight jump-hint">Full grovplan under <strong>Plan</strong> · status under <strong>Dashboard</strong>.</p>
+  `
+}
+
+function renderSleepCard(sleep, fetchError, detail) {
+  if (!sleep) {
+    return `<section class="section-block"><h2>Søvn</h2><p class="muted">Ingen data.</p></section>`
+  }
+  const badge = fetchError
+    ? `<span class="badge badge-demo">Henting feilet</span>`
+    : sleep.available
+      ? `<span class="badge badge-live">Intervals</span>`
+      : `<span class="badge badge-off">Mangler</span>`
+  return `
+    <section class="section-block">
+      <div class="section-head"><h2>Søvn</h2>${badge}</div>
+      ${fetchError && detail ? `<p class="error tight">${escapeHtml(detail)}</p>` : ''}
+      <div class="stat-row"><span>Snitt (14 d)</span><span>${sleep.avg_hours != null ? `${sleep.avg_hours} t` : '—'}</span></div>
+      <div class="stat-row"><span>Søvnscore</span><span>${sleep.avg_score != null ? sleep.avg_score : '—'}</span></div>
+      <div class="stat-row"><span>Korte netter (&lt;6,5 t)</span><span>${sleep.short_nights ?? '—'}</span></div>
+      <p class="muted tight">${escapeHtml(sleep.note || '')}</p>
+    </section>`
+}
+
+function renderBodyCard(body, hidden) {
+  if (hidden) {
+    return `
+      <section class="section-block body-metrics-hidden">
+        <div class="section-head"><h2>Kropp</h2><span class="badge badge-off">Skjult</span></div>
+        <p class="muted tight">Vekt og fett% er slått av under <strong>Du → Personvern</strong>.</p>
+      </section>`
+  }
+  if (!body) {
+    return `<section class="section-block"><h2>Kropp</h2><p class="muted">Ingen data.</p></section>`
+  }
+  const badge = body.available
+    ? `<span class="badge badge-live">Wellness</span>`
+    : `<span class="badge badge-off">Mangler</span>`
+  return `
+    <section class="section-block" data-testid="body-metrics">
+      <div class="section-head"><h2>Kropp</h2>${badge}</div>
+      <div class="stat-row"><span>Siste vekt</span><span>${body.latest_weight_kg != null ? `${body.latest_weight_kg} kg` : '—'}</span></div>
+      <div class="stat-row"><span>Fett %</span><span>${body.latest_body_fat_pct != null ? `${body.latest_body_fat_pct} %` : '—'}</span></div>
+      <div class="stat-row"><span>Snitt vekt</span><span>${body.avg_weight_kg != null ? `${body.avg_weight_kg} kg` : '—'}</span></div>
+      <p class="muted tight">${escapeHtml(body.note || '')}</p>
+    </section>`
+}
+
+function renderLoadCard(dash) {
+  const load = dash.load || {}
+  const wl = load.from_wellness || {}
+  const hours = dash.hours || {}
+  const badge =
+    hours.source === 'intervals'
+      ? `<span class="badge badge-live">Intervals</span>`
+      : hours.fetch_error
+        ? `<span class="badge badge-demo">Henting feilet</span>`
+        : `<span class="badge badge-demo">Demo</span>`
+  const discs = (hours.disciplines || [])
+    .map(
+      (d) =>
+        `<div class="stat-row"><span>${escapeHtml(d.label)}</span><span>${formatHours(d.completed_hours)}${d.target_hours != null ? ` / ${formatHours(d.target_hours)} t` : ' t'}</span></div>`
+    )
+    .join('')
+  return `
+    <section class="section-block">
+      <div class="section-head"><h2>Timer &amp; belastning</h2>${badge}</div>
+      <div class="stat-row"><span>CTL</span><span>${wl.ctl != null ? wl.ctl : '—'}</span></div>
+      <div class="stat-row"><span>ATL</span><span>${wl.atl != null ? wl.atl : '—'}</span></div>
+      <div class="stat-row"><span>Readiness</span><span>${wl.readiness != null ? wl.readiness : '—'}</span></div>
+      <div class="hours-mini">${discs || `<p class="muted">Ingen timedata.</p>`}</div>
+      <p class="muted tight">${escapeHtml(load.note || '')}</p>
+    </section>`
+}
+
+function renderDashboard() {
+  const dash = state.dashboard
+  const o = state.overview || {}
+  if (!dash) {
+    return `
+      <div class="tab-hero">
+        <p class="brand-mark">Dashboard</p>
+        <h2>Treningsstatus</h2>
+        <p class="muted">Laster… eller koble Intervals under Du.</p>
+      </div>`
+  }
+  const progressForSection = { progress: dash.compliance || {} }
+  return `
+    <div class="tab-hero">
+      <p class="brand-mark">Dashboard</p>
+      <h2>Treningsstatus</h2>
+      <p class="muted">${escapeHtml(dash.uplift_line || 'Timer, søvn, compliance — app-beregnet.')}</p>
+    </div>
+    <p class="compliance-banner" role="note">
+      <strong>Compliance</strong> beregnes i appen (aktiviteter vs sesongmål) og
+      <em>skrives ikke</em> til Intervals.
+    </p>
+    ${renderLoadCard(dash)}
+    ${renderSleepCard(dash.sleep, dash.wellness_fetch_error, dash.wellness_fetch_error_detail)}
+    ${renderBodyCard(dash.body, dash.body_hidden || !dash.show_body_metrics)}
+    ${renderProgressSection(progressForSection)}
+    ${renderFormCard({ ...(dash.form || {}), ...o })}
+    ${renderPlanStrip(o)}
+  `
+}
+
+function statusLabel(status) {
+  const map = {
+    completed: 'Fullført',
+    skipped: 'Hoppet over',
+    injured: 'Skade',
+    tired: 'For sliten',
+    sick: 'Syk',
+    other: 'Annet',
+  }
+  return map[status] || status || ''
+}
+
+function renderSessionRow(s) {
+  const comp = s.completion
+  const statusBit = comp
+    ? `<span class="badge badge-live">${escapeHtml(statusLabel(comp.status))}</span>`
+    : `<span class="badge badge-off">Ulågget</span>`
+  const dur =
+    s.duration_hours != null ? ` · ${formatHours(s.duration_hours)} t` : ''
+  return `
+    <article class="session-row" data-session-id="${escapeHtml(s.id)}">
+      <div class="session-main">
+        <p class="session-date">${escapeHtml(s.date || '—')} · ${escapeHtml(s.discipline_label || s.type || '')}${escapeHtml(dur)}</p>
+        <h3>${escapeHtml(s.name || 'Økt')}</h3>
+        ${statusBit}
+      </div>
+      <div class="session-actions">
+        <button type="button" class="btn btn-sm" data-ask-coach="${escapeHtml(s.id)}">Spør coach</button>
+        <button type="button" class="btn btn-sm secondary" data-open-session="${escapeHtml(s.id)}">Logg</button>
+      </div>
+    </article>`
+}
+
+function renderSessionDetail() {
+  const d = state.sessionDetail
+  if (!d) return ''
+  const s = d.session || {}
+  const statuses = [
+    ['completed', 'Fullført'],
+    ['skipped', 'Hoppet over'],
+    ['injured', 'Skade'],
+    ['tired', 'For sliten'],
+    ['sick', 'Syk'],
+    ['other', 'Annet'],
+  ]
+  const opts = statuses
+    .map(
+      ([v, lab]) =>
+        `<option value="${v}" ${s.completion?.status === v ? 'selected' : ''}>${lab}</option>`
+    )
+    .join('')
+  return `
+    <div class="session-detail section-block" id="session-detail">
+      <div class="section-head">
+        <h2>${escapeHtml(s.name || 'Økt')}</h2>
+        <button type="button" class="btn btn-sm secondary" id="close-session-detail">Lukk</button>
+      </div>
+      <p class="muted tight">${escapeHtml(s.date || '')} · ${escapeHtml(s.discipline_label || '')}</p>
+      <form id="completion-form">
+        <div class="field">
+          <label for="completion_status">Status</label>
+          <select id="completion_status" name="status" required>${opts}</select>
+        </div>
+        <div class="field">
+          <label for="completion_reason">Grunn (valgfri)</label>
+          <input id="completion_reason" name="reason" value="${escapeHtml(s.completion?.reason || '')}" placeholder="f.eks. for kort søvn" />
+        </div>
+        <div class="field">
+          <label for="completion_note">Notat</label>
+          <textarea id="completion_note" name="note" rows="2">${escapeHtml(s.completion?.note || '')}</textarea>
+        </div>
+        <div class="row-actions">
+          <button type="submit" class="btn btn-primary" ${state.busy ? 'disabled' : ''}>Lagre logg</button>
+          <button type="button" class="btn secondary" data-ask-coach="${escapeHtml(s.id)}">Spør coach om denne</button>
+        </div>
+      </form>
+      ${state.planError ? `<p class="error">${escapeHtml(state.planError)}</p>` : ''}
+    </div>`
+}
+
+function renderOkterTab() {
+  const sess = state.sessions
+  const linked = state.intervals.connected
+  let body = ''
+  if (!sess) {
+    body = `<p class="muted">Laster økter…</p>`
+  } else if (sess.source === 'none') {
+    body = `<p class="muted">Koble Intervals under Du for å se kommende og siste økter.</p>`
+  } else if (sess.fetch_error) {
+    body = `<p class="error">Kunne ikke hente økter: ${escapeHtml(sess.fetch_error_detail || '')}</p>`
+  } else {
+    const today = (sess.today || []).map(renderSessionRow).join('')
+    const upcoming = (sess.upcoming || []).map(renderSessionRow).join('')
+    const recent = (sess.recent || []).map(renderSessionRow).join('')
+    body = `
+      ${today ? `<section class="section-block"><h2>I dag</h2><div class="session-list">${today}</div></section>` : ''}
+      <section class="section-block">
+        <h2>Kommende</h2>
+        <div class="session-list">${upcoming || `<p class="muted">Ingen planlagte økter i vinduet.</p>`}</div>
+      </section>
+      <section class="section-block">
+        <h2>Siste</h2>
+        <div class="session-list">${recent || `<p class="muted">Ingen aktiviteter i vinduet.</p>`}</div>
+      </section>`
+  }
+  return `
+    <div class="tab-hero">
+      <p class="brand-mark">Økter</p>
+      <h2>Kalender &amp; logg</h2>
+      <p class="muted">Fra Intervals — spør coach eller logg fullført / hoppet over her (app-lagring).</p>
+    </div>
+    <p class="compliance-banner muted tight">${escapeHtml(sess?.compliance_note || 'Compliance beregnes i appen, ikke i Intervals.')}</p>
+    <p class="muted tight">${linked ? 'Intervals koblet.' : 'Ikke koblet ennå.'}</p>
+    ${renderSessionDetail()}
+    ${body}
   `
 }
 
@@ -907,35 +1154,11 @@ function renderPlanTab() {
     <div class="tab-hero">
       <p class="brand-mark">Grovplan</p>
       <h2>Plan &amp; Intervals</h2>
-      <p class="muted">Makro/meso her — dagsøkter i Intervals.</p>
+      <p class="muted">Makro/meso her — dagsøkter under Økter / Intervals.</p>
     </div>
     ${renderPlanStrip(o)}
     ${renderPlanBlocksEditor()}
     ${renderSyncPanel()}
-  `
-}
-
-function renderComplianceTab() {
-  const o = state.overview || {}
-  const targets = o.season_targets || {}
-  return `
-    <div class="tab-hero">
-      <p class="brand-mark">Compliance</p>
-      <h2>Sesongmål</h2>
-      <p class="muted">Fullført vs mål, plus on-pace mot racedato.</p>
-    </div>
-    ${renderProgressSection(o)}
-    <section class="section-block">
-      <h2>Mål-oppsummering</h2>
-      <div class="stat-row"><span>Sesongstart</span><span>${escapeHtml(targets.season_start_date || '—')}</span></div>
-      <div class="stat-row"><span>Race</span><span>${escapeHtml(targets.goal_race_date || '—')}</span></div>
-      <div class="stat-row"><span>Svøm</span><span>${targets.swim != null ? `${targets.swim} t` : '—'}</span></div>
-      <div class="stat-row"><span>Sykkel</span><span>${targets.bike != null ? `${targets.bike} t` : '—'}</span></div>
-      <div class="stat-row"><span>Løp</span><span>${targets.run != null ? `${targets.run} t` : '—'}</span></div>
-      <div class="stat-row"><span>Styrke</span><span>${targets.strength != null ? `${targets.strength} t` : '—'}</span></div>
-      <p class="muted tight">Juster under <strong>Du → Sesongmål</strong>.</p>
-    </section>
-    ${renderFormCard(o)}
   `
 }
 
@@ -1011,7 +1234,7 @@ function renderDu() {
       </div>
       <div class="section-block">
         <h2>Sesongmål (timer)</h2>
-        <p class="muted tight">Volummål for fremskritt / compliance på Overblikk.</p>
+        <p class="muted tight">Volummål for fremskritt / compliance på Dashboard.</p>
         <div class="grid-2">
           <div class="field"><label>Svøm (t)</label><input name="season_swim_hours_target" type="number" step="1" min="0" value="${a.season_swim_hours_target ?? ''}" placeholder="100" /></div>
           <div class="field"><label>Sykkel (t)</label><input name="season_bike_hours_target" type="number" step="1" min="0" value="${a.season_bike_hours_target ?? ''}" placeholder="500" /></div>
@@ -1046,6 +1269,16 @@ function renderDu() {
         </div>
         <div class="field"><label>Andre restriksjoner</label><textarea name="nutrition_other_restrictions" rows="2">${escapeHtml(a.nutrition_other_restrictions || '')}</textarea></div>
         <div class="field"><label>Ernæringsnotater</label><textarea name="nutrition_notes" rows="2">${escapeHtml(a.nutrition_notes || '')}</textarea></div>
+      </div>
+      <div class="section-block">
+        <h2>Personvern / visning</h2>
+        <div class="field">
+          <label class="toggle-label">
+            <input type="checkbox" name="show_body_metrics" ${a.show_body_metrics !== false ? 'checked' : ''} />
+            Vis vekt og fett% på Dashboard
+          </label>
+          <p class="muted tight">Slå av for å skjule kroppsmål fra wellness/BIA. Standard: på.</p>
+        </div>
       </div>
       <div class="section-block">
         <h2>Form</h2>
@@ -1128,11 +1361,18 @@ function bindApp() {
       state.planError = ''
       state.sync.error = ''
       state.sync.message = ''
-      if (state.tab === 'overblikk' || state.tab === 'compliance') await refreshOverview()
+      if (state.tab === 'dashboard') {
+        await refreshOverview()
+        await refreshDashboard()
+      }
       if (state.tab === 'plan') {
         await refreshOverview()
         await refreshPlanBlocks()
         await refreshIntervals()
+      }
+      if (state.tab === 'okter') {
+        await refreshIntervals()
+        await refreshSessions()
       }
       if (state.tab === 'du') {
         await refreshIntervals()
@@ -1162,6 +1402,7 @@ function bindApp() {
     const input = document.getElementById('chat-input')
     const message = (input?.value || '').trim()
     if (!message || state.busy) return
+    state.chatDraft = ''
     state.messages.push({ role: 'user', content: message })
     state.busy = true
     state.error = ''
@@ -1179,6 +1420,100 @@ function bindApp() {
       render()
       const log2 = document.getElementById('chat-log')
       if (log2) log2.scrollTop = log2.scrollHeight
+    }
+  })
+
+  const findSession = (id) => {
+    const sess = state.sessions || {}
+    for (const bucket of ['today', 'upcoming', 'recent']) {
+      for (const s of sess[bucket] || []) {
+        if (s.id === id || s.external_id === id) return s
+      }
+    }
+    return state.sessionDetail?.session?.id === id
+      ? state.sessionDetail.session
+      : null
+  }
+
+  const askCoachAbout = async (sessionId) => {
+    try {
+      const data = await api(`/v1/sessions/${encodeURIComponent(sessionId)}`)
+      state.sessionDetail = data
+      state.chatDraft = data.seed_prompt || ''
+      state.tab = 'coach'
+      toast('Spørsmål klart i Coach')
+      render()
+      document.getElementById('chat-input')?.focus()
+    } catch (err) {
+      state.error = err.message || 'Kunne ikke åpne økt'
+      toast(state.error)
+    }
+  }
+
+  document.querySelectorAll('[data-ask-coach]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      void askCoachAbout(btn.getAttribute('data-ask-coach'))
+    })
+  })
+
+  document.querySelectorAll('[data-open-session]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-open-session')
+      try {
+        state.sessionDetail = await api(`/v1/sessions/${encodeURIComponent(id)}`)
+        state.planError = ''
+        render()
+        document.getElementById('session-detail')?.scrollIntoView({ behavior: 'smooth' })
+      } catch (err) {
+        state.planError = err.message || 'Kunne ikke åpne'
+        render()
+      }
+    })
+  })
+
+  document.getElementById('close-session-detail')?.addEventListener('click', () => {
+    state.sessionDetail = null
+    render()
+  })
+
+  document.getElementById('completion-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const detail = state.sessionDetail?.session
+    if (!detail?.id || state.busy) return
+    const fd = new FormData(e.target)
+    const payload = {
+      status: String(fd.get('status') || ''),
+      reason: String(fd.get('reason') || ''),
+      note: String(fd.get('note') || ''),
+      session_name: detail.name || '',
+      session_date: detail.date || null,
+      discipline: detail.discipline || '',
+      append_profile_note: true,
+    }
+    state.busy = true
+    state.planError = ''
+    render()
+    try {
+      await api(`/v1/sessions/${encodeURIComponent(detail.id)}/completion`, {
+        method: 'POST',
+        body: payload,
+      })
+      toast('Øktlogg lagret (app — ikke Intervals)')
+      await refreshSessions()
+      const updated = findSession(detail.id)
+      if (updated) {
+        state.sessionDetail = {
+          session: updated,
+          seed_prompt: state.sessionDetail?.seed_prompt,
+        }
+      }
+      const me = await api('/v1/athlete/me')
+      if (me.athlete) state.athlete = me.athlete
+    } catch (err) {
+      state.planError = err.message || 'Lagring feilet'
+    } finally {
+      state.busy = false
+      render()
     }
   })
 
@@ -1231,6 +1566,7 @@ function bindApp() {
       season_strength_hours_target: numOrNull(fd.get('season_strength_hours_target')),
       season_start_date: String(fd.get('season_start_date') || '') || null,
       goal_race_date: String(fd.get('goal_race_date') || '') || null,
+      show_body_metrics: fd.get('show_body_metrics') === 'on',
     }
     state.busy = true
     state.error = ''
@@ -1241,6 +1577,7 @@ function bindApp() {
       setAccent(data.athlete.accent_color)
       toast('Profil oppdatert')
       await refreshOverview()
+      await refreshDashboard()
     } catch (err) {
       state.error = err.message || 'Lagring feilet'
     } finally {

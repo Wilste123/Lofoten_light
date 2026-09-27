@@ -12,8 +12,9 @@
 | [competitor-humango.md](competitor-humango.md) | HumanGO / TrainAsONE / Athletica — feature-tabell |
 | [gap-analysis.md](gap-analysis.md) | Eldre gap (pre-dashboard-plan); se 2026-09-27 for aktuell |
 | [progress-compliance.md](progress-compliance.md) | Volummål, formler, demo vs Intervals |
+| [dashboard-okter.md](dashboard-okter.md) | Dashboard, Økter, kropp-toggle, øktlogg |
 | [periodization-overview.md](periodization-overview.md) | App vs Intervals; `plan_blocks` |
-| [mvp-scope.md](mvp-scope.md) | MVP-suksess: chat + overblikk; non-goals |
+| [mvp-scope.md](mvp-scope.md) | MVP-suksess: chat + Dashboard + Økter; non-goals |
 | [anti-patterns.md](anti-patterns.md) | Pondus, tool-loop, diagnose — hva vi unngår |
 | [data-storage.md](data-storage.md) | SQLite + Fly volume; schema inkl. `training_pairs` |
 | [athlete-profile.md](athlete-profile.md) | Profilfil-felter inkl. IBS/gluten/laktose |
@@ -27,7 +28,7 @@
 
 | Sti | Rolle |
 |-----|--------|
-| `apps/coach-web/` | Vite-frontend (Coach / Overblikk / Plan / Compliance / Du) |
+| `apps/coach-web/` | Vite-frontend (Coach / Dashboard / Plan / Økter / Du) |
 | `services/coach-api/` | FastAPI + SQLite |
 | `data/athletes/{id}/profile.md` | Profilfil ved onboarding / Du-lagring |
 | `knowledge/ernaring/` | Ernæringskunnskap for chat (inkl. IBS/gluten) |

@@ -15,6 +15,7 @@ import config
 from chat_service import build_system_prompt, call_llm
 from db import (
     add_message,
+    completions_by_external_id,
     db_session,
     delete_plan_block,
     get_athlete,
@@ -26,12 +27,14 @@ from db import (
     insert_plan_block,
     invite_token_valid,
     list_plan_blocks,
+    list_session_completions,
     mark_pending_action,
     recent_messages,
     secrets_public_view,
     update_athlete,
     update_plan_block,
     upsert_athlete_secrets,
+    upsert_session_completion,
     utc_now,
 )
 from form_from_intervals import clear_form_caches, persist_estimates_patch, resolve_form_estimates
@@ -53,6 +56,12 @@ from progress_compliance import (
     public_block,
     resolve_progress,
 )
+from sessions_service import (
+    completion_note_line,
+    list_sessions,
+    seed_chat_prompt,
+)
+from wellness import resolve_wellness_bundle
 
 
 @asynccontextmanager
@@ -143,10 +152,24 @@ class AthletePatch(BaseModel):
     season_strength_hours_target: float | None = None
     season_start_date: str | None = None
     goal_race_date: str | None = None
+    show_body_metrics: bool | None = None
 
 
 class ChatIn(BaseModel):
     message: str = Field(min_length=1)
+
+
+class SessionCompletionIn(BaseModel):
+    status: str = Field(
+        min_length=1, description="completed|skipped|injured|tired|sick|other"
+    )
+    reason: str = ""
+    note: str = ""
+    session_name: str = ""
+    session_date: str | None = None
+    discipline: str = ""
+    source: str = "intervals"
+    append_profile_note: bool = True
 
 
 class IntervalsCredentialsIn(BaseModel):
@@ -380,6 +403,181 @@ def overview(x_athlete_id: str | None = Header(default=None)) -> dict[str, Any]:
         secrets = get_athlete_secrets(conn, aid)
         blocks = list_plan_blocks(conn, aid)
     return _overview_payload(athlete, secrets, blocks)
+
+
+@app.get("/v1/dashboard")
+def dashboard(x_athlete_id: str | None = Header(default=None)) -> dict[str, Any]:
+    """Hours/load + sleep + optional body metrics + app-computed compliance.
+
+    Compliance is never written to Intervals — only computed here from
+    activities vs season targets (same as /v1/overview progress).
+    """
+    aid = _require_athlete(x_athlete_id)
+    with db_session(config.DATABASE_PATH) as conn:
+        athlete = get_athlete(conn, aid)
+        if not athlete:
+            raise HTTPException(404, "Utøver ikke funnet")
+        secrets = get_athlete_secrets(conn, aid)
+        blocks = list_plan_blocks(conn, aid)
+    overview_data = _overview_payload(athlete, secrets, blocks)
+    show_body = bool(athlete.get("show_body_metrics", True))
+    wellness = resolve_wellness_bundle(secrets, days=14, include_body=show_body)
+    progress = overview_data.get("progress") or {}
+    hours = {
+        "disciplines": progress.get("disciplines") or [],
+        "window": progress.get("window"),
+        "source": progress.get("source"),
+        "activity_count": progress.get("activity_count"),
+        "fetch_error": progress.get("fetch_error"),
+        "formula": progress.get("formula"),
+    }
+    load = {
+        "from_wellness": wellness.get("load_wellness"),
+        "hours_summary": hours,
+        "note": (
+            "Belastning/timer er app-beregnet fra Intervals-aktiviteter. "
+            "Compliance lagres ikke i Intervals."
+        ),
+    }
+    return {
+        "show_body_metrics": show_body,
+        "hours": hours,
+        "load": load,
+        "sleep": wellness.get("sleep"),
+        "body": wellness.get("body"),
+        "body_hidden": (not show_body) or bool(wellness.get("body_hidden")),
+        "wellness_window": wellness.get("window"),
+        "wellness_source": wellness.get("source"),
+        "wellness_fetch_error": wellness.get("fetch_error"),
+        "wellness_fetch_error_detail": wellness.get("fetch_error_detail"),
+        "compliance": progress,
+        "compliance_app_computed": True,
+        "compliance_written_to_intervals": False,
+        "periodization": overview_data.get("periodization"),
+        "form": {
+            "ftp_tested": overview_data.get("ftp_tested"),
+            "ftp_estimated": overview_data.get("ftp_estimated"),
+            "vo2_estimate": overview_data.get("vo2_estimate"),
+            "estimate_confidence": overview_data.get("estimate_confidence"),
+            "gate_open": overview_data.get("gate_open"),
+            "qualifying_sessions": overview_data.get("qualifying_sessions"),
+            "required_sessions": overview_data.get("required_sessions"),
+            "estimate_disclaimer": overview_data.get("estimate_disclaimer"),
+        },
+        "uplift_line": overview_data.get("uplift_line"),
+        "intervals_linked": overview_data.get("intervals_linked"),
+        "intervals_hint": overview_data.get("intervals_hint"),
+    }
+
+
+@app.get("/v1/sessions/completions/recent")
+def get_recent_completions(
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    aid = _require_athlete(x_athlete_id)
+    with db_session(config.DATABASE_PATH) as conn:
+        if not get_athlete(conn, aid):
+            raise HTTPException(404, "Utøver ikke funnet")
+        rows = list_session_completions(conn, aid, limit=50)
+    return {"completions": rows}
+
+
+@app.get("/v1/sessions")
+def get_sessions(x_athlete_id: str | None = Header(default=None)) -> dict[str, Any]:
+    """Recent + upcoming Intervals sessions; soft-fail without credentials."""
+    aid = _require_athlete(x_athlete_id)
+    with db_session(config.DATABASE_PATH) as conn:
+        if not get_athlete(conn, aid):
+            raise HTTPException(404, "Utøver ikke funnet")
+        secrets = get_athlete_secrets(conn, aid)
+        comps = completions_by_external_id(conn, aid)
+    return list_sessions(secrets, comps)
+
+
+@app.get("/v1/sessions/{session_id}")
+def get_session_detail(
+    session_id: str,
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Find one session in the list window + seed prompt for Coach chat."""
+    aid = _require_athlete(x_athlete_id)
+    with db_session(config.DATABASE_PATH) as conn:
+        if not get_athlete(conn, aid):
+            raise HTTPException(404, "Utøver ikke funnet")
+        secrets = get_athlete_secrets(conn, aid)
+        comps = completions_by_external_id(conn, aid)
+    payload = list_sessions(secrets, comps)
+    sid = session_id.strip()
+    found = None
+    for bucket in ("today", "upcoming", "recent"):
+        for s in payload.get(bucket) or []:
+            if s.get("id") == sid or s.get("external_id") == sid:
+                found = s
+                break
+        if found:
+            break
+    if not found:
+        found = {
+            "id": sid,
+            "external_id": sid.split(":", 1)[-1] if ":" in sid else sid,
+            "kind": "unknown",
+            "name": "Økt",
+            "date": None,
+            "completion": comps.get(sid)
+            or comps.get(sid.split(":", 1)[-1] if ":" in sid else sid),
+        }
+    return {
+        "session": found,
+        "seed_prompt": seed_chat_prompt(found),
+        "compliance_note": payload.get("compliance_note"),
+    }
+
+
+@app.post("/v1/sessions/{session_id}/completion")
+def post_session_completion(
+    session_id: str,
+    body: SessionCompletionIn,
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Log completion/skip reason in SQLite (+ optional profile notes). Not ICU."""
+    aid = _require_athlete(x_athlete_id)
+    external = session_id.strip()
+    data = {
+        "external_session_id": external,
+        "source": body.source or "intervals",
+        "session_name": body.session_name or "",
+        "session_date": body.session_date,
+        "discipline": body.discipline or "",
+        "status": body.status,
+        "reason": body.reason or "",
+        "note": body.note or "",
+    }
+    try:
+        with db_session(config.DATABASE_PATH) as conn:
+            athlete = get_athlete(conn, aid)
+            if not athlete:
+                raise HTTPException(404, "Utøver ikke funnet")
+            row = upsert_session_completion(conn, aid, data)
+            if body.append_profile_note:
+                line = completion_note_line({**data, **(row or {})})
+                prev = (athlete.get("notes") or "").rstrip()
+                marker = "Øktlogg (app)"
+                if marker in prev:
+                    notes = f"{prev}\n- {line}"
+                else:
+                    notes = f"{prev}\n\n## {marker}\n- {line}".strip()
+                athlete = update_athlete(conn, aid, {"notes": notes}) or athlete
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    path = write_profile(config.ATHLETES_DATA_DIR, athlete)
+    return {
+        "completion": row,
+        "athlete_notes": athlete.get("notes"),
+        "profile_path": str(path.relative_to(config.REPO_ROOT))
+        if path.is_relative_to(config.REPO_ROOT)
+        else str(path),
+        "written_to_intervals": False,
+    }
 
 
 @app.get("/v1/athlete/me/plan-blocks")

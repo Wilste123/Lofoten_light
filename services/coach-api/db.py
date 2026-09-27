@@ -47,8 +47,25 @@ CREATE TABLE IF NOT EXISTS athletes (
   season_strength_hours_target REAL,
   season_start_date TEXT,
   goal_race_date TEXT,
+  show_body_metrics INTEGER DEFAULT 1,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS session_completions (
+  id TEXT PRIMARY KEY,
+  athlete_id TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+  external_session_id TEXT NOT NULL,
+  source TEXT NOT NULL DEFAULT 'intervals',
+  session_name TEXT DEFAULT '',
+  session_date TEXT,
+  discipline TEXT DEFAULT '',
+  status TEXT NOT NULL,
+  reason TEXT DEFAULT '',
+  note TEXT DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE (athlete_id, external_session_id)
 );
 
 CREATE TABLE IF NOT EXISTS plan_blocks (
@@ -124,6 +141,8 @@ CREATE TABLE IF NOT EXISTS pending_actions (
 CREATE INDEX IF NOT EXISTS idx_messages_athlete ON messages(athlete_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_plan_blocks_athlete ON plan_blocks(athlete_id, start_date);
 CREATE INDEX IF NOT EXISTS idx_pending_actions_athlete ON pending_actions(athlete_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_session_completions_athlete
+  ON session_completions(athlete_id, session_date);
 """
 
 
@@ -158,6 +177,7 @@ _EXTRA_COLUMNS = [
     ("season_strength_hours_target", "REAL"),
     ("season_start_date", "TEXT"),
     ("goal_race_date", "TEXT"),
+    ("show_body_metrics", "INTEGER DEFAULT 1"),
 ]
 
 
@@ -197,6 +217,9 @@ def row_to_athlete(row: sqlite3.Row | None) -> dict[str, Any] | None:
     except json.JSONDecodeError:
         d["agreements"] = []
     d["nutrition_lactose"] = bool(d.get("nutrition_lactose"))
+    # Default true when column missing / NULL (migration-safe)
+    sbm = d.get("show_body_metrics")
+    d["show_body_metrics"] = True if sbm is None else bool(sbm)
     return d
 
 
@@ -290,6 +313,7 @@ def update_athlete(
         "season_strength_hours_target",
         "season_start_date",
         "goal_race_date",
+        "show_body_metrics",
     }
     fields: list[str] = []
     values: list[Any] = []
@@ -299,6 +323,9 @@ def update_athlete(
             values.append(json.dumps(val, ensure_ascii=False))
         elif key == "nutrition_lactose":
             fields.append("nutrition_lactose = ?")
+            values.append(1 if val else 0)
+        elif key == "show_body_metrics":
+            fields.append("show_body_metrics = ?")
             values.append(1 if val else 0)
         elif key in allowed:
             fields.append(f"{key} = ?")
@@ -661,3 +688,122 @@ def mark_pending_action(
     )
     return get_pending_action(conn, athlete_id, action_id)
 
+
+
+COMPLETION_STATUSES = frozenset(
+    {"completed", "skipped", "injured", "tired", "sick", "other"}
+)
+
+
+def _row_to_completion(row: sqlite3.Row | None) -> dict[str, Any] | None:
+    if row is None:
+        return None
+    return dict(row)
+
+
+def list_session_completions(
+    conn: sqlite3.Connection, athlete_id: str, *, limit: int = 100
+) -> list[dict[str, Any]]:
+    cur = conn.execute(
+        """
+        SELECT * FROM session_completions
+        WHERE athlete_id = ?
+        ORDER BY COALESCE(session_date, created_at) DESC, created_at DESC
+        LIMIT ?
+        """,
+        (athlete_id, limit),
+    )
+    return [dict(r) for r in cur.fetchall()]
+
+
+def get_session_completion(
+    conn: sqlite3.Connection, athlete_id: str, external_session_id: str
+) -> dict[str, Any] | None:
+    cur = conn.execute(
+        """
+        SELECT * FROM session_completions
+        WHERE athlete_id = ? AND external_session_id = ?
+        """,
+        (athlete_id, external_session_id),
+    )
+    return _row_to_completion(cur.fetchone())
+
+
+def upsert_session_completion(
+    conn: sqlite3.Connection, athlete_id: str, data: dict[str, Any]
+) -> dict[str, Any]:
+    """Insert or update a completion log for an Intervals session id."""
+    now = utc_now()
+    external_id = str(data.get("external_session_id") or "").strip()
+    if not external_id:
+        raise ValueError("external_session_id kreves")
+    status = str(data.get("status") or "").strip().lower()
+    if status not in COMPLETION_STATUSES:
+        raise ValueError(
+            f"status må være en av: {', '.join(sorted(COMPLETION_STATUSES))}"
+        )
+    existing = get_session_completion(conn, athlete_id, external_id)
+    if existing:
+        conn.execute(
+            """
+            UPDATE session_completions SET
+              source = ?, session_name = ?, session_date = ?, discipline = ?,
+              status = ?, reason = ?, note = ?, updated_at = ?
+            WHERE athlete_id = ? AND external_session_id = ?
+            """,
+            (
+                data.get("source") or existing.get("source") or "intervals",
+                data.get("session_name")
+                if data.get("session_name") is not None
+                else existing.get("session_name") or "",
+                data.get("session_date")
+                if data.get("session_date") is not None
+                else existing.get("session_date"),
+                data.get("discipline")
+                if data.get("discipline") is not None
+                else existing.get("discipline") or "",
+                status,
+                data.get("reason")
+                if data.get("reason") is not None
+                else existing.get("reason") or "",
+                data.get("note")
+                if data.get("note") is not None
+                else existing.get("note") or "",
+                now,
+                athlete_id,
+                external_id,
+            ),
+        )
+        return get_session_completion(conn, athlete_id, external_id)  # type: ignore[return-value]
+
+    cid = data.get("id") or new_id()
+    conn.execute(
+        """
+        INSERT INTO session_completions (
+          id, athlete_id, external_session_id, source, session_name,
+          session_date, discipline, status, reason, note, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            cid,
+            athlete_id,
+            external_id,
+            data.get("source") or "intervals",
+            data.get("session_name") or "",
+            data.get("session_date") or None,
+            data.get("discipline") or "",
+            status,
+            data.get("reason") or "",
+            data.get("note") or "",
+            now,
+            now,
+        ),
+    )
+    return get_session_completion(conn, athlete_id, external_id)  # type: ignore[return-value]
+
+
+def completions_by_external_id(
+    conn: sqlite3.Connection, athlete_id: str
+) -> dict[str, dict[str, Any]]:
+    rows = list_session_completions(conn, athlete_id, limit=500)
+    return {r["external_session_id"]: r for r in rows if r.get("external_session_id")}

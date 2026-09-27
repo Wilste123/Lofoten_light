@@ -9,8 +9,9 @@
 
 | Data | Hvor i MVP | Hvorfor |
 |------|------------|---------|
-| `athlete_context` (navn, trener, farge, mål, avtaler, skade, **ernæring/GI**, test-FTP, vekt/alder, **sesongmål**) | SQLite | Appens SoT — ikke Intervals |
+| `athlete_context` (navn, trener, farge, mål, avtaler, skade, **ernæring/GI**, test-FTP, vekt/alder, **sesongmål**, **`show_body_metrics`**) | SQLite | Appens SoT — ikke Intervals |
 | `plan_blocks` (grovplan / bulk) | SQLite | Makro/meso — se [periodization-overview.md](periodization-overview.md) |
+| `session_completions` (øktlogg status/grunn) | SQLite | App-only — se [dashboard-okter.md](dashboard-okter.md) |
 | Profilfil markdown | `data/athletes/{id}/profile.md` | Cursor-coach + LLM leser person, ikke bare William |
 | Chat-historikk (siste N turner) | SQLite | Kort minne for én LLM-tur |
 | Intervals API-nøkkel + athlete-id | SQLite (`athlete_secrets`) via **Du**-fane / `PUT /v1/athlete/me/intervals` | Kun server; aldri `localStorage` eller `.env` for web |

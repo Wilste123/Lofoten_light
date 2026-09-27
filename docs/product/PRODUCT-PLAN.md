@@ -105,6 +105,7 @@ Gate ≥ 5 sykkeløkter med watt. Se [form-estimates.md](form-estimates.md).
 | Fase | Innhold |
 |------|---------|
 | 0–1 | ~~Docs + onboarding + chat + Du + Intervals-settings~~ (landet på PR #13) |
+<<<<<<< Updated upstream
 | 2 | ~~ICU activity-les + fremskritt/compliance~~ |
 | 2b | ~~Grovplan-strip~~ (current/next + dager til race) |
 | 2c | UX-polish leftovers |
@@ -113,6 +114,13 @@ Gate ≥ 5 sykkeløkter med watt. Se [form-estimates.md](form-estimates.md).
 | 2e | ~~Plan + Compliance-faner, form_estimates, Sync til Intervals~~ (`5cfb32f`) |
 | 2f | **Dashboard** — status, timer, søvn (wellness READ), vekt/fett med Du-toggle |
 | 2g | **Øktbibliotek** — list, spør coach, completion + reason |
+=======
+| 2 | ~~ICU activity-les + fremskritt/compliance~~ (Intervals når credentials; demo ellers) |
+| 2b | ~~Grovplan-strip~~ (current/next + dager til race); form_estimates fortsatt gated |
+| 2c | UX-polish leftovers (unngå konflikt med Du/Intervals Lagre-fix) |
+| 2d | ~~Returning-user login~~ (profil-ID + `POST /v1/session/login`) |
+| 2e | ~~Dashboard + Økter~~ (wellness/søvn, kropp-toggle, øktlogg) — se [dashboard-okter.md](dashboard-okter.md) |
+>>>>>>> Stashed changes
 | 3 | Invite + training_pair |
 | 4 | Intervals-write videre etter telefon-test av sync |
 | 5 | Proaktiv post-MVP |
@@ -125,4 +133,8 @@ Ingen Pondus-import, ingen Slack i MVP, ingen tool-spam-chat, ingen full kalende
 
 ## Relaterte docs
 
+<<<<<<< Updated upstream
 [gap-analysis-2026-09-27.md](gap-analysis-2026-09-27.md) · [competitor-humango.md](competitor-humango.md) · [mvp-scope.md](mvp-scope.md) · [progress-compliance.md](progress-compliance.md) · [periodization-overview.md](periodization-overview.md) · [athlete-profile.md](athlete-profile.md) · [partner-sync.md](partner-sync.md) · [returning-login.md](returning-login.md) · [README.md](README.md)
+=======
+[mvp-scope.md](mvp-scope.md) · [progress-compliance.md](progress-compliance.md) · [dashboard-okter.md](dashboard-okter.md) · [periodization-overview.md](periodization-overview.md) · [athlete-profile.md](athlete-profile.md) · [partner-sync.md](partner-sync.md) · [returning-login.md](returning-login.md) · [README.md](README.md)
+>>>>>>> Stashed changes

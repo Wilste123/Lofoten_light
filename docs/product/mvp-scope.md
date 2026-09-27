@@ -6,10 +6,11 @@ Brukeren kan:
 
 1. **Onboarde** (navn, trener, personlighet, aksent, mål, skade, **ernæring/GI**, valgfri test-FTP, vekt/alder) → SQLite + `profile.md`.
 2. **Chatte** med treneren som husker *sin* kontekst (ikke William-only hardcoding).
-3. **Se kjapt overblikk** — fremskritt/compliance-barer, grovplan-strip, form_estimates.
-4. **Eie egen kontekst** under Du (mål, sesongvolum, plan-blokker, avtaler, skade, GI).
+3. **Se Dashboard** — timer/belastning, søvn, valgfri kropp, fremskritt/compliance (app-beregnet).
+4. **Se Økter** — siste/kommende fra Intervals; spør coach eller logg fullført/hoppet over.
+5. **Eie egen kontekst** under Du (mål, sesongvolum, plan-blokker, avtaler, skade, GI, kropp-toggle).
 
-Intervals.icu forblir stedet for **full kalender, øktdetaljer og grafer**.
+Intervals.icu forblir stedet for **full kalender, øktdetaljer og grafer**. Compliance lagres **ikke** i Intervals.
 
 ## Onboarding (fase 1) — felter
 

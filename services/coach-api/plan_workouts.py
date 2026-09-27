@@ -35,6 +35,11 @@ from intervals_calendar import (
     public_event_preview,
 )
 from knowledge_ctx import detect_athlete_signals, select_knowledge_paths
+from workout_personalize import (
+    injury_strength_session,
+    personalize_icu_event,
+    personalize_title,
+)
 
 
 def format_exc_nb(exc: BaseException) -> str:
@@ -264,11 +269,13 @@ def _templates_for_signals(
     phase: str,
     weekly_hours: float,
     athlete_type: str | None = None,
+    athlete: dict[str, Any] | None = None,
 ) -> list[SessionSpec]:
     """Knowledge-aligned week from planned library (ukemaler-inspired).
 
     Paths are real ``workouts/planned/**`` files the CLI builder already resolves
-    into ZWO / Intervals syntax / strength bodies.
+    into ZWO / Intervals syntax / strength bodies. Injury strength picks ST04
+    only when the athlete profile mentions rygg/isjas — otherwise ST03.
     """
     beginner = bool(signals.get("beginner"))
     injury = bool(signals.get("injury")) or phase == "rehab"
@@ -278,6 +285,7 @@ def _templates_for_signals(
     run_primary = atype.endswith("runner") or atype == "runner"
     bike_primary = atype == "cyclist"
     swim_primary = atype == "swimmer"
+    inj_title, inj_path = injury_strength_session(athlete)
 
     # --- Run-primary (half/marathon/runner): no default swim/bike pack ---
     if run_primary and not injury:
@@ -337,14 +345,13 @@ def _templates_for_signals(
              "workouts/planned/run/R01-recovery-30.txt"),
         ]
 
-    # --- Injury / ACWR-safe (skader/* + ST04 prehab) ---
+    # --- Injury / ACWR-safe (skader/* + profile-matched prehab) ---
     if injury:
         if run_primary:
             return [
                 (0, "Run", "recovery", "Løp recovery 30 (R01)", 30, 25,
                  "workouts/planned/run/R01-recovery-30.txt"),
-                (2, "Strength", "general", "Styrke prehab rygg/isjas (ST04)", 35, 18,
-                 "workouts/planned/strength/ST04-prehab-rygg-isjas-hjemme.txt"),
+                (2, "Strength", "general", inj_title, 35, 18, inj_path),
                 (4, "Bike", "recovery", "Sykkel recovery 45 (B01)", 45, 28,
                  "workouts/planned/bike/recovery-spin-45.txt"),
                 (6, "Run", "endurance", "Løp easy 40 (R01)", 40, 40,
@@ -355,8 +362,7 @@ def _templates_for_signals(
              "workouts/planned/swim/S02-teknikk-skulder.txt"),
             (1, "Bike", "recovery", "Sykkel recovery 45 (B01)", 45, 28,
              "workouts/planned/bike/recovery-spin-45.txt"),
-            (2, "Strength", "general", "Styrke prehab rygg/isjas (ST04)", 35, 18,
-             "workouts/planned/strength/ST04-prehab-rygg-isjas-hjemme.txt"),
+            (2, "Strength", "general", inj_title, 35, 18, inj_path),
             (4, "Swim", "recovery", "Svøm recovery (S09)", 35, 20,
              "workouts/planned/swim/S09-recovery.txt"),
             (5, "Bike", "endurance", "Sykkel Z2 90 (B02)", 90, 55,
@@ -536,9 +542,14 @@ def build_plan_week_rows(
             wh = 8.0
         phase = _phase_of_block(block)
         specs = _templates_for_signals(
-            signals, phase=phase, weekly_hours=wh, athlete_type=atype
+            signals,
+            phase=phase,
+            weekly_hours=wh,
+            athlete_type=atype,
+            athlete=athlete,
         )
         for weekday, sport, subtype, title, dur, tss, planned in specs:
+            title = personalize_title(title, athlete)
             day = week_start + timedelta(days=weekday)
             owning = _block_for_day(blocks, day)
             if owning is None:
@@ -629,6 +640,7 @@ def build_plan_week_icu_events(
             ev["_duration_minutes"] = int(float(row.get("duration_minutes") or 0))
         except (TypeError, ValueError):
             ev["_duration_minutes"] = 0
+        personalize_icu_event(ev, athlete)
         events.append(ev)
     return events
 

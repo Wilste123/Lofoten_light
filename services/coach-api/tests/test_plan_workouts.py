@@ -115,12 +115,17 @@ def test_beginner_differs_from_injury_templates():
         signals={"beginner": True},
         weeks=1,
         today=date(2026, 9, 28),
+        athlete={"display_name": "Ada", "injury_notes": ""},
     )
     inj = build_plan_week_icu_events(
         blocks,
         signals={"injury": True, "beginner": False},
         weeks=1,
         today=date(2026, 9, 28),
+        athlete={
+            "display_name": "William",
+            "injury_notes": "isjas og ryggplager",
+        },
     )
     beg_names = {e["name"] for e in beg}
     inj_names = {e["name"] for e in inj}

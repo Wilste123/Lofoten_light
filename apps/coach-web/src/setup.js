@@ -285,8 +285,19 @@ export function renderSetupWizard({ state, accents, personalities, escapeHtml: e
           Kilde: ${esc(p.plan_source || '—')}
           ${p.athlete_type_label || p.athlete_archetype ? ` · ${esc(p.athlete_type_label || p.athlete_archetype)}` : ''}
           ${p.athlete_type ? ` <code>${esc(p.athlete_type)}</code>` : ''}
+          ${
+            sync.constraints_summary_nb || p.constraints_summary_nb
+              ? ` · ${esc(sync.constraints_summary_nb || p.constraints_summary_nb)}`
+              : ''
+          }
           ${paths ? ` · knowledge: ${esc(paths)}` : ''}
         </p>
+        ${
+          sync.prescription_rationale_nb
+            ? `<div class="setup-preview-card"><h3>Hvorfor denne uka</h3>
+               <pre class="setup-overview">${esc(sync.prescription_rationale_nb)}</pre></div>`
+            : ''
+        }
         <div class="setup-preview-card">
           <h3>Periodisering</h3>
           <pre class="setup-overview">${esc(p.overview_md || '')}</pre>

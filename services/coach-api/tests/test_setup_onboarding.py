@@ -52,12 +52,19 @@ def test_knowledge_paths_diverge():
     injury = select_knowledge_paths(
         mode="plan", query_text="skade isjas belastning ACWR"
     )
+    tri = select_knowledge_paths(
+        mode="plan", query_text="triatlon lofoten half extreme comeback"
+    )
     assert "svom/nybegynner-til-triatlet.md" in beginner
     assert "lop/oppbygging-etter-pause.md" in returning
     assert "skader/belastningsstyring-acwr.md" in injury
     assert "coach/coach-filosofi.md" in beginner
-    assert "triathlon/periodisering-mot-2027.md" in beginner
-
+    # Non-tri beginner → general / lav-frekvens, not automatic Lofoten pack
+    assert "coach/ukeplaner-generell-utholdenhet.md" in beginner or (
+        "lop/ukeplaner-lav-frekvens.md" in beginner
+    )
+    assert "triathlon/periodisering-mot-2027.md" in tri
+    assert "load-and-intensity.md" in beginner
 
 def test_preview_beginner_differs_from_returning(tmp_path):
     # Use real knowledge dir from repo

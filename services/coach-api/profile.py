@@ -12,6 +12,14 @@ def _fmt(val: Any, empty: str = "—") -> str:
     return str(val)
 
 
+def _fmt_disciplines(val: Any) -> str:
+    if not val:
+        return "(ikke satt)"
+    if isinstance(val, list):
+        return ", ".join(str(x) for x in val) if val else "(ikke satt)"
+    return str(val)
+
+
 def render_profile_md(athlete: dict[str, Any]) -> str:
     """Render a profile.md body for any athlete (not William-specific)."""
     name = athlete.get("display_name") or "Utøver"
@@ -55,6 +63,8 @@ Kilde for sannhet for coach (app + Cursor). Oppdateres ved onboarding og når Du
 | Visningsnavn | {name} |
 | Sport | {_fmt(athlete.get("sport"), "triathlon")} |
 | Hovedprofil / utøvertype | {_fmt(athlete.get("athlete_type"), "(ikke satt)")} |
+| Tillatte disipliner | {_fmt_disciplines(athlete.get("allowed_disciplines"))} |
+| Økter per uke | {_fmt(athlete.get("sessions_per_week"), "(ikke satt)")} |
 | Tidssone | {_fmt(athlete.get("timezone"), "Europe/Oslo")} |
 | Alder | {_fmt(athlete.get("age_years"))} |
 | Vekt (kg) | {_fmt(athlete.get("weight_kg"))} |

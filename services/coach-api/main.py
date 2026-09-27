@@ -193,6 +193,8 @@ class SetupDraftIn(BaseModel):
     age_years: int | None = None
     sport: str = "triathlon"
     athlete_type: str = ""
+    sessions_per_week: int | None = None
+    allowed_disciplines: list[str] = Field(default_factory=list)
     nutrition_ibs: str = "no"
     nutrition_gluten: str = "none"
     nutrition_lactose: bool = False
@@ -270,6 +272,8 @@ class AthletePatch(BaseModel):
     athlete_type: str | None = None
     sport: str | None = None
     schedule_notes: str | None = None
+    sessions_per_week: int | None = None
+    allowed_disciplines: list[str] | None = None
     notes: str | None = None
     show_body_metrics: bool | None = None
     weight_kg: float | None = None
@@ -475,6 +479,13 @@ def setup_plan_preview(body: SetupDraftIn) -> dict[str, Any]:
                 "goal_text": draft.get("goal_text") or "",
                 "sport": (preview.get("athlete_patch") or {}).get("sport")
                 or draft.get("sport"),
+                "allowed_disciplines": preview.get("allowed_disciplines")
+                or (preview.get("athlete_patch") or {}).get("allowed_disciplines")
+                or draft.get("allowed_disciplines")
+                or [],
+                "sessions_per_week": preview.get("sessions_per_week")
+                or (preview.get("athlete_patch") or {}).get("sessions_per_week")
+                or draft.get("sessions_per_week"),
             },
         )
     except Exception as exc:
@@ -690,6 +701,8 @@ def setup_confirm(
                     "schedule_notes",
                     "athlete_type",
                     "sport",
+                    "sessions_per_week",
+                    "allowed_disciplines",
                 )
                 if k in patch
             }
@@ -720,6 +733,17 @@ def setup_confirm(
             or "endurance",
             "setup_completed": True,
         }
+        # Training agreements from preview / body
+        if patch.get("allowed_disciplines") or body.allowed_disciplines:
+            type_patch["allowed_disciplines"] = (
+                patch.get("allowed_disciplines") or body.allowed_disciplines
+            )
+        if patch.get("sessions_per_week") is not None or body.sessions_per_week is not None:
+            type_patch["sessions_per_week"] = (
+                patch.get("sessions_per_week")
+                if patch.get("sessions_per_week") is not None
+                else body.sessions_per_week
+            )
         if old_type != atype:
             type_patch["athlete_type_notes"] = append_type_history(
                 athlete.get("athlete_type_notes"),

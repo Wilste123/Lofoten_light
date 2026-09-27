@@ -14,6 +14,8 @@ Hver utøver får en **egen profil** slik at coach (app + Cursor) tilpasser seg 
 
 Visningsnavn, sport, mål, schedule, skade, testet FTP (+ dato), vekt/alder, trener (navn/personlighet/aksent), timezone, ukens fokus, avtaler.
 
+**Treningsavtaler:** `athlete_type`, `allowed_disciplines` (`run`/`bike`/`swim`/`strength`), `sessions_per_week`.
+
 **Ernæring / GI:** `nutrition_ibs` (`no`/`yes`/`unsure`), `nutrition_gluten` (`none`/`sensitive`/`celiac`), `nutrition_lactose`, `nutrition_other_restrictions`, `nutrition_notes`.
 
 ## Chat-regler

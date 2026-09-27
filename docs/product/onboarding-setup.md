@@ -32,7 +32,29 @@ Coach infererer og lagrer en **primær utøvertype** (`athletes.athlete_type` + 
 | `beginner_multi` | nybegynner flersport | balansert intro |
 | `general_endurance` | generell utholdenhet | startpunkt |
 
+**Treningsavtaler (setup → SQLite):**
+
+| Felt | Betydning |
+|------|-----------|
+| `allowed_disciplines` | JSON-liste: `run` / `bike` / `swim` / `strength` |
+| `sessions_per_week` | Heltall 2–8 — loft for WORKOUT-økter/uke |
+
+Halvmaraton / «kun løp + styrke» / «3 økter» → **ikke** default tri-uke. Preview viser `constraints_summary_nb` + `prescription_rationale_nb` (norsk coach-stemme).
+
 **Muterbar over tid:** `generell` → `runner` → `half_marathon_runner` / maraton når mål blir klart. Historikk i `athlete_type_notes`. Chat kan foreslå `athlete_type_update` (preview → `POST /v1/athlete/me/athlete-type`) — plan skrives **ikke** stille om; øktvalg følger ny type etter bekreftelse.
+
+## Knowledge som mater øktvalg
+
+| Situasjon | Nøkkelfiler |
+|-----------|-------------|
+| HM / løpsfokus | `lop/halvmaraton-periodisering.md`, `lop/ukeplaner-lav-frekvens.md`, `lop/styrke-og-lop.md` |
+| 2–4 økter / tidsklemma | `lop/ukeplaner-lav-frekvens.md`, `coach/ukeplaner-generell-utholdenhet.md` |
+| Nybegynner løp | `lop/nybegynner-lop.md` |
+| Comeback | `lop/oppbygging-etter-pause.md` |
+| Load / intensitet | `load-and-intensity.md` |
+| Tri / Lofoten | `triathlon/periodisering-mot-2027.md`, `coach/ukemaler.md` |
+
+Injiseres via `knowledge_ctx.select_knowledge_paths` (setup chat + plan). Prescription i `plan_workouts.py` plukker navngitte `workouts/planned/**` med restitusjonsdager — max **2 uker** WORKOUT til Intervals.
 
 ## Flyt (UI)
 
@@ -72,12 +94,12 @@ Plan-generering: **ett** LLM-kall med knowledge-bundle → JSON-blokker, valider
 
 | Lagres ved bekreft | Synces til Intervals (valgfritt, preview→confirm) |
 |--------------------|-----------------------------------------------------|
-| Athlete-felt (inkl. `athlete_type`), `plan_blocks`, `profile.md`, valgfri `athlete_secrets` | **WORKOUT** første 1–2 uker via CLI-byggeren — etter athlete_type |
-| — | Grovplan-**NOTE** ukemarkører (`ll-coach-…`) |
+| Athlete-felt (inkl. `athlete_type`, `allowed_disciplines`, `sessions_per_week`), `plan_blocks`, `profile.md`, valgfri `athlete_secrets` | **WORKOUT** første **maks 2 uker** via CLI-byggeren — kun avtalte disipliner / frekvens |
+| — | Grovplan-**NOTE** ukemarkører (`ll-coach-…`) — kan dekke sesong |
 | — | Ikke stille auto-push; seed `william` tvinges ikke |
 
 **Builder (struktur):** `scripts/intervals_push_calendar.py` + `scripts/intervals_lib.py`  
-**Prescription (innhold):** knowledge-templated valg av `workouts/planned/**` etter athlete_type + signaler.
+**Prescription (innhold):** knowledge-templated valg av `workouts/planned/**` etter athlete_type + constraints + signaler (+ norsk `prescription_rationale_nb`).
 
 ## Feilmeldinger
 
@@ -88,4 +110,5 @@ Setup-preview/confirm skal aldri bare vise «Feil 500» — API returnerer `deta
 `services/coach-api/tests/test_setup_onboarding.py`  
 `services/coach-api/tests/test_plan_workouts.py`  
 `services/coach-api/tests/test_athlete_type.py`  
+`services/coach-api/tests/test_workout_constraints.py`  
 `services/coach-api/tests/test_chat_intervals.py`

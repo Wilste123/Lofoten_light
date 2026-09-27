@@ -57,6 +57,8 @@ CREATE TABLE IF NOT EXISTS athletes (
   setup_completed INTEGER DEFAULT 0,
   athlete_type TEXT DEFAULT '',
   athlete_type_notes TEXT DEFAULT '',
+  allowed_disciplines TEXT DEFAULT '',
+  sessions_per_week INTEGER,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -222,6 +224,8 @@ _EXTRA_COLUMNS = [
     ("setup_completed", "INTEGER DEFAULT 0"),
     ("athlete_type", "TEXT DEFAULT ''"),
     ("athlete_type_notes", "TEXT DEFAULT ''"),
+    ("allowed_disciplines", "TEXT DEFAULT ''"),
+    ("sessions_per_week", "INTEGER"),
 ]
 
 # Seeded returning athletes — always treated as setup-done; re-seed must not wipe them.
@@ -352,6 +356,23 @@ def row_to_athlete(row: sqlite3.Row | None) -> dict[str, Any] | None:
     d["show_body_metrics"] = True if sbm is None else bool(sbm)
     sc = d.get("setup_completed")
     d["setup_completed"] = bool(sc) if sc is not None else False
+    # Training agreements
+    discs_raw = d.get("allowed_disciplines")
+    if isinstance(discs_raw, str) and discs_raw.strip().startswith("["):
+        try:
+            d["allowed_disciplines"] = json.loads(discs_raw)
+        except json.JSONDecodeError:
+            d["allowed_disciplines"] = []
+    elif not discs_raw:
+        d["allowed_disciplines"] = []
+    spw = d.get("sessions_per_week")
+    if spw is not None and spw != "":
+        try:
+            d["sessions_per_week"] = int(spw)
+        except (TypeError, ValueError):
+            d["sessions_per_week"] = None
+    else:
+        d["sessions_per_week"] = None
     return d
 
 
@@ -498,6 +519,7 @@ def update_athlete(
         "setup_completed",
         "athlete_type",
         "athlete_type_notes",
+        "sessions_per_week",
     }
     fields: list[str] = []
     values: list[Any] = []
@@ -505,6 +527,12 @@ def update_athlete(
         if key == "agreements":
             fields.append("agreements_json = ?")
             values.append(json.dumps(val, ensure_ascii=False))
+        elif key == "allowed_disciplines":
+            fields.append("allowed_disciplines = ?")
+            if isinstance(val, (list, tuple)):
+                values.append(json.dumps(list(val), ensure_ascii=False))
+            else:
+                values.append(val if val is not None else "")
         elif key == "nutrition_lactose":
             fields.append("nutrition_lactose = ?")
             values.append(1 if val else 0)
@@ -523,6 +551,12 @@ def update_athlete(
                 raise ValueError("Brukernavnet er opptatt. Velg et annet.")
             fields.append("username = ?")
             values.append(uname)
+        elif key == "sessions_per_week":
+            fields.append("sessions_per_week = ?")
+            if val is None or val == "":
+                values.append(None)
+            else:
+                values.append(int(val))
         elif key in allowed:
             fields.append(f"{key} = ?")
             values.append(val)

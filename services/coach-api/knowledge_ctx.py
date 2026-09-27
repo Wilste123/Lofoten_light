@@ -24,6 +24,25 @@ CORE_PLAN = [
     "load-and-intensity.md",
 ]
 
+# Run / HM / low-frequency — injected when athlete is not multi-sport default
+CORE_RUN_PLAN = [
+    "lop/ukeplaner-lav-frekvens.md",
+    "lop/styrke-og-lop.md",
+    "load-and-intensity.md",
+]
+
+CORE_HM_PLAN = [
+    "lop/halvmaraton-periodisering.md",
+    "lop/ukeplaner-lav-frekvens.md",
+    "lop/styrke-og-lop.md",
+]
+
+CORE_GENERAL_PLAN = [
+    "coach/ukeplaner-generell-utholdenhet.md",
+    "lop/ukeplaner-lav-frekvens.md",
+    "load-and-intensity.md",
+]
+
 ERNARING_CORE = [
     "ernaring/coach-chat-kort.md",
     "ernaring/ibs-og-gluten.md",
@@ -151,6 +170,63 @@ CONDITIONAL_PACKS: list[tuple[list[str], list[str]]] = [
             "lop/oppbygging-etter-pause.md",
             "lop/intervaller-og-fart.md",
             "lop/terreng-og-fjell.md",
+            "lop/ukeplaner-lav-frekvens.md",
+            "lop/styrke-og-lop.md",
+        ],
+    ),
+    (
+        [
+            "halvmaraton",
+            "halv maraton",
+            "half marathon",
+            "half-marathon",
+            "21 km",
+            "21k",
+            "hm ",
+        ],
+        [
+            "lop/halvmaraton-periodisering.md",
+            "lop/ukeplaner-lav-frekvens.md",
+            "lop/styrke-og-lop.md",
+            "lop/intervaller-og-fart.md",
+        ],
+    ),
+    (
+        [
+            "3 økter",
+            "3 okter",
+            "tre økter",
+            "2 økter",
+            "4 økter",
+            "få økter",
+            "kun løp",
+            "bare løp",
+            "løp og styrke",
+            "lop og styrke",
+            "run and strength",
+            "sessions per week",
+            "økter/uke",
+            "okter/uke",
+        ],
+        [
+            "lop/ukeplaner-lav-frekvens.md",
+            "lop/styrke-og-lop.md",
+            "coach/ukeplaner-generell-utholdenhet.md",
+            "restitusjon/sovn-stress.md",
+        ],
+    ),
+    (
+        [
+            "nybegynner løp",
+            "starte å løpe",
+            "lære å løpe",
+            "første 5 km",
+            "begynne å jogge",
+        ],
+        [
+            "lop/nybegynner-lop.md",
+            "lop/ukeplaner-lav-frekvens.md",
+            "skader/lop-skadeprofiler.md",
         ],
     ),
     (
@@ -262,19 +338,76 @@ def detect_athlete_signals(text: str, draft: dict[str, Any] | None = None) -> di
     }
 
 
+def _athlete_type_plan_paths(draft: dict[str, Any] | None, blob: str) -> list[str]:
+    """Prefer run/HM/general packs over tri CORE_PLAN when type/cues say so."""
+    draft = draft or {}
+    atype = _norm(str(draft.get("athlete_type") or ""))
+    discs = _norm(str(draft.get("allowed_disciplines") or ""))
+    run_primary = (
+        "runner" in atype
+        or atype == "runner"
+        or "half_marathon" in atype
+        or "marathon" in atype
+    )
+    multi = bool(
+        re.search(r"triatlon|triathlon|lofoten|half\s*extreme|ironman", blob)
+    ) or atype in ("triathlete", "beginner_multi")
+    low_freq = bool(
+        re.search(
+            r"3 økter|3 okter|tre økter|2 økter|4 økter|kun løp|løp og styrke|"
+            r"sessions_per_week.: ?[234]",
+            blob + " " + discs,
+        )
+    ) or (
+        str(draft.get("sessions_per_week") or "") in ("2", "3", "4")
+    )
+
+    if multi and not run_primary:
+        return list(CORE_PLAN)
+
+    out: list[str] = []
+    if "half_marathon" in atype or re.search(r"halv\s*maraton|half[\s-]?marathon", blob):
+        out.extend(CORE_HM_PLAN)
+    elif run_primary or re.search(r"\bløper\b|\bløping\b|running", blob):
+        out.extend(CORE_RUN_PLAN)
+        if re.search(r"nybegynner|aldri trent|starte å løpe", blob):
+            out.append("lop/nybegynner-lop.md")
+        out.append("lop/oppbygging-etter-pause.md")
+    elif atype in ("general_endurance", "general", "") or not multi:
+        out.extend(CORE_GENERAL_PLAN)
+    else:
+        out.extend(CORE_PLAN)
+
+    if low_freq:
+        for p in (
+            "lop/ukeplaner-lav-frekvens.md",
+            "lop/styrke-og-lop.md",
+            "coach/ukeplaner-generell-utholdenhet.md",
+        ):
+            if p not in out:
+                out.append(p)
+
+    # Always keep load science
+    if "load-and-intensity.md" not in out:
+        out.append("load-and-intensity.md")
+    # Tri periodization only when multi
+    if multi and "triathlon/periodisering-mot-2027.md" not in out:
+        out.insert(0, "triathlon/periodisering-mot-2027.md")
+        if "coach/ukemaler.md" not in out:
+            out.insert(1, "coach/ukemaler.md")
+    return out
+
+
 def select_knowledge_paths(
     *,
     mode: str = "chat",
     query_text: str = "",
     draft: dict[str, Any] | None = None,
-    max_conditional: int = 8,
+    max_conditional: int = 10,
 ) -> list[str]:
     """Ordered unique relative paths under knowledge/."""
     paths: list[str] = []
     paths.extend(CORE_COACH)
-    if mode in ("plan", "setup", "chat"):
-        paths.extend(CORE_PLAN if mode == "plan" else CORE_PLAN[:2])
-    paths.extend(ERNARING_CORE)
 
     blob = _norm(query_text)
     if draft:
@@ -285,8 +418,20 @@ def select_knowledge_paths(
             "background_notes",
             "notes",
             "coach_respect_notes",
+            "athlete_type",
+            "allowed_disciplines",
+            "sessions_per_week",
         ):
             blob += " " + _norm(str(draft.get(k) or ""))
+
+    if mode == "plan":
+        paths.extend(_athlete_type_plan_paths(draft, blob))
+    elif mode in ("setup", "chat"):
+        # Lighter core + type-aware hints
+        paths.extend(_athlete_type_plan_paths(draft, blob)[:4])
+        paths.append("load-and-intensity.md")
+
+    paths.extend(ERNARING_CORE)
 
     conditional: list[str] = []
     for triggers, files in CONDITIONAL_PACKS:

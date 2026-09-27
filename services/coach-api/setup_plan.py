@@ -19,6 +19,13 @@ from athlete_type import (
     normalize_athlete_type,
     split_for,
 )
+from athlete_constraints import (
+    constraints_summary_nb,
+    normalize_disciplines,
+    normalize_sessions_per_week,
+    resolve_constraints,
+    split_for_disciplines,
+)
 from chat_service import call_llm
 from knowledge_ctx import (
     detect_athlete_signals,
@@ -108,6 +115,7 @@ def season_targets_from_hours(
     signals: dict[str, bool] | None = None,
     *,
     athlete_type: str | None = None,
+    allowed_disciplines: list[str] | None = None,
 ) -> dict[str, float]:
     signals = signals or {}
     if athlete_type:
@@ -116,6 +124,8 @@ def season_targets_from_hours(
         split = {"swim": 0.05, "bike": 0.25, "run": 0.55, "strength": 0.15}
     else:
         split = split_for(None)
+    if allowed_disciplines:
+        split = split_for_disciplines(athlete_type, allowed_disciplines, base_split=split)
     weeks = max(1, (race - start).days / 7.0)
     annual = weekly_hours * weeks * 0.90
     return {
@@ -578,6 +588,13 @@ def build_setup_preview(
     signals = detect_athlete_signals(_draft_blob(draft), draft)
     type_info = infer_athlete_type(_draft_blob(draft), draft, signals=signals)
     athlete_type = type_info["athlete_type"]
+    # Persistable training agreements (disciplines + frequency)
+    draft_for_constraints = {**draft, "athlete_type": athlete_type}
+    constraints = resolve_constraints(
+        draft=draft_for_constraints, athlete_type=athlete_type
+    )
+    allowed_disciplines = constraints["allowed_disciplines"]
+    sessions_per_week = constraints["sessions_per_week"]
     start, race = default_season_window(
         season_start=draft.get("season_start_date"),
         goal_race=draft.get("goal_race_date"),
@@ -592,7 +609,12 @@ def build_setup_preview(
     knowledge_meta = knowledge_selection_meta(
         knowledge_dir,
         query_text=_draft_blob(draft),
-        draft=draft,
+        draft={
+            **draft,
+            "athlete_type": athlete_type,
+            "allowed_disciplines": allowed_disciplines,
+            "sessions_per_week": sessions_per_week,
+        },
         mode="plan",
     )
 
@@ -626,7 +648,12 @@ def build_setup_preview(
         source = "deterministic_fallback"
 
     targets = season_targets_from_hours(
-        weekly, start, race, signals, athlete_type=athlete_type
+        weekly,
+        start,
+        race,
+        signals,
+        athlete_type=athlete_type,
+        allowed_disciplines=allowed_disciplines,
     )
     arch = _archetype_label(signals, athlete_type=athlete_type)
     overview = build_overview_nb(
@@ -651,6 +678,8 @@ def build_setup_preview(
         or (blocks[0]["theme"] if blocks else ""),
         "athlete_type": athlete_type,
         "sport": type_info.get("sport") or draft.get("sport") or "endurance",
+        "allowed_disciplines": allowed_disciplines,
+        "sessions_per_week": sessions_per_week,
         "season_start_date": start.isoformat(),
         "goal_race_date": race.isoformat(),
         "season_swim_hours_target": targets["season_swim_hours_target"],
@@ -685,9 +714,13 @@ def build_setup_preview(
             "sport": type_info["sport"],
             "split": type_info["split"],
         },
+        "constraints": constraints,
+        "constraints_summary_nb": constraints_summary_nb(constraints),
         "signals": {k: v for k, v in signals.items() if not str(k).startswith("_")},
         "knowledge": knowledge_meta,
         "weekly_hours_target": weekly,
+        "sessions_per_week": sessions_per_week,
+        "allowed_disciplines": allowed_disciplines,
         "season_start_date": start.isoformat(),
         "goal_race_date": race.isoformat(),
         "season_targets": targets,
@@ -700,7 +733,7 @@ def build_setup_preview(
                 "Etter bekreftelse av plan lokalt kan du velge å synce "
                 "grovplan-noter (NOTE, ll-coach-…) pluss konkrete økter for "
                 "første 1–2 uker (WORKOUT, ll-coach-w-…) til Intervals. "
-                "Ingen ZWO — beskrivelse + varighet. Preview→confirm."
+                f"Avtale: {constraints_summary_nb(constraints)}. Preview→confirm."
             ),
             "events_preview": [],
         },
@@ -734,6 +767,8 @@ SETUP_EXTRACT_KEYS = (
     "coach_respect_notes",
     "notes",
     "weekly_hours_target",
+    "sessions_per_week",
+    "allowed_disciplines",
     "season_start_date",
     "goal_race_date",
     "ftp_tested",
@@ -787,11 +822,15 @@ Regler:
 - Sett athlete_type når du er sikker, f.eks.:
   half_marathon_runner | marathon_runner | runner | cyclist | swimmer |
   triathlete | beginner_multi | general_endurance
+- Sett sessions_per_week (heltall 2–8) når utøveren sier f.eks. «3 økter i uka».
+- Sett allowed_disciplines som liste når avtalt, f.eks. ["run","strength"]
+  (gyldige: run, bike, swim, strength). Halvmaraton/løper uten tri → ikke svøm/sykkel.
 
 Avslutt HVER melding med en fenced blokk merket setup_extract (ikke synlig råd):
 ```setup_extract
 {{"ready_for_plan": false, "goal_text": null, "injury_notes": null, "schedule_notes": null,
  "background_notes": null, "coach_respect_notes": null, "weekly_hours_target": null,
+ "sessions_per_week": null, "allowed_disciplines": null,
  "season_start_date": null, "goal_race_date": null, "ftp_tested": null,
  "nutrition_ibs": null, "nutrition_gluten": null, "nutrition_lactose": null,
  "nutrition_notes": null, "notes": null, "athlete_type": null, "sport": null}}
@@ -837,6 +876,16 @@ def extract_setup_fields(reply: str) -> tuple[str, dict[str, Any]]:
             norm = normalize_athlete_type(v)
             if norm:
                 cleaned[k] = norm
+            continue
+        if k == "sessions_per_week":
+            n = normalize_sessions_per_week(v)
+            if n is not None:
+                cleaned[k] = n
+            continue
+        if k == "allowed_disciplines":
+            discs = normalize_disciplines(v)
+            if discs:
+                cleaned[k] = discs
             continue
         if k in ("weekly_hours_target", "ftp_tested", "weight_kg", "age_years"):
             try:

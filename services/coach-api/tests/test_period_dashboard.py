@@ -21,6 +21,7 @@ from period_training import (
     PeriodValidationError,
     bucket_volume_series,
     build_period_training_payload,
+    choose_volume_bucket,
     hours_by_day,
     parse_period_window,
     resolve_period_training,
@@ -119,6 +120,24 @@ def test_build_period_training_payload_no_targets():
     assert len(payload["charts"]["by_discipline"]) == 4
 
 
+def test_choose_volume_bucket_by_span():
+    assert choose_volume_bucket(1) == "day"
+    assert choose_volume_bucket(7) == "day"
+    assert choose_volume_bucket(14) == "day"
+    assert choose_volume_bucket(30) == "day"
+    assert choose_volume_bucket(31) == "day"
+    assert choose_volume_bucket(32) == "week"
+    assert choose_volume_bucket(60) == "week"  # ~2 months
+    assert choose_volume_bucket(75) == "week"
+    assert choose_volume_bucket(76) == "month"
+    assert choose_volume_bucket(90) == "month"
+    assert choose_volume_bucket(180) == "month"
+    assert choose_volume_bucket(365) == "month"
+    assert choose_volume_bucket(550) == "month"
+    assert choose_volume_bucket(551) == "year"
+    assert choose_volume_bucket(1096) == "year"  # ~3 years
+
+
 def test_hours_by_day_aggregates_and_fills_gaps():
     acts = [
         {
@@ -146,17 +165,16 @@ def test_hours_by_day_aggregates_and_fills_gaps():
     assert daily[2]["by_discipline"]["run"] == 0.5
 
 
-def test_bucket_volume_series_weeks_when_long():
-    start = date(2026, 7, 1)
-    end = date(2026, 9, 27)
-    # 89 days > 31 → week buckets
+def test_bucket_volume_series_weeks_when_mid_span():
+    start = date(2026, 8, 1)
+    end = date(2026, 9, 15)
+    # 46 days → week buckets
     daily = hours_by_day([], start, end)
-    # inject a few hours
     daily[0]["hours"] = 2.0
     daily[0]["by_discipline"]["bike"] = 2.0
     daily[10]["hours"] = 3.0
     daily[10]["by_discipline"]["run"] = 3.0
-    volume = bucket_volume_series(daily, max_bars=31)
+    volume = bucket_volume_series(daily)
     assert volume["bucket"] == "week"
     assert len(volume["bars"]) < len(daily)
     assert sum(b["hours"] for b in volume["bars"]) == pytest.approx(5.0)
@@ -172,11 +190,67 @@ def test_bucket_volume_series_weeks_when_long():
         date(2026, 9, 21),
         date(2026, 9, 27),
     )
-    day_vol = bucket_volume_series(short, max_bars=31)
+    day_vol = bucket_volume_series(short)
     assert day_vol["bucket"] == "day"
     assert len(day_vol["bars"]) == 7
     assert day_vol["bars"][0]["hours"] == 0.67
 
+
+def test_bucket_volume_series_month_and_year():
+    # 90 d → month
+    start_90 = date(2026, 6, 30)
+    end_90 = date(2026, 9, 27)
+    daily_90 = hours_by_day([], start_90, end_90)
+    daily_90[0]["hours"] = 4.0
+    daily_90[0]["by_discipline"]["bike"] = 4.0
+    daily_90[-1]["hours"] = 1.0
+    daily_90[-1]["by_discipline"]["run"] = 1.0
+    month_vol = bucket_volume_series(daily_90)
+    assert month_vol["bucket"] == "month"
+    assert len(month_vol["bars"]) >= 3  # jun–sep
+    assert month_vol["bars"][0]["label"].startswith("jun")
+    assert sum(b["hours"] for b in month_vol["bars"]) == pytest.approx(5.0)
+    # Empty month axis still present (zeros filled via hours_by_day)
+    assert all("label" in b and "hours" in b for b in month_vol["bars"])
+
+    # ~3 years → year
+    start_y = date(2023, 9, 27)
+    end_y = date(2026, 9, 27)
+    daily_y = hours_by_day([], start_y, end_y)
+    daily_y[0]["hours"] = 10.0
+    daily_y[0]["by_discipline"]["bike"] = 10.0
+    daily_y[400]["hours"] = 5.0
+    daily_y[400]["by_discipline"]["run"] = 5.0
+    year_vol = bucket_volume_series(daily_y)
+    assert year_vol["bucket"] == "year"
+    assert len(year_vol["bars"]) == 4  # 2023–2026
+    assert year_vol["bars"][0]["label"] == "2023"
+    assert year_vol["bars"][-1]["label"] == "2026"
+    assert sum(b["hours"] for b in year_vol["bars"]) == pytest.approx(15.0)
+
+
+def test_bucket_volume_series_legacy_max_bars():
+    """max_bars keeps day/week-only behaviour for older call sites/tests."""
+    start = date(2026, 7, 1)
+    end = date(2026, 9, 27)
+    daily = hours_by_day([], start, end)
+    volume = bucket_volume_series(daily, max_bars=31)
+    assert volume["bucket"] == "week"
+    short = hours_by_day([], date(2026, 9, 21), date(2026, 9, 27))
+    assert bucket_volume_series(short, max_bars=31)["bucket"] == "day"
+
+
+def test_parse_period_custom_allows_multi_year():
+    today = date(2026, 9, 27)
+    long = parse_period_window(
+        "custom", "2023-09-27", "2026-09-27", today=today
+    )
+    assert long["preset"] == "custom"
+    assert long["days"] == 1097  # inclusive ~3 years
+    with pytest.raises(PeriodValidationError):
+        parse_period_window(
+            "custom", "2020-01-01", "2026-09-27", today=today
+        )
 
 def test_resolve_period_training_aggregates_activities():
     secrets = {

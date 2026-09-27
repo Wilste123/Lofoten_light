@@ -30,7 +30,29 @@ PERIOD_PRESETS: dict[str, int] = {
 }
 
 DEFAULT_PERIOD = "14d"
-MAX_CUSTOM_DAYS = 366
+# Allow custom windows up to ~3 years (volume chart buckets by year).
+MAX_CUSTOM_DAYS = 1200
+
+# Volume chart bucket thresholds (inclusive day counts in the window).
+# ≤31 → day · ≤75 (~2.5 mo) → week · ≤550 (~18 mo) → month · else → year
+VOLUME_BUCKET_DAY_MAX = 31
+VOLUME_BUCKET_WEEK_MAX = 75
+VOLUME_BUCKET_MONTH_MAX = 550
+
+_MONTH_NB = (
+    "jan",
+    "feb",
+    "mar",
+    "apr",
+    "mai",
+    "jun",
+    "jul",
+    "aug",
+    "sep",
+    "okt",
+    "nov",
+    "des",
+)
 
 # Demo weekly hours (scaled by period length when no Intervals credentials)
 _DEMO_WEEKLY: dict[str, float] = {
@@ -183,26 +205,98 @@ def hours_by_day(
     return out
 
 
+def choose_volume_bucket(days: int) -> str:
+    """Pick chart grain from inclusive day count in the selected period.
+
+    - ~7–31 d → day
+    - weeks–~2.5 months → week
+    - ~90 d–~18 months → month
+    - multi-year → year
+    """
+    if days <= 0:
+        return "day"
+    if days <= VOLUME_BUCKET_DAY_MAX:
+        return "day"
+    if days <= VOLUME_BUCKET_WEEK_MAX:
+        return "week"
+    if days <= VOLUME_BUCKET_MONTH_MAX:
+        return "month"
+    return "year"
+
+
+def _empty_disc() -> dict[str, float]:
+    return {d_id: 0.0 for d_id, _, _ in DISCIPLINES}
+
+
+def _accumulate_row(target: dict[str, Any], row: dict[str, Any]) -> None:
+    target["end"] = row["date"]
+    target["hours"] += float(row.get("hours") or 0)
+    for disc_id, val in (row.get("by_discipline") or {}).items():
+        target["by_discipline"][disc_id] = target["by_discipline"].get(
+            disc_id, 0.0
+        ) + float(val or 0)
+
+
+def _bar_from_group(group: dict[str, Any], label: str) -> dict[str, Any]:
+    return {
+        "label": label,
+        "start": group["start"],
+        "end": group["end"],
+        "hours": round(float(group["hours"]), 2),
+        "by_discipline": {
+            k: round(v, 2) for k, v in group["by_discipline"].items()
+        },
+    }
+
+
+def _label_day(iso: str) -> str:
+    return f"{iso[8:10]}.{iso[5:7]}"
+
+
+def _label_week(start_s: str, end_s: str) -> str:
+    if end_s == start_s:
+        return _label_day(start_s)
+    return f"{_label_day(start_s)}–{_label_day(end_s)}"
+
+
+def _label_month(year: int, month: int) -> str:
+    return f"{_MONTH_NB[month - 1]} {str(year)[2:]}"
+
+
+def _label_year(year: int) -> str:
+    return str(year)
+
+
 def bucket_volume_series(
     daily: list[dict[str, Any]],
     *,
-    max_bars: int = 31,
+    max_bars: int | None = None,
 ) -> dict[str, Any]:
-    """Collapse daily hours into week buckets when the span is too wide for bars.
+    """Collapse daily hours into day/week/month/year bars for the period span.
 
-    Returns ``{bucket: "day"|"week", bars: [{label, start, end, hours, by_discipline}]}``.
+    ``max_bars`` is retained for tests: when set, forces day if ``len(daily)``
+    fits, else week (legacy day/week-only behaviour). Prefer
+    ``choose_volume_bucket`` for production.
+
+    Returns ``{bucket, bars: [{label, start, end, hours, by_discipline}]}``.
+    Empty windows still emit zero-height bars for a sensible axis.
     """
     if not daily:
         return {"bucket": "day", "bars": []}
-    if len(daily) <= max_bars:
+
+    n = len(daily)
+    if max_bars is not None:
+        bucket = "day" if n <= max_bars else "week"
+    else:
+        bucket = choose_volume_bucket(n)
+
+    if bucket == "day":
         bars = []
         for row in daily:
             d = row["date"]
-            # DD.MM for Norwegian short labels
-            label = f"{d[8:10]}.{d[5:7]}"
             bars.append(
                 {
-                    "label": label,
+                    "label": _label_day(d),
                     "start": d,
                     "end": d,
                     "hours": float(row.get("hours") or 0),
@@ -211,52 +305,51 @@ def bucket_volume_series(
             )
         return {"bucket": "day", "bars": bars}
 
-    # Week buckets (Mon–Sun ISO), merge days
-    weeks: list[dict[str, Any]] = []
+    groups: list[dict[str, Any]] = []
     current: dict[str, Any] | None = None
+
     for row in daily:
         d = date.fromisoformat(row["date"])
-        week_start = d - timedelta(days=d.weekday())
-        week_key = week_start.isoformat()
-        if current is None or current["_key"] != week_key:
+        if bucket == "week":
+            key_date = d - timedelta(days=d.weekday())
+            key = key_date.isoformat()
+            start_iso = key
+        elif bucket == "month":
+            key = f"{d.year:04d}-{d.month:02d}"
+            start_iso = date(d.year, d.month, 1).isoformat()
+        else:  # year
+            key = f"{d.year:04d}"
+            start_iso = date(d.year, 1, 1).isoformat()
+
+        if current is None or current["_key"] != key:
             if current is not None:
-                weeks.append(current)
+                groups.append(current)
             current = {
-                "_key": week_key,
-                "start": week_key,
+                "_key": key,
+                "start": start_iso,
                 "end": row["date"],
                 "hours": 0.0,
-                "by_discipline": {d_id: 0.0 for d_id, _, _ in DISCIPLINES},
+                "by_discipline": _empty_disc(),
+                "_year": d.year,
+                "_month": d.month,
             }
         assert current is not None
-        current["end"] = row["date"]
-        current["hours"] += float(row.get("hours") or 0)
-        for disc_id, val in (row.get("by_discipline") or {}).items():
-            current["by_discipline"][disc_id] = (
-                current["by_discipline"].get(disc_id, 0.0) + float(val or 0)
-            )
+        _accumulate_row(current, row)
+
     if current is not None:
-        weeks.append(current)
+        groups.append(current)
 
     bars = []
-    for w in weeks:
-        start_s = w["start"]
-        end_s = w["end"]
-        label = f"{start_s[8:10]}.{start_s[5:7]}"
-        if end_s != start_s:
-            label = f"{start_s[8:10]}.{start_s[5:7]}–{end_s[8:10]}.{end_s[5:7]}"
-        bars.append(
-            {
-                "label": label,
-                "start": start_s,
-                "end": end_s,
-                "hours": round(float(w["hours"]), 2),
-                "by_discipline": {
-                    k: round(v, 2) for k, v in w["by_discipline"].items()
-                },
-            }
-        )
-    return {"bucket": "week", "bars": bars}
+    for g in groups:
+        if bucket == "week":
+            label = _label_week(g["start"], g["end"])
+        elif bucket == "month":
+            label = _label_month(int(g["_year"]), int(g["_month"]))
+        else:
+            label = _label_year(int(g["_year"]))
+        bars.append(_bar_from_group(g, label))
+
+    return {"bucket": bucket, "bars": bars}
 
 
 def demo_daily_hours(

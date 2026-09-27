@@ -2,6 +2,7 @@ import {
   renderDisciplineBars,
   renderLoadLines,
   renderVolumeBars,
+  volumeBucketTitle,
 } from './charts.js'
 import {
   SETUP_STEPS,
@@ -1321,8 +1322,7 @@ function renderLoadCard(dash) {
         : null
   const actCount = training.activity_count ?? hours.activity_count
   const label = periodLabelFromDash(dash)
-  const volTitle =
-    volume.bucket === 'week' ? 'Volum per uke' : 'Volum per dag'
+  const volTitle = volumeBucketTitle(volume.bucket)
   return `
     <section class="section-block" data-testid="period-training">
       <div class="section-head"><h2>Trening (${escapeHtml(label)})</h2>${badge}</div>

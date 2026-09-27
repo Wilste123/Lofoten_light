@@ -26,7 +26,7 @@ Under periodevalget (fortsatt over sesong-compliance):
 
 | Graf | Data | Merknad |
 |------|------|---------|
-| **Volum per dag/uke** | `training.charts.volume` | Daglige søyler; uker når vinduet > 31 d |
+| **Volum per dag/uke/måned/år** | `training.charts.volume` | Dynamisk bucket: ≤31 d → dag; ≤75 d → uke; ≤550 d → måned; ellers år |
 | **Per disiplin** | `training.charts.by_discipline` | Horisontale søyler (Svøm/Sykkel/Løp/Styrke) |
 | **Belastning CTL/ATL** | `load.series` | Linjegraf hvis wellness har CTL/ATL; ellers tom tekst |
 

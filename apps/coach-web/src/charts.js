@@ -15,12 +15,26 @@ function esc(s) {
     .replace(/"/g, '&quot;')
 }
 
+const VOLUME_BUCKET_NB = {
+  day: 'dag',
+  week: 'uke',
+  month: 'måned',
+  year: 'år',
+}
+
+/** Norwegian title for volume chart grain. */
+export function volumeBucketTitle(bucket) {
+  const b = VOLUME_BUCKET_NB[bucket] || VOLUME_BUCKET_NB.day
+  return `Volum per ${b}`
+}
+
 /**
- * Vertical bar chart for period volume (day or week bars).
+ * Vertical bar chart for period volume (day / week / month / year bars).
  * @param {{ bars: Array<{label:string,hours:number}>, bucket?: string }} volume
  */
 export function renderVolumeBars(volume) {
   const bars = volume?.bars || []
+  const grain = VOLUME_BUCKET_NB[volume?.bucket] || 'dag'
   if (!bars.length) {
     return `<p class="muted tight chart-empty">Ingen volumdata for perioden.</p>`
   }
@@ -43,7 +57,7 @@ export function renderVolumeBars(volume) {
     })
     .join('')
   return `
-    <div class="chart chart-volume" role="img" aria-label="Volum per ${volume.bucket === 'week' ? 'uke' : 'dag'}">
+    <div class="chart chart-volume" role="img" aria-label="Volum per ${grain}">
       <div class="chart-bars">${cols}</div>
     </div>`
 }

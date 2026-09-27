@@ -930,11 +930,61 @@ function bindOnboarding() {
   })
 }
 
-function renderChat() {
-  const draft = state.chatDraft || ''
-  const bubbles = state.messages
+function renderChatBubbles(messages, emptyHtml) {
+  const bubbles = (messages || [])
     .map((m) => `<div class="bubble ${m.role}">${escapeHtml(m.content)}</div>`)
     .join('')
+  return bubbles || emptyHtml || ''
+}
+
+function renderChatComposer({
+  formId = 'chat-form',
+  inputId = 'chat-input',
+  draft = '',
+  busy = false,
+  placeholder = 'Spør treneren…',
+  sticky = false,
+  ariaLabel = 'Chat med treneren',
+} = {}) {
+  return `
+    <form class="chat-form${sticky ? ' chat-composer-sticky' : ''}" id="${escapeHtml(formId)}" aria-label="${escapeHtml(ariaLabel)}">
+      <input id="${escapeHtml(inputId)}" autocomplete="off" placeholder="${escapeHtml(placeholder)}" value="${escapeHtml(draft)}" ${busy ? 'disabled' : ''} />
+      <button class="btn btn-primary" type="submit" ${busy ? 'disabled' : ''}>Send</button>
+    </form>`
+}
+
+function applyChatResponse(data, { mirrorToMain = false, userText = '' } = {}) {
+  if (data.workout_proposal?.workouts?.length) {
+    state.workoutProposal = data.workout_proposal
+    state.workoutRemoval = null
+    if (data.proposal_hint) toast(data.proposal_hint)
+  }
+  if (data.workout_removal) {
+    state.workoutRemoval = data.workout_removal
+    state.workoutProposal = null
+    if (data.removal_hint) toast(data.removal_hint)
+  }
+  if (data.athlete_type_proposal) {
+    state.athleteTypeProposal = data.athlete_type_proposal
+  }
+  if (mirrorToMain && userText) {
+    state.messages = [
+      ...state.messages,
+      { role: 'user', content: userText },
+      data.message || { role: 'assistant', content: data.reply || '…' },
+    ]
+  }
+}
+
+async function sendCoachMessage(message, { sessionId = null } = {}) {
+  const body = { message }
+  if (sessionId) body.session_id = sessionId
+  return api('/v1/chat', { method: 'POST', body })
+}
+
+function renderChat() {
+  const draft = state.chatDraft || ''
+  const empty = `<p class="muted">Skriv til ${escapeHtml(state.athlete.coach_display_name)} — eller åpne en økt under Økter. Spør f.eks. «hva har jeg denne uka?».</p>`
   const proposal = state.workoutProposal
   const removal = state.workoutRemoval
   const typeProp = state.athleteTypeProposal
@@ -1039,12 +1089,15 @@ function renderChat() {
     proposalCard = `<p class="intervals-status is-ok">${escapeHtml(state.workoutSync.message)}</p>`
   }
   return `
-    <div class="chat-log" id="chat-log">${bubbles || `<p class="muted">Skriv til ${escapeHtml(state.athlete.coach_display_name)} — eller åpne en økt under Økter. Spør f.eks. «hva har jeg denne uka?».</p>`}</div>
+    <div class="chat-log" id="chat-log">${renderChatBubbles(state.messages, empty)}</div>
     ${proposalCard}
-    <form class="chat-form" id="chat-form">
-      <input id="chat-input" autocomplete="off" placeholder="Spør treneren…" value="${escapeHtml(draft)}" ${state.busy ? 'disabled' : ''} />
-      <button class="btn btn-primary" type="submit" ${state.busy ? 'disabled' : ''}>Send</button>
-    </form>
+    ${renderChatComposer({
+      formId: 'chat-form',
+      inputId: 'chat-input',
+      draft,
+      busy: state.busy,
+      placeholder: 'Spør treneren…',
+    })}
     ${state.error && state.tab === 'coach' ? `<p class="error">${escapeHtml(state.error)}</p>` : ''}
   `
 }
@@ -1594,9 +1647,10 @@ function renderSessionDetail() {
   const structureHtml = renderSessionStructure(d.structure || d.coach_block?.structure, d.steps)
   const coachBody = d.coach_block?.body || d.description || ''
   const occChips = formatDateChips(d.dates || [])
-  const chatBubbles = (state.sessionChat.messages || [])
-    .map((m) => `<div class="bubble ${m.role}">${escapeHtml(m.content)}</div>`)
-    .join('')
+  const chatBubbles = renderChatBubbles(
+    state.sessionChat.messages,
+    `<p class="muted">F.eks. «kan vi kutte hovedsettet?» eller «gjør den mer spesifikk for Lofoten».</p>`,
+  )
   const editOpen = state.sessionEditOpen
   const canEdit = Boolean(d.editable)
   const sportOpts = [
@@ -1728,13 +1782,10 @@ function renderSessionDetail() {
 
       <section class="section-block session-chat-block" id="session-chat-block">
         <h3>Spør coach om denne</h3>
-        <p class="muted tight">Kontekst: denne økten + knowledge for ${escapeHtml(
-          s.discipline_label || s.discipline || 'sporten',
-        )}. Endringer → forhåndsvis → bekreft.</p>
-        <div class="chat-log session-chat-log" id="session-chat-log">${
-          chatBubbles ||
-          `<p class="muted">F.eks. «kan vi kutte hovedsettet?» eller «gjør den mer spesifikk for Lofoten».</p>`
-        }</div>
+        <p class="muted tight">Samme coach-chat som Coach-fanen — fokusert på denne økten (${escapeHtml(
+          s.discipline_label || s.discipline || 'sport',
+        )}). Endringer → forhåndsvis → bekreft.</p>
+        <div class="chat-log session-chat-log" id="session-chat-log">${chatBubbles}</div>
         <div class="session-chat-chips" aria-label="Hurtigspørsmål">${chips}</div>
         ${state.sessionChat.error ? `<p class="error">${escapeHtml(state.sessionChat.error)}</p>` : ''}
       </section>
@@ -1762,10 +1813,15 @@ function renderSessionDetail() {
         <p class="muted tight">Lagres i appen — ikke i Intervals.</p>
       </section>
 
-      <form class="chat-form session-chat-composer" id="session-chat-form" aria-label="Chat om denne økten">
-        <input id="session-chat-input" autocomplete="off" placeholder="Spør om denne økten…" value="${escapeHtml(state.sessionChat.draft || '')}" ${state.sessionChat.busy ? 'disabled' : ''} />
-        <button class="btn btn-primary" type="submit" ${state.sessionChat.busy ? 'disabled' : ''}>Send</button>
-      </form>
+      ${renderChatComposer({
+        formId: 'session-chat-form',
+        inputId: 'session-chat-input',
+        draft: state.sessionChat.draft || '',
+        busy: state.sessionChat.busy,
+        placeholder: 'Spør om denne økten…',
+        sticky: true,
+        ariaLabel: 'Chat om denne økten',
+      })}
     </div>`
 }
 
@@ -2303,19 +2359,9 @@ function bindApp() {
     const log = document.getElementById('chat-log')
     if (log) log.scrollTop = log.scrollHeight
     try {
-      const data = await api('/v1/chat', { method: 'POST', body: { message } })
+      const data = await sendCoachMessage(message)
       state.messages.push({ role: 'assistant', content: data.reply })
-      if (data.workout_proposal?.workouts?.length) {
-        state.workoutProposal = data.workout_proposal
-        if (data.proposal_hint) toast(data.proposal_hint)
-      }
-      if (data.workout_removal) {
-        state.workoutRemoval = data.workout_removal
-        if (data.removal_hint) toast(data.removal_hint)
-      }
-      if (data.athlete_type_proposal) {
-        state.athleteTypeProposal = data.athlete_type_proposal
-      }
+      applyChatResponse(data, { mirrorToMain: false })
     } catch (err) {
       state.error = err.message || 'Chat feilet'
       state.messages.pop()
@@ -2685,29 +2731,20 @@ function bindApp() {
     state.sessionChat.draft = ''
     state.sessionChat.busy = true
     state.sessionChat.error = ''
+    state.workoutProposal = null
+    state.workoutRemoval = null
+    state.workoutSync.pending = null
+    state.workoutSync.error = ''
     render()
     try {
-      const data = await api('/v1/chat', {
-        method: 'POST',
-        body: { message: text, session_id: detail.id },
-      })
+      // Same /v1/chat + build_system_prompt as Coach-fanen; session_id only focuses context
+      const data = await sendCoachMessage(text, { sessionId: detail.id })
       state.sessionChat.messages = [
         ...state.sessionChat.messages,
         { role: 'assistant', content: data.reply || '…' },
       ]
-      // Also mirror into main coach history (API already persisted)
-      if (data.message) {
-        state.messages = [...state.messages, { role: 'user', content: text }, data.message]
-      }
-      if (data.workout_proposal?.workouts?.length) {
-        state.workoutProposal = data.workout_proposal
-        state.workoutRemoval = null
-      }
-      if (data.workout_removal) {
-        state.workoutRemoval = data.workout_removal
-        state.workoutProposal = null
-      }
-      toast(data.proposal_hint || 'Svar fra coach')
+      applyChatResponse(data, { mirrorToMain: true, userText: text })
+      if (!data.proposal_hint && !data.removal_hint) toast('Svar fra coach')
     } catch (err) {
       state.sessionChat.error = err.message || 'Samtale feilet'
     } finally {

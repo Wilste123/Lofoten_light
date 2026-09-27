@@ -532,26 +532,25 @@ def select_knowledge_paths(
 
     if mode == "plan":
         paths.extend(_athlete_type_plan_paths(draft, blob))
-    elif mode == "session":
-        # Session-detail chat: sport pack first, then light type hints
-        disc = _discipline_key(
-            (focused_session or {}).get("discipline")
-            or (focused_session or {}).get("sport")
-            or ""
-        )
-        for p in SESSION_SPORT_PACKS.get(disc, SESSION_SPORT_PACKS["other"]):
-            if p not in paths:
-                paths.append(p)
-        paths.append("load-and-intensity.md")
-        for triggers, files in SESSION_TYPE_PACKS:
-            if any(t in blob for t in triggers):
-                for f in files:
-                    if f not in paths:
-                        paths.append(f)
     elif mode in ("setup", "chat"):
         # Lighter core + type-aware hints
         paths.extend(_athlete_type_plan_paths(draft, blob)[:4])
         paths.append("load-and-intensity.md")
+        # Same chat retrieval — extended when focused økt is in context
+        if focused_session:
+            disc = _discipline_key(
+                focused_session.get("discipline")
+                or focused_session.get("sport")
+                or ""
+            )
+            for p in SESSION_SPORT_PACKS.get(disc, SESSION_SPORT_PACKS["other"]):
+                if p not in paths:
+                    paths.append(p)
+            for triggers, files in SESSION_TYPE_PACKS:
+                if any(t in blob for t in triggers):
+                    for f in files:
+                        if f not in paths:
+                            paths.append(f)
 
     paths.extend(ERNARING_CORE)
 
@@ -561,8 +560,7 @@ def select_knowledge_paths(
             for f in files:
                 if f not in paths and f not in conditional:
                     conditional.append(f)
-    # Session mode: allow a few more conditional hits (sport already packed)
-    cap = max_conditional + (4 if mode == "session" else 0)
+    cap = max_conditional + (4 if focused_session else 0)
     paths.extend(conditional[:cap])
 
     # Deduplicate preserving order
@@ -587,7 +585,7 @@ def load_knowledge_bundle(
     total_budget: int | None = None,
 ) -> str:
     """Backward-compatible loader; when query/draft/session given, uses adaptive selection."""
-    adaptive = bool(query_text or draft or focused_session or mode == "session")
+    adaptive = bool(query_text or draft or focused_session)
     if not adaptive:
         # Legacy chat path
         parts: list[str] = []
@@ -603,9 +601,9 @@ def load_knowledge_bundle(
                 parts.append(f"### {rel}\n{chunk}")
         return "\n\n".join(parts)
 
-    budget = total_budget or (
-        9000 if mode == "plan" else (7500 if mode == "session" else 6500)
-    )
+    budget = total_budget or (9000 if mode == "plan" else 6500)
+    if focused_session and mode == "chat":
+        budget = total_budget or 7500
     paths = select_knowledge_paths(
         mode=mode,
         query_text=query_text,

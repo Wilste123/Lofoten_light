@@ -95,7 +95,7 @@ def test_session_knowledge_paths_inject_sport_pack():
         "steps": ["Warmup", "40m Z2", "Cooldown"],
     }
     paths = select_knowledge_paths(
-        mode="session",
+        mode="chat",
         focused_session=bike,
         query_text="Kan vi kutte hovedsettet?",
     )
@@ -108,7 +108,7 @@ def test_session_knowledge_paths_inject_sport_pack():
         "description": "elghufs staver terreng",
         "steps": ["Oppvarming", "5x4 elghufs"],
     }
-    rpaths = select_knowledge_paths(mode="session", focused_session=run)
+    rpaths = select_knowledge_paths(mode="chat", focused_session=run)
     assert any(p.startswith("lop/") for p in rpaths)
     assert "coach/opv-nokkelokter.md" in rpaths
 
@@ -385,11 +385,12 @@ def test_chat_with_session_id_focus(client):
     data = r.json()
     assert data["focused_session_id"] == "evt:focus"
     assert "focused_session" in captured["system"] or "Easy Z2" in captured["system"]
-    # Knowledge-grounded: bike pack must be in system prompt
+    # Knowledge-grounded via same chat mode + focused_session sport pack
     assert "sykkel/" in captured["system"] or "intervaller-og-sonearbeid" in captured["system"]
-    assert data.get("knowledge", {}).get("mode") == "session"
+    assert data.get("knowledge", {}).get("mode") == "chat"
     assert data["knowledge"].get("discipline") == "bike"
     assert any(p.startswith("sykkel/") for p in data["knowledge"].get("paths") or [])
+    assert "Pushback" in captured["system"] or "pushback" in captured["system"].lower() or "én klar anbefaling" in captured["system"].lower() or "en klar anbefaling" in captured["system"].lower()
 
 
 def test_session_edit_preview_creates_pending(client):

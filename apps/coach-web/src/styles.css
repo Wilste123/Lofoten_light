@@ -1218,7 +1218,8 @@ button.linkish:hover {
   outline: none;
 }
 
-.session-chat-composer {
+.session-chat-composer,
+.chat-composer-sticky {
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
@@ -1233,7 +1234,8 @@ button.linkish:hover {
   box-shadow: 0 -8px 24px color-mix(in srgb, #000 28%, transparent);
 }
 
-.session-chat-composer input {
+.session-chat-composer input,
+.chat-composer-sticky input {
   flex: 1;
   min-width: 0;
 }
@@ -1268,7 +1270,8 @@ button.linkish:hover {
     grid-template-columns: 1fr;
   }
 
-  .session-chat-composer {
+  .session-chat-composer,
+  .chat-composer-sticky {
     padding-left: 0.75rem;
     padding-right: 0.75rem;
   }

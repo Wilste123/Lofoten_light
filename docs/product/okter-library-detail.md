@@ -17,11 +17,11 @@ Short product note for the workout library / detail redesign (PR #13 branch).
 
 - `GET /v1/sessions` → adds `library[]`, `view_modes`, `default_view`
 - `GET /v1/sessions/{id}` → detail (`steps`, `structure.phases`, `coach_block`, `editable_fields` inkl. warmup/main/cooldown)
-- `POST /v1/chat` → optional `session_id` → `focused_session` + **mode=session knowledge** (sport packs under `knowledge/sykkel|lop|svom/…`)
-  - Response includes `knowledge: { mode, discipline, paths }`
+- `POST /v1/chat` → optional `session_id` → same `build_system_prompt` as Coach-fanen; `focused_session` extends knowledge (sport packs) + regler
+  - Response includes `knowledge: { mode: "chat", discipline, paths }`
 - `POST /v1/sessions/{id}/edit/preview` → pending `workout_push` (same confirm as chat)
 
-No Pondus. ICU writes only after confirm.
+UI: session detail reuses `renderChatComposer` / `renderChatBubbles` / `sendCoachMessage` from main chat — sticky composer only.
 
 ## Deploy verify
 

@@ -56,10 +56,10 @@ def build_system_prompt(
     focused_session: dict[str, Any] | None = None,
     user_message: str = "",
 ) -> str:
-    """Build coach system prompt.
+    """Single coach system prompt for main chat and Økter detail chat.
 
-    When ``focused_session`` is set (Økter detail chat), knowledge retrieval
-    uses mode=session and injects sport/session-type packs from knowledge/.
+    Session focus only extends knowledge retrieval + a few regler bullets —
+    no separate prompt builder.
     """
     personality = athlete.get("coach_personality") or "direkte"
     hint = PERSONALITY_HINTS.get(personality, PERSONALITY_HINTS["direkte"])
@@ -70,7 +70,6 @@ def build_system_prompt(
     focused = focused_session
     if focused is None and isinstance(overview_stub, dict):
         focused = overview_stub.get("focused_session")
-    mode = "session" if focused else "chat"
     q = query_text or session_query_text(focused, user_message=user_message)
     draft = {
         "athlete_type": athlete.get("athlete_type"),
@@ -81,22 +80,26 @@ def build_system_prompt(
     }
     knowledge = load_knowledge_bundle(
         knowledge_dir,
-        query_text=q,
+        query_text=q or " ",  # force adaptive path when we have athlete draft
         draft=draft,
         focused_session=focused,
-        mode=mode,
+        mode="chat",
     )
     overview_json = json.dumps(overview_stub or {}, ensure_ascii=False)
     atype = athlete.get("athlete_type") or "(ikke satt)"
-    session_rule = ""
+    focused_bullets = ""
     if focused:
-        session_rule = (
-            "- focused_session er aktiv: svar og foreslå endringer ut fra knowledge "
-            "for DENNE sporten/økttypen (intervaller, soner, Plan B). "
-            "Bruk konkrete steg (Warmup / Main / Cooldown) i description ved workout_proposal.\n"
-            "- Samme trenerstemme som ellers: ærlig, trygg, ikke tippy. "
-            "Hvis utøveren ber om å gjøre økten hardere/lengre på en måte som bryter "
-            "knowledge eller skaderegler: si nei, forklar kort hvorfor, gi bedre alternativ.\n"
+        focused_bullets = (
+            "- focused_session finnes i snapshotet: utøveren er i økt-detaljvisning. "
+            "Svar konkret om DEN økten (beskrivelse/steg/struktur). Ikke bytt tema uten at de ber om det.\n"
+            "- Bruk knowledge for sporten/økttypen (intervaller, soner, Plan B). "
+            "Ved workout_proposal: konkrete Warmup / Main / Cooldown-steg; behold dato med mindre de ber om å flytte.\n"
+            "- Hvis de ber om hardere/lengre økt som bryter knowledge eller skaderegler: si nei, kort hvorfor, bedre alternativ.\n"
+        )
+    else:
+        focused_bullets = (
+            "- Hvis feltet focused_session finnes i snapshotet: utøveren er i økt-detaljvisning. "
+            "Svar konkret om DEN økten (beskrivelse/steg). Ikke bytt tema uten at de ber om det.\n"
         )
 
     return f"""Du er {coach}, personlig utholdenhetstrener for {name}.
@@ -105,23 +108,18 @@ Stil-notat fra utøveren: {athlete.get("coach_style_note") or "(ingen)"}
 Nåværende hovedprofil / utøvertype: {atype}
 (Typen er muterbar over tid — f.eks. generell → løper → halvmaraton/maraton når målet blir klart.)
 
-Stemme (alltid — også i økt-detaljchat):
-- Ærlig og trygg: én klar anbefaling med begrunnelse i knowledge/profil — ikke «her er noen tips».
-- Ikke tippy, ikke motivasjonsplakat, ikke kundeservice. Du er hovedtrener.
-- Pushback: når forespørsel er urealistisk (2019-volum, for hard kvalitet, manglende Plan B, skadesignaler), si nei og gi et smartere alternativ.
-- Ros kontinuitet og smarte valg — ikke hero-TSS eller enkeltøkter.
-
 Regler:
-- Én klar anbefaling; ikke generisk motivasjonsprat.
+- Ærlig og trygg: én klar anbefaling med begrunnelse i knowledge/profil — ikke tips-liste, motivasjonsplakat eller kundeservice.
+- Pushback når forespørsel er urealistisk (2019-volum, for hard kvalitet, manglende Plan B, skadesignaler): si nei og gi smartere alternativ.
+- Ros kontinuitet og smarte valg — ikke hero-TSS.
 - Ikke still medisinsk diagnose. Ved smerte/GI: tilpass råd og anbefal fagperson ved behov.
 - Ikke anta Williams historikk med mindre det står i profilen.
 - Ernæring/IBS: les GI-feltene i profilen; bruk knowledge/ernaring; aldri diagnostiser.
 - Intervals eier øktdetaljer; du eier mål/avtaler/skade/ernæring/form-kontekst.
 - Hvis overblikk mangler ICU-data: si ærlig at belastning krever Intervals-kobling.
 - «Hva har jeg denne uka?» / kommende økter: bruk feltet sessions i snapshotet (upcoming/today/recent). Ikke finn opp økter.
-- Hvis feltet focused_session finnes i snapshotet: utøveren er i økt-detaljvisning. Svar konkret om DEN økten (beskrivelse/steg). Ikke bytt tema uten at de ber om det.
-{session_rule}- Når utøveren ber om å legge inn / endre en konkret økt på Intervals-kalenderen:
-  1) Skriv kort råd på norsk — forankret i knowledge over; avvis usikre endringer.
+{focused_bullets}- Når utøveren ber om å legge inn / endre en konkret økt på Intervals-kalenderen:
+  1) Skriv kort råd på norsk — forankret i knowledge; avvis usikre endringer.
   2) Avslutt med ÉN fenced code block merket workout_proposal (ikke vanlig json), med:
      {{"workouts":[{{"name":"...","date":"YYYY-MM-DD","sport":"bike|run|swim|strength|other","duration_minutes":60,"description":"...","start_time":"07:00"}}]}}
   3) Du synker IKKE selv — utøveren bekrefter i appen (forhåndsvis → sync).
@@ -158,7 +156,6 @@ def knowledge_meta_for_chat(
     user_message: str = "",
 ) -> dict[str, Any]:
     """Public meta for API responses / tests (paths used for this turn)."""
-    mode = "session" if focused_session else "chat"
     draft = None
     if athlete:
         draft = {
@@ -170,10 +167,11 @@ def knowledge_meta_for_chat(
         }
     return knowledge_selection_meta(
         knowledge_dir,
-        query_text=session_query_text(focused_session, user_message=user_message),
+        query_text=session_query_text(focused_session, user_message=user_message)
+        or " ",
         draft=draft,
         focused_session=focused_session,
-        mode=mode,
+        mode="chat",
     )
 
 

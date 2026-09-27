@@ -14,7 +14,6 @@
 
 ## Belastning / skade / intensitet
 
-<<<<<<< HEAD
 - Gabbett TJ. Training-injury prevention paradox. BJSM 2016. https://bjsm.bmj.com/content/50/5/273
 - Soligard T et al. IOC consensus: load in sport and risk of injury. BJSM 2016 (PDF i `external/`).
 - Seiler S. What is best practice for training intensity…? Int J Sports Physiol Perform 2010.
@@ -31,11 +30,6 @@ Science for Sport — ACWR: https://www.scienceforsport.com/acutechronic-workloa
 ## Målrealisme / dose
 
 Heuristikk i `coach/maalrealisme.md` bygger på load-konsensus + spesifisitet + at adaptasjon tar tid — ikke en prediksjonsmodell. Tidmål uten nylig test = usikkert.
-=======
-- Soligard et al. How much is too much? IOC consensus on load in sport and risk of injury. BJSM 2016 (PDF i `external/`).
-- Gabbett TJ. The training–injury prevention paradox. BJSM 2016. https://bjsm.bmj.com/content/50/5/273
-- Science for Sport — ACWR: https://www.scienceforsport.com/acutechronic-workload-ratio/
->>>>>>> origin/cursor/fix-sessions-per-week-sync-006e
 
 ## Intensitetsfordeling (utholdenhet)
 

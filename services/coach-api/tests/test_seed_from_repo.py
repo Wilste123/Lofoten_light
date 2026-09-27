@@ -61,6 +61,7 @@ def test_seed_populates_sqlite_and_profile(tmp_path: Path):
     assert athlete["display_name"] == "William"
     assert athlete["username"] == "william"
     assert athlete["coach_display_name"] == "Ole"
+    assert athlete["setup_completed"] is True
     assert athlete["ftp_tested"] == 210.0
     assert athlete["goal_race_date"] == "2027-08-20"
     assert athlete["season_bike_hours_target"] and athlete["season_bike_hours_target"] > 300
@@ -89,8 +90,75 @@ def test_seed_populates_sqlite_and_profile(tmp_path: Path):
     )
     assert result2["athlete_id"] == SEED_ATHLETE_ID
     assert result2["created"] is False
+    assert result2.get("preserved") is True
     with db_session(db) as conn:
         assert len(list_plan_blocks(conn, SEED_ATHLETE_ID)) == 11
+
+
+def test_reseed_preserves_custom_goals_blocks_and_secrets(tmp_path: Path):
+    """Boot re-seed must not wipe a completed William profile or Intervals secrets."""
+    from db import get_athlete_secrets, upsert_athlete_secrets, update_athlete
+
+    db = tmp_path / "coach.db"
+    athletes = tmp_path / "athletes"
+    seed_athlete(
+        repo_root=REPO_ROOT,
+        athlete_docs=ATHLETE_DOCS,
+        plans_dir=PLANS,
+        db_path=db,
+        athletes_dir=athletes,
+    )
+    custom_goal = "CUSTOM: ikke overskriv ved re-seed"
+    custom_profile = "# Custom runtime profile\n\nBehold meg.\n"
+    (athletes / SEED_ATHLETE_ID / "profile.md").write_text(
+        custom_profile, encoding="utf-8"
+    )
+
+    with db_session(db) as conn:
+        update_athlete(
+            conn,
+            SEED_ATHLETE_ID,
+            {"goal_text": custom_goal, "setup_completed": True},
+        )
+        upsert_athlete_secrets(
+            conn,
+            SEED_ATHLETE_ID,
+            intervals_api_key="icu-secret-key",
+            intervals_athlete_id="i12345",
+        )
+        # Drop one plan block to prove re-seed does not restore B0–B10
+        blocks_before = list_plan_blocks(conn, SEED_ATHLETE_ID)
+        assert len(blocks_before) == 11
+        conn.execute(
+            "DELETE FROM plan_blocks WHERE id = ?",
+            (f"{SEED_ATHLETE_ID}-b10",),
+        )
+
+    result = seed_athlete(
+        repo_root=REPO_ROOT,
+        athlete_docs=ATHLETE_DOCS,
+        plans_dir=PLANS,
+        db_path=db,
+        athletes_dir=athletes,
+    )
+    assert result["preserved"] is True
+    assert result["created"] is False
+    assert result["setup_completed"] is True
+
+    with db_session(db) as conn:
+        athlete = get_athlete(conn, SEED_ATHLETE_ID)
+        blocks = list_plan_blocks(conn, SEED_ATHLETE_ID)
+        secrets = get_athlete_secrets(conn, SEED_ATHLETE_ID)
+
+    assert athlete["goal_text"] == custom_goal
+    assert athlete["setup_completed"] is True
+    assert len(blocks) == 10  # b10 still missing — not re-upserted
+    assert secrets is not None
+    assert secrets["intervals_api_key"] == "icu-secret-key"
+    assert secrets["intervals_athlete_id"] == "i12345"
+    assert (athletes / SEED_ATHLETE_ID / "profile.md").read_text(
+        encoding="utf-8"
+    ) == custom_profile
 
 
 def test_chat_system_prompt_loads_seeded_profile(tmp_path: Path):

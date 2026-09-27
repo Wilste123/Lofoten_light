@@ -30,6 +30,7 @@ from db import (
     init_db,
     insert_athlete,
     insert_plan_block,
+    list_plan_blocks,
     update_athlete,
     update_plan_block,
 )
@@ -454,6 +455,7 @@ def build_athlete_payload(
         "season_strength_hours_target": float(SEASON_STRENGTH_H),
         "season_start_date": SEASON_START,
         "goal_race_date": GOAL_RACE_DATE,
+        "setup_completed": True,
         "_sources": {
             "profile": profile_src,
             "goals": goals_src,
@@ -582,60 +584,90 @@ def seed_athlete(
                     "coach_display_name": payload["coach_display_name"],
                     "coach_personality": payload["coach_personality"],
                     "coach_style_note": payload["coach_style_note"],
+                    "setup_completed": True,
                 },
             )
+            blocks = upsert_plan_blocks(conn, athlete_id)
+            preserved = False
         else:
-            athlete = update_athlete(conn, athlete_id, {
-                k: payload[k]
-                for k in (
-                    "username",
-                    "display_name",
-                    "timezone",
-                    "coach_display_name",
-                    "coach_personality",
-                    "coach_style_note",
-                    "accent_color",
-                    "goal_text",
-                    "injury_notes",
-                    "agreements",
-                    "weekly_focus",
-                    "ftp_tested",
-                    "ftp_tested_at",
-                    "weight_kg",
-                    "age_years",
-                    "sport",
-                    "schedule_notes",
-                    "notes",
-                    "season_swim_hours_target",
-                    "season_bike_hours_target",
-                    "season_run_hours_target",
-                    "season_strength_hours_target",
-                    "season_start_date",
-                    "goal_race_date",
-                )
-                if k != "username" or payload.get("username")
-            })
-        blocks = upsert_plan_blocks(conn, athlete_id)
+            existing = get_athlete(conn, athlete_id)
+            # Already through setup (seeded William or confirmed user): never wipe
+            # goals / plan_blocks / profile / Intervals secrets on re-seed / boot.
+            if existing and bool(existing.get("setup_completed")):
+                ensure: dict[str, Any] = {"setup_completed": True}
+                if payload.get("username") and not existing.get("username"):
+                    ensure["username"] = payload["username"]
+                elif (
+                    athlete_id == SEED_ATHLETE_ID
+                    and existing.get("username") != SEED_USERNAME
+                ):
+                    # Keep preferred seed username if free / already william
+                    if existing.get("username") in (None, "", SEED_USERNAME):
+                        ensure["username"] = SEED_USERNAME
+                athlete = update_athlete(conn, athlete_id, ensure) or existing
+                blocks = list_plan_blocks(conn, athlete_id)
+                preserved = True
+            else:
+                athlete = update_athlete(conn, athlete_id, {
+                    k: payload[k]
+                    for k in (
+                        "username",
+                        "display_name",
+                        "timezone",
+                        "coach_display_name",
+                        "coach_personality",
+                        "coach_style_note",
+                        "accent_color",
+                        "goal_text",
+                        "injury_notes",
+                        "agreements",
+                        "weekly_focus",
+                        "ftp_tested",
+                        "ftp_tested_at",
+                        "weight_kg",
+                        "age_years",
+                        "sport",
+                        "schedule_notes",
+                        "notes",
+                        "season_swim_hours_target",
+                        "season_bike_hours_target",
+                        "season_run_hours_target",
+                        "season_strength_hours_target",
+                        "season_start_date",
+                        "goal_race_date",
+                        "setup_completed",
+                    )
+                    if k != "username" or payload.get("username")
+                })
+                blocks = upsert_plan_blocks(conn, athlete_id)
+                preserved = False
 
     assert athlete is not None
-    rich = compose_rich_profile_md(
-        athlete=athlete,
-        profile_src=sources["profile"],
-        goals_src=sources["goals"],
-        plager_src=sources["plager"],
-        soner_src=sources["soner"],
-    )
     dest = out_athletes / athlete_id
     dest.mkdir(parents=True, exist_ok=True)
     profile_path = dest / "profile.md"
-    profile_path.write_text(rich, encoding="utf-8")
+
+    if preserved and profile_path.is_file():
+        # Keep runtime profile.md (and never touch athlete_secrets)
+        pass
+    else:
+        rich = compose_rich_profile_md(
+            athlete=athlete,
+            profile_src=sources["profile"],
+            goals_src=sources["goals"],
+            plager_src=sources["plager"],
+            soner_src=sources["soner"],
+        )
+        profile_path.write_text(rich, encoding="utf-8")
 
     return {
         "dry_run": False,
         "created": created,
+        "preserved": preserved,
         "athlete_id": athlete_id,
         "display_name": athlete["display_name"],
         "coach_display_name": athlete["coach_display_name"],
+        "setup_completed": bool(athlete.get("setup_completed")),
         "goal_text": athlete.get("goal_text"),
         "goal_race_date": athlete.get("goal_race_date"),
         "ftp_tested": athlete.get("ftp_tested"),

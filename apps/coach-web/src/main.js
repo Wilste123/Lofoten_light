@@ -201,6 +201,7 @@ function slugifyUsername(raw) {
 /**
  * Reconnect to existing athlete via POST /v1/session/login.
  * Does not create profiles. Prefer username; athlete_id is advanced fallback.
+ * @returns {{ athlete: object, needs_setup: boolean }}
  */
 async function loginSession({ username, athleteId, inviteToken } = {}) {
   const uname = String(username || '').trim().toLowerCase()
@@ -225,12 +226,28 @@ async function loginSession({ username, athleteId, inviteToken } = {}) {
         : 'Ukjent profil-ID. Sjekk at ID er riktig, eller opprett ny bruker.',
     )
   }
-  return data.athlete
+  return {
+    athlete: data.athlete,
+    needs_setup: Boolean(data.needs_setup),
+  }
 }
 
 /** @deprecated use loginSession — kept name for call-site clarity with id/query */
 async function loginWithId(athleteId, inviteToken) {
   return loginSession({ athleteId, inviteToken })
+}
+
+/** After login: completed athletes enter the app; incomplete get AI setup. */
+async function enterAfterLogin(session, { welcome } = {}) {
+  const athlete = session.athlete
+  if (session.needs_setup) {
+    setAthleteId(athlete.id)
+    state.athlete = athlete
+    startRestartSetup()
+    toast('Fullfør veiledet setup')
+    return
+  }
+  await enterApp(athlete, { welcome })
 }
 
 async function bootstrap() {
@@ -241,11 +258,11 @@ async function bootstrap() {
     state.busy = true
     state.error = ''
     try {
-      const athlete = fromUser
+      const session = fromUser
         ? await loginSession({ username: fromUser })
         : await loginWithId(fromQuery)
-      await enterApp(athlete, {
-        welcome: `Hei ${athlete.display_name}. Jeg er ${athlete.coach_display_name}. Velkommen tilbake.`,
+      await enterAfterLogin(session, {
+        welcome: `Hei ${session.athlete.display_name}. Jeg er ${session.athlete.coach_display_name}. Velkommen tilbake.`,
       })
       // Drop query so refresh uses localStorage
       if (location.search) {
@@ -273,8 +290,8 @@ async function bootstrap() {
   }
 
   try {
-    const athlete = await loginWithId(id)
-    await enterApp(athlete)
+    const session = await loginWithId(id)
+    await enterAfterLogin(session)
   } catch (err) {
     clearAthleteId()
     state.athlete = null
@@ -538,13 +555,13 @@ function bindLogin() {
     render()
     try {
       // Prefer username when both filled
-      const athlete = username
+      const session = username
         ? await loginSession({ username, inviteToken })
         : await loginSession({ athleteId, inviteToken })
-      await enterApp(athlete, {
-        welcome: `Hei ${athlete.display_name}. Jeg er ${athlete.coach_display_name}. Velkommen tilbake — spør om mål, skade eller ukens fokus.`,
+      await enterAfterLogin(session, {
+        welcome: `Hei ${session.athlete.display_name}. Jeg er ${session.athlete.coach_display_name}. Velkommen tilbake — spør om mål, skade eller ukens fokus.`,
       })
-      toast('Innlogget')
+      if (!session.needs_setup) toast('Innlogget')
     } catch (err) {
       state.error = err.message || 'Kunne ikke logge inn'
       state.busy = false
@@ -558,9 +575,14 @@ async function runSeedWilliamLogin() {
   state.error = ''
   render()
   try {
-    const athlete = await loginSession({ username: 'william' })
-    await enterApp(athlete, {
-      welcome: `Hei ${athlete.display_name}. Jeg er ${athlete.coach_display_name}. Profilen er seedet fra repo — spør om avtaler, rygg eller ukens fokus.`,
+    const session = await loginSession({ username: 'william' })
+    if (session.needs_setup) {
+      throw new Error(
+        'William-profil mangler setup_completed — kjør seed på nytt (SEED_ON_BOOT).',
+      )
+    }
+    await enterAfterLogin(session, {
+      welcome: `Hei ${session.athlete.display_name}. Jeg er ${session.athlete.coach_display_name}. Profilen er seedet fra repo — spør om avtaler, rygg eller ukens fokus.`,
     })
     toast('Seedet William lastet')
   } catch (err) {

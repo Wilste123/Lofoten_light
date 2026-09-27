@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS athletes (
   season_start_date TEXT,
   goal_race_date TEXT,
   show_body_metrics INTEGER DEFAULT 1,
+  setup_completed INTEGER DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -216,7 +217,12 @@ _EXTRA_COLUMNS = [
     ("season_start_date", "TEXT"),
     ("goal_race_date", "TEXT"),
     ("show_body_metrics", "INTEGER DEFAULT 1"),
+    ("setup_completed", "INTEGER DEFAULT 0"),
 ]
+
+# Seeded returning athletes — always treated as setup-done; re-seed must not wipe them.
+SEED_PROTECTED_IDS = frozenset({"william-lofoten"})
+SEED_PROTECTED_USERNAMES = frozenset({"william"})
 
 
 def _username_taken(
@@ -273,6 +279,26 @@ def _backfill_usernames(conn: sqlite3.Connection) -> None:
         )
 
 
+def _backfill_setup_completed(conn: sqlite3.Connection, *, column_just_added: bool) -> None:
+    """Mark seeded / pre-existing athletes as setup-done.
+
+    When the column is first added, every existing row would otherwise default to 0
+    and get forced into the AI setup landing — protect them.
+    Always force known seed identities to completed=1.
+    """
+    if column_just_added:
+        conn.execute("UPDATE athletes SET setup_completed = 1")
+    placeholders_id = ",".join("?" for _ in SEED_PROTECTED_IDS) or "NULL"
+    placeholders_user = ",".join("?" for _ in SEED_PROTECTED_USERNAMES) or "NULL"
+    conn.execute(
+        f"""
+        UPDATE athletes SET setup_completed = 1
+        WHERE id IN ({placeholders_id}) OR username IN ({placeholders_user})
+        """,
+        (*SEED_PROTECTED_IDS, *SEED_PROTECTED_USERNAMES),
+    )
+
+
 def init_db(db_path: Path) -> None:
     with connect(db_path) as conn:
         conn.executescript(SCHEMA)
@@ -280,13 +306,17 @@ def init_db(db_path: Path) -> None:
             r[1]
             for r in conn.execute("PRAGMA table_info(athletes)").fetchall()
         }
+        setup_col_added = False
         for name, decl in _EXTRA_COLUMNS:
             if name not in existing:
                 conn.execute(f"ALTER TABLE athletes ADD COLUMN {name} {decl}")
+                if name == "setup_completed":
+                    setup_col_added = True
         conn.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_athletes_username ON athletes(username)"
         )
         _backfill_usernames(conn)
+        _backfill_setup_completed(conn, column_just_added=setup_col_added)
         conn.commit()
 
 
@@ -316,7 +346,25 @@ def row_to_athlete(row: sqlite3.Row | None) -> dict[str, Any] | None:
     # Default true when column missing / NULL (migration-safe)
     sbm = d.get("show_body_metrics")
     d["show_body_metrics"] = True if sbm is None else bool(sbm)
+    sc = d.get("setup_completed")
+    d["setup_completed"] = bool(sc) if sc is not None else False
     return d
+
+
+def is_seed_protected(athlete: dict[str, Any] | None) -> bool:
+    """True for explicitly seeded returning athletes (William, …)."""
+    if not athlete:
+        return False
+    aid = athlete.get("id") or ""
+    uname = normalize_username(athlete.get("username"))
+    return aid in SEED_PROTECTED_IDS or uname in SEED_PROTECTED_USERNAMES
+
+
+def athlete_needs_setup(athlete: dict[str, Any] | None) -> bool:
+    """AI setup landing required when setup_completed is false."""
+    if not athlete:
+        return True
+    return not bool(athlete.get("setup_completed"))
 
 
 def get_athlete(conn: sqlite3.Connection, athlete_id: str) -> dict[str, Any] | None:
@@ -366,8 +414,9 @@ def insert_athlete(conn: sqlite3.Connection, data: dict[str, Any]) -> dict[str, 
           sport, schedule_notes,
           nutrition_ibs, nutrition_gluten, nutrition_lactose,
           nutrition_other_restrictions, nutrition_notes, notes,
+          setup_completed,
           created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             athlete_id,
@@ -394,6 +443,7 @@ def insert_athlete(conn: sqlite3.Connection, data: dict[str, Any]) -> dict[str, 
             data.get("nutrition_other_restrictions") or "",
             data.get("nutrition_notes") or "",
             data.get("notes") or "",
+            1 if data.get("setup_completed") else 0,
             now,
             now,
         ),
@@ -441,6 +491,7 @@ def update_athlete(
         "season_start_date",
         "goal_race_date",
         "show_body_metrics",
+        "setup_completed",
     }
     fields: list[str] = []
     values: list[Any] = []
@@ -453,6 +504,9 @@ def update_athlete(
             values.append(1 if val else 0)
         elif key == "show_body_metrics":
             fields.append("show_body_metrics = ?")
+            values.append(1 if val else 0)
+        elif key == "setup_completed":
+            fields.append("setup_completed = ?")
             values.append(1 if val else 0)
         elif key == "username":
             uname = normalize_username(val if isinstance(val, str) else str(val or ""))

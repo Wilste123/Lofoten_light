@@ -17,6 +17,7 @@ import config
 from chat_service import build_system_prompt, call_llm, extract_workout_proposal
 from db import (
     add_message,
+    athlete_needs_setup,
     clear_messages,
     completions_by_external_id,
     db_session,
@@ -313,12 +314,25 @@ def health() -> dict[str, str]:
 def session_bootstrap(body: BootstrapIn) -> dict[str, Any]:
     """Return athlete if id exists; else needs_onboarding."""
     if not body.athlete_id:
-        return {"needs_onboarding": True, "athlete": None}
+        return {
+            "needs_onboarding": True,
+            "needs_setup": True,
+            "athlete": None,
+        }
     with db_session(config.DATABASE_PATH) as conn:
         athlete = get_athlete(conn, body.athlete_id)
     if not athlete:
-        return {"needs_onboarding": True, "athlete": None}
-    return {"needs_onboarding": False, "athlete": athlete}
+        return {
+            "needs_onboarding": True,
+            "needs_setup": True,
+            "athlete": None,
+        }
+    needs_setup = athlete_needs_setup(athlete)
+    return {
+        "needs_onboarding": False,
+        "needs_setup": needs_setup,
+        "athlete": athlete,
+    }
 
 
 @app.post("/v1/session/login")
@@ -347,7 +361,12 @@ def session_login(body: LoginIn) -> dict[str, Any]:
                 )
         if token is not None and not invite_token_valid(conn, token):
             raise HTTPException(401, "Ugyldig invite-token.")
-    return {"athlete": athlete, "needs_onboarding": False}
+    needs_setup = athlete_needs_setup(athlete)
+    return {
+        "athlete": athlete,
+        "needs_onboarding": False,
+        "needs_setup": needs_setup,
+    }
 
 
 @app.post("/v1/onboarding")
@@ -358,6 +377,9 @@ def onboarding(body: OnboardingIn) -> dict[str, Any]:
     if err:
         raise HTTPException(422, err)
     data["username"] = uname
+    # Legacy thin onboarding still marks setup done so reconnect enters the app
+    # (new users use /v1/setup/* and get the AI landing instead).
+    data["setup_completed"] = True
     try:
         with db_session(config.DATABASE_PATH) as conn:
             if get_athlete_by_username(conn, uname):
@@ -590,6 +612,8 @@ def setup_confirm(
                 athlete = update_athlete(conn, aid, season_patch) or athlete
             saved_blocks = replace_plan_blocks(conn, aid, blocks)
 
+        athlete = update_athlete(conn, aid, {"setup_completed": True}) or athlete
+
         # Optional Intervals credentials (store only — soft verify)
         icu_id = (body.intervals_athlete_id or "").strip()
         api_key_in = (body.intervals_api_key or "").strip()
@@ -694,6 +718,7 @@ def setup_reset(
                 "season_strength_hours_target": None,
                 "season_start_date": None,
                 "goal_race_date": None,
+                "setup_completed": False,
             },
         )
     assert cleared is not None

@@ -151,8 +151,13 @@ def test_setup_chat_and_preview_confirm_reset(client):
     data = confirm.json()
     aid = data["athlete"]["id"]
     assert data["written_to_intervals"] is False
+    assert data["athlete"]["setup_completed"] is True
     assert (athletes / aid / "profile.md").is_file()
     assert len(data["plan_blocks"]) >= 2
+
+    login_done = c.post("/v1/session/login", json={"athlete_id": aid})
+    assert login_done.status_code == 200
+    assert login_done.json()["needs_setup"] is False
 
     # Seed william still works via login path
     # Reset requires double confirm
@@ -170,11 +175,18 @@ def test_setup_chat_and_preview_confirm_reset(client):
     )
     assert ok.status_code == 200, ok.text
     assert ok.json()["needs_setup"] is True
+    assert ok.json()["athlete"]["setup_completed"] is False
     assert ok.json()["deleted_plan_blocks"] >= 1
     with db_session(config.DATABASE_PATH) as conn:
         assert list_plan_blocks(conn, aid) == []
         ath = get_athlete(conn, aid)
         assert ath["goal_text"] == ""
+        assert ath["setup_completed"] is False
+
+    login_fresh = c.post("/v1/session/login", json={"athlete_id": aid})
+    assert login_fresh.status_code == 200
+    assert login_fresh.json()["needs_setup"] is True
+    assert login_fresh.json()["athlete"]["setup_completed"] is False
 
 
 def test_extract_setup_fields():
@@ -204,3 +216,56 @@ def test_normalize_rejects_bad_blocks():
     )
     assert len(blocks) >= 2
     assert blocks[0]["start_date"]
+
+
+def test_william_seed_skips_setup_fresh_athlete_needs_setup(client):
+    """Seeded william → needs_setup false; incomplete athlete → needs_setup true."""
+    from pathlib import Path
+
+    from seed_from_repo import SEED_ATHLETE_ID, seed_athlete
+
+    c, athletes = client
+    fixtures = Path(__file__).resolve().parent / "fixtures"
+
+    seed = seed_athlete(
+        repo_root=Path(__file__).resolve().parents[3],
+        athlete_docs=fixtures / "athlete_docs",
+        plans_dir=fixtures / "plans",
+        db_path=config.DATABASE_PATH,
+        athletes_dir=athletes,
+    )
+    assert seed["setup_completed"] is True
+    assert seed["athlete_id"] == SEED_ATHLETE_ID
+
+    william = c.post("/v1/session/login", json={"username": "william"})
+    assert william.status_code == 200, william.text
+    wbody = william.json()
+    assert wbody["needs_setup"] is False
+    assert wbody["athlete"]["setup_completed"] is True
+    assert wbody["athlete"]["username"] == "william"
+    assert wbody["athlete"]["id"] == SEED_ATHLETE_ID
+
+    # Fresh incomplete athlete (not through confirm) must enter setup
+    from db import db_session, insert_athlete
+
+    with db_session(config.DATABASE_PATH) as conn:
+        fresh = insert_athlete(
+            conn,
+            {
+                "display_name": "Ny",
+                "username": "ny-utover",
+                "coach_display_name": "Rocky",
+                "setup_completed": False,
+            },
+        )
+    assert fresh["setup_completed"] is False
+
+    login_fresh = c.post("/v1/session/login", json={"username": "ny-utover"})
+    assert login_fresh.status_code == 200
+    fbody = login_fresh.json()
+    assert fbody["needs_setup"] is True
+    assert fbody["athlete"]["setup_completed"] is False
+
+    boot = c.post("/v1/session/bootstrap", json={"athlete_id": fresh["id"]})
+    assert boot.json()["needs_setup"] is True
+    assert boot.json()["needs_onboarding"] is False

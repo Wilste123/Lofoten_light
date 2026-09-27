@@ -86,8 +86,9 @@ Midtpunkt **775 t** av 750–800. Fordeling fra `plans/2026-2027-12mnd-periodise
 ## Idempotens
 
 1. Finn `william-lofoten` i DB, ellers `display_name=William`, ellers opprett med seed-id.
-2. Oppdater felter + upsert `plan_blocks` med id `{athlete_id}-b0` … `-b10`.
-3. Skriv rik `profile.md` på nytt.
+2. **Første seed:** opprett felter + upsert `plan_blocks` (`{athlete_id}-b0` … `-b10`) + rik `profile.md`, sett `setup_completed=1`.
+3. **Re-seed / boot** når `setup_completed=1`: **bevar** goals, plan_blocks, runtime `profile.md` og `athlete_secrets` (Intervals). Kun sikre username + flagget. Slik overskriver ikke Fly-redeploy en tilpasset William-profil.
+4. Uten `setup_completed` (f.eks. etter Du → SLETT): full import fra repo igjen.
 
 ## Etter seed — sjekk i app
 

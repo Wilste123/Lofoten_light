@@ -26,7 +26,7 @@ Onboarding er **agil** — ikke én mal for alle:
 
 **Du → Innstillinger:** Logg ut (clear localStorage). Start setup på nytt = dobbelt bekreftelse (`acknowledge_wipe` + `confirm_phrase=SLETT`) → samme flyt.
 
-Seed `william` uendret via «Bruk seedet William-profil» / login.
+Seed `william` er `setup_completed=true` (seed / migrate) — login går rett til appen, ikke AI-setup. Re-seed på boot overskriver ikke goals, `plan_blocks`, `profile.md` eller Intervals-secrets når setup er fullført. Nye brukere (`Ny bruker`) får fortsatt full AI-flyt.
 
 ## API
 

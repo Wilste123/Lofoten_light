@@ -43,12 +43,12 @@ POST /v1/session/login
 { "athlete_id": "william-lofoten", "invite_token": "…" }
 ```
 
-- **200** — `{ athlete, needs_onboarding: false }` (oppretter aldri ny utøver)
+- **200** — `{ athlete, needs_onboarding: false, needs_setup: bool }` (oppretter aldri ny utøver). `needs_setup` er `true` når `setup_completed` er false (f.eks. etter Du → SLETT). Seedet `william` har `setup_completed=true` → `needs_setup=false` → lander i normal app.
 - **404** — ukjent brukernavn / ID (norsk feilmelding)
 - **401** — invite-token sendt men ugyldig
 - **422** — verken `username` nor `athlete_id`
 
-`POST /v1/session/bootstrap` finnes fortsatt (mild «needs_onboarding»); UI bruker **login** for reconnect.
+`POST /v1/session/bootstrap` finnes fortsatt (mild «needs_onboarding» + `needs_setup`); UI bruker **login** for reconnect.
 
 ## Bevisst ikke
 

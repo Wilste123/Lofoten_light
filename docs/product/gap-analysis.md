@@ -1,6 +1,6 @@
 # Gap-analyse — plan vs levert (`cursor/web-coach-mvp-42ac`)
 
-> **Oppdatert:** Se [gap-analysis-2026-09-27.md](gap-analysis-2026-09-27.md) for fersk scan (HEAD `5cfb32f`, Fly health OK, dashboard/øktbibliotek som neste).
+> **Oppdatert:** Se [gap-analysis-2026-09-27.md](gap-analysis-2026-09-27.md) for fersk scan (inkl. **username login** som 2d+ gap).
 
 **Kildeplan:** [PRODUCT-PLAN.md](PRODUCT-PLAN.md) + søsterdocs · **PR:** [#13](https://github.com/Wilste123/Lofoten_light/pull/13) · **Fly:** `lofoten-coach` → https://lofoten-coach.fly.dev (se [fly-deploy.md](fly-deploy.md))
 
@@ -23,7 +23,7 @@ Telefon-pilot med chat, Du, seed, Fly, Overblikk + **Plan/Compliance-faner**, **
 - [x] **Seed William** — CLI + `SEED_ON_BOOT` + valgfri admin-API
 - [x] **Fly** — `fly.toml` (`lofoten-coach`, `ams`, volume `/data`, port 8080)
 - [x] **UX** — Space Grotesk/Syne, mørk UI, 5-faners nav, sync confirm-kort
-- [x] **Returning login** — profil-ID + valgfri invite (`POST /v1/session/login`)
+- [x] **Returning login** — athlete-id + valgfri invite (`POST /v1/session/login`); **username = 2d+ (pågår)**
 - [x] **Anti holdt** — ingen Pondus/Slack/kalenderklone/Supabase
 
 ## Partial / fragile
@@ -33,7 +33,7 @@ Telefon-pilot med chat, Du, seed, Fly, Overblikk + **Plan/Compliance-faner**, **
 | **UX-polish** | Bedre Plan/Compliance; fortsatt SPA-pilot. |
 | **Intervals Lagre** | Soft-verify-timeout (~5–10 s). |
 | **Fly live** | William må `fly deploy` for prod. |
-| **Auth** | `POST /v1/session/login` + profil-ID i `localStorage`; valgfri invite-token. Se [returning-login.md](returning-login.md). |
+| **Auth / username** | Athlete-id login landet; **username**-slug mangler (plan-krav). Se [returning-login.md](returning-login.md). |
 | **VO₂** | Gate krever steady HR — fortsatt `null` uten segment. |
 | **Sync** | Noter for meso-blokker, ikke full ukeplan/ZWO fra CSV. |
 | **last_session / load** | Alltid `null` i overview. |
@@ -45,6 +45,7 @@ Telefon-pilot med chat, Du, seed, Fly, Overblikk + **Plan/Compliance-faner**, **
 
 | Fase | Gap |
 |------|-----|
+| **2d+** | Username login (unik slug; `{ username }` på `/v1/session/login`) |
 | **3** | Invite + `training_pair` + `partner_slots` |
 | **5** | Proaktiv coach |
 | — | Rate limit `/v1/chat`; disk-cache 90d power (in-memory TTL finnes) |

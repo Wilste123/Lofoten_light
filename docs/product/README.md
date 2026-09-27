@@ -21,7 +21,7 @@
 | [partner-sync.md](partner-sync.md) | To trenere, delte tid/sted-vinduer |
 | [import-from-repo.md](import-from-repo.md) | Seed William fra `docs/athlete/` + `plans/` |
 | [fly-deploy.md](fly-deploy.md) | Fly.io deploy + secrets + telefon-test |
-| [returning-login.md](returning-login.md) | Reconnect med profil-ID (uten passord) |
+| [returning-login.md](returning-login.md) | Reconnect: **username** (mål) + athlete-id; uten passord |
 
 ## Kode
 

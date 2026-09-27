@@ -87,10 +87,14 @@ Sesongmål (`season_*_hours_target`) og `plan_blocks` lever i SQLite — appens 
 Uten passord / OAuth. Se [returning-login.md](returning-login.md).
 
 - Start: **Ny bruker** | **Jeg har allerede profil**
-- Login: lim inn **profil-ID** (+ valgfri invite-token)
-- `POST /v1/session/login` — oppretter ikke ny atlet
-- Under **Du**: vis/kopier **Din profil-ID**
+- Login: **brukernavn** (slug, f.eks. `william`) — ikke bare rå athlete-id
+  - Valgfritt fortsatt: lim inn athlete-id eller invite-token for power users
+- Onboarding: velg unik **brukernavn**-slug; seed speiler f.eks. `william`
+- `POST /v1/session/login` aksepterer `{ username }` **eller** `{ athlete_id }`
+- Under **Du**: vis brukernavn + profil-ID (kopier)
 - Snarveier: `?athlete=` og «Bruk seedet William-profil»
+
+**Status:** athlete-id-login landet (`6ce6872`); **username login = fase 2d+** (egen worker).
 
 ## Smarte estimater
 
@@ -104,7 +108,8 @@ Gate ≥ 5 sykkeløkter med watt. Se [form-estimates.md](form-estimates.md).
 | 2 | ~~ICU activity-les + fremskritt/compliance~~ |
 | 2b | ~~Grovplan-strip~~ (current/next + dager til race) |
 | 2c | UX-polish leftovers |
-| 2d | ~~Returning-user login~~ |
+| 2d | ~~Returning-user login (athlete-id)~~ |
+| 2d+ | **Username login** — unik slug; login med brukernavn; athlete-id valgfritt |
 | 2e | ~~Plan + Compliance-faner, form_estimates, Sync til Intervals~~ (`5cfb32f`) |
 | 2f | **Dashboard** — status, timer, søvn (wellness READ), vekt/fett med Du-toggle |
 | 2g | **Øktbibliotek** — list, spør coach, completion + reason |

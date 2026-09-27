@@ -1,12 +1,13 @@
 # Gap-analyse — 2026-09-27
 
-**Branch:** `cursor/web-coach-mvp-42ac` · **HEAD:** `5cfb32f` · **PR:** [#13](https://github.com/Wilste123/Lofoten_light/pull/13)  
+**Branch:** `cursor/web-coach-mvp-42ac` · **HEAD ved kode-scan:** `5cfb32f` · **docs-push:** `5617a00`+ · **PR:** [#13](https://github.com/Wilste123/Lofoten_light/pull/13)  
 **Fly:** https://lofoten-coach.fly.dev — `/health` → `{"status":"ok"}` (HTTP 200, sjekket 2026-09-27)  
-**Kode skannet:** `apps/coach-web`, `services/coach-api`, `docs/product/*`, `fly.toml`
+**Kode skannet:** `apps/coach-web`, `services/coach-api`, `docs/product/*`, `fly.toml`  
+**Plan:** [lofoten-coach-produkt-plan.md](lofoten-coach-produkt-plan.md) (inkl. **username-login**-krav)
 
 ## Verdict
 
-Telefon-pilot er **brukbar og live på Fly**. Chat, Du, Overblikk, Plan, Compliance, form_estimates fra ICU, og **valgfri Sync av grovplan-noter** til Intervals er på plass. Det som fortsatt mangler mot ønsket produkt: **Dashboard** (status/timer/søvn/vekt-fett), **øktbibliotek / workout builder**, wellness-les (søvn), BIA med av-toggle, partner-sync, og proaktiv coach.
+Telefon-pilot er **brukbar og live på Fly**. Chat, Du, Overblikk, Plan, Compliance, form_estimates fra ICU, og **valgfri Sync av grovplan-noter** til Intervals er på plass. Åpne produktgap: **username login** (nå kun athlete-id — egen worker), **Dashboard**, **øktbibliotek**, wellness/søvn, BIA med av-toggle, partner-sync, proaktiv coach.
 
 Vi er fortsatt en **tynn coach + Intervals-companion** — ikke TrainingPeaks-/HumanGO-erstatning.
 
@@ -28,7 +29,7 @@ Compliance er altså **ikke** «synced into Intervals». Den regnes i appen fra 
 - [x] Onboarding → SQLite + `profile.md`
 - [x] Chat (`POST /v1/chat`, ett LLM-kall)
 - [x] Du — mål, sesongvolum, avtaler, skade, GI, FTP, vekt/alder, Intervals Lagre/verify
-- [x] Returning login (`POST /v1/session/login` + profil-ID)
+- [x] Returning login via **athlete-id** (`POST /v1/session/login` + profil-ID) — `6ce6872`
 - [x] Overblikk — progress/compliance bars, form-kort, grovplan-strip
 - [x] **Plan-fane** — plan_blocks CRUD + Sync panel
 - [x] **Compliance-fane** — fullførte timer, on-pace, sesongmål-oppsummering
@@ -43,6 +44,7 @@ Compliance er altså **ikke** «synced into Intervals». Den regnes i appen fra 
 
 | Område | Status |
 |--------|--------|
+| **Username login** | **Krav i plan; ikke i kode ennå.** Login UI/API tar bare `athlete_id`. Egen worker implementerer `username` (+ valgfri athlete-id). |
 | UX-polish | Bedre enn tidlig MVP; fortsatt enkel SPA |
 | Auth | Profil-ID + valgfri invite-token — ingen ekte invite-flow / passord |
 | VO₂ | Gate krever steady HR — ofte `null` |
@@ -57,6 +59,7 @@ Compliance er altså **ikke** «synced into Intervals». Den regnes i appen fra 
 
 | Område | Gap |
 |--------|-----|
+| **Username login (2d+)** | Unik `username`-slug på athlete; login med brukernavn (f.eks. `william`); onboarding velger username; Du viser username + profil-ID; `POST /v1/session/login` → `{ username }` **eller** `{ athlete_id }` |
 | **Dashboard-side** | Ingen dedikert training-status-side med timer + søvn + vekt/fett samlet (Overblikk er kompakt, ikke full dashboard) |
 | **Søvnanalyse** | Ingen ICU wellness-fetch; ingen søvn-UI |
 | **Vekt + body-fat** | Kun `weight_kg` i profil; ingen BIA/fettanalyse; ingen toggle OFF i Du |
@@ -67,12 +70,13 @@ Compliance er altså **ikke** «synced into Intervals». Den regnes i appen fra 
 
 ## Recommended next slices
 
-1. Telefon-smoke på https://lofoten-coach.fly.dev (seed → Intervals → Overblikk Live → Sync preview)
-2. **Dashboard v1** — status + timer (gjenbruk progress) + søvn fra ICU wellness hvis tilgjengelig
-3. **Vekt/fett** — app-analyse av wellness/BIA med **toggle OFF** i Du
-4. **Øktbibliotek** — list planned/completed; chat om økt; completion + reason
-5. Fase 3 invite / training_pair
+1. **Username login** (egen worker) — deretter telefon-smoke med `william` i stedet for bare `william-lofoten`
+2. Telefon-smoke på https://lofoten-coach.fly.dev (seed → Intervals → Overblikk Live → Sync preview)
+3. **Dashboard v1** — status + timer (gjenbruk progress) + søvn fra ICU wellness hvis tilgjengelig
+4. **Vekt/fett** — app-analyse av wellness/BIA med **toggle OFF** i Du
+5. **Øktbibliotek** — list planned/completed; chat om økt; completion + reason
+6. Fase 3 invite / training_pair
 
 ## Referanser
 
-`docs/product/PRODUCT-PLAN.md` · `progress-compliance.md` · `form-estimates.md` · `fly-deploy.md` · `periodization-overview.md` · store: [lofoten-coach-produkt-plan.md](lofoten-coach-produkt-plan.md) · [competitor-humango.md](competitor-humango.md)
+`docs/product/PRODUCT-PLAN.md` · `returning-login.md` · `progress-compliance.md` · `form-estimates.md` · `fly-deploy.md` · store: [lofoten-coach-produkt-plan.md](lofoten-coach-produkt-plan.md) · [competitor-humango.md](competitor-humango.md)

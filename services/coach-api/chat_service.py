@@ -13,15 +13,27 @@ from typing import Any
 
 from pathlib import Path
 
-from knowledge_ctx import load_knowledge_bundle
+from knowledge_ctx import knowledge_selection_meta, load_knowledge_bundle, session_query_text
 from profile import load_profile_md
 
 
 PERSONALITY_HINTS = {
-    "direkte": "Direkte, konkret, lite fluff — som en erfaren utholdenhetstrener.",
-    "støttende": "Støttende men ærlig; ros steady progress, utfordre urealistisk volum.",
-    "teknisk": "Teknisk og presis; soner, TSS, struktur — uten å overforklare.",
-    "opv": "Ole Petter Vibekken-inspirert: struktur, krav, ærlig risiko — tilpasset tri/comeback.",
+    "direkte": (
+        "Direkte, trygg og konkret — erfaren utholdenhetstrener. "
+        "Én anbefaling, ikke tips-liste. Si nei når forespørselen er urealistisk eller skaderisikabel."
+    ),
+    "støttende": (
+        "Støttende men ærlig; ros steady progress. "
+        "Utfordre urealistisk volum — ikke bli myk eller tippy."
+    ),
+    "teknisk": (
+        "Teknisk og presis; soner, TSS, struktur. "
+        "Konkrete tall, ikke generiske råd. Avvis dårlige intensitetsvalg."
+    ),
+    "opv": (
+        "Ole Petter Vibekken-inspirert: struktur, krav, ærlig risiko — tilpasset tri/comeback. "
+        "Korte setninger, konkrete tall, pushback når det smaker 2019-volum."
+    ),
 }
 
 # One coherent voice for ALL chat surfaces (Coach-fane, session-fokus, setup).
@@ -97,22 +109,34 @@ def build_system_prompt(
     knowledge_dir,
     overview_stub: dict[str, Any] | None = None,
     athletes_dir: Path | None = None,
+    *,
     query_text: str = "",
+    focused_session: dict[str, Any] | None = None,
+    user_message: str = "",
 ) -> str:
-    """System prompt for main Coach-tab `/v1/chat` (and session-focused chat)."""
+    """Single coach system prompt for main chat and Økter detail chat.
+
+    Session focus only extends knowledge retrieval + a few regler bullets —
+    no separate prompt builder. Honest voice via HONEST_COACH_VOICE.
+    """
     personality = athlete.get("coach_personality") or "direkte"
     hint = PERSONALITY_HINTS.get(personality, PERSONALITY_HINTS["direkte"])
     coach = athlete.get("coach_display_name") or "Trener"
     name = athlete.get("display_name") or "utøveren"
     profile_md = load_profile_md(athletes_dir or Path("."), athlete)
+    # Prefer explicit focused_session; else peek overview stub
+    focused = focused_session
+    if focused is None and isinstance(overview_stub, dict):
+        focused = overview_stub.get("focused_session")
     draft = _athlete_knowledge_draft(athlete)
-    q = (query_text or "").strip() or _athlete_query_blob(athlete)
-    if overview_stub and overview_stub.get("focused_session"):
-        q = f"{q} denne økten focused økt-detalj".strip()
+    q = (query_text or "").strip() or session_query_text(
+        focused, user_message=user_message
+    ) or _athlete_query_blob(athlete)
     knowledge = load_knowledge_bundle(
         knowledge_dir,
-        query_text=q,
+        query_text=q or " ",
         draft=draft,
+        focused_session=focused,
         mode="chat",
         total_budget=6500,
     )
@@ -122,6 +146,19 @@ def build_system_prompt(
     sess_line = f"{sess} økter/uke" if sess else "(ikke avtalt)"
     agreements = athlete.get("agreements") or []
     agr_line = "; ".join(str(a) for a in agreements[:12]) if agreements else "(ingen)"
+    if focused:
+        focused_bullets = (
+            "- focused_session finnes i snapshotet: utøveren er i økt-detaljvisning. "
+            "Svar konkret om DEN økten (beskrivelse/steg/struktur). Ikke bytt tema uten at de ber om det. Samme ærlige stemme.\n"
+            "- Bruk knowledge for sporten/økttypen (intervaller, soner, Plan B). "
+            "Ved workout_proposal: konkrete Warmup / Main / Cooldown-steg; behold dato med mindre de ber om å flytte.\n"
+            "- Hvis de ber om hardere/lengre økt som bryter knowledge eller skaderegler: si nei, kort hvorfor, bedre alternativ.\n"
+        )
+    else:
+        focused_bullets = (
+            "- Hvis feltet focused_session finnes i snapshotet: utøveren er i økt-detaljvisning. "
+            "Svar konkret om DEN økten (beskrivelse/steg). Ikke bytt tema uten at de ber om det.\n"
+        )
 
     return f"""Du er {coach}, personlig utholdenhetstrener for {name}.
 Språk: norsk. Tone: {hint}
@@ -135,15 +172,16 @@ Avtaler: {agr_line}
 Regler:
 - Én klar anbefaling; ikke generisk motivasjonsprat.
 - Vurder målrealisme (erfaring × form × økter/uke × tid til race × tidmål) før du lover race/PB — se knowledge maalrealisme; foreslå alternativ ved urealistisk mål.
+- Pushback når forespørsel er urealistisk (2019-volum, for hard kvalitet, manglende Plan B, skadesignaler): si nei og gi smartere alternativ.
+- Ros kontinuitet og smarte valg — ikke hero-TSS.
 - Ikke still medisinsk diagnose. Ved smerte/GI: tilpass råd og anbefal fagperson ved behov.
 - Ikke anta Williams historikk med mindre det står i profilen.
 - Ernæring/IBS: les GI-feltene i profilen; bruk knowledge/ernaring; aldri diagnostiser.
 - Intervals eier øktdetaljer; du eier mål/avtaler/skade/ernæring/form-kontekst.
 - Hvis overblikk mangler ICU-data: si ærlig at belastning krever Intervals-kobling.
 - «Hva har jeg denne uka?» / kommende økter: bruk feltet sessions i snapshotet (upcoming/today/recent). Ikke finn opp økter.
-- Hvis feltet focused_session finnes i snapshotet: utøveren er i økt-detaljvisning. Svar konkret om DEN økten (beskrivelse/steg). Ikke bytt tema uten at de ber om det. Samme ærlige stemme.
-- Når utøveren ber om å legge inn / endre en konkret økt på Intervals-kalenderen:
-  1) Skriv kort råd på norsk.
+{focused_bullets}- Når utøveren ber om å legge inn / endre en konkret økt på Intervals-kalenderen:
+  1) Skriv kort råd på norsk — forankret i knowledge; avvis usikre endringer.
   2) Avslutt med ÉN fenced code block merket workout_proposal (ikke vanlig json), med:
      {{"workouts":[{{"name":"...","date":"YYYY-MM-DD","sport":"bike|run|swim|strength|other","duration_minutes":60,"description":"...","start_time":"07:00"}}]}}
   3) Du synker IKKE selv — utøveren bekrefter i appen (forhåndsvis → sync).
@@ -175,6 +213,25 @@ Regler:
 ## Knowledge (trimmet, adaptiv)
 {knowledge}
 """
+
+
+def knowledge_meta_for_chat(
+    knowledge_dir,
+    *,
+    athlete: dict[str, Any] | None = None,
+    focused_session: dict[str, Any] | None = None,
+    user_message: str = "",
+) -> dict[str, Any]:
+    """Public meta for API responses / tests (paths used for this turn)."""
+    draft = _athlete_knowledge_draft(athlete) if athlete else None
+    return knowledge_selection_meta(
+        knowledge_dir,
+        query_text=session_query_text(focused_session, user_message=user_message)
+        or " ",
+        draft=draft,
+        focused_session=focused_session,
+        mode="chat",
+    )
 
 
 def extract_workout_proposal(reply: str) -> tuple[str, dict[str, Any] | None]:

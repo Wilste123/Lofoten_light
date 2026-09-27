@@ -195,33 +195,148 @@ def _preview_text(text: str, limit: int = 160) -> str | None:
 
 def parse_coach_steps(description: str | None) -> list[str]:
     """Extract bullet / numbered steps from coach description («Fra treneren»)."""
-    if not description:
-        return []
+    structure = parse_session_structure(description)
     steps: list[str] = []
-    for raw in description.splitlines():
+    for phase in structure.get("phases") or []:
+        for item in phase.get("items") or []:
+            if item and item not in steps:
+                steps.append(item)
+    return steps[:40]
+
+
+_PHASE_LABELS = {
+    "warmup": "Oppvarming",
+    "main": "Hoveddel",
+    "cooldown": "Nedkjøling",
+    "other": "Øvrig",
+}
+
+_WARMUP_RE = re.compile(
+    r"^(warmup|oppvarming|wu)\b",
+    re.IGNORECASE,
+)
+_COOLDOWN_RE = re.compile(
+    r"^(cooldown|nedkjøling|nedkjoling|nedjogg|cd)\b",
+    re.IGNORECASE,
+)
+_MAIN_RE = re.compile(
+    r"^(main(?:\s*set)?|hoveddel|hovedsett)\b",
+    re.IGNORECASE,
+)
+_INTERVAL_RE = re.compile(
+    r"^(\d+\s*[x×]\s*\d+|crisscross|elghufs|18\s*[x×]\s*3)",
+    re.IGNORECASE,
+)
+
+
+def _intervals_block(description: str) -> str:
+    """Prefer Intervals syntax block after --- / ---intervals--- when present."""
+    text = description or ""
+    if "---intervals---" in text:
+        return text.split("---intervals---", 1)[1].strip()
+    # format_planned_session_for_intervals: coach markdown + --- + intervals
+    if "\n---\n" in text:
+        head, tail = text.split("\n---\n", 1)
+        # Only treat as intervals block if Warmup/Main/Cooldown-ish lines exist
+        if re.search(r"(?im)^(warmup|cooldown|main|- )", tail.strip()):
+            return tail.strip()
+    return text
+
+
+def _classify_phase(line: str, current: str) -> str:
+    if _WARMUP_RE.match(line):
+        return "warmup"
+    if _COOLDOWN_RE.match(line):
+        return "cooldown"
+    if _MAIN_RE.match(line):
+        return "main"
+    if current == "warmup" and _INTERVAL_RE.match(line):
+        return "main"
+    if current == "other" and _INTERVAL_RE.match(line):
+        return "main"
+    return current
+
+
+def parse_session_structure(description: str | None) -> dict[str, Any]:
+    """Warmup / main (intervals) / cooldown structure for detail UI + chat.
+
+    Returns::
+        {
+          "phases": [{"id": "warmup", "label": "Oppvarming", "items": [...]}, ...],
+          "flat_steps": [...],
+        }
+    """
+    empty = {"phases": [], "flat_steps": []}
+    if not description:
+        return empty
+    block = _intervals_block(description)
+    buckets: dict[str, list[str]] = {
+        "warmup": [],
+        "main": [],
+        "cooldown": [],
+        "other": [],
+    }
+    current = "other"
+    for raw in block.splitlines():
         line = raw.strip()
         if not line:
             continue
-        # Skip markdown headers / coach banner
         if line.startswith("#") or line.startswith("###"):
             continue
         if line.lower().startswith("plan b"):
             continue
-        m = re.match(r"^(?:[-*•]|\d+[.)])\s+(.+)$", line)
-        if m:
-            step = m.group(1).strip()
-            if step and step not in steps:
-                steps.append(step)
+        if line in ("---", "---intervals---"):
             continue
-        # Interval-style lines without bullets (Warmup / Main / Cooldown)
-        if re.match(
-            r"^(warmup|main|cooldown|nedjogg|oppvarming|hoveddel)\b",
-            line,
+        m = re.match(r"^(?:[-*•]|\d+[.)])\s+(.+)$", line)
+        step = m.group(1).strip() if m else line
+        if not step:
+            continue
+        # Header-only lines like "Main:" / "Oppvarming:" switch phase (require colon)
+        header = re.match(
+            r"^(warmup|oppvarming|main(?:\s*set)?|hoveddel|cooldown|nedkjøling|nedkjoling)\s*:\s*$",
+            step,
             re.IGNORECASE,
-        ):
-            if line not in steps:
-                steps.append(line)
-    return steps[:40]
+        )
+        if header:
+            current = _classify_phase(step, current)
+            continue
+        current = _classify_phase(step, current)
+        if step not in buckets[current]:
+            buckets[current].append(step)
+
+    phases: list[dict[str, Any]] = []
+    flat: list[str] = []
+    for pid in ("warmup", "main", "cooldown", "other"):
+        items = buckets[pid]
+        if not items:
+            continue
+        phases.append(
+            {
+                "id": pid,
+                "label": _PHASE_LABELS[pid],
+                "items": items,
+            }
+        )
+        flat.extend(items)
+    return {"phases": phases, "flat_steps": flat[:40]}
+
+
+def structure_to_description(structure: dict[str, Any] | None) -> str:
+    """Rebuild bullet description from edited phases (for edit preview)."""
+    if not structure:
+        return ""
+    lines: list[str] = []
+    for phase in structure.get("phases") or []:
+        items = [str(i).strip() for i in (phase.get("items") or []) if str(i).strip()]
+        if not items:
+            continue
+        label = phase.get("label") or _PHASE_LABELS.get(phase.get("id") or "", "")
+        if label:
+            lines.append(f"{label}:")
+        for it in items:
+            lines.append(f"- {it}")
+        lines.append("")
+    return "\n".join(lines).strip()
 
 
 def library_key_for(session: dict[str, Any]) -> str:
@@ -243,7 +358,9 @@ def library_key_for(session: dict[str, Any]) -> str:
 def _attach_library_meta(item: dict[str, Any]) -> dict[str, Any]:
     out = dict(item)
     out["library_key"] = library_key_for(out)
-    out["steps"] = parse_coach_steps(out.get("description"))
+    structure = parse_session_structure(out.get("description"))
+    out["steps"] = structure.get("flat_steps") or parse_coach_steps(out.get("description"))
+    out["structure"] = structure
     if out.get("description") and not out.get("description_preview"):
         out["description_preview"] = _preview_text(out["description"], 160)
     return out
@@ -430,7 +547,8 @@ def session_detail_payload(
         }
     ]
     desc = item.get("description") or ""
-    steps = item.get("steps") or []
+    structure = item.get("structure") or parse_session_structure(desc)
+    steps = item.get("steps") or structure.get("flat_steps") or []
     return {
         "session": item,
         "library_key": key,
@@ -438,10 +556,12 @@ def session_detail_payload(
         "dates": [o.get("date") for o in occurrences if o.get("date")],
         "description": desc or None,
         "steps": steps,
+        "structure": structure,
         "coach_block": {
             "title": "Fra treneren",
             "body": desc or None,
             "steps": steps,
+            "structure": structure,
         },
         "status": (item.get("completion") or {}).get("status"),
         "editable_fields": {
@@ -454,6 +574,27 @@ def session_detail_payload(
                 else None
             ),
             "description": desc,
+            "warmup": "\n".join(
+                (next((p for p in structure.get("phases") or [] if p.get("id") == "warmup"), {})).get(
+                    "items"
+                )
+                or []
+            ),
+            "main": "\n".join(
+                (next((p for p in structure.get("phases") or [] if p.get("id") == "main"), {})).get(
+                    "items"
+                )
+                or []
+            ),
+            "cooldown": "\n".join(
+                (
+                    next(
+                        (p for p in structure.get("phases") or [] if p.get("id") == "cooldown"),
+                        {},
+                    )
+                ).get("items")
+                or []
+            ),
             "start_time": item.get("start_time") or "07:00",
             "external_id": item.get("external_id"),
         },
@@ -465,28 +606,32 @@ def session_detail_payload(
 
 def session_focus_for_chat(session: dict[str, Any]) -> dict[str, Any]:
     """Compact focused-session strip for knowledge-grounded chat about one økt."""
+    structure = session.get("structure") or parse_session_structure(session.get("description"))
     return {
         "id": session.get("id"),
         "external_id": session.get("external_id"),
         "name": session.get("name"),
         "date": session.get("date"),
         "discipline": session.get("discipline_label") or session.get("discipline"),
+        "sport": session.get("discipline") or session.get("sport"),
         "kind": session.get("kind"),
         "bucket": session.get("bucket"),
         "duration_hours": session.get("duration_hours"),
         "category": session.get("category"),
         "description": (session.get("description") or "")[:2000] or None,
-        "steps": (session.get("steps") or parse_coach_steps(session.get("description")))[
+        "steps": (session.get("steps") or structure.get("flat_steps") or parse_coach_steps(session.get("description")))[
             :20
         ],
+        "structure": structure,
         "completion": session.get("completion"),
         "editable": bool(session.get("editable")),
         "library_key": session.get("library_key") or library_key_for(session),
         "note": (
-            "Utøveren ser på DENNE økten. Svar konkret om den. "
-            "Ved foreslått endring: bruk workout_proposal med oppdatert "
-            "name/date/sport/duration_minutes/description (samme dato med mindre "
-            "de ber om å flytte). Ingenting skrives til Intervals uten bekreftelse."
+            "Utøveren ser på DENNE økten. Svar konkret om den — knowledge for sporten "
+            "er injisert. Ved foreslått endring: bruk workout_proposal med oppdatert "
+            "name/date/sport/duration_minutes/description (Warmup/Main/Cooldown-steg). "
+            "Samme dato med mindre de ber om å flytte. Ingenting skrives til Intervals "
+            "uten bekreftelse."
         ),
     }
 

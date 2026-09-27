@@ -42,6 +42,7 @@ def _onboard(c) -> str:
         "/v1/onboarding",
         json={
             "display_name": "Testa",
+            "username": "testa",
             "coach_display_name": "Rocky",
             "goal_text": "Base",
         },

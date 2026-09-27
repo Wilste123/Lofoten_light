@@ -1064,6 +1064,33 @@ def patch_me(
     aid = _require_athlete(x_athlete_id)
     patch = body.model_dump(exclude_unset=True)
     with db_session(config.DATABASE_PATH) as conn:
+        existing = get_athlete(conn, aid)
+        if not existing:
+            raise HTTPException(404, "Utøver ikke funnet")
+        # Keep agreements lines in sync when sessions/disciplines change
+        if (
+            "sessions_per_week" in patch
+            or "allowed_disciplines" in patch
+            or "goal_race_date" in patch
+            or "goal_text" in patch
+        ):
+            from athlete_constraints import resolve_constraints
+            from setup_plan import build_agreements_list
+
+            merged = {**existing, **patch}
+            constraints = resolve_constraints(merged, athlete_type=merged.get("athlete_type"))
+            patch["agreements"] = build_agreements_list(
+                {
+                    "agreements": patch.get("agreements")
+                    if "agreements" in patch
+                    else existing.get("agreements"),
+                    "athlete_type": merged.get("athlete_type"),
+                    "goal_race_date": merged.get("goal_race_date"),
+                },
+                constraints=constraints,
+                goal_text=str(merged.get("goal_text") or ""),
+                fitness_notes=str(merged.get("fitness_notes") or ""),
+            )
         athlete = update_athlete(conn, aid, patch)
     if not athlete:
         raise HTTPException(404, "Utøver ikke funnet")
@@ -2075,32 +2102,62 @@ def plan_adjust_preview(
         model=config.OPENAI_MODEL or "gpt-4o-mini",
         enrich=bool(body.enrich_with_llm),
     )
+    # Persisted Du fields win over any LLM/rebuild noise in athlete_patch
+    sync_athlete: dict[str, Any] = {
+        **athlete,
+        **(preview.get("athlete_patch") or {}),
+        "id": aid,
+        "athlete_type": preview.get("athlete_type") or athlete.get("athlete_type"),
+    }
+    for key in (
+        "sessions_per_week",
+        "allowed_disciplines",
+        "goal_race_date",
+        "season_start_date",
+        "goal_text",
+        "injury_notes",
+        "fitness_notes",
+        "schedule_notes",
+    ):
+        val = athlete.get(key)
+        if val not in (None, "", []):
+            sync_athlete[key] = val
     sync_prev = events_preview_for_plan_sync(
         preview["plan_blocks"],
         signals=preview.get("signals") or {},
-        athlete={
-            **(preview.get("athlete_patch") or {}),
-            "id": aid,
-            "athlete_type": preview.get("athlete_type"),
-        },
+        athlete=sync_athlete,
     )
     sync_prev["credentials_present"] = bool(
         ((secrets or {}).get("intervals_api_key") or "").strip()
         and ((secrets or {}).get("intervals_athlete_id") or "").strip()
     )
     preview["intervals_sync"] = sync_prev
+    # Surface live constraints (not stale setup agreements text)
+    if sync_prev.get("constraints_summary_nb"):
+        preview["constraints_summary_nb"] = sync_prev["constraints_summary_nb"]
+    if sync_prev.get("constraints"):
+        preview["constraints"] = sync_prev["constraints"]
+    if sync_athlete.get("sessions_per_week") is not None:
+        preview["sessions_per_week"] = sync_athlete["sessions_per_week"]
+    if sync_prev.get("prescription_rationale_nb"):
+        preview["prescription_rationale_nb"] = sync_prev["prescription_rationale_nb"]
+    preview["workout_horizon_note_nb"] = (
+        "Intervals WORKOUT: kun første 2 uker (avtalt økter/uke × 2). "
+        "Grovplan-noter kan dekke sesong til måldato."
+    )
     preview["seed_chat_prompt"] = (
         "Jeg har oppdatert profilen under Du (mål / skade / avtaler / notater / fokus). "
         f"Mål: {athlete.get('goal_text') or '—'}; "
         f"skade: {athlete.get('injury_notes') or 'ingen'}; "
         f"fokus: {athlete.get('weekly_focus') or '—'}; "
+        f"økter/uke: {athlete.get('sessions_per_week') or '—'}; "
         f"avtaler: {', '.join(athlete.get('agreements') or []) or 'ingen'}. "
         "Foreslå justering av grovplan og kommende økter ut fra knowledge — "
         "ikke synce Intervals før jeg bekrefter forhåndsvisning."
     )
     preview["confirm_hint"] = (
         "Forhåndsvisning klar. Bekreft for å erstatte meso-blokker lokalt. "
-        "Intervals skrives kun etter ekstra Sync-bekreftelse."
+        "Intervals WORKOUT er kun første 2 uker — skrives etter ekstra Sync-bekreftelse."
     )
     return preview
 

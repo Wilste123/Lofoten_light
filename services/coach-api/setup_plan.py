@@ -233,7 +233,16 @@ def build_agreements_list(
     existing = draft.get("agreements")
     out: list[str] = []
     if isinstance(existing, list):
-        out.extend(str(a).strip() for a in existing if str(a).strip())
+        # Drop stale auto-lines so sessions_per_week / disciplines stay current
+        skip_re = re.compile(
+            r"^(\d+\s*økter/uke|Disipliner:|Utøvertype:|Måldato:)",
+            re.I,
+        )
+        out.extend(
+            str(a).strip()
+            for a in existing
+            if str(a).strip() and not skip_re.match(str(a).strip())
+        )
 
     def _add(line: str) -> None:
         line = line.strip()
@@ -241,6 +250,8 @@ def build_agreements_list(
             out.append(line)
 
     if goal_text:
+        # Replace prior "Mål: …" auto-line if present
+        out = [x for x in out if not x.startswith("Mål:")]
         _add(f"Mål: {goal_text}")
     if fitness_notes:
         _add(fitness_notes)

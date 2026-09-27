@@ -20,6 +20,7 @@ Retrieval: `services/coach-api/knowledge_ctx.py` (CORE_* + CONDITIONAL_PACKS).
 
 ## Indeks
 
+<<<<<<< HEAD
 | Mappe / fil | Innhold |
 |-------------|---------|
 | **[coach/](coach/)** | Filosofi, OPV, ukemaler, feil/fixes, generell kondis, **maalrealisme** |
@@ -34,6 +35,23 @@ Retrieval: `services/coach-api/knowledge_ctx.py` (CORE_* + CONDITIONAL_PACKS).
 | [mental/](mental/) | Kontinuitet |
 | [utstyr/](utstyr/) | Race / vinter |
 | [kilder/](kilder/) | Referanser + PDF |
+=======
+| Mappe | Innhold |
+|-------|---------|
+| **[coach/](coach/)** | Filosofi, treneridentitet (OPV-modell), `opv-nokkelokter.md`, ukemaler, typiske feil |
+| [ernaring/](ernaring/) | Daglig, fueling, race |
+| [skader/](skader/) | ACWR, styrkeprogram, løp, oversikt |
+| [svom/](svom/) | Faser 0–3, øktbibliotek, OWS/kulde |
+| [sykkel/](sykkel/) | Langtur, motivasjon, intervall-presets |
+| [lop/](lop/) | Oppbygging, **HM-periodisering**, lav/middels frekvens (2–5) ukeplaner, styrke+løp, nybegynner, intervall, terreng |
+| [coach/ukeplaner-generell-utholdenhet.md](coach/ukeplaner-generell-utholdenhet.md) | Ikke-tri / generell kondis — 2–4 økter |
+| [utstyr/](utstyr/) | Race checklist, sykkel, vinter |
+| [triathlon/](triathlon/) | Brick, Lofoten, periodisering |
+| [restitusjon/](restitusjon/) | Søvn, sykdom, stress |
+| [mental/](mental/) | Kontinuitet, motivasjon |
+| [kilder/](kilder/) | Lenker + PDF |
+| [load-and-intensity.md](load-and-intensity.md) | TSS, soner, CTL |
+>>>>>>> origin/cursor/fix-sessions-per-week-sync-006e
 
 ## PDF-arkiv
 

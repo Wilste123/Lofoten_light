@@ -21,11 +21,12 @@ Ikke kopier tri-uke (svøm/sykkel) med mindre avtalen eksplisitt inkluderer dem.
 **Volumregel:** øk langtur eller ukentlig tid ~5–8 %/uke, ikke begge hardt samme uke.
 Cut-back (~−25–35 %) hver 3.–4. uke i base/build.
 
-## Intensitet (80/20)
+## Intensitet (80/20) — evidens
 
-- ~80 % av løpetid under terskel (RPE 4–5 / samtale).
+- ~80 % av løpetid under terskel (RPE 4–5 / samtale) — Seiler & Tønnessen 2009; se `load-and-intensity.md`.
 - Max **1 hard løpeøkt/uke** i base; **1** i build (ikke 2 før stabil base).
 - Strides (6–8×15–20 s) teller som nevromotorikk, ikke «hard dag».
+- Load-økning: IOC 2016 / Gabbett — unngå brå ukesprang; cut-back hver 3.–4. uke.
 
 ## Styrke i HM-sesong
 
@@ -36,24 +37,38 @@ Cut-back (~−25–35 %) hver 3.–4. uke i base/build.
 
 ## Ukeeksempler (kun løp + styrke)
 
+Prescriptions i appen mappe til `workouts/planned/run|strength/**` — se `lop/ukeplaner-lav-frekvens.md`.
+
 ### 3 økter/uke (tidsklemma / avtale)
 
 | Dag | Økt | Formål |
 |-----|-----|--------|
-| Man | Easy 35–45 min | Kontinuitet |
-| Ons | Styrke 30–40 min | Skadefrihet |
-| Lør | Lang easy / easy+strides 50–75 min | Aerob + progresjon |
+| Man | Easy 35–45 min (R01) | Kontinuitet |
+| Ons | Styrke 30–40 min (ST01) | Skadefrihet |
+| Lør | Lang easy / easy+strides 50–75 min (R02/R04) | Aerob + progresjon |
 
-Hviledager mellom — ikke fyll kalenderen.
+Hviledager mellom — ikke fyll kalenderen. **Ikke** bare Man+Lør når avtalen er 3.
 
 ### 4 økter/uke
 
 | Dag | Økt |
 |-----|-----|
-| Man | Easy 40 |
-| Ons | Styrke ELLER easy + strides |
-| Fre | Easy 35–45 ELLER lett Q (build) |
-| Søn | Langtur |
+| Man | Easy 40 (R01) |
+| Ons | Styrke ELLER easy + strides (ST01 / R02) |
+| Fre | Easy 35–45 ELLER trail (R01 / R03) |
+| Lør/Søn | Langtur (R04) |
+
+### 5 økter/uke
+
+| Dag | Økt | Formål |
+|-----|-----|--------|
+| Man | Easy (R01) | Åpne uka |
+| Tir | Easy + strides (R02) | Nevromotorikk (ikke terskel) |
+| Ons | Styrke (ST01) | Skadefrihet |
+| Fre | Easy / trail (R01/R03) | Volum før helg |
+| Lør | Lang (R04) | Aerob anker |
+
+Kun løp (uten styrke i avtalen): bytt ons til easy/trail (R03) — behold **5** økter, spredt (80/20 + hard–easy).
 
 ## Race-spesifikt (siste 6–8 uker)
 

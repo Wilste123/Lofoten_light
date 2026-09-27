@@ -1075,6 +1075,14 @@ function renderChat() {
       </div>`
   } else if (state.planAdjust?.plan_blocks?.length) {
     const pa = state.planAdjust
+    const sync = pa.intervals_sync || {}
+    const csum =
+      pa.constraints_summary_nb ||
+      sync.constraints_summary_nb ||
+      ''
+    const horizon =
+      pa.workout_horizon_note_nb ||
+      'Intervals WORKOUT: kun første 2 uker. Grovplan-noter kan dekke sesong.'
     const rows = (pa.plan_blocks || [])
       .slice(0, 8)
       .map(
@@ -1082,12 +1090,19 @@ function renderChat() {
           `<li><strong>${escapeHtml(b.title || '')}</strong> · ${escapeHtml(b.start_date || '')}–${escapeHtml(b.end_date || '')} · ${escapeHtml(b.theme || '')}</li>`,
       )
       .join('')
+    const wprev = (sync.workouts_preview || [])
+      .slice(0, 8)
+      .map((e) => `<li>${escapeHtml(e.preview_no || e.name || '')}</li>`)
+      .join('')
     proposalCard = `
       <div class="confirm-card workout-proposal-card" aria-label="Justert grovplan">
         <p><strong>Foreslått planjustering (fra Du-profil)</strong></p>
         <p class="muted tight">${escapeHtml(pa.confirm_hint || 'Bekreft for å lagre meso-blokker lokalt — ikke auto-sync til Intervals.')}</p>
-        <p class="muted tight">${escapeHtml(pa.constraints_summary_nb || '')}</p>
+        <p class="muted tight">${escapeHtml(csum)}</p>
+        <p class="muted tight">${escapeHtml(horizon)}</p>
+        ${sync.workouts_count != null ? `<p class="muted tight">${escapeHtml(String(sync.workouts_count))} WORKOUT-økter i forhåndsvisning (2 uker × økter/uke).</p>` : ''}
         <ul class="sync-sample">${rows}</ul>
+        ${wprev ? `<p class="plan-kicker">Første 2 uker (WORKOUT)</p><ul class="sync-sample">${wprev}</ul>` : ''}
         <div class="sync-actions">
           <button type="button" class="btn btn-primary" id="plan-adjust-confirm-btn" ${state.busy ? 'disabled' : ''}>Bekreft ny grovplan</button>
           <button type="button" class="btn secondary" id="plan-adjust-dismiss-btn">Avvis</button>
@@ -1960,7 +1975,7 @@ function renderSyncPanel() {
         <h2>Sync til Intervals</h2>
         <span class="badge ${linked ? 'badge-live' : 'badge-off'}">${linked ? 'Koblet' : 'Ikke koblet'}</span>
       </div>
-      <p class="muted tight">Pusher <strong>bibliotek-økter</strong> for første 1–2 uker (samme builder som CLI: ZWO/planned → <code>ll-coach-w-…</code>) pluss grovplan-noter (<code>ll-coach-…</code>). Forhåndsvis → Ja/Avbryt. Upsert — sletter ikke andre kalenderhendelser.</p>
+      <p class="muted tight">Pusher <strong>bibliotek-økter</strong> for første <strong>2 uker</strong> — antall ≈ avtalt økter/uke × 2 (samme builder som CLI: ZWO/planned → <code>ll-coach-w-…</code>). Grovplan-noter (<code>ll-coach-…</code>) kan dekke hele sesongen til måldato. Forhåndsvis → Ja/Avbryt. Upsert — sletter ikke andre kalenderhendelser.</p>
       <div class="sync-actions">
         <button type="button" class="btn btn-primary" id="sync-push" ${!linked || state.sync.busy ? 'disabled' : ''}>Sync til Intervals</button>
         <button type="button" class="btn secondary" id="sync-refresh" ${!linked || state.sync.busy ? 'disabled' : ''}>Oppdater status</button>
@@ -2881,12 +2896,10 @@ function bindApp() {
     return Number.isFinite(n) ? n : null
   }
 
-  const duForm = document.getElementById('du-form')
-  duForm?.addEventListener('submit', async (e) => {
-    e.preventDefault()
-    const fd = new FormData(duForm)
+  const buildDuPayload = (form) => {
+    const fd = new FormData(form)
     const agreementsRaw = String(fd.get('agreements') || '')
-    const payload = {
+    return {
       display_name: String(fd.get('display_name') || '').trim(),
       coach_display_name: String(fd.get('coach_display_name') || '').trim(),
       coach_personality: String(fd.get('coach_personality') || 'direkte'),
@@ -2922,6 +2935,12 @@ function bindApp() {
       goal_race_date: String(fd.get('goal_race_date') || '') || null,
       show_body_metrics: fd.get('show_body_metrics') === 'on',
     }
+  }
+
+  const duForm = document.getElementById('du-form')
+  duForm?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const payload = buildDuPayload(duForm)
     state.busy = true
     state.error = ''
     render()
@@ -2947,6 +2966,13 @@ function bindApp() {
     state.workoutSync.error = ''
     render()
     try {
+      // Always persist current Du form so sessions_per_week / goal date drive adjust
+      if (duForm) {
+        const payload = buildDuPayload(duForm)
+        const saved = await api('/v1/athlete/me', { method: 'PATCH', body: payload })
+        state.athlete = saved.athlete
+        setAccent(saved.athlete.accent_color)
+      }
       const data = await api('/v1/athlete/me/plan/adjust/preview', {
         method: 'POST',
         body: { enrich_with_llm: true, prepare_intervals_sync: false },

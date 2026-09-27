@@ -551,6 +551,7 @@ def dashboard(
     }
     load = {
         "from_wellness": wellness.get("load_wellness"),
+        "series": wellness.get("load_series"),
         "hours_summary": hours,
         "note": (
             "Belastning/timer for valgt periode — app-beregnet fra Intervals. "

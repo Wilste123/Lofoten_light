@@ -20,6 +20,18 @@ UI: chips **7 d / 14 d / 30 d / 90 d / Egen** (fra–til). Default **14 d**.
 
 Når perioden endres, lastes treningsdata + wellness for det vinduet på nytt. Sesongmål / compliance endres **ikke** med periodevalget.
 
+### Grafer (periode)
+
+Under periodevalget (fortsatt over sesong-compliance):
+
+| Graf | Data | Merknad |
+|------|------|---------|
+| **Volum per dag/uke** | `training.charts.volume` | Daglige søyler; uker når vinduet > 31 d |
+| **Per disiplin** | `training.charts.by_discipline` | Horisontale søyler (Svøm/Sykkel/Løp/Styrke) |
+| **Belastning CTL/ATL** | `load.series` | Linjegraf hvis wellness har CTL/ATL; ellers tom tekst |
+
+Ingen ekstra chart-bibliotek — CSS + SVG i `apps/coach-web/src/charts.js`.
+
 ## Compliance (app-beregnet)
 
 - Samme formel som [progress-compliance.md](progress-compliance.md): `completed / season_target`.
@@ -47,7 +59,7 @@ Når perioden endres, lastes treningsdata + wellness for det vinduet på nytt. S
 | `from` | Custom startdato `YYYY-MM-DD` (kreves med `to` når custom) |
 | `to` | Custom sluttdato `YYYY-MM-DD` |
 
-Respons (utdrag): `period`, `training` (timer/økter per disiplin, ingen sesongmål), `hours`/`load` (speiler perioden), `sleep`/`body` (samme vindu), `compliance` (sesong — uendret av periode).
+Respons (utdrag): `period`, `training` (timer/økter per disiplin, `daily_hours`, `charts.volume` / `charts.by_discipline`), `hours`/`load` (speiler perioden; `load.series` = CTL/ATL-punkter), `sleep`/`body` (samme vindu), `compliance` (sesong — uendret av periode).
 
 ## Coach chat ↔ Intervals
 

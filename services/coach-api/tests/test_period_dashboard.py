@@ -19,7 +19,9 @@ import main as main_mod
 from db import init_db
 from period_training import (
     PeriodValidationError,
+    bucket_volume_series,
     build_period_training_payload,
+    hours_by_day,
     parse_period_window,
     resolve_period_training,
 )
@@ -111,6 +113,69 @@ def test_build_period_training_payload_no_targets():
     assert "target_hours" not in payload["disciplines"][0]
     assert payload["disciplines"][0]["hours"] == 2.0
     assert "compliance" not in payload["note"].lower() or "ikke" in payload["note"].lower()
+    assert "charts" in payload
+    assert payload["charts"]["volume"]["bucket"] == "day"
+    assert len(payload["daily_hours"]) == 14
+    assert len(payload["charts"]["by_discipline"]) == 4
+
+
+def test_hours_by_day_aggregates_and_fills_gaps():
+    acts = [
+        {
+            "type": "Ride",
+            "moving_time": 3600,
+            "start_date_local": "2026-09-20T10:00:00",
+        },
+        {
+            "type": "Ride",
+            "moving_time": 1800,
+            "start_date_local": "2026-09-20T18:00:00",
+        },
+        {
+            "type": "Run",
+            "moving_time": 1800,
+            "start_date_local": "2026-09-22T07:00:00",
+        },
+    ]
+    daily = hours_by_day(acts, date(2026, 9, 20), date(2026, 9, 22))
+    assert len(daily) == 3
+    assert daily[0]["date"] == "2026-09-20"
+    assert daily[0]["hours"] == 1.5
+    assert daily[0]["by_discipline"]["bike"] == 1.5
+    assert daily[1]["hours"] == 0.0  # gap day
+    assert daily[2]["by_discipline"]["run"] == 0.5
+
+
+def test_bucket_volume_series_weeks_when_long():
+    start = date(2026, 7, 1)
+    end = date(2026, 9, 27)
+    # 89 days > 31 → week buckets
+    daily = hours_by_day([], start, end)
+    # inject a few hours
+    daily[0]["hours"] = 2.0
+    daily[0]["by_discipline"]["bike"] = 2.0
+    daily[10]["hours"] = 3.0
+    daily[10]["by_discipline"]["run"] = 3.0
+    volume = bucket_volume_series(daily, max_bars=31)
+    assert volume["bucket"] == "week"
+    assert len(volume["bars"]) < len(daily)
+    assert sum(b["hours"] for b in volume["bars"]) == pytest.approx(5.0)
+
+    short = hours_by_day(
+        [
+            {
+                "type": "Swim",
+                "moving_time": 2400,
+                "start_date_local": "2026-09-21T06:00:00",
+            }
+        ],
+        date(2026, 9, 21),
+        date(2026, 9, 27),
+    )
+    day_vol = bucket_volume_series(short, max_bars=31)
+    assert day_vol["bucket"] == "day"
+    assert len(day_vol["bars"]) == 7
+    assert day_vol["bars"][0]["hours"] == 0.67
 
 
 def test_resolve_period_training_aggregates_activities():
@@ -152,6 +217,11 @@ def test_resolve_period_training_aggregates_activities():
     assert by_id["bike"]["session_count"] == 1
     assert by_id["run"]["hours"] == 0.5
     assert by_id["swim"]["session_count"] == 1
+    assert len(out["daily_hours"]) == 14
+    assert out["charts"]["volume"]["bucket"] == "day"
+    # Three activity days non-zero
+    non_zero = [d for d in out["daily_hours"] if d["hours"] > 0]
+    assert len(non_zero) == 3
 
 
 def test_dashboard_period_query_params(client):
@@ -171,6 +241,27 @@ def test_dashboard_period_query_params(client):
             {"id": "run", "label": "Løp", "hours": 2.0, "session_count": 1},
             {"id": "strength", "label": "Styrke", "hours": 1.0, "session_count": 1},
         ],
+        "daily_hours": [],
+        "charts": {
+            "volume": {
+                "bucket": "day",
+                "bars": [
+                    {
+                        "label": "21.09",
+                        "start": "2026-09-21",
+                        "end": "2026-09-21",
+                        "hours": 1.5,
+                        "by_discipline": {},
+                    }
+                ],
+            },
+            "by_discipline": [
+                {"id": "swim", "label": "Svøm", "hours": 1.0},
+                {"id": "bike", "label": "Sykkel", "hours": 5.0},
+                {"id": "run", "label": "Løp", "hours": 2.0},
+                {"id": "strength", "label": "Styrke", "hours": 1.0},
+            ],
+        },
         "note": "Treningsdata for valgt periode.",
     }
     fake_wellness = {
@@ -181,6 +272,14 @@ def test_dashboard_period_query_params(client):
         "sleep": {"available": True, "avg_hours": 7.0, "note": "OK", "short_nights": 0},
         "body": {"available": False},
         "load_wellness": {"available": True, "ctl": 42, "atl": 38, "readiness": 7},
+        "load_series": {
+            "available": True,
+            "points": [
+                {"date": "2026-09-21", "label": "21.09", "ctl": 40, "atl": 36},
+                {"date": "2026-09-27", "label": "27.09", "ctl": 42, "atl": 38},
+            ],
+            "note": "CTL/ATL fra Intervals wellness for perioden.",
+        },
     }
 
     with (
@@ -194,6 +293,9 @@ def test_dashboard_period_query_params(client):
     assert body["period"]["days"] == 7
     assert body["training"]["total_hours"] == 9.0
     assert body["hours"]["total_hours"] == 9.0
+    assert body["training"]["charts"]["volume"]["bars"][0]["hours"] == 1.5
+    assert body["load"]["series"]["available"] is True
+    assert len(body["load"]["series"]["points"]) == 2
     assert body["compliance_app_computed"] is True
     assert "compliance" in body
     # Season compliance still present and separate

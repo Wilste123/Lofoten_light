@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
@@ -21,7 +22,7 @@ from db import (
     init_db,
     list_session_completions,
 )
-from wellness import analyze_body, analyze_sleep
+from wellness import analyze_body, analyze_sleep, load_series_from_wellness
 
 
 @pytest.fixture()
@@ -186,3 +187,28 @@ def test_analyze_sleep_and_body_helpers():
     assert body["available"] is True
     assert body["latest_weight_kg"] == 78.6
     assert body["latest_body_fat_pct"] == 14.3
+
+
+def test_load_series_from_wellness():
+    rows = [
+        {"id": "2026-09-20", "ctl": 40, "atl": 35},
+        {"id": "2026-09-21", "ctl": 41},  # atl missing ok
+        {"id": "2026-09-22", "weight": 78},  # no ctl/atl → skip
+        {"id": "2026-09-23", "ctl": 42, "atl": 38},
+    ]
+    series = load_series_from_wellness(
+        rows, start=date(2026, 9, 20), end=date(2026, 9, 23)
+    )
+    assert series["available"] is True
+    assert len(series["points"]) == 3
+    assert series["points"][0]["ctl"] == 40
+    assert series["points"][1]["atl"] is None
+    assert series["points"][2]["atl"] == 38
+
+    empty = load_series_from_wellness(
+        [{"id": "2026-09-20", "weight": 80}],
+        start=date(2026, 9, 20),
+        end=date(2026, 9, 20),
+    )
+    assert empty["available"] is False
+    assert empty["points"] == []

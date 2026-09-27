@@ -1,3 +1,9 @@
+import {
+  renderDisciplineBars,
+  renderLoadLines,
+  renderVolumeBars,
+} from './charts.js'
+
 const API = import.meta.env.VITE_API_URL || ''
 const STORAGE_KEY = 'lofoten_athlete_id'
 
@@ -1122,21 +1128,22 @@ function renderLoadCard(dash) {
   const wl = load.from_wellness || {}
   const training = dash.training || dash.hours || {}
   const hours = dash.hours || training
-  const discsSrc = training.disciplines || hours.disciplines || []
+  const charts = training.charts || {}
+  const volume = charts.volume || { bars: [], bucket: 'day' }
+  const discBars =
+    charts.by_discipline ||
+    (training.disciplines || hours.disciplines || []).map((d) => ({
+      id: d.id,
+      label: d.label,
+      hours: d.hours != null ? d.hours : d.completed_hours,
+    }))
+  const loadSeries = load.series || {}
   const badge =
     training.source === 'intervals' || hours.source === 'intervals'
       ? `<span class="badge badge-live">Intervals</span>`
       : training.fetch_error || hours.fetch_error
         ? `<span class="badge badge-demo">Henting feilet</span>`
         : `<span class="badge badge-demo">Demo</span>`
-  const discs = discsSrc
-    .map((d) => {
-      const h = d.hours != null ? d.hours : d.completed_hours
-      const sessions =
-        d.session_count != null ? ` · ${d.session_count} økter` : ''
-      return `<div class="stat-row"><span>${escapeHtml(d.label)}</span><span>${formatHours(h)} t${escapeHtml(sessions)}</span></div>`
-    })
-    .join('')
   const total =
     training.total_hours != null
       ? training.total_hours
@@ -1145,6 +1152,8 @@ function renderLoadCard(dash) {
         : null
   const actCount = training.activity_count ?? hours.activity_count
   const label = periodLabelFromDash(dash)
+  const volTitle =
+    volume.bucket === 'week' ? 'Volum per uke' : 'Volum per dag'
   return `
     <section class="section-block" data-testid="period-training">
       <div class="section-head"><h2>Trening (${escapeHtml(label)})</h2>${badge}</div>
@@ -1152,8 +1161,19 @@ function renderLoadCard(dash) {
       <div class="stat-row"><span>CTL</span><span>${wl.ctl != null ? wl.ctl : '—'}</span></div>
       <div class="stat-row"><span>ATL</span><span>${wl.atl != null ? wl.atl : '—'}</span></div>
       <div class="stat-row"><span>Readiness</span><span>${wl.readiness != null ? wl.readiness : '—'}</span></div>
-      <div class="hours-mini">${discs || `<p class="muted">Ingen timedata.</p>`}</div>
       <p class="muted tight">${escapeHtml(load.note || training.note || '')}</p>
+    </section>
+    <section class="section-block chart-block" data-testid="chart-volume" aria-label="${escapeHtml(volTitle)}">
+      <div class="section-head"><h2>${escapeHtml(volTitle)}</h2></div>
+      ${renderVolumeBars(volume)}
+    </section>
+    <section class="section-block chart-block" data-testid="chart-discipline" aria-label="Timer per disiplin">
+      <div class="section-head"><h2>Per disiplin</h2></div>
+      ${renderDisciplineBars(discBars)}
+    </section>
+    <section class="section-block chart-block" data-testid="chart-load" aria-label="Belastning CTL ATL">
+      <div class="section-head"><h2>Belastning (CTL / ATL)</h2></div>
+      ${renderLoadLines(loadSeries)}
     </section>`
 }
 

@@ -202,6 +202,44 @@ def load_summary_from_wellness(rows: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def load_series_from_wellness(
+    rows: list[dict[str, Any]],
+    *,
+    start: date | None = None,
+    end: date | None = None,
+) -> dict[str, Any]:
+    """Daily CTL/ATL points for Dashboard load chart (only days with values)."""
+    dated = [(d, r) for r in rows if (d := _row_date(r)) is not None]
+    dated.sort(key=lambda x: x[0])
+    points: list[dict[str, Any]] = []
+    for d, r in dated:
+        if start is not None and d < start:
+            continue
+        if end is not None and d > end:
+            continue
+        ctl = _parse_float(r.get("ctl"))
+        atl = _parse_float(r.get("atl"))
+        if ctl is None and atl is None:
+            continue
+        points.append(
+            {
+                "date": d.isoformat(),
+                "label": f"{d.isoformat()[8:10]}.{d.isoformat()[5:7]}",
+                "ctl": ctl,
+                "atl": atl,
+            }
+        )
+    return {
+        "available": len(points) > 0,
+        "points": points,
+        "note": (
+            "CTL/ATL fra Intervals wellness for perioden."
+            if points
+            else "Ingen CTL/ATL i wellness for perioden."
+        ),
+    }
+
+
 def resolve_wellness_bundle(
     secrets: dict[str, Any] | None,
     *,
@@ -244,6 +282,11 @@ def resolve_wellness_bundle(
         },
         "body": None,
         "load_wellness": {"available": False, "ctl": None, "atl": None, "readiness": None},
+        "load_series": {
+            "available": False,
+            "points": [],
+            "note": "Koble Intervals for CTL/ATL-graf.",
+        },
     }
     if include_body:
         empty["body"] = {
@@ -286,6 +329,8 @@ def resolve_wellness_bundle(
             out["body"] = {**out["body"], "note": "Kunne ikke hente wellness."}
         return out
 
+    win_start = date.fromisoformat(oldest[:10])
+    win_end = date.fromisoformat(newest[:10])
     payload: dict[str, Any] = {
         "window": {"start": oldest, "end": newest},
         "source": "intervals",
@@ -294,6 +339,7 @@ def resolve_wellness_bundle(
         "row_count": len(rows),
         "sleep": analyze_sleep(rows),
         "load_wellness": load_summary_from_wellness(rows),
+        "load_series": load_series_from_wellness(rows, start=win_start, end=win_end),
     }
     if include_body:
         payload["body"] = analyze_body(rows)

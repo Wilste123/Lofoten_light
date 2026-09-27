@@ -570,8 +570,37 @@ def _templates_for_signals(
         ]
         return _cap_specs(_filter_specs_by_disciplines(specs, discs), sessions_n)
 
-    # --- Returning / base tri (ukemaler Fase A) — only when multi disciplines ---
-    if returning or phase in ("etablering", "base", "rehab"):
+    # --- Returning / base tri (ukemaler Fase A) — only when multi + uncapped ---
+    # Explicit low frequency (≤5) → capped week, not full daily pack then slice
+    if sessions_n <= 5 and sessions_n < 90 and not injury:
+        specs = [
+            _spec(0, "Swim", "technique", "Svøm teknikk A (S01)", 50, 35,
+                  "workouts/planned/swim/S01-teknikk-a.txt", "Svøm"),
+            _spec(1, "Run", "endurance", "Løp easy 40 (R01)", 40, 40,
+                  "workouts/planned/run/R01-easy-40.txt", "Løp"),
+            _spec(2, "Bike", "endurance", "Sykkel Z2 90 (B02)", 90, 55,
+                  "workouts/planned/bike/endurance-90.txt", "Sykkel Z2"),
+            _spec(3, "Strength", "general", "Styrke base (ST01)", 35, 20,
+                  "workouts/planned/strength/ST01-base.txt", "Styrke"),
+        ]
+        if sessions_n >= 5:
+            specs.append(
+                _spec(5, "Bike", "endurance", "Sykkel Z2 120 (B03)", 120, 75,
+                      "workouts/planned/bike/endurance-120.txt", "Lengre sykkel")
+            )
+        else:
+            specs.append(
+                _spec(5, "Run", "endurance", "Løp easy + strides (R02)", 50, 45,
+                      "workouts/planned/run/R02-easy-55-strides.txt", "Strides")
+            )
+        return _cap_specs(_filter_specs_by_disciplines(specs, discs), sessions_n)
+
+    use_rebuild_pack = (returning and not signals.get("fitness_ok")) or phase in (
+        "etablering",
+        "base",
+        "rehab",
+    )
+    if use_rebuild_pack:
         long_bike = (
             "workouts/planned/bike/endurance-120.txt"
             if weekly_hours >= 8

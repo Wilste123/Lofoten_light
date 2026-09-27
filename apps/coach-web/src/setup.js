@@ -22,11 +22,16 @@ export function emptySetupDraft(seed = {}) {
     season_start_date: seed.season_start_date || '',
     goal_race_date: seed.goal_race_date || '',
     weekly_hours_target: seed.weekly_hours_target ?? '',
+    sessions_per_week: seed.sessions_per_week ?? '',
+    allowed_disciplines: seed.allowed_disciplines || [],
+    athlete_type: seed.athlete_type || '',
     schedule_notes: seed.schedule_notes || '',
     background_notes: seed.background_notes || '',
     injury_notes: seed.injury_notes || '',
     coach_respect_notes: seed.coach_respect_notes || '',
     notes: seed.notes || '',
+    fitness_notes: seed.fitness_notes || '',
+    weekly_focus: seed.weekly_focus || '',
     ftp_tested: seed.ftp_tested ?? '',
     ftp_tested_at: seed.ftp_tested_at || '',
     weight_kg: seed.weight_kg ?? '',
@@ -44,6 +49,9 @@ export function emptySetupDraft(seed = {}) {
 
 export function draftPayload(draft) {
   const num = (v) => (v === '' || v == null ? null : Number(v))
+  const discs = Array.isArray(draft.allowed_disciplines)
+    ? draft.allowed_disciplines
+    : []
   return {
     display_name: String(draft.display_name || '').trim(),
     username: String(draft.username || '').trim().toLowerCase(),
@@ -57,7 +65,12 @@ export function draftPayload(draft) {
     background_notes: String(draft.background_notes || ''),
     coach_respect_notes: String(draft.coach_respect_notes || ''),
     notes: String(draft.notes || ''),
+    fitness_notes: String(draft.fitness_notes || ''),
+    weekly_focus: String(draft.weekly_focus || ''),
     weekly_hours_target: num(draft.weekly_hours_target),
+    sessions_per_week: num(draft.sessions_per_week),
+    allowed_disciplines: discs,
+    athlete_type: String(draft.athlete_type || ''),
     season_start_date: draft.season_start_date || null,
     goal_race_date: draft.goal_race_date || null,
     ftp_tested: num(draft.ftp_tested),

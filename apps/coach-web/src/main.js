@@ -66,6 +66,9 @@ const state = {
   workoutProposal: null,
   workoutRemoval: null,
   athleteTypeProposal: null,
+  /** Du → plan adjust preview (local blocks; Intervals only after Sync confirm) */
+  planAdjust: null,
+  profileSavedForCoach: false,
   workoutSync: {
     pending: null,
     busy: false,
@@ -976,6 +979,27 @@ function renderChat() {
         </div>
         ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
       </div>`
+  } else if (state.planAdjust?.plan_blocks?.length) {
+    const pa = state.planAdjust
+    const rows = (pa.plan_blocks || [])
+      .slice(0, 8)
+      .map(
+        (b) =>
+          `<li><strong>${escapeHtml(b.title || '')}</strong> · ${escapeHtml(b.start_date || '')}–${escapeHtml(b.end_date || '')} · ${escapeHtml(b.theme || '')}</li>`,
+      )
+      .join('')
+    proposalCard = `
+      <div class="confirm-card workout-proposal-card" aria-label="Justert grovplan">
+        <p><strong>Foreslått planjustering (fra Du-profil)</strong></p>
+        <p class="muted tight">${escapeHtml(pa.confirm_hint || 'Bekreft for å lagre meso-blokker lokalt — ikke auto-sync til Intervals.')}</p>
+        <p class="muted tight">${escapeHtml(pa.constraints_summary_nb || '')}</p>
+        <ul class="sync-sample">${rows}</ul>
+        <div class="sync-actions">
+          <button type="button" class="btn btn-primary" id="plan-adjust-confirm-btn" ${state.busy ? 'disabled' : ''}>Bekreft ny grovplan</button>
+          <button type="button" class="btn secondary" id="plan-adjust-dismiss-btn">Avvis</button>
+        </div>
+        ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
+      </div>`
   } else if (proposal?.workouts?.length) {
     const rows = proposal.workouts
       .map(
@@ -1665,6 +1689,11 @@ function renderDu() {
         <div class="field"><label>Skade / begrensninger</label><textarea name="injury_notes" rows="2">${escapeHtml(a.injury_notes || '')}</textarea></div>
         <div class="field"><label>Avtaler (én per linje)</label><textarea name="agreements" rows="3" placeholder="f.eks. Ingen langløp denne uka">${escapeHtml(agreements)}</textarea></div>
         <div class="field"><label>Notater</label><textarea name="notes" rows="2">${escapeHtml(a.notes || '')}</textarea></div>
+        <div class="field"><label>Form (setup)</label><textarea name="fitness_notes" rows="2" placeholder="f.eks. Form OK — trener allerede 4×/uke">${escapeHtml(a.fitness_notes || '')}</textarea></div>
+        <div class="grid-2">
+          <div class="field"><label>Økter / uke</label><input name="sessions_per_week" type="number" min="2" max="8" value="${a.sessions_per_week ?? ''}" placeholder="4" /></div>
+          <div class="field"><label>Disipliner (kommaseparert)</label><input name="allowed_disciplines" value="${escapeHtml((a.allowed_disciplines || []).join(', '))}" placeholder="run, strength" /></div>
+        </div>
       </div>
       <div class="section-block">
         <h2>Sesongmål (timer)</h2>
@@ -1726,7 +1755,17 @@ function renderDu() {
         </div>
       </div>
       ${state.error && state.tab === 'du' ? `<p class="error">${escapeHtml(state.error)}</p>` : ''}
-      <button class="btn btn-primary" type="submit" ${state.busy ? 'disabled' : ''}>Lagre profil</button>
+      <div class="sync-actions" style="margin-top:0.75rem">
+        <button class="btn btn-primary" type="submit" ${state.busy ? 'disabled' : ''}>Lagre profil</button>
+        <button type="button" class="btn secondary" id="du-talk-coach-btn" ${state.busy ? 'disabled' : ''}>
+          Snakk med treneren om endringene
+        </button>
+      </div>
+      ${
+        state.profileSavedForCoach
+          ? `<p class="muted tight">Profil lagret. Trykk «Snakk med treneren…» for foreslått planjustering (forhåndsvis → bekreft — ingen stille Intervals-skriving).</p>`
+          : `<p class="muted tight">Etter lagring kan du be treneren foreslå planjustering ut fra nye mål/avtaler.</p>`
+      }
     </form>
     <form id="intervals-form" class="section-block intervals-section">
       <div class="section-head">
@@ -2001,6 +2040,45 @@ function bindApp() {
     render()
   })
 
+  document.getElementById('plan-adjust-dismiss-btn')?.addEventListener('click', () => {
+    state.planAdjust = null
+    state.workoutSync.error = ''
+    render()
+  })
+
+  document.getElementById('plan-adjust-confirm-btn')?.addEventListener('click', async () => {
+    const pa = state.planAdjust
+    if (!pa?.plan_blocks?.length) return
+    state.busy = true
+    state.workoutSync.error = ''
+    render()
+    try {
+      const data = await api('/v1/athlete/me/plan/adjust/confirm', {
+        method: 'POST',
+        body: {
+          plan_blocks: pa.plan_blocks,
+          athlete_patch: pa.athlete_patch || {},
+          prepare_intervals_sync: false,
+        },
+      })
+      state.athlete = data.athlete
+      state.planAdjust = null
+      state.workoutSync.message = data.message || 'Grovplan oppdatert'
+      toast(state.workoutSync.message)
+      await refreshPlanBlocks()
+      await refreshOverview()
+      if (data.intervals_pending) {
+        state.tab = 'plan'
+        state.sync.pending = data.intervals_pending
+      }
+    } catch (err) {
+      state.workoutSync.error = err.message || 'Kunne ikke bekrefte planjustering'
+    } finally {
+      state.busy = false
+      render()
+    }
+  })
+
   document.getElementById('athlete-type-confirm-btn')?.addEventListener('click', async () => {
     const prop = state.athleteTypeProposal
     if (!prop?.to && !prop?.athlete_type) return
@@ -2254,6 +2332,12 @@ function bindApp() {
       weekly_focus: String(fd.get('weekly_focus') || ''),
       injury_notes: String(fd.get('injury_notes') || ''),
       notes: String(fd.get('notes') || ''),
+      fitness_notes: String(fd.get('fitness_notes') || ''),
+      sessions_per_week: numOrNull(fd.get('sessions_per_week')),
+      allowed_disciplines: String(fd.get('allowed_disciplines') || '')
+        .split(/[,;/|]+/)
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean),
       nutrition_ibs: String(fd.get('nutrition_ibs') || 'no'),
       nutrition_gluten: String(fd.get('nutrition_gluten') || 'none'),
       nutrition_lactose: fd.get('nutrition_lactose') === 'on',
@@ -2281,12 +2365,46 @@ function bindApp() {
     try {
       const data = await api('/v1/athlete/me', { method: 'PATCH', body: payload })
       state.athlete = data.athlete
+      state.profileSavedForCoach = true
       setAccent(data.athlete.accent_color)
       toast('Profil oppdatert')
       await refreshOverview()
       await refreshDashboard()
     } catch (err) {
       state.error = err.message || 'Lagring feilet'
+    } finally {
+      state.busy = false
+      render()
+    }
+  })
+
+  document.getElementById('du-talk-coach-btn')?.addEventListener('click', async () => {
+    state.busy = true
+    state.error = ''
+    state.workoutSync.error = ''
+    render()
+    try {
+      const data = await api('/v1/athlete/me/plan/adjust/preview', {
+        method: 'POST',
+        body: { enrich_with_llm: true, prepare_intervals_sync: false },
+      })
+      state.planAdjust = data
+      state.profileSavedForCoach = false
+      state.chatDraft = data.seed_chat_prompt || ''
+      state.tab = 'coach'
+      state.messages.push({
+        role: 'assistant',
+        content:
+          data.coach_note ||
+          'Jeg har laget en forhåndsvisning av justert grovplan ut fra profilen din under Du. Se kortet under — bekreft for å lagre lokalt (Intervals først etter Sync).',
+      })
+      toast('Planjustering klar til bekreftelse')
+    } catch (err) {
+      state.error = err.message || 'Kunne ikke foreslå planjustering'
+      // Still open chat with a seed even if preview failed
+      state.chatDraft =
+        'Jeg har endret mål/avtaler under Du. Kan du foreslå justering av grovplan og kommende økter? Ikke sync Intervals før jeg bekrefter.'
+      state.tab = 'coach'
     } finally {
       state.busy = false
       render()

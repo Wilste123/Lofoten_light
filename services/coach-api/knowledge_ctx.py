@@ -75,21 +75,18 @@ CONDITIONAL_PACKS: list[tuple[list[str], list[str]]] = [
     (
         [
             "comeback",
-            "pause",
-            "tidligere",
-            "før i tiden",
+            "etter pause",
+            "lang pause",
             "returning",
-            "eks-",
-            "eks ",
+            "eks-atlet",
+            "eks syklist",
             "tidligere elite",
-            "tidligere syklist",
-            "tidligere løper",
             "har trent før",
-            "var i form",
+            "tilbake etter",
+            "rebuild",
+            "ikke trent på",
             "2019",
             "gammel form",
-            "rebuild",
-            "tilbake etter",
         ],
         [
             "lop/oppbygging-etter-pause.md",
@@ -305,21 +302,37 @@ def detect_athlete_signals(text: str, draft: dict[str, Any] | None = None) -> di
             "background_notes",
             "notes",
             "coach_respect_notes",
+            "fitness_notes",
         ):
             blob += " " + _norm(str(draft.get(k) or ""))
+    fitness_ok = bool(
+        re.search(
+            r"form\s+(er\s+)?(ok|grei|bra|fin|god)|allerede\s+i\s+form|trener\s+allerede|"
+            r"fitness\s+ok|holder\s+formen|ikke\s+comeback|form ok|ikke re-etablering",
+            blob,
+        )
+    )
+    # Require real comeback / pause cues — not bare «tidligere» or «var i form»
+    returning = bool(
+        re.search(
+            r"comeback|etter\s+pause|lang\s+pause|returning|eks-atlet|eks\s+syklist|"
+            r"har\s+trent\s+før|tilbake\s+etter|rebuild|oppbygging\s+etter\s+pause|"
+            r"ikke\s+trent\s+på",
+            blob,
+        )
+    )
+    if fitness_ok:
+        returning = False
     return {
         "beginner": bool(
             re.search(
                 r"nybegynner|aldri trent|helt ny|ingen erfaring|beginner|kan ikke svømme",
                 blob,
             )
-        ),
-        "returning": bool(
-            re.search(
-                r"comeback|pause|tidligere|returning|eks-|har trent før|var i form|rebuild",
-                blob,
-            )
-        ),
+        )
+        and not fitness_ok,
+        "returning": returning,
+        "fitness_ok": fitness_ok,
         "injury": bool(
             re.search(r"skade|isjas|rygg|kne|achilles|smerte|rehab|plager", blob)
         ),

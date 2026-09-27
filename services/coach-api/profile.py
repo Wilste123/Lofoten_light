@@ -87,6 +87,11 @@ Kilde for sannhet for coach (app + Cursor). Oppdateres ved onboarding og når Du
 
 {_fmt(athlete.get("goal_text"), "(ikke satt)")}
 
+| | |
+|---|---|
+| Sesongstart | {_fmt(athlete.get("season_start_date"))} |
+| Måldato / race | {_fmt(athlete.get("goal_race_date"))} |
+
 ## Ukens fokus
 
 {_fmt(athlete.get("weekly_focus"), "(ikke satt)")}
@@ -95,6 +100,7 @@ Kilde for sannhet for coach (app + Cursor). Oppdateres ved onboarding og når Du
 
 | Metrikk | Verdi |
 |---------|-------|
+| Setup-form (samtale) | {_fmt(athlete.get("fitness_notes"), "(ikke notert)")} |
 | Testet FTP | {ftp_line} |
 | Estimert FTP | {_fmt(athlete.get("ftp_estimated"), "venter på ≥5 sykkeløkter med watt")} |
 | VO₂-estimat | {_fmt(athlete.get("vo2_estimate"), "—")} |

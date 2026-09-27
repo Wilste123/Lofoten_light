@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS athletes (
   athlete_type_notes TEXT DEFAULT '',
   allowed_disciplines TEXT DEFAULT '',
   sessions_per_week INTEGER,
+  fitness_notes TEXT DEFAULT '',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -226,6 +227,7 @@ _EXTRA_COLUMNS = [
     ("athlete_type_notes", "TEXT DEFAULT ''"),
     ("allowed_disciplines", "TEXT DEFAULT ''"),
     ("sessions_per_week", "INTEGER"),
+    ("fitness_notes", "TEXT DEFAULT ''"),
 ]
 
 # Seeded returning athletes — always treated as setup-done; re-seed must not wipe them.
@@ -520,6 +522,7 @@ def update_athlete(
         "athlete_type",
         "athlete_type_notes",
         "sessions_per_week",
+        "fitness_notes",
     }
     fields: list[str] = []
     values: list[Any] = []

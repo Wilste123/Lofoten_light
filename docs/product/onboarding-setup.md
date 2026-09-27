@@ -36,10 +36,18 @@ Coach infererer og lagrer en **primær utøvertype** (`athletes.athlete_type` + 
 
 | Felt | Betydning |
 |------|-----------|
+| `goal_text` | Du → Mål — syntetiseres fra samtale («Triatlon 2028») hvis extract mangler |
+| `goal_race_date` | År-only («2028») → sen sesong det året (f.eks. 2028-09-15); ikke ~8 mnd default |
 | `allowed_disciplines` | JSON-liste: `run` / `bike` / `swim` / `strength` |
 | `sessions_per_week` | Heltall 2–8 — loft for WORKOUT-økter/uke |
+| `fitness_notes` | Form OK / trener allerede → ikke «Re-etablering» |
+| `agreements` / `notes` / `weekly_focus` / `injury_notes` | Persisteres ved confirm til SQLite + `profile.md` |
 
-Halvmaraton / «kun løp + styrke» / «3 økter» → **ikke** default tri-uke. Preview viser `constraints_summary_nb` + `prescription_rationale_nb` (norsk coach-stemme).
+Halvmaraton / «kun løp + styrke» / «3 økter» → **ikke** default tri-uke. Form OK + N×/uke → **Base**, ikke Re-etablering. Preview viser `constraints_summary_nb` + `prescription_rationale_nb` (norsk coach-stemme).
+
+**Preview === push:** Samme `build_plan_sync_bundle` for Forhåndsvis og Intervals-pending. `draftPayload` sender `sessions_per_week` / `allowed_disciplines` / `athlete_type` / `fitness_notes`. Confirm kjører `merge_confirm_athlete_patch` så Du-fanen ikke blir blank.
+
+**Du → chat → plan:** Lagre profil under Du, deretter **«Snakk med treneren om endringene»** → `POST /v1/athlete/me/plan/adjust/preview` (knowledge-grounded) → bekreft med `…/plan/adjust/confirm`. Intervals skrives **ikke** stille — samme preview→confirm-mønster.
 
 **Muterbar over tid:** `generell` → `runner` → `half_marathon_runner` / maraton når mål blir klart. Historikk i `athlete_type_notes`. Chat kan foreslå `athlete_type_update` (preview → `POST /v1/athlete/me/athlete-type`) — plan skrives **ikke** stille om; øktvalg følger ny type etter bekreftelse.
 
@@ -77,6 +85,8 @@ Seed `william` er `setup_completed=true` (seed / migrate) — login går rett ti
 | `POST /v1/setup/confirm` | Ja lokalt; Intervals pending kun hvis `prepare_intervals_sync` (feiler ikke hele lagringen) |
 | `POST /v1/athlete/me/setup/reset` | Ja — wipe plan/mål; valgfri ICU coach-delete |
 | `POST /v1/athlete/me/athlete-type` | Ja — muterbar type + historikk; valgfri plan-preview |
+| `POST /v1/athlete/me/plan/adjust/preview` | Nei — grovplan fra Du-profil (seed chat + blocks) |
+| `POST /v1/athlete/me/plan/adjust/confirm` | Ja lokalt blocks; Intervals kun pending ved prepare |
 | `POST /v1/athlete/me/intervals/workouts/remove/preview` | Pending delete (ll-coach-* only) |
 | `POST /v1/athlete/me/intervals/calendar/confirm` | Ja ICU — etter pending |
 
@@ -108,6 +118,7 @@ Setup-preview/confirm skal aldri bare vise «Feil 500» — API returnerer `deta
 ## Tester
 
 `services/coach-api/tests/test_setup_onboarding.py`  
+`services/coach-api/tests/test_plan_align_onboarding.py` — 2028-mål, ingen re-etablering ved form OK, preview≡sync, Du-persist, plan-adjust  
 `services/coach-api/tests/test_plan_workouts.py`  
 `services/coach-api/tests/test_athlete_type.py`  
 `services/coach-api/tests/test_workout_constraints.py`  

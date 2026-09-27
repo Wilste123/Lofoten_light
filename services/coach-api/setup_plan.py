@@ -55,24 +55,350 @@ def _monday_on_or_after(d: date) -> date:
     return d if d.weekday() == 0 else d + timedelta(days=(7 - d.weekday()) % 7)
 
 
+# Late-season default when athlete only gives a year (e.g. «triatlon 2028»).
+_DEFAULT_GOAL_MONTH = 9
+_DEFAULT_GOAL_DAY = 15
+
+
+def infer_goal_race_date(
+    *,
+    goal_race: str | None = None,
+    goal_text: str = "",
+    schedule_notes: str = "",
+    notes: str = "",
+    today: date | None = None,
+) -> date | None:
+    """ISO date, or year-only («2028», «triatlon 2028») → mid/late that year.
+
+    Never invents ~8 months ahead when the athlete named a future year.
+    """
+    today = today or date.today()
+    explicit = _parse_date(goal_race)
+    if explicit and explicit > today:
+        return explicit
+
+    blob = " ".join(
+        str(x or "") for x in (goal_race, goal_text, schedule_notes, notes)
+    )
+    # Full ISO already handled; also «11. mai 2028» / «2028-08-20»
+    m_iso = re.search(r"(20\d{2})-(\d{2})-(\d{2})", blob)
+    if m_iso:
+        try:
+            d = date(int(m_iso.group(1)), int(m_iso.group(2)), int(m_iso.group(3)))
+            if d > today:
+                return d
+        except ValueError:
+            pass
+
+    years = [int(y) for y in re.findall(r"\b(20[2-3]\d)\b", blob)]
+    # Prefer the furthest future year mentioned (season target)
+    future_years = sorted({y for y in years if y >= today.year}, reverse=True)
+    if future_years:
+        y = future_years[0]
+        # Same calendar year mention without month → late this year if still ahead
+        candidate = date(y, _DEFAULT_GOAL_MONTH, _DEFAULT_GOAL_DAY)
+        if candidate <= today:
+            # Year is current and default already passed → end of year
+            candidate = date(y, 12, 15)
+        if candidate <= today and y == today.year:
+            return None  # fall through to week-based default
+        if candidate > today:
+            return candidate
+    return None
+
+
 def default_season_window(
     *,
     season_start: str | None = None,
     goal_race: str | None = None,
     today: date | None = None,
     signals: dict[str, bool] | None = None,
+    goal_text: str = "",
+    schedule_notes: str = "",
+    notes: str = "",
 ) -> tuple[date, date]:
     today = today or date.today()
     start = _parse_date(season_start) or _monday_on_or_after(today)
-    race = _parse_date(goal_race)
     signals = signals or {}
+    race = infer_goal_race_date(
+        goal_race=goal_race,
+        goal_text=goal_text,
+        schedule_notes=schedule_notes,
+        notes=notes,
+        today=today,
+    )
     if not race or race <= start:
-        # Beginners: shorter first season horizon; returning: longer build
+        # Only when no conversational year/date — beginners shorter, rebuild longer
         weeks = 24 if signals.get("beginner") else 40 if signals.get("returning") else 32
         if signals.get("time_constrained"):
             weeks = min(weeks, 28)
+        if signals.get("fitness_ok") and not signals.get("returning"):
+            weeks = max(weeks, 36)  # trained → longer season, not rebuild sprint
         race = start + timedelta(weeks=weeks)
     return start, race
+
+
+def _draft_text_blob(draft: dict[str, Any] | None, *extra: str) -> str:
+    draft = draft or {}
+    parts = list(extra)
+    for k in (
+        "goal_text",
+        "schedule_notes",
+        "background_notes",
+        "coach_respect_notes",
+        "notes",
+        "injury_notes",
+        "fitness_notes",
+        "weekly_focus",
+    ):
+        parts.append(str(draft.get(k) or ""))
+    agr = draft.get("agreements")
+    if isinstance(agr, list):
+        parts.extend(str(a) for a in agr)
+    return " ".join(parts)
+
+
+def compose_goal_text(draft: dict[str, Any] | None = None, *, text: str = "") -> str:
+    """Build a non-empty Du-fanen «Mål» string from extract / conversation cues."""
+    draft = draft or {}
+    explicit = str(draft.get("goal_text") or "").strip()
+    if explicit:
+        return explicit[:500]
+
+    blob = _draft_text_blob(draft, text)
+    low = blob.lower()
+    bits: list[str] = []
+
+    if re.search(r"triatlon|triathlon|half\s*extreme|halviron|ironman|norseman", low):
+        bits.append("Triatlon")
+    elif re.search(r"halv\s*maraton|half[\s-]?marathon", low):
+        bits.append("Halvmaraton")
+    elif re.search(r"\bmaraton\b|marathon", low):
+        bits.append("Maraton")
+    elif re.search(r"\bløp|\bløper|running", low):
+        bits.append("Løping")
+    elif re.search(r"sykkel|cycling", low):
+        bits.append("Sykling")
+
+    years = re.findall(r"\b(20[2-3]\d)\b", blob)
+    if years:
+        bits.append(max(years))  # furthest / latest mentioned year as season target
+
+    if re.search(r"lofoten", low):
+        bits.append("Lofoten")
+
+    if re.search(r"fullføre|fullfor", low):
+        bits.append("fullføre")
+    elif re.search(r"prestasjon|podium|sub[\s-]?\d", low):
+        bits.append("prestasjon")
+
+    if bits:
+        # «Triatlon 2028» or «Halvmaraton · fullføre»
+        if len(bits) >= 2 and bits[1].isdigit():
+            return f"{bits[0]} {bits[1]}"[:500]
+        return " · ".join(bits)[:500]
+
+    # Last resort: first non-empty note line that looks like a goal
+    for key in ("background_notes", "schedule_notes", "notes", "coach_respect_notes"):
+        val = str(draft.get(key) or "").strip()
+        if val and len(val) >= 8:
+            return val.split("\n")[0][:500]
+    return ""
+
+
+def compose_fitness_notes(draft: dict[str, Any] | None = None, *, text: str = "") -> str:
+    draft = draft or {}
+    explicit = str(draft.get("fitness_notes") or "").strip()
+    if explicit:
+        return explicit[:400]
+    blob = _draft_text_blob(draft, text).lower()
+    if re.search(
+        r"form\s+(er\s+)?(ok|grei|bra|fin|god)|allerede\s+i\s+form|trener\s+allerede|"
+        r"fitness\s+ok|ikke\s+comeback|ikke\s+nybegynner|holder\s+formen",
+        blob,
+    ):
+        return "Form OK — trener allerede (ikke re-etablering)"
+    return ""
+
+
+def build_agreements_list(
+    draft: dict[str, Any] | None = None,
+    *,
+    constraints: dict[str, Any] | None = None,
+    goal_text: str = "",
+    fitness_notes: str = "",
+) -> list[str]:
+    """Human-readable agreements for Du-fanen + profile.md."""
+    draft = draft or {}
+    existing = draft.get("agreements")
+    out: list[str] = []
+    if isinstance(existing, list):
+        out.extend(str(a).strip() for a in existing if str(a).strip())
+
+    def _add(line: str) -> None:
+        line = line.strip()
+        if line and line not in out:
+            out.append(line)
+
+    if goal_text:
+        _add(f"Mål: {goal_text}")
+    if fitness_notes:
+        _add(fitness_notes)
+    c = constraints or {}
+    n = c.get("sessions_per_week")
+    if n:
+        _add(f"{n} økter/uke")
+    labels = c.get("disciplines_labels_no") or []
+    if labels:
+        _add("Disipliner: " + " + ".join(labels))
+    at = draft.get("athlete_type") or c.get("athlete_type")
+    if at:
+        _add(f"Utøvertype: {at}")
+    race = draft.get("goal_race_date")
+    if race:
+        _add(f"Måldato: {race}")
+    return out[:20]
+
+
+def enrich_draft_from_text(
+    draft: dict[str, Any],
+    text: str = "",
+    *,
+    today: date | None = None,
+) -> dict[str, Any]:
+    """Heuristic fill for chat/preview when LLM extract leaves fields null."""
+    out = dict(draft)
+    blob = _draft_text_blob(draft, text)
+    low = blob.lower()
+
+    if not str(out.get("goal_text") or "").strip():
+        composed = compose_goal_text(out, text=text)
+        if composed:
+            out["goal_text"] = composed
+
+    if not str(out.get("fitness_notes") or "").strip():
+        fit = compose_fitness_notes(out, text=text)
+        if fit:
+            out["fitness_notes"] = fit
+
+    if not out.get("goal_race_date"):
+        inferred = infer_goal_race_date(
+            goal_race=out.get("goal_race_date"),
+            goal_text=str(out.get("goal_text") or ""),
+            schedule_notes=str(out.get("schedule_notes") or ""),
+            notes=blob,
+            today=today,
+        )
+        if inferred:
+            out["goal_race_date"] = inferred.isoformat()
+
+    # Sessions / schedule crumbs into schedule_notes if empty
+    if not str(out.get("schedule_notes") or "").strip():
+        m = re.search(
+            r"(\d)\s*(?:økter|okter|sessions?|ganger)\s*(?:/|per|i)?\s*uke",
+            low,
+        )
+        if m:
+            out["schedule_notes"] = f"{m.group(1)} økter/uke"
+            out.setdefault("sessions_per_week", int(m.group(1)))
+        elif re.search(r"\d+\s*t", low):
+            out["schedule_notes"] = text.strip()[:400] if text.strip() else blob[:400]
+
+    return out
+
+
+def merge_confirm_athlete_patch(
+    patch: dict[str, Any],
+    body: dict[str, Any],
+    *,
+    today: date | None = None,
+) -> dict[str, Any]:
+    """Prefer non-empty patch, then body; synthesize goal/agreements for Du-fanen."""
+    persist_keys = (
+        "goal_text",
+        "weekly_focus",
+        "fitness_notes",
+        "schedule_notes",
+        "injury_notes",
+        "background_notes",
+        "coach_respect_notes",
+        "notes",
+        "goal_race_date",
+        "season_start_date",
+        "athlete_type",
+        "sport",
+        "sessions_per_week",
+        "allowed_disciplines",
+        "season_swim_hours_target",
+        "season_bike_hours_target",
+        "season_run_hours_target",
+        "season_strength_hours_target",
+        "ftp_tested",
+        "ftp_tested_at",
+        "weight_kg",
+        "age_years",
+        "nutrition_ibs",
+        "nutrition_gluten",
+        "nutrition_lactose",
+        "nutrition_other_restrictions",
+        "nutrition_notes",
+        "agreements",
+    )
+    merged_draft: dict[str, Any] = {}
+    for k in persist_keys:
+        pv = (patch or {}).get(k)
+        bv = body.get(k)
+        if pv not in (None, "", []):
+            merged_draft[k] = pv
+        elif bv not in (None, "", []):
+            merged_draft[k] = bv
+    # Keep display fields for compose helpers
+    for k in ("display_name", "username", "coach_display_name"):
+        if body.get(k):
+            merged_draft[k] = body[k]
+
+    merged_draft = enrich_draft_from_text(merged_draft, today=today)
+    goal = compose_goal_text(merged_draft)
+    fitness = compose_fitness_notes(merged_draft)
+    atype = merged_draft.get("athlete_type")
+    constraints = resolve_constraints(draft=merged_draft, athlete_type=atype)
+    if merged_draft.get("sessions_per_week") in (None, ""):
+        merged_draft["sessions_per_week"] = constraints.get("sessions_per_week")
+    if not merged_draft.get("allowed_disciplines"):
+        merged_draft["allowed_disciplines"] = constraints.get("allowed_disciplines") or []
+
+    out = {k: (patch or {}).get(k) for k in (patch or {}) if k in persist_keys}
+    out.update({k: merged_draft[k] for k in persist_keys if k in merged_draft})
+    out["goal_text"] = goal
+    out["fitness_notes"] = fitness
+    if not str(out.get("injury_notes") or "").strip():
+        out["injury_notes"] = str(merged_draft.get("injury_notes") or "").strip()
+    if not str(out.get("weekly_focus") or "").strip():
+        n = merged_draft.get("sessions_per_week")
+        labels = constraints.get("disciplines_labels_no") or []
+        disc = " + ".join(labels) if labels else "utholdenhet"
+        out["weekly_focus"] = (
+            f"{n} økter/uke · {disc}" if n else f"Kontinuitet · {disc}"
+        )[:160]
+    out["sessions_per_week"] = merged_draft.get("sessions_per_week")
+    out["allowed_disciplines"] = merged_draft.get("allowed_disciplines") or []
+    out["athlete_type"] = merged_draft.get("athlete_type") or out.get("athlete_type")
+    if merged_draft.get("goal_race_date"):
+        out["goal_race_date"] = merged_draft["goal_race_date"]
+    if merged_draft.get("season_start_date"):
+        out["season_start_date"] = merged_draft["season_start_date"]
+    out["agreements"] = build_agreements_list(
+        merged_draft,
+        constraints=constraints,
+        goal_text=goal,
+        fitness_notes=fitness,
+    )
+    notes = _combine_notes(merged_draft)
+    if fitness and fitness not in notes:
+        notes = (notes + "\n\n" + fitness).strip() if notes else fitness
+    out["notes"] = notes
+    out["schedule_notes"] = str(merged_draft.get("schedule_notes") or "").strip()
+    return out
 
 
 def estimate_weekly_hours(
@@ -146,6 +472,8 @@ def _fallback_blocks(
     goal_text: str = "",
     injury_notes: str = "",
     athlete_type: str | None = None,
+    allowed_disciplines: list[str] | None = None,
+    sessions_per_week: int | None = None,
 ) -> list[dict[str, Any]]:
     """Adaptive fallback when LLM unavailable — still signal-aware, not one template."""
     if goal_race <= season_start:
@@ -153,6 +481,10 @@ def _fallback_blocks(
     total_days = max(28, (goal_race - season_start).days)
     end_plan = goal_race - timedelta(days=1)
     run_primary = (athlete_type or "").endswith("runner") or athlete_type == "runner"
+    fitness_ok = bool(signals.get("fitness_ok"))
+    discs = set(allowed_disciplines or [])
+    # Trained athlete already training N×/week → base/build, never «Re-etablering»
+    use_rebuild = bool(signals.get("returning")) and not fitness_ok
 
     if signals.get("beginner"):
         templates = [
@@ -186,7 +518,7 @@ def _fallback_blocks(
             ("build", "Build", "build", "Kvalitet når smertefri", 0.15, 1.05),
             ("taper", "Buffer / taper", "taper", "Margin før mål", 0.10, 0.75),
         ]
-    elif signals.get("returning"):
+    elif use_rebuild:
         templates = [
             ("kontakt", "Re-etablering", "etablering", "Kontakt alle ben · ikke 2019-watt", 0.15, 0.70),
             ("base1", "Base 1", "base", "Aerob · teknikk", 0.25, 0.90),
@@ -194,6 +526,15 @@ def _fallback_blocks(
             ("build", "Build", "build", "Kvalitet / spesifikk", 0.20, 1.15),
             ("peak", "Peak", "peak", "Race-spesifikk", 0.10, 1.05),
             ("taper", "Taper", "taper", "Nedtrapping", 0.05, 0.65),
+        ]
+    elif fitness_ok or (sessions_per_week and sessions_per_week <= 5):
+        sess_bit = f"{sessions_per_week} økter/uke · " if sessions_per_week else ""
+        templates = [
+            ("base1", "Base", "base", f"{sess_bit}Aerob kontinuitet", 0.30, 0.95),
+            ("base2", "Base 2", "base", "Volum og teknikk", 0.25, 1.0),
+            ("build", "Build", "build", "Kvalitet / spesifikk", 0.25, 1.10),
+            ("peak", "Peak", "peak", "Race-spesifikk", 0.12, 1.05),
+            ("taper", "Taper", "taper", "Nedtrapping", 0.08, 0.70),
         ]
     elif signals.get("time_constrained"):
         templates = [
@@ -211,6 +552,16 @@ def _fallback_blocks(
             ("taper", "Taper", "taper", "Nedtrapping", 0.08, 0.70),
         ]
 
+    # Discipline-aware theme tweaks (no swim/bike language when not allowed)
+    def _theme_for(theme: str) -> str:
+        t = theme
+        if discs and "swim" not in discs and "bike" not in discs:
+            t = re.sub(r"\b(svøm|sykkel|swim|bike|alle ben)\b", "", t, flags=re.I)
+            t = re.sub(r"\s{2,}", " ", t).strip(" ·")
+            if not t:
+                t = "Løp + styrke · kontinuitet" if "run" in discs else "Kontinuitet"
+        return t
+
     injury_bit = " · skånsom progresjon" if (injury_notes or "").strip() or signals.get("injury") else ""
     blocks: list[dict[str, Any]] = []
     cursor = season_start
@@ -223,9 +574,10 @@ def _fallback_blocks(
         if block_end < cursor:
             block_end = cursor + timedelta(days=6)
         wh = round(weekly_hours * factor, 1)
-        t = theme + injury_bit
+        theme_n = _theme_for(theme)
+        t = theme_n + injury_bit
         if goal_text and phase in ("build", "peak"):
-            t = f"{theme} · mot {(goal_text.strip().split(chr(10))[0])[:60]}{injury_bit}"
+            t = f"{theme_n} · mot {(goal_text.strip().split(chr(10))[0])[:60]}{injury_bit}"
         blocks.append(
             {
                 "key": key,
@@ -242,6 +594,50 @@ def _fallback_blocks(
         if cursor > end_plan:
             break
     return blocks
+
+
+def _sanitize_block_titles(
+    blocks: list[dict[str, Any]],
+    *,
+    signals: dict[str, bool],
+    allowed_disciplines: list[str] | None = None,
+    fitness_notes: str = "",
+) -> list[dict[str, Any]]:
+    """Strip false re-etablering / wrong-discipline themes after LLM or fallback."""
+    fitness_ok = bool(signals.get("fitness_ok")) or bool(
+        re.search(r"form ok|ikke re-etablering|trener allerede", (fitness_notes or "").lower())
+    )
+    discs = set(allowed_disciplines or [])
+    out: list[dict[str, Any]] = []
+    for b in blocks:
+        nb = dict(b)
+        title = str(nb.get("title") or "")
+        theme = str(nb.get("theme") or "")
+        if fitness_ok and re.search(r"re-?etablering|rebuild", title, re.I):
+            nb["title"] = "Base"
+            if nb.get("phase") in ("etablering", "rehab"):
+                nb["phase"] = "base"
+            theme = re.sub(r"re-?etablering", "base", theme, flags=re.I)
+        if discs and "swim" not in discs and "bike" not in discs:
+            theme = re.sub(
+                r"(langsykler?|lang\s*sykkel|svømmeteknikk|svøm|sykkel|swim|bike)",
+                "",
+                theme,
+                flags=re.I,
+            )
+            theme = re.sub(r"\s{2,}", " ", theme).strip(" ·,/")
+            if not theme:
+                theme = "Løp + styrke" if "run" in discs else "Kontinuitet"
+            title = re.sub(
+                r"(langsykler?|svømmeteknikk|svøm|sykkel)",
+                "",
+                title,
+                flags=re.I,
+            ).strip(" ·") or nb["title"]
+            nb["title"] = title
+        nb["theme"] = theme
+        out.append(nb)
+    return out
 
 
 def normalize_plan_blocks(
@@ -419,6 +815,9 @@ def generate_plan_with_llm(
     )
     type_label = label_for(athlete_type) if athlete_type else "ukjent"
     discipline_hint = ""
+    discs = draft.get("allowed_disciplines") or []
+    sess = draft.get("sessions_per_week")
+    fitness = str(draft.get("fitness_notes") or "")
     if athlete_type and (
         str(athlete_type).endswith("runner") or athlete_type == "runner"
     ):
@@ -430,6 +829,18 @@ def generate_plan_with_llm(
         discipline_hint = "Hoveddisiplin er SYKKEL — ikke default tri-pack."
     elif athlete_type == "swimmer":
         discipline_hint = "Hoveddisiplin er SVØMMING — ikke default tri-pack."
+    if discs:
+        discipline_hint += (
+            f" Tillatte disipliner: {discs}. Temaer må matche — "
+            "ikke «langsykkel/svøm» hvis det ikke er avtalt."
+        )
+    if sess:
+        discipline_hint += f" Avtalt frekvens: ca. {sess} økter/uke."
+    if signals.get("fitness_ok") or re.search(r"form ok|trener allerede", fitness, re.I):
+        discipline_hint += (
+            " Form er allerede OK / trener allerede — bruk Base/Build, "
+            "IKKE tittel «Re-etablering»."
+        )
 
     system = f"""Du er en norsk utholdenhetstrener som lager grovplan (meso-periodisering).
 Bruk knowledge-basen. ÉN respons — ingen tool-kall.
@@ -439,7 +850,9 @@ Utøvertype (hoveddisiplin): {type_label} ({athlete_type or "general_endurance"}
 
 Regler:
 - Tilpass strukturen til utøveren (nybegynner ≠ comeback ≠ skade ≠ tidsklemma ≠ enkeltidrett).
-- Respekter hoveddisiplin — halvmaraton-løper skal IKKE få swim/bike/run-tri-mal.
+- Respekter hoveddisiplin og allowed_disciplines — halvmaraton-løper skal IKKE få swim/bike/run-tri-mal.
+- goal_race_date i defaults er fasit for sesongslutt — ikke flytt til ~8 mnd hvis året er 2028+.
+- Form OK / trener allerede N×/uke → første blokk «Base» (ikke Re-etablering).
 - Ikke hardkod Lofoten/William-volum med mindre utøveren ber om det.
 - Beskytt mot for høyt volum; skade → ACWR-trygg progresjon.
 - Returner KUN en fenced json-blokk:
@@ -477,7 +890,10 @@ Regler:
                         "background_notes",
                         "coach_respect_notes",
                         "notes",
+                        "fitness_notes",
                         "weekly_hours_target",
+                        "sessions_per_week",
+                        "allowed_disciplines",
                         "season_start_date",
                         "goal_race_date",
                         "ftp_tested",
@@ -489,7 +905,7 @@ Regler:
                         "sport",
                     )
                 },
-                "signals": signals,
+                "signals": {k: v for k, v in signals.items() if not str(k).startswith("_")},
                 "athlete_type": athlete_type,
                 "athlete_type_label": type_label,
                 "defaults": {
@@ -585,10 +1001,18 @@ def build_setup_preview(
     today: date | None = None,
 ) -> dict[str, Any]:
     """Knowledge + athlete answers → periodization preview (no DB writes)."""
+    today = today or date.today()
+    draft = enrich_draft_from_text(dict(draft), today=today)
+    goal_text = compose_goal_text(draft)
+    fitness_notes = compose_fitness_notes(draft)
+    if goal_text:
+        draft["goal_text"] = goal_text
+    if fitness_notes:
+        draft["fitness_notes"] = fitness_notes
+
     signals = detect_athlete_signals(_draft_blob(draft), draft)
     type_info = infer_athlete_type(_draft_blob(draft), draft, signals=signals)
     athlete_type = type_info["athlete_type"]
-    # Persistable training agreements (disciplines + frequency)
     draft_for_constraints = {**draft, "athlete_type": athlete_type}
     constraints = resolve_constraints(
         draft=draft_for_constraints, athlete_type=athlete_type
@@ -600,7 +1024,12 @@ def build_setup_preview(
         goal_race=draft.get("goal_race_date"),
         today=today,
         signals=signals,
+        goal_text=goal_text or str(draft.get("goal_text") or ""),
+        schedule_notes=str(draft.get("schedule_notes") or ""),
+        notes=_draft_text_blob(draft),
     )
+    draft["goal_race_date"] = race.isoformat()
+    draft["season_start_date"] = start.isoformat()
     weekly = estimate_weekly_hours(
         draft.get("weekly_hours_target"),
         str(draft.get("schedule_notes") or ""),
@@ -620,7 +1049,12 @@ def build_setup_preview(
 
     if enrich:
         blocks, coach_note, source = generate_plan_with_llm(
-            draft,
+            {
+                **draft,
+                "allowed_disciplines": allowed_disciplines,
+                "sessions_per_week": sessions_per_week,
+                "fitness_notes": fitness_notes,
+            },
             knowledge_dir=knowledge_dir,
             api_key=api_key,
             model=model,
@@ -630,22 +1064,40 @@ def build_setup_preview(
             weekly_hours=weekly,
             athlete_type=athlete_type,
         )
-        # Re-read dates/hours if LLM shifted window via first/last block
         if blocks:
             start = _parse_date(blocks[0]["start_date"]) or start
             race = (_parse_date(blocks[-1]["end_date"]) or race) + timedelta(days=1)
+            # Never let LLM shrink a named future year (e.g. 2028) back to ~8 months
+            named = infer_goal_race_date(
+                goal_text=goal_text,
+                schedule_notes=str(draft.get("schedule_notes") or ""),
+                notes=_draft_text_blob(draft),
+                today=today,
+            )
+            if named and race.year < named.year:
+                race = named
     else:
         blocks = _fallback_blocks(
             season_start=start,
             goal_race=race,
             weekly_hours=weekly,
             signals=signals,
-            goal_text=str(draft.get("goal_text") or ""),
+            goal_text=goal_text,
             injury_notes=str(draft.get("injury_notes") or ""),
             athlete_type=athlete_type,
+            allowed_disciplines=allowed_disciplines,
+            sessions_per_week=sessions_per_week,
         )
         coach_note = None
         source = "deterministic_fallback"
+
+    # Rewrite false re-etablering when form OK / trained frequency
+    blocks = _sanitize_block_titles(
+        blocks,
+        signals=signals,
+        allowed_disciplines=allowed_disciplines,
+        fitness_notes=fitness_notes,
+    )
 
     targets = season_targets_from_hours(
         weekly,
@@ -662,20 +1114,41 @@ def build_setup_preview(
         goal_race=race,
         weekly_hours=weekly,
         targets=targets,
-        goal_text=str(draft.get("goal_text") or ""),
+        goal_text=goal_text,
         display_name=str(draft.get("display_name") or ""),
         signals=signals,
         athlete_archetype=arch,
         coach_note=coach_note,
     )
 
+    labels = constraints.get("disciplines_labels_no") or []
+    disc = " + ".join(labels) if labels else "utholdenhet"
+    weekly_focus = (draft.get("weekly_focus") or "").strip()
+    if not weekly_focus:
+        if sessions_per_week:
+            weekly_focus = f"{sessions_per_week} økter/uke · {disc}"
+        elif blocks:
+            weekly_focus = str(blocks[0].get("theme") or "")[:160]
+        else:
+            weekly_focus = f"Kontinuitet · {disc}"
+
+    agreements = build_agreements_list(
+        {**draft, "athlete_type": athlete_type, "goal_race_date": race.isoformat()},
+        constraints=constraints,
+        goal_text=goal_text,
+        fitness_notes=fitness_notes,
+    )
+    notes = _combine_notes(draft)
+    if fitness_notes and fitness_notes not in notes:
+        notes = (notes + "\n\n" + fitness_notes).strip() if notes else fitness_notes
+
     athlete_patch = {
-        "goal_text": (draft.get("goal_text") or "").strip(),
+        "goal_text": goal_text,
         "injury_notes": (draft.get("injury_notes") or "").strip(),
         "schedule_notes": (draft.get("schedule_notes") or "").strip(),
-        "notes": _combine_notes(draft),
-        "weekly_focus": (draft.get("weekly_focus") or "").strip()
-        or (blocks[0]["theme"] if blocks else ""),
+        "notes": notes,
+        "fitness_notes": fitness_notes,
+        "weekly_focus": weekly_focus[:160],
         "athlete_type": athlete_type,
         "sport": type_info.get("sport") or draft.get("sport") or "endurance",
         "allowed_disciplines": allowed_disciplines,
@@ -696,9 +1169,7 @@ def build_setup_preview(
         "nutrition_other_restrictions": draft.get("nutrition_other_restrictions")
         or "",
         "nutrition_notes": draft.get("nutrition_notes") or "",
-        "agreements": draft.get("agreements")
-        if isinstance(draft.get("agreements"), list)
-        else [],
+        "agreements": agreements,
     }
 
     return {
@@ -766,6 +1237,7 @@ SETUP_EXTRACT_KEYS = (
     "background_notes",
     "coach_respect_notes",
     "notes",
+    "fitness_notes",
     "weekly_hours_target",
     "sessions_per_week",
     "allowed_disciplines",
@@ -825,17 +1297,21 @@ Regler:
 - Sett sessions_per_week (heltall 2–8) når utøveren sier f.eks. «3 økter i uka».
 - Sett allowed_disciplines som liste når avtalt, f.eks. ["run","strength"]
   (gyldige: run, bike, swim, strength). Halvmaraton/løper uten tri → ikke svøm/sykkel.
+- Når utøveren nevner år («triatlon 2028»), sett goal_race_date til sen sesong det året
+  (f.eks. YYYY-09-15) ELLER spør én gang om eksakt racedato — aldri finn opp ~8 mnd frem.
+- Når form er OK / trener allerede: sett fitness_notes (kort) — ikke merk som comeback.
 
 Avslutt HVER melding med en fenced blokk merket setup_extract (ikke synlig råd):
 ```setup_extract
 {{"ready_for_plan": false, "goal_text": null, "injury_notes": null, "schedule_notes": null,
  "background_notes": null, "coach_respect_notes": null, "weekly_hours_target": null,
- "sessions_per_week": null, "allowed_disciplines": null,
+ "sessions_per_week": null, "allowed_disciplines": null, "fitness_notes": null,
  "season_start_date": null, "goal_race_date": null, "ftp_tested": null,
  "nutrition_ibs": null, "nutrition_gluten": null, "nutrition_lactose": null,
  "nutrition_notes": null, "notes": null, "athlete_type": null, "sport": null}}
 ```
 Kun fyll felt du faktisk har fått bekreftet; la resten være null.
+Alltid fyll goal_text så snart målet er klart (f.eks. «Triatlon 2028») — Du-fanen trenger det.
 
 ## Kjent draft så langt
 {json.dumps({k: draft.get(k) for k in SETUP_EXTRACT_KEYS if draft.get(k) not in (None, "", [])}, ensure_ascii=False)}

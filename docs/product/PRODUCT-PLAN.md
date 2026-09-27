@@ -42,7 +42,10 @@ Deterministiske tall (Python, ikke LLM). Se [progress-compliance.md](progress-co
 **Viktig skille:**
 
 - Compliance / volum / form_estimates = **app-side** fra ICU-data (les). Skrives **ikke** tilbake til Intervals.
-- Det eneste ICU-**write** i MVP er når brukeren under Plan aktivt kjører **Sync til Intervals** (grovplan-noter `ll-coach-…`, preview → confirm). Uten Sync forblir Intervals urørt.
+- ICU-**write** krever alltid preview → confirm:
+  - **Plan:** grovplan-noter (`ll-coach-…`) under Plan-fanen.
+  - **Chat:** enkle kalender-WORKOUT (`ll-coach-w-…`) når utøveren ber om å legge inn økt — se [dashboard-okter.md](dashboard-okter.md).
+- Full ZWO/CSV-ukeplan pushes fortsatt via CLI, ikke via chat. Uten Sync forblir Intervals urørt.
 
 Uten Intervals-credentials: **demo/stub**-tall merket «Demo».
 
@@ -115,7 +118,7 @@ Gate ≥ 5 sykkeløkter med watt. Se [form-estimates.md](form-estimates.md).
 | 2e | ~~Dashboard + Økter~~ (wellness/søvn, kropp-toggle, øktlogg) — se [dashboard-okter.md](dashboard-okter.md) |
 | 2e+ | **Dashboard periode** — 7d/14d/30d/90d/custom; trening vs sesong compliance separert |
 | 3 | Invite + training_pair |
-| 4 | Intervals-write videre etter telefon-test av sync |
+| 4 | Intervals-write: plan-noter + chat WORKOUT (beskrivelse) landet; ZWO/CSV fortsatt CLI |
 | 5 | Proaktiv post-MVP |
 
 **Deploy:** `fly deploy --app lofoten-coach` · live health OK på `lofoten-coach.fly.dev` (2026-09-27).

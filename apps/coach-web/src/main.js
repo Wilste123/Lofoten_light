@@ -47,6 +47,14 @@ const state = {
     message: '',
     error: '',
   },
+  /** Chat → Intervals workout proposal (preview → confirm) */
+  workoutProposal: null,
+  workoutSync: {
+    pending: null,
+    busy: false,
+    message: '',
+    error: '',
+  },
   onboarding: {
     display_name: '',
     username: '',
@@ -764,8 +772,57 @@ function renderChat() {
   const bubbles = state.messages
     .map((m) => `<div class="bubble ${m.role}">${escapeHtml(m.content)}</div>`)
     .join('')
+  const proposal = state.workoutProposal
+  const wPending = state.workoutSync.pending
+  let proposalCard = ''
+  if (wPending) {
+    const sample = (wPending.events || [])
+      .slice(0, 8)
+      .map(
+        (e) =>
+          `<li><code>${escapeHtml(e.start_date_local || e.day || '')}</code> · ${escapeHtml(e.name || e.external_id || '')} <span class="dim">${escapeHtml(e.type || e.category || '')}</span></li>`,
+      )
+      .join('')
+    proposalCard = `
+      <div class="confirm-card" role="dialog" aria-label="Bekreft økt på Intervals">
+        <p><strong>${escapeHtml(wPending.message || 'Bekreft økt-sync')}</strong></p>
+        <p class="muted tight">${escapeHtml(wPending.op || 'workout_push')} · ${wPending.count} hendelse(r)</p>
+        <ul class="sync-sample">${sample}</ul>
+        ${wPending.write_gap ? `<p class="muted tight">${escapeHtml(wPending.write_gap)}</p>` : ''}
+        <div class="sync-actions">
+          <button type="button" class="btn btn-primary" id="workout-confirm-yes" ${state.workoutSync.busy ? 'disabled' : ''}>Ja, sync til Intervals</button>
+          <button type="button" class="btn secondary" id="workout-confirm-no" ${state.workoutSync.busy ? 'disabled' : ''}>Avbryt</button>
+        </div>
+        ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
+      </div>`
+  } else if (proposal?.workouts?.length) {
+    const rows = proposal.workouts
+      .map(
+        (w) =>
+          `<li><strong>${escapeHtml(w.date || '')}</strong> · ${escapeHtml(w.name || '')} · ${escapeHtml(w.sport || '')}${
+            w.duration_minutes != null ? ` · ${escapeHtml(String(w.duration_minutes))} min` : ''
+          }</li>`,
+      )
+      .join('')
+    proposalCard = `
+      <div class="confirm-card workout-proposal-card" aria-label="Foreslått økt">
+        <p><strong>Foreslått økt til Intervals</strong></p>
+        <p class="muted tight">Ingenting er synct ennå — forhåndsvis først.</p>
+        <ul class="sync-sample">${rows}</ul>
+        <div class="sync-actions">
+          <button type="button" class="btn btn-primary" id="workout-preview-btn" ${state.workoutSync.busy || !state.intervals.connected ? 'disabled' : ''}>Forhåndsvis sync</button>
+          <button type="button" class="btn secondary" id="workout-dismiss-btn" ${state.workoutSync.busy ? 'disabled' : ''}>Avvis</button>
+        </div>
+        ${!state.intervals.connected ? `<p class="muted tight">Koble Intervals under Du først.</p>` : ''}
+        ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
+        ${state.workoutSync.message ? `<p class="intervals-status is-ok">${escapeHtml(state.workoutSync.message)}</p>` : ''}
+      </div>`
+  } else if (state.workoutSync.message) {
+    proposalCard = `<p class="intervals-status is-ok">${escapeHtml(state.workoutSync.message)}</p>`
+  }
   return `
-    <div class="chat-log" id="chat-log">${bubbles || `<p class="muted">Skriv til ${escapeHtml(state.athlete.coach_display_name)} — eller åpne en økt under Økter.</p>`}</div>
+    <div class="chat-log" id="chat-log">${bubbles || `<p class="muted">Skriv til ${escapeHtml(state.athlete.coach_display_name)} — eller åpne en økt under Økter. Spør f.eks. «hva har jeg denne uka?».</p>`}</div>
+    ${proposalCard}
     <form class="chat-form" id="chat-form">
       <input id="chat-input" autocomplete="off" placeholder="Spør treneren…" value="${escapeHtml(draft)}" ${state.busy ? 'disabled' : ''} />
       <button class="btn btn-primary" type="submit" ${state.busy ? 'disabled' : ''}>Send</button>
@@ -1647,6 +1704,10 @@ function bindApp() {
     const message = (input?.value || '').trim()
     if (!message || state.busy) return
     state.chatDraft = ''
+    state.workoutProposal = null
+    state.workoutSync.pending = null
+    state.workoutSync.error = ''
+    state.workoutSync.message = ''
     state.messages.push({ role: 'user', content: message })
     state.busy = true
     state.error = ''
@@ -1656,6 +1717,10 @@ function bindApp() {
     try {
       const data = await api('/v1/chat', { method: 'POST', body: { message } })
       state.messages.push({ role: 'assistant', content: data.reply })
+      if (data.workout_proposal?.workouts?.length) {
+        state.workoutProposal = data.workout_proposal
+        if (data.proposal_hint) toast(data.proposal_hint)
+      }
     } catch (err) {
       state.error = err.message || 'Chat feilet'
       state.messages.pop()
@@ -1664,6 +1729,80 @@ function bindApp() {
       render()
       const log2 = document.getElementById('chat-log')
       if (log2) log2.scrollTop = log2.scrollHeight
+    }
+  })
+
+  document.getElementById('workout-dismiss-btn')?.addEventListener('click', () => {
+    state.workoutProposal = null
+    state.workoutSync.pending = null
+    state.workoutSync.message = 'Forslag avvist'
+    state.workoutSync.error = ''
+    render()
+  })
+
+  document.getElementById('workout-preview-btn')?.addEventListener('click', async () => {
+    const workouts = state.workoutProposal?.workouts
+    if (!workouts?.length || state.workoutSync.busy) return
+    if (!state.intervals.connected) {
+      state.workoutSync.error = 'Koble Intervals under Du først'
+      render()
+      return
+    }
+    state.workoutSync.busy = true
+    state.workoutSync.error = ''
+    state.workoutSync.message = 'Lager forhåndsvisning…'
+    render()
+    try {
+      const data = await api('/v1/athlete/me/intervals/workouts/preview', {
+        method: 'POST',
+        body: { workouts },
+      })
+      state.workoutSync.pending = data
+      state.workoutSync.message = data.message || 'Bekreft sync'
+    } catch (err) {
+      state.workoutSync.error = err.message || 'Forhåndsvisning feilet'
+      state.workoutSync.message = ''
+    } finally {
+      state.workoutSync.busy = false
+      render()
+    }
+  })
+
+  document.getElementById('workout-confirm-no')?.addEventListener('click', () => {
+    state.workoutSync.pending = null
+    state.workoutSync.message = 'Avbrutt'
+    state.workoutSync.error = ''
+    render()
+  })
+
+  document.getElementById('workout-confirm-yes')?.addEventListener('click', async () => {
+    const pending = state.workoutSync.pending
+    if (!pending?.pending_id || state.workoutSync.busy) return
+    state.workoutSync.busy = true
+    state.workoutSync.error = ''
+    state.workoutSync.message = 'Syncer…'
+    render()
+    try {
+      const data = await api('/v1/athlete/me/intervals/calendar/confirm', {
+        method: 'POST',
+        body: { pending_id: pending.pending_id },
+      })
+      const n = data.pushed ?? pending.count
+      state.workoutSync.pending = null
+      state.workoutProposal = null
+      state.workoutSync.message = `${n} økt(er) lagt på Intervals-kalenderen`
+      toast(state.workoutSync.message)
+      try {
+        await refreshSessions()
+      } catch {
+        /* soft */
+      }
+    } catch (err) {
+      state.workoutSync.error = err.message || 'Bekreftelse feilet'
+      state.workoutSync.message = ''
+    } finally {
+      state.workoutSync.busy = false
+      render()
     }
   })
 

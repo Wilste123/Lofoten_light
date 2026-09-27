@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 from pathlib import Path
@@ -17,6 +18,12 @@ PERSONALITY_HINTS = {
     "teknisk": "Teknisk og presis; soner, TSS, struktur — uten å overforklare.",
     "opv": "Ole Petter Vibekken-inspirert: struktur, krav, ærlig risiko — tilpasset tri/comeback.",
 }
+
+# Optional structured proposal the UI can preview→confirm onto Intervals.
+_WORKOUT_PROPOSAL_RE = re.compile(
+    r"```(?:json\s+)?workout_proposal\s*\n(.*?)```",
+    re.DOTALL | re.IGNORECASE,
+)
 
 
 def build_system_prompt(
@@ -44,6 +51,14 @@ Regler:
 - Ernæring/IBS: les GI-feltene i profilen; bruk knowledge/ernaring; aldri diagnostiser.
 - Intervals eier øktdetaljer; du eier mål/avtaler/skade/ernæring/form-kontekst.
 - Hvis overblikk mangler ICU-data: si ærlig at belastning krever Intervals-kobling.
+- «Hva har jeg denne uka?» / kommende økter: bruk feltet sessions i snapshotet (upcoming/today/recent). Ikke finn opp økter.
+- Når utøveren ber om å legge inn / endre en konkret økt på Intervals-kalenderen:
+  1) Skriv kort råd på norsk.
+  2) Avslutt med ÉN fenced code block merket workout_proposal (ikke vanlig json), med:
+     {{"workouts":[{{"name":"...","date":"YYYY-MM-DD","sport":"bike|run|swim|strength|other","duration_minutes":60,"description":"...","start_time":"07:00"}}]}}
+  3) Du synker IKKE selv — utøveren bekrefter i appen (forhåndsvis → sync).
+  4) Bruk workout_proposal KUN når de eksplisitt ber om kalenderøkt; ikke for vanlig råd.
+- Du kan foreslå planblokker/makro i tekst; grovplan-noter synces under Plan-fanen (ikke via workout_proposal).
 
 ## Profil
 {profile_md}
@@ -54,6 +69,56 @@ Regler:
 ## Knowledge (trimmet)
 {knowledge}
 """
+
+
+def extract_workout_proposal(reply: str) -> tuple[str, dict[str, Any] | None]:
+    """Strip optional workout_proposal fence; return (display_text, proposal|None)."""
+    if not reply:
+        return "", None
+    match = _WORKOUT_PROPOSAL_RE.search(reply)
+    if not match:
+        return reply.strip(), None
+    raw = (match.group(1) or "").strip()
+    display = (_WORKOUT_PROPOSAL_RE.sub("", reply)).strip()
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return reply.strip(), None
+    if not isinstance(data, dict):
+        return reply.strip(), None
+    workouts = data.get("workouts")
+    if not isinstance(workouts, list) or not workouts:
+        return display or reply.strip(), None
+    cleaned: list[dict[str, Any]] = []
+    for w in workouts:
+        if not isinstance(w, dict):
+            continue
+        name = str(w.get("name") or "").strip()
+        date_s = str(w.get("date") or "").strip()[:10]
+        if not name or not date_s:
+            continue
+        sport = str(w.get("sport") or w.get("type") or "other").strip().lower()
+        dur = w.get("duration_minutes")
+        try:
+            dur_i = int(float(dur)) if dur is not None and str(dur).strip() else None
+        except (TypeError, ValueError):
+            dur_i = None
+        start = str(w.get("start_time") or "07:00").strip() or "07:00"
+        cleaned.append(
+            {
+                "name": name[:120],
+                "date": date_s,
+                "sport": sport,
+                "duration_minutes": dur_i,
+                "description": str(w.get("description") or "").strip()[:2000],
+                "start_time": start[:5],
+            }
+        )
+    if not cleaned:
+        return display or reply.strip(), None
+    return display or "Her er forslaget — bekreft i appen før det synces til Intervals.", {
+        "workouts": cleaned
+    }
 
 
 def call_llm(

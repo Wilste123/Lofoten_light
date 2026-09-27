@@ -233,6 +233,63 @@ def list_sessions(
     return out
 
 
+def _slim_session(item: dict[str, Any]) -> dict[str, Any]:
+    """Compact row for LLM context (no long descriptions)."""
+    out: dict[str, Any] = {
+        "date": item.get("date"),
+        "name": item.get("name"),
+        "kind": item.get("kind"),
+        "bucket": item.get("bucket"),
+        "discipline": item.get("discipline_label") or item.get("discipline"),
+    }
+    if item.get("duration_hours") is not None:
+        out["duration_hours"] = item.get("duration_hours")
+    if item.get("category"):
+        out["category"] = item.get("category")
+    comp = item.get("completion") or {}
+    if comp.get("status"):
+        out["completion_status"] = comp.get("status")
+    return out
+
+
+def sessions_snapshot_for_chat(
+    bundle: dict[str, Any] | None,
+    *,
+    max_upcoming: int = 14,
+    max_recent: int = 10,
+    max_today: int = 8,
+) -> dict[str, Any]:
+    """Deterministic Intervals sessions strip for the single LLM call."""
+    if not bundle:
+        return {
+            "source": "none",
+            "window": None,
+            "today": [],
+            "upcoming": [],
+            "recent": [],
+            "note": "Ingen øktdata — Intervals ikke koblet eller tomt vindu.",
+        }
+    source = bundle.get("source") or "none"
+    note = (
+        "Kommende = planlagte kalenderhendelser; recent = fullførte aktiviteter "
+        "(og evt. passerte events). Detaljer eies av Intervals."
+    )
+    if bundle.get("fetch_error"):
+        note = f"Henting feilet: {bundle.get('fetch_error_detail') or 'ukjent'}"
+    elif source == "none":
+        note = "Intervals ikke koblet — kan ikke svare på konkrete kalenderøkter."
+    return {
+        "source": source,
+        "window": bundle.get("window"),
+        "today": [_slim_session(s) for s in (bundle.get("today") or [])[:max_today]],
+        "upcoming": [
+            _slim_session(s) for s in (bundle.get("upcoming") or [])[:max_upcoming]
+        ],
+        "recent": [_slim_session(s) for s in (bundle.get("recent") or [])[:max_recent]],
+        "note": note,
+    }
+
+
 def seed_chat_prompt(session: dict[str, Any]) -> str:
     """Norwegian prompt seeded into Coach chat about one session."""
     name = session.get("name") or "økten"

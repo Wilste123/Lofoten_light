@@ -16,7 +16,25 @@ from typing import Any
 
 API_BASE = "https://intervals.icu/api/v1"
 EXTERNAL_PREFIX = "ll-coach-"
+# Structured calendar workouts (not meso NOTES) — distinct prefix for withdraw.
+WORKOUT_EXTERNAL_PREFIX = "ll-coach-w-"
 _HTTP_TIMEOUT = 60
+
+SPORT_TO_INTERVALS_TYPE: dict[str, str] = {
+    "bike": "Ride",
+    "ride": "Ride",
+    "sykkel": "Ride",
+    "run": "Run",
+    "løp": "Run",
+    "lop": "Run",
+    "swim": "Swim",
+    "svøm": "Swim",
+    "svom": "Swim",
+    "strength": "WeightTraining",
+    "styrke": "WeightTraining",
+    "weighttraining": "WeightTraining",
+    "other": "Other",
+}
 
 
 def _auth_header(api_key: str) -> str:
@@ -108,10 +126,63 @@ def public_event_preview(ev: dict[str, Any]) -> dict[str, Any]:
         "name": ev.get("name"),
         "start_date_local": ev.get("start_date_local"),
         "category": ev.get("category"),
+        "type": ev.get("type"),
         "block_id": ev.get("_block_id"),
         "block_title": ev.get("_block_title"),
         "day": ev.get("_day"),
     }
+
+
+def external_id_for_workout(day: date, name: str, index: int = 0) -> str:
+    """Stable-ish id from date + name slug (upsert-friendly within a day)."""
+    slug = "".join(ch for ch in (name or "okt").lower() if ch.isalnum())[:16] or "okt"
+    return f"{WORKOUT_EXTERNAL_PREFIX}{day.strftime('%Y%m%d')}-{slug}-{index}"
+
+
+def build_workout_events(workouts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Simple WORKOUT calendar events (description text — no ZWO file attach).
+
+    Full CSV/ZWO push remains CLI ``scripts/intervals_push_calendar.py``.
+    This path is the thin chat → preview → confirm slice.
+    """
+    events: list[dict[str, Any]] = []
+    for i, w in enumerate(workouts):
+        day = parse_iso_date(str(w.get("date") or ""))
+        name = (w.get("name") or "").strip()
+        if not day or not name:
+            continue
+        sport = str(w.get("sport") or w.get("type") or "other").strip().lower()
+        icu_type = SPORT_TO_INTERVALS_TYPE.get(sport, "Other")
+        start_time = str(w.get("start_time") or "07:00").strip() or "07:00"
+        if len(start_time) == 5:
+            start_local = f"{day.isoformat()}T{start_time}:00"
+        else:
+            start_local = f"{day.isoformat()}T{start_time}"
+        desc = (w.get("description") or "").strip()
+        if not desc:
+            desc = f"### Lofoten Coach\n\n**{name}**\n\n_Foreslått via chat — detaljer i Intervals._"
+        else:
+            desc = f"### Lofoten Coach\n\n{desc}"
+        ev: dict[str, Any] = {
+            "category": "WORKOUT",
+            "start_date_local": start_local,
+            "type": icu_type,
+            "name": name[:120],
+            "description": desc[:8000],
+            "external_id": external_id_for_workout(day, name, i),
+            "_day": day.isoformat(),
+            "_sport": sport,
+        }
+        dur = w.get("duration_minutes")
+        try:
+            if dur is not None and str(dur).strip():
+                minutes = int(float(dur))
+                if minutes > 0:
+                    ev["moving_time"] = minutes * 60
+        except (TypeError, ValueError):
+            pass
+        events.append(ev)
+    return events
 
 
 def strip_internal(ev: dict[str, Any]) -> dict[str, Any]:

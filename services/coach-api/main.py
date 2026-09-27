@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 import config
-from chat_service import build_system_prompt, call_llm
+from chat_service import build_system_prompt, call_llm, extract_workout_proposal
 from db import (
     add_message,
     completions_by_external_id,
@@ -44,6 +44,7 @@ from db import (
 from form_from_intervals import clear_form_caches, persist_estimates_patch, resolve_form_estimates
 from intervals_calendar import (
     build_block_note_events,
+    build_workout_events,
     delete_events_bulk,
     fetch_events,
     filter_coach_events,
@@ -69,6 +70,7 @@ from sessions_service import (
     completion_note_line,
     list_sessions,
     seed_chat_prompt,
+    sessions_snapshot_for_chat,
 )
 from wellness import resolve_wellness_bundle
 
@@ -221,6 +223,12 @@ class CalendarSyncPreviewIn(BaseModel):
 
 class CalendarConfirmIn(BaseModel):
     pending_id: str = Field(min_length=1)
+
+
+class WorkoutPreviewIn(BaseModel):
+    """Preview structured WORKOUT events — confirm required before ICU write."""
+
+    workouts: list[dict[str, Any]] = Field(min_length=1)
 
 
 @app.get("/health")
@@ -407,23 +415,57 @@ def chat(
             raise HTTPException(404, "Utøver ikke funnet")
         history = recent_messages(conn, aid, limit=12)
         secrets = get_athlete_secrets(conn, aid)
-        overview = _overview_payload(athlete, secrets)
-        system = build_system_prompt(
-            athlete,
-            config.KNOWLEDGE_DIR,
-            overview_stub=overview,
-            athletes_dir=config.ATHLETES_DATA_DIR,
-        )
-        reply = call_llm(
-            api_key=config.OPENAI_API_KEY,
-            model=config.OPENAI_MODEL,
-            system=system,
-            history=[{"role": m["role"], "content": m["content"]} for m in history],
-            user_message=body.message,
-        )
+        comps = completions_by_external_id(conn, aid)
+    overview = _overview_payload(athlete, secrets)
+    # Deterministic Intervals sessions for "hva har jeg denne uka?"
+    sessions_bundle = list_sessions(secrets, comps, past_days=14, future_days=14)
+    sessions_snap = sessions_snapshot_for_chat(sessions_bundle)
+    overview["sessions"] = sessions_snap
+    recent = sessions_bundle.get("recent") or []
+    today = sessions_bundle.get("today") or []
+    if today:
+        overview["last_session"] = {
+            "name": today[0].get("name"),
+            "date": today[0].get("date"),
+            "kind": today[0].get("kind"),
+        }
+    elif recent:
+        overview["last_session"] = {
+            "name": recent[0].get("name"),
+            "date": recent[0].get("date"),
+            "kind": recent[0].get("kind"),
+        }
+    system = build_system_prompt(
+        athlete,
+        config.KNOWLEDGE_DIR,
+        overview_stub=overview,
+        athletes_dir=config.ATHLETES_DATA_DIR,
+    )
+    raw_reply = call_llm(
+        api_key=config.OPENAI_API_KEY,
+        model=config.OPENAI_MODEL,
+        system=system,
+        history=[{"role": m["role"], "content": m["content"]} for m in history],
+        user_message=body.message,
+    )
+    reply, proposal = extract_workout_proposal(raw_reply)
+    with db_session(config.DATABASE_PATH) as conn:
         add_message(conn, aid, "user", body.message)
         asst = add_message(conn, aid, "assistant", reply)
-    return {"reply": reply, "message": asst}
+    out: dict[str, Any] = {
+        "reply": reply,
+        "message": asst,
+        "sessions_in_context": True,
+        "sessions_source": sessions_snap.get("source"),
+    }
+    if proposal:
+        out["workout_proposal"] = proposal
+        out["confirm_required"] = True
+        out["proposal_hint"] = (
+            "Treneren foreslo økt(er) på Intervals. "
+            "Trykk Forhåndsvis, deretter bekreft — ingenting synces stille."
+        )
+    return out
 
 
 @app.get("/v1/overview")
@@ -841,7 +883,7 @@ def calendar_confirm(
     body: CalendarConfirmIn,
     x_athlete_id: str | None = Header(default=None),
 ) -> dict[str, Any]:
-    """Execute a previously previewed push/delete against Intervals."""
+    """Execute a previously previewed push/delete/workout against Intervals."""
     aid = _require_athlete(x_athlete_id)
     _athlete, key, icu = _require_intervals_secrets(aid)
     with db_session(config.DATABASE_PATH) as conn:
@@ -868,7 +910,7 @@ def calendar_confirm(
     payload = pending.get("payload") or {}
     op = payload.get("op")
     try:
-        if op == "push":
+        if op in ("push", "workout_push"):
             events = payload.get("events") or []
             result = post_events_bulk(key, icu, events, upsert=True)
             outcome = {"pushed": result.get("count", len(events)), "result": result}
@@ -885,6 +927,52 @@ def calendar_confirm(
     with db_session(config.DATABASE_PATH) as conn:
         mark_pending_action(conn, aid, body.pending_id, "confirmed")
     return {"ok": True, "op": op, "pending_id": body.pending_id, **outcome}
+
+
+@app.post("/v1/athlete/me/intervals/workouts/preview")
+def workouts_preview(
+    body: WorkoutPreviewIn,
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Preview structured WORKOUT events from chat/UI — confirm before write.
+
+    Builds simple calendar WORKOUT rows (name/date/sport/duration/description).
+    Does not attach ZWO files — that remains CLI ``intervals_push_calendar.py``.
+    """
+    aid = _require_athlete(x_athlete_id)
+    _athlete, _key, icu = _require_intervals_secrets(aid)
+    events = build_workout_events(body.workouts)
+    if not events:
+        raise HTTPException(
+            400,
+            "Ingen gyldige økter (trenger name + date YYYY-MM-DD)",
+        )
+    payload = {
+        "op": "workout_push",
+        "events": events,
+        "workouts": body.workouts,
+        "intervals_athlete_id": icu,
+    }
+    summary = [public_event_preview(e) for e in events]
+    with db_session(config.DATABASE_PATH) as conn:
+        pending = insert_pending_action(conn, aid, "intervals_workout_push", payload)
+    return {
+        "pending_id": pending["id"],
+        "op": "workout_push",
+        "count": len(events),
+        "expires_at": pending.get("expires_at"),
+        "events": summary[:40],
+        "events_truncated": max(0, len(events) - 40),
+        "confirm_required": True,
+        "message": (
+            f"Bekreft for å legge {len(events)} økt(er) på Intervals-kalenderen. "
+            "Ingen ZWO-fil — beskrivelsestekst + varighet."
+        ),
+        "write_gap": (
+            "Strukturerte ZWO/CSV-økter pushes fortsatt via CLI "
+            "(scripts/intervals_push_calendar.py), ikke via chat."
+        ),
+    }
 
 
 @app.get("/v1/athlete/me/intervals/calendar/status")

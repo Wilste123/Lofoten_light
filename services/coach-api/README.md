@@ -30,7 +30,9 @@ Aldri commit `.env` eller fulle Intervals-nøkler. GET på secrets returnerer ba
 | POST | `/v1/onboarding` | — |
 | GET/PATCH | `/v1/athlete/me` | header `X-Athlete-Id` |
 | GET/PUT | `/v1/athlete/me/intervals` | header `X-Athlete-Id` |
-| POST | `/v1/chat` | header `X-Athlete-Id` |
+| POST | `/v1/chat` | header `X-Athlete-Id` — inkluderer Intervals sessions-snapshot; valgfri `workout_proposal` |
+| POST | `/v1/athlete/me/intervals/workouts/preview` | header `X-Athlete-Id` — forhåndsvis WORKOUT → pending |
+| POST | `/v1/athlete/me/intervals/calendar/confirm` | header `X-Athlete-Id` — bekreft plan-noter eller workout_push |
 | GET | `/v1/overview` | header `X-Athlete-Id` |
 
 Onboarding og PATCH skriver `data/athletes/{id}/profile.md`. Login: se `docs/product/returning-login.md`.

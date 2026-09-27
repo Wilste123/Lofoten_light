@@ -18,16 +18,16 @@ Vi er fortsatt en **tynn coach + Intervals-companion** — ikke TrainingPeaks-/H
 | **Compliance / sesongvolum** | **App-side READ** fra Intervals `activities` + sesongmål i SQLite | Landet (`progress_compliance.py` → Overblikk + Compliance-fane) |
 | **On-pace** | App-side beregning (`completed / expected`) | Landet |
 | **form_estimates (FTP)** | App-side READ sykkel+power 90d → persist i SQLite | Landed (`form_from_intervals.py`, `POST /v1/form/recompute`) |
-| **Sync til Intervals** | **WRITE** — kun grovplan-**noter** (`ll-coach-…`) via preview→confirm | Landet under Plan-fanen |
+| **Sync til Intervals** | **WRITE** — grovplan-**noter** (`ll-coach-…`) + enkle chat-**WORKOUT** (`ll-coach-w-…`) via preview→confirm | Landet (Plan + Coach) |
 | Compliance skrevet til Intervals | Nei | **Ikke** — tallene lever kun i appen |
-| Full ukeplan / ZWO-push | Nei | Ikke |
+| Full ukeplan / ZWO-push | Nei | Ikke (CLI `intervals_push_calendar.py`) |
 
-Compliance er altså **ikke** «synced into Intervals». Den regnes i appen fra ICU-aktiviteter. Det eneste som skrives til Intervals er når brukeren aktivt trykker **Sync til Intervals** (plan-blokker som kalender-noter).
+Compliance er altså **ikke** «synced into Intervals». Den regnes i appen fra ICU-aktiviteter. Skriving til Intervals skjer kun når brukeren aktivt bekrefter (plan-noter eller chat-øktforslag).
 
 ## Landed (vs eldre gap `aa8701a` / store `gap-analysis-branch.md`)
 
 - [x] Onboarding → SQLite + `profile.md`
-- [x] Chat (`POST /v1/chat`, ett LLM-kall)
+- [x] Chat (`POST /v1/chat`, ett LLM-kall) — **+ Intervals sessions-snapshot** i kontekst
 - [x] Du — mål, sesongvolum, avtaler, skade, GI, FTP, vekt/alder, Intervals Lagre/verify
 - [x] Returning login via **athlete-id** (`POST /v1/session/login` + profil-ID) — `6ce6872`
 - [x] Overblikk — progress/compliance bars, form-kort, grovplan-strip
@@ -35,6 +35,7 @@ Compliance er altså **ikke** «synced into Intervals». Den regnes i appen fra 
 - [x] **Compliance-fane** — fullførte timer, on-pace, sesongmål-oppsummering
 - [x] **form_estimates fra ICU** (gate ≥5) — ikke lenger `compute_form_estimates([])`
 - [x] Intervals calendar sync: preview → confirm → push/delete/status
+- [x] Chat → Intervals WORKOUT: foreslå → forhåndsvis → sync (`ll-coach-w-…`; ingen ZWO)
 - [x] Seed William (CLI + `SEED_ON_BOOT` + admin-API)
 - [x] Fly stack (`lofoten-coach`, `ams`, volume `/data`, port 8080, warm machine) — **health OK**
 - [x] UX-grunnlag — mørk SPA, 5 faner (Coach / Overblikk / Plan / Compliance / Du)
@@ -44,12 +45,11 @@ Compliance er altså **ikke** «synced into Intervals». Den regnes i appen fra 
 
 | Område | Status |
 |--------|--------|
-| **Username login** | **Krav i plan; ikke i kode ennå.** Login UI/API tar bare `athlete_id`. Egen worker implementerer `username` (+ valgfri athlete-id). |
+| **Username login** | Landet på branch (login med `username`) — verifiser etter Fly deploy |
 | UX-polish | Bedre enn tidlig MVP; fortsatt enkel SPA |
-| **Auth** | Profil-ID + valgfri invite-token — ingen ekte invite-flow / passord. **Username login mangler** (se Partial). |
+| **Auth** | Username + profil-ID + valgfri invite-token — ingen passord |
 | VO₂ | Gate krever steady HR — ofte `null` |
-| Sync | Meso-noter, ikke full ukeplan/ZWO |
-| `last_session` / `load` | Alltid `null` i overview |
+| Sync | Meso-noter + enkle WORKOUT-beskrivelser; **ikke** full ukeplan/ZWO fra chat |
 | `partner_slots` | Alltid `[]` |
 | Secrets | Intervals-nøkkel klartekst i SQLite |
 | Fly vs docs | `fly.toml` har `min_machines_running = 1`; `fly-deploy.md` kostnadsavsnitt nevner fortsatt `0` |

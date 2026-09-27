@@ -46,7 +46,7 @@ Compliance er altså **ikke** «synced into Intervals». Den regnes i appen fra 
 |--------|--------|
 | **Username login** | **Krav i plan; ikke i kode ennå.** Login UI/API tar bare `athlete_id`. Egen worker implementerer `username` (+ valgfri athlete-id). |
 | UX-polish | Bedre enn tidlig MVP; fortsatt enkel SPA |
-| Auth | Profil-ID + valgfri invite-token — ingen ekte invite-flow / passord |
+| **Auth** | Profil-ID + valgfri invite-token — ingen ekte invite-flow / passord. **Username login mangler** (se Partial). |
 | VO₂ | Gate krever steady HR — ofte `null` |
 | Sync | Meso-noter, ikke full ukeplan/ZWO |
 | `last_session` / `load` | Alltid `null` i overview |

@@ -71,7 +71,7 @@ Respons (utdrag): `period`, `training` (timer/økter per disiplin, `daily_hours`
 
 ## `show_body_metrics`
 
-SQLite-kolonne på `athletes` (default 1). Når `false`, Dashboard setter `body_hidden` og utelater vekt/fett%-analyse. Styres under **Du → Personvern / visning**.
+SQLite-kolonne på `athletes` (default 1). Når `false`, Dashboard setter `body_hidden`, utelater vekt/fett%-analyse, og UI **utelater hele Kropp-blokken** (ingen «Skjult»-placeholder). Styres under **Du → Personvern / visning**.
 
 ## Øktlogg
 

@@ -1193,10 +1193,6 @@ button.linkish:hover {
   }
 }
 
-.body-metrics-hidden {
-  opacity: 0.92;
-}
-
 .error.tight,
 .muted.tight {
   margin-top: 0.35rem;

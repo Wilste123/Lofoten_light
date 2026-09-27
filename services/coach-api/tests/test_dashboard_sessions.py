@@ -108,6 +108,8 @@ def test_show_body_metrics_default_true_and_toggle_hides_body(client):
     assert data2["show_body_metrics"] is False
     assert data2["body_hidden"] is True
     assert data2["body"] is None
+    # UI contract (coach-web renderBodyCard): when body_hidden / !show_body_metrics,
+    # the entire Kropp section is omitted — no «Skjult» placeholder.
 
 
 def test_session_completion_persists_and_profile_note(client):

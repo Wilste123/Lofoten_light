@@ -1219,13 +1219,8 @@ function renderSleepCard(sleep, fetchError, detail, periodLabel) {
 }
 
 function renderBodyCard(body, hidden) {
-  if (hidden) {
-    return `
-      <section class="section-block body-metrics-hidden">
-        <div class="section-head"><h2>Kropp</h2><span class="badge badge-off">Skjult</span></div>
-        <p class="muted tight">Vekt og fett% er slått av under <strong>Du → Personvern</strong>.</p>
-      </section>`
-  }
+  // When show_body_metrics is off: omit the entire module (no «Skjult» placeholder).
+  if (hidden) return ''
   if (!body) {
     return `<section class="section-block"><h2>Kropp</h2><p class="muted">Ingen data.</p></section>`
   }

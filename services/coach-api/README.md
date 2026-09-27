@@ -26,7 +26,7 @@ Aldri commit `.env` eller fulle Intervals-nøkler. GET på secrets returnerer ba
 | Metode | Sti | Auth |
 |--------|-----|------|
 | POST | `/v1/session/bootstrap` | body `athlete_id` |
-| POST | `/v1/session/login` | body `athlete_id` + valgfri `invite_token` (oppretter ikke) |
+| POST | `/v1/session/login` | body `username` **eller** `athlete_id` + valgfri `invite_token` (oppretter ikke) |
 | POST | `/v1/onboarding` | — |
 | GET/PATCH | `/v1/athlete/me` | header `X-Athlete-Id` |
 | GET/PUT | `/v1/athlete/me/intervals` | header `X-Athlete-Id` |

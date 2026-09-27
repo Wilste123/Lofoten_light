@@ -617,6 +617,43 @@ main {
   white-space: nowrap;
 }
 
+.login-advanced {
+  margin: 0.75rem 0 1rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg0) 40%, transparent);
+}
+
+.login-advanced summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: color-mix(in srgb, var(--text) 78%, transparent);
+  list-style: none;
+}
+
+.login-advanced summary::-webkit-details-marker {
+  display: none;
+}
+
+.login-advanced summary::before {
+  content: "▸ ";
+  color: var(--accent);
+}
+
+.login-advanced[open] summary::before {
+  content: "▾ ";
+}
+
+.login-advanced .field {
+  margin-top: 0.75rem;
+}
+
+.profile-id-advanced {
+  margin-bottom: 1rem;
+}
+
 button.linkish {
   border: 0;
   background: transparent;

@@ -1,51 +1,35 @@
 # Returning user — logg inn uten passord
 
-Problem: tømmer du nettleser / `localStorage`, eller bytter enhet, mistes `lofoten_athlete_id`. Uten login så man bare **ny onboarding** og mistet tilgang til eksisterende profil (f.eks. seedet `william-lofoten`).
+Problem: tømmer du nettleser / `localStorage`, eller bytter enhet, mistes `lofoten_athlete_id`. Uten login så man bare **ny onboarding** og mistet tilgang til eksisterende profil (f.eks. seedet William med brukernavn `william`).
 
-## Mål (kanonisk plan)
+## Hvordan logge inn
 
-Login skal støtte **brukernavn** — ikke bare rå athlete-id:
+1. Startskjerm: **«Jeg har allerede profil»**
+2. Skriv **brukernavn** (f.eks. `william` — vises under **Du**)
+3. Valgfritt (Avansert): **profil-ID** (`william-lofoten` / UUID) og/eller **invite-token**
+4. Appen kaller `POST /v1/session/login` → setter `localStorage` → Coach / Overblikk / Du
+
+**Ny bruker** går via onboarding (`POST /v1/onboarding`) og **må velge unikt brukernavn** (foreslås fra visningsnavn).
 
 | Felt | Rolle |
 |------|--------|
-| **`username`** | Primær login (slug, f.eks. `william`) — unik per atlet |
-| **`athlete_id`** | Valgfritt for power users / bookmarks (`william-lofoten`, UUID) |
+| **`username`** | Primær login (lowercase slug, f.eks. `william`) — unik |
+| **`athlete_id`** | Avansert / bookmarks (`william-lofoten`, UUID) |
 | **invite-token** | Valgfritt (fase 3-klar) |
 
-- Onboarding: velg unik **brukernavn**-slug (lagres på athlete)
-- Seed: `william-lofoten` speiles som brukernavn `william` (eller liknende)
-- Under **Du**: vis **brukernavn** + profil-ID (begge kopierbare)
-- `POST /v1/session/login` aksepterer `{ "username": "…" }` **eller** `{ "athlete_id": "…" }`
-
-## Status
-
-| Del | Status |
-|-----|--------|
-| Login med **athlete-id** / profil-ID | Landet (`6ce6872`) |
-| Login med **username** + onboarding-slug | **I arbeid** (egen worker) — se PRODUCT-PLAN fase **2d+** |
-
-## Hvordan logge inn (nå / snart)
-
-1. Startskjerm: **«Jeg har allerede profil»**
-2. Skriv **brukernavn** (mål) — midlertidig fortsatt **profil-ID** til 2d+ lander
-3. Valgfritt: lim inn athlete-id eller **invite-token**
-4. Appen kaller `POST /v1/session/login` → setter `localStorage` → Coach / Overblikk / Du
-
-**Ny bruker** går fortsatt via vanlig onboarding (`POST /v1/onboarding`) — skal også samle username.
-
-## Snarveier
+## Snarveier (samme login-sti)
 
 | Snarvei | Effekt |
 |---------|--------|
-| `?athlete=william-lofoten` | Login med den ID-en (beholdes) |
-| Knapp **«Bruk seedet William-profil»** | Login med seedet profil |
-| Senere: `?user=william` | Valgfri username-snarvei |
+| `?user=william` | Login med brukernavn |
+| `?athlete=william-lofoten` | Login med intern profil-ID |
+| Knapp **«Bruk seedet William-profil»** | Login med brukernavn `william` |
 
-## Finn / lagre
+## Finn / lagre brukernavn
 
-Under **Du**: kopier **brukernavn** (primært) og **profil-ID** (backup). Bookmark med `?athlete=…` fungerer fortsatt.
+Under **Du → Brukernavn** kan du kopiere. Lagre det (notes, passordmanager, bookmark med `?user=…`). Profil-ID ligger under Avansert — trengs sjelden.
 
-## API (mål)
+## API
 
 ```http
 POST /v1/session/login
@@ -60,8 +44,9 @@ POST /v1/session/login
 ```
 
 - **200** — `{ athlete, needs_onboarding: false }` (oppretter aldri ny utøver)
-- **404** — ukjent username / ID
+- **404** — ukjent brukernavn / ID (norsk feilmelding)
 - **401** — invite-token sendt men ugyldig
+- **422** — verken `username` nor `athlete_id`
 
 `POST /v1/session/bootstrap` finnes fortsatt (mild «needs_onboarding»); UI bruker **login** for reconnect.
 

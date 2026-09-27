@@ -15,6 +15,7 @@ const state = {
   /** null = logged in; entry | login | onboarding before session */
   gate: null,
   login: {
+    username: '',
     athlete_id: '',
     invite_token: '',
   },
@@ -43,6 +44,8 @@ const state = {
   },
   onboarding: {
     display_name: '',
+    username: '',
+    username_touched: false,
     coach_display_name: 'Rocky',
     coach_personality: 'direkte',
     coach_style_note: '',
@@ -167,16 +170,28 @@ async function enterApp(athlete, { welcome } = {}) {
   render()
 }
 
+function slugifyUsername(raw) {
+  const text = String(raw || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+  const slug = text.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+  return (slug || 'utover').slice(0, 32)
+}
+
 /**
  * Reconnect to existing athlete via POST /v1/session/login.
- * Does not create profiles.
+ * Does not create profiles. Prefer username; athlete_id is advanced fallback.
  */
-async function loginWithId(athleteId, inviteToken) {
+async function loginSession({ username, athleteId, inviteToken } = {}) {
+  const uname = String(username || '').trim().toLowerCase()
   const id = String(athleteId || '').trim()
-  if (!id) {
-    throw new Error('Skriv inn profil-ID')
+  if (!uname && !id) {
+    throw new Error('Skriv inn brukernavn')
   }
-  const body = { athlete_id: id }
+  const body = {}
+  if (uname) body.username = uname
+  else body.athlete_id = id
   const token = String(inviteToken || '').trim()
   if (token) body.invite_token = token
   const data = await api('/v1/session/login', {
@@ -185,23 +200,35 @@ async function loginWithId(athleteId, inviteToken) {
     athleteId: null,
   })
   if (!data.athlete) {
-    throw new Error('Ukjent profil-ID. Sjekk at ID er riktig, eller opprett ny bruker.')
+    throw new Error(
+      uname
+        ? 'Ukjent brukernavn. Sjekk stavemåte, eller opprett ny bruker.'
+        : 'Ukjent profil-ID. Sjekk at ID er riktig, eller opprett ny bruker.',
+    )
   }
   return data.athlete
 }
 
+/** @deprecated use loginSession — kept name for call-site clarity with id/query */
+async function loginWithId(athleteId, inviteToken) {
+  return loginSession({ athleteId, inviteToken })
+}
+
 async function bootstrap() {
   const params = new URLSearchParams(location.search)
+  const fromUser = params.get('user')
   const fromQuery = params.get('athlete')
-  if (fromQuery) {
+  if (fromUser || fromQuery) {
     state.busy = true
     state.error = ''
     try {
-      const athlete = await loginWithId(fromQuery)
+      const athlete = fromUser
+        ? await loginSession({ username: fromUser })
+        : await loginWithId(fromQuery)
       await enterApp(athlete, {
         welcome: `Hei ${athlete.display_name}. Jeg er ${athlete.coach_display_name}. Velkommen tilbake.`,
       })
-      // Drop ?athlete= so refresh uses localStorage
+      // Drop query so refresh uses localStorage
       if (location.search) {
         history.replaceState({}, '', location.pathname)
       }
@@ -209,7 +236,8 @@ async function bootstrap() {
       clearAthleteId()
       state.athlete = null
       state.gate = 'login'
-      state.login.athlete_id = fromQuery
+      if (fromUser) state.login.username = fromUser
+      if (fromQuery) state.login.athlete_id = fromQuery
       state.error = err.message || 'Kunne ikke logge inn'
       state.busy = false
       render()
@@ -233,7 +261,7 @@ async function bootstrap() {
     state.athlete = null
     state.gate = 'login'
     state.login.athlete_id = id
-    state.error = err.message || 'Ukjent profil-ID'
+    state.error = err.message || 'Ukjent profil'
     render()
   }
 }
@@ -383,24 +411,34 @@ function bindEntry() {
 
 function renderLogin() {
   const L = state.login
+  const advancedOpen = !!(L.athlete_id || L.invite_token)
   return `
     <div class="onboarding">
       <p class="brand-mark">Lofoten coach</p>
       <h1>Logg inn</h1>
-      <p class="lead">Lim inn profil-ID (fra Du-fanen, eller f.eks. <code>william-lofoten</code>). Ingen passord.</p>
+      <p class="lead">Skriv brukernavnet ditt (f.eks. <code>william</code>). Ingen passord.</p>
       <form id="login-form">
         <div class="field">
-          <label for="login_athlete_id">Profil-ID</label>
-          <input id="login_athlete_id" name="athlete_id" required autocomplete="username"
-            value="${escapeHtml(L.athlete_id)}"
-            placeholder="william-lofoten eller UUID" ${state.busy ? 'disabled' : ''} />
+          <label for="login_username">Brukernavn</label>
+          <input id="login_username" name="username" autocomplete="username"
+            value="${escapeHtml(L.username)}"
+            placeholder="william" ${state.busy ? 'disabled' : ''} />
         </div>
-        <div class="field">
-          <label for="login_invite_token">Invite-token (valgfritt)</label>
-          <input id="login_invite_token" name="invite_token" autocomplete="off"
-            value="${escapeHtml(L.invite_token)}"
-            placeholder="Kun hvis du har fått token" ${state.busy ? 'disabled' : ''} />
-        </div>
+        <details class="login-advanced" ${advancedOpen ? 'open' : ''}>
+          <summary>Avansert — profil-ID / invite</summary>
+          <div class="field">
+            <label for="login_athlete_id">Profil-ID</label>
+            <input id="login_athlete_id" name="athlete_id" autocomplete="off"
+              value="${escapeHtml(L.athlete_id)}"
+              placeholder="william-lofoten eller UUID" ${state.busy ? 'disabled' : ''} />
+          </div>
+          <div class="field">
+            <label for="login_invite_token">Invite-token (valgfritt)</label>
+            <input id="login_invite_token" name="invite_token" autocomplete="off"
+              value="${escapeHtml(L.invite_token)}"
+              placeholder="Kun hvis du har fått token" ${state.busy ? 'disabled' : ''} />
+          </div>
+        </details>
         ${state.error ? `<p class="error">${escapeHtml(state.error)}</p>` : ''}
         <button class="btn btn-primary" type="submit" ${state.busy ? 'disabled' : ''}>
           ${state.busy ? 'Logger inn…' : 'Fortsett'}
@@ -436,15 +474,25 @@ function bindLogin() {
   document.getElementById('login-form')?.addEventListener('submit', async (e) => {
     e.preventDefault()
     const fd = new FormData(e.target)
+    const username = String(fd.get('username') || '').trim().toLowerCase()
     const athleteId = String(fd.get('athlete_id') || '').trim()
     const inviteToken = String(fd.get('invite_token') || '').trim()
+    state.login.username = username
     state.login.athlete_id = athleteId
     state.login.invite_token = inviteToken
+    if (!username && !athleteId) {
+      state.error = 'Skriv inn brukernavn (eller profil-ID under Avansert)'
+      render()
+      return
+    }
     state.busy = true
     state.error = ''
     render()
     try {
-      const athlete = await loginWithId(athleteId, inviteToken)
+      // Prefer username when both filled
+      const athlete = username
+        ? await loginSession({ username, inviteToken })
+        : await loginSession({ athleteId, inviteToken })
       await enterApp(athlete, {
         welcome: `Hei ${athlete.display_name}. Jeg er ${athlete.coach_display_name}. Velkommen tilbake — spør om mål, skade eller ukens fokus.`,
       })
@@ -462,7 +510,7 @@ async function runSeedWilliamLogin() {
   state.error = ''
   render()
   try {
-    const athlete = await loginWithId('william-lofoten')
+    const athlete = await loginSession({ username: 'william' })
     await enterApp(athlete, {
       welcome: `Hei ${athlete.display_name}. Jeg er ${athlete.coach_display_name}. Profilen er seedet fra repo — spør om avtaler, rygg eller ukens fokus.`,
     })
@@ -470,7 +518,7 @@ async function runSeedWilliamLogin() {
   } catch (err) {
     state.error =
       err.message ||
-      'Fant ikke william-lofoten. Kjør seed / fly deploy med SEED_ON_BOOT=1.'
+      'Fant ikke brukernavn william. Kjør seed / fly deploy med SEED_ON_BOOT=1.'
     state.busy = false
     if (!state.gate) state.gate = 'login'
     render()
@@ -494,6 +542,15 @@ function renderOnboarding() {
         <div class="field">
           <label for="display_name">Ditt navn</label>
           <input id="display_name" name="display_name" required value="${escapeHtml(o.display_name)}" placeholder="f.eks. William" />
+        </div>
+        <div class="field">
+          <label for="username">Brukernavn</label>
+          <input id="username" name="username" required autocomplete="username"
+            value="${escapeHtml(o.username)}"
+            placeholder="f.eks. william"
+            pattern="[a-z0-9]([a-z0-9-]{0,30}[a-z0-9])?"
+            title="Små bokstaver, tall og bindestrek (2–32 tegn)" />
+          <p class="muted tight">Brukes for innlogging — ingen passord. Foreslås fra navnet.</p>
         </div>
         <div class="grid-2">
           <div class="field">
@@ -595,6 +652,21 @@ function bindOnboarding() {
     state.error = ''
     render()
   })
+  const nameInput = document.getElementById('display_name')
+  const userInput = document.getElementById('username')
+  nameInput?.addEventListener('input', () => {
+    const name = nameInput.value || ''
+    state.onboarding.display_name = name
+    if (!state.onboarding.username_touched) {
+      const suggested = slugifyUsername(name)
+      state.onboarding.username = suggested
+      if (userInput) userInput.value = suggested
+    }
+  })
+  userInput?.addEventListener('input', () => {
+    state.onboarding.username_touched = true
+    state.onboarding.username = userInput.value
+  })
   document.querySelectorAll('.swatch').forEach((btn) => {
     btn.addEventListener('click', () => {
       const form = document.getElementById('onboard-form')
@@ -602,6 +674,7 @@ function bindOnboarding() {
         const fd = new FormData(form)
         for (const key of [
           'display_name',
+          'username',
           'coach_display_name',
           'coach_personality',
           'coach_style_note',
@@ -630,8 +703,12 @@ function bindOnboarding() {
   form?.addEventListener('submit', async (e) => {
     e.preventDefault()
     const fd = new FormData(form)
+    const displayName = String(fd.get('display_name') || '').trim()
+    let username = String(fd.get('username') || '').trim().toLowerCase()
+    if (!username) username = slugifyUsername(displayName)
     const payload = {
-      display_name: String(fd.get('display_name') || '').trim(),
+      display_name: displayName,
+      username,
       coach_display_name: String(fd.get('coach_display_name') || 'Rocky').trim(),
       coach_personality: String(fd.get('coach_personality') || 'direkte'),
       coach_style_note: String(fd.get('coach_style_note') || ''),
@@ -649,6 +726,8 @@ function bindOnboarding() {
       nutrition_other_restrictions: String(fd.get('nutrition_other_restrictions') || ''),
       nutrition_notes: String(fd.get('nutrition_notes') || ''),
     }
+    state.onboarding.display_name = displayName
+    state.onboarding.username = username
     state.busy = true
     state.error = ''
     render()
@@ -1210,13 +1289,24 @@ function renderDu() {
       <div class="section-block">
         <h2>Profil</h2>
         <div class="field profile-id-field">
-          <label for="profile_id_display">Din profil-ID</label>
+          <label for="username_display">Brukernavn</label>
           <div class="profile-id-row">
-            <input id="profile_id_display" type="text" readonly value="${escapeHtml(a.id || '')}" />
-            <button type="button" class="btn secondary" id="copy-profile-id">Kopier</button>
+            <input id="username_display" type="text" readonly value="${escapeHtml(a.username || '')}" />
+            <button type="button" class="btn secondary" id="copy-username">Kopier</button>
           </div>
-          <p class="muted tight">Lagre denne — trengs for «Jeg har allerede profil» på ny enhet.</p>
+          <p class="muted tight">Lagre dette — brukes for «Jeg har allerede profil» på ny enhet.</p>
         </div>
+        <details class="login-advanced profile-id-advanced">
+          <summary>Profil-ID (avansert)</summary>
+          <div class="field profile-id-field">
+            <label for="profile_id_display">Intern profil-ID</label>
+            <div class="profile-id-row">
+              <input id="profile_id_display" type="text" readonly value="${escapeHtml(a.id || '')}" />
+              <button type="button" class="btn secondary" id="copy-profile-id">Kopier</button>
+            </div>
+            <p class="muted tight">Teknisk ID — trengs sjelden når du har brukernavn.</p>
+          </div>
+        </details>
         <div class="field"><label>Navn</label><input name="display_name" value="${escapeHtml(a.display_name || '')}" /></div>
         <div class="grid-2">
           <div class="field"><label>Trener</label><input name="coach_display_name" value="${escapeHtml(a.coach_display_name || '')}" /></div>
@@ -1379,6 +1469,21 @@ function bindApp() {
       }
       render()
     })
+  })
+
+  document.getElementById('copy-username')?.addEventListener('click', async () => {
+    const username = state.athlete?.username || ''
+    if (!username) return
+    try {
+      await navigator.clipboard.writeText(username)
+      toast('Brukernavn kopiert')
+    } catch {
+      const input = document.getElementById('username_display')
+      if (input) {
+        input.select()
+        toast('Marker brukernavn og kopier manuelt')
+      }
+    }
   })
 
   document.getElementById('copy-profile-id')?.addEventListener('click', async () => {

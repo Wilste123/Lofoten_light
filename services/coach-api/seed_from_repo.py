@@ -35,6 +35,7 @@ from db import (
 )
 
 SEED_ATHLETE_ID = "william-lofoten"
+SEED_USERNAME = "william"
 DEFAULT_DISPLAY_NAME = "William"
 # Product onboarding default is Rocky; William-seed prefers Ole (OPV-stemme).
 DEFAULT_COACH_NAME = "Ole"
@@ -423,6 +424,7 @@ def build_athlete_payload(
 
     return {
         "id": athlete_id,
+        "username": SEED_USERNAME if athlete_id == SEED_ATHLETE_ID else None,
         "display_name": display_name,
         "timezone": "Europe/Oslo",
         "coach_display_name": coach,
@@ -586,6 +588,7 @@ def seed_athlete(
             athlete = update_athlete(conn, athlete_id, {
                 k: payload[k]
                 for k in (
+                    "username",
                     "display_name",
                     "timezone",
                     "coach_display_name",
@@ -610,6 +613,7 @@ def seed_athlete(
                     "season_start_date",
                     "goal_race_date",
                 )
+                if k != "username" or payload.get("username")
             })
         blocks = upsert_plan_blocks(conn, athlete_id)
 

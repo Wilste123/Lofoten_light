@@ -4,16 +4,22 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sqlite3
+import unicodedata
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
+# Lowercase slug: letters/digits, optional hyphens, 2–32 chars.
+USERNAME_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$")
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS athletes (
   id TEXT PRIMARY KEY,
+  username TEXT UNIQUE,
   display_name TEXT NOT NULL,
   timezone TEXT DEFAULT 'Europe/Oslo',
   coach_display_name TEXT NOT NULL DEFAULT 'Rocky',
@@ -146,13 +152,44 @@ CREATE INDEX IF NOT EXISTS idx_session_completions_athlete
 """
 
 
-
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
 def new_id() -> str:
     return str(uuid.uuid4())
+
+
+def slugify_username(raw: str | None, *, fallback: str = "utover") -> str:
+    """Build a lowercase username slug from display name or free text."""
+    text = (raw or "").strip()
+    if not text:
+        return fallback
+    norm = unicodedata.normalize("NFKD", text)
+    ascii_only = "".join(c for c in norm if not unicodedata.combining(c))
+    slug = re.sub(r"[^a-z0-9]+", "-", ascii_only.lower()).strip("-")
+    if not slug:
+        slug = fallback
+    return slug[:32]
+
+
+def normalize_username(raw: str | None) -> str:
+    """Lowercase + strip; does not invent a slug from display name."""
+    return (raw or "").strip().lower()
+
+
+def validate_username(username: str) -> str | None:
+    """Return Norwegian error message, or None if ok."""
+    if not username:
+        return "Brukernavn er påkrevd."
+    if len(username) < 2 or len(username) > 32:
+        return "Brukernavn må være 2–32 tegn."
+    if not USERNAME_RE.match(username):
+        return (
+            "Brukernavn må være små bokstaver, tall og bindestrek "
+            "(ikke starte/slutte med bindestrek)."
+        )
+    return None
 
 
 def connect(db_path: Path) -> sqlite3.Connection:
@@ -164,6 +201,7 @@ def connect(db_path: Path) -> sqlite3.Connection:
 
 
 _EXTRA_COLUMNS = [
+    ("username", "TEXT"),
     ("sport", "TEXT DEFAULT 'triathlon'"),
     ("schedule_notes", "TEXT DEFAULT ''"),
     ("nutrition_ibs", "TEXT DEFAULT 'no'"),
@@ -181,6 +219,60 @@ _EXTRA_COLUMNS = [
 ]
 
 
+def _username_taken(
+    conn: sqlite3.Connection, username: str, *, exclude_id: str | None = None
+) -> bool:
+    if exclude_id:
+        cur = conn.execute(
+            "SELECT 1 FROM athletes WHERE username = ? AND id != ? LIMIT 1",
+            (username, exclude_id),
+        )
+    else:
+        cur = conn.execute(
+            "SELECT 1 FROM athletes WHERE username = ? LIMIT 1",
+            (username,),
+        )
+    return cur.fetchone() is not None
+
+
+def allocate_username(
+    conn: sqlite3.Connection,
+    preferred: str,
+    *,
+    exclude_id: str | None = None,
+) -> str:
+    """Return preferred slug, or preferred-2 / preferred-3 if taken."""
+    base = slugify_username(preferred)[:28] or "utover"
+    candidate = base
+    n = 2
+    while _username_taken(conn, candidate, exclude_id=exclude_id):
+        suffix = f"-{n}"
+        candidate = f"{base[: 32 - len(suffix)]}{suffix}"
+        n += 1
+        if n > 9999:
+            candidate = new_id()[:8]
+            break
+    return candidate
+
+
+def _backfill_usernames(conn: sqlite3.Connection) -> None:
+    rows = conn.execute(
+        "SELECT id, display_name, username FROM athletes"
+    ).fetchall()
+    for row in rows:
+        if row["username"]:
+            continue
+        if row["id"] == "william-lofoten":
+            preferred = "william"
+        else:
+            preferred = slugify_username(row["display_name"] or row["id"])
+        username = allocate_username(conn, preferred, exclude_id=row["id"])
+        conn.execute(
+            "UPDATE athletes SET username = ? WHERE id = ?",
+            (username, row["id"]),
+        )
+
+
 def init_db(db_path: Path) -> None:
     with connect(db_path) as conn:
         conn.executescript(SCHEMA)
@@ -191,6 +283,10 @@ def init_db(db_path: Path) -> None:
         for name, decl in _EXTRA_COLUMNS:
             if name not in existing:
                 conn.execute(f"ALTER TABLE athletes ADD COLUMN {name} {decl}")
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_athletes_username ON athletes(username)"
+        )
+        _backfill_usernames(conn)
         conn.commit()
 
 
@@ -228,24 +324,54 @@ def get_athlete(conn: sqlite3.Connection, athlete_id: str) -> dict[str, Any] | N
     return row_to_athlete(cur.fetchone())
 
 
+def get_athlete_by_username(
+    conn: sqlite3.Connection, username: str
+) -> dict[str, Any] | None:
+    uname = normalize_username(username)
+    if not uname:
+        return None
+    cur = conn.execute("SELECT * FROM athletes WHERE username = ?", (uname,))
+    return row_to_athlete(cur.fetchone())
+
+
+def username_available(
+    conn: sqlite3.Connection, username: str, *, exclude_id: str | None = None
+) -> bool:
+    return not _username_taken(conn, normalize_username(username), exclude_id=exclude_id)
+
+
 def insert_athlete(conn: sqlite3.Connection, data: dict[str, Any]) -> dict[str, Any]:
     now = utc_now()
     athlete_id = data.get("id") or new_id()
     agreements = data.get("agreements") or []
+    raw_username = normalize_username(data.get("username"))
+    if raw_username:
+        err = validate_username(raw_username)
+        if err:
+            raise ValueError(err)
+        if _username_taken(conn, raw_username):
+            raise ValueError("Brukernavnet er opptatt. Velg et annet.")
+        username = raw_username
+    else:
+        preferred = slugify_username(data.get("display_name") or athlete_id)
+        if athlete_id == "william-lofoten":
+            preferred = "william"
+        username = allocate_username(conn, preferred, exclude_id=athlete_id)
     conn.execute(
         """
         INSERT INTO athletes (
-          id, display_name, timezone, coach_display_name, coach_personality,
+          id, username, display_name, timezone, coach_display_name, coach_personality,
           coach_style_note, accent_color, goal_text, injury_notes, agreements_json,
           weekly_focus, ftp_tested, ftp_tested_at, weight_kg, age_years,
           sport, schedule_notes,
           nutrition_ibs, nutrition_gluten, nutrition_lactose,
           nutrition_other_restrictions, nutrition_notes, notes,
           created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             athlete_id,
+            username,
             data["display_name"],
             data.get("timezone") or "Europe/Oslo",
             data.get("coach_display_name") or "Rocky",
@@ -282,6 +408,7 @@ def update_athlete(
     if not existing:
         return None
     allowed = {
+        "username",
         "display_name",
         "timezone",
         "coach_display_name",
@@ -327,6 +454,15 @@ def update_athlete(
         elif key == "show_body_metrics":
             fields.append("show_body_metrics = ?")
             values.append(1 if val else 0)
+        elif key == "username":
+            uname = normalize_username(val if isinstance(val, str) else str(val or ""))
+            err = validate_username(uname)
+            if err:
+                raise ValueError(err)
+            if _username_taken(conn, uname, exclude_id=athlete_id):
+                raise ValueError("Brukernavnet er opptatt. Velg et annet.")
+            fields.append("username = ?")
+            values.append(uname)
         elif key in allowed:
             fields.append(f"{key} = ?")
             values.append(val)

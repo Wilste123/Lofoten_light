@@ -30,11 +30,12 @@ def client(tmp_path, monkeypatch):
         yield c, athletes
 
 
-def _onboard(c) -> str:
+def _onboard(c, username: str = "testa") -> str:
     r = c.post(
         "/v1/onboarding",
         json={
             "display_name": "Testa",
+            "username": username,
             "coach_display_name": "Rocky",
             "coach_personality": "direkte",
             "accent_color": "#1a6b4a",
@@ -51,6 +52,7 @@ def test_onboarding_writes_profile(client):
         "/v1/onboarding",
         json={
             "display_name": "Testa",
+            "username": "testa",
             "coach_display_name": "Rocky",
             "coach_personality": "direkte",
             "accent_color": "#1a6b4a",
@@ -114,6 +116,7 @@ def test_session_login_success_and_fail(client):
     assert body["needs_onboarding"] is False
     assert body["athlete"]["id"] == aid
     assert body["athlete"]["display_name"] == "Testa"
+    assert body["athlete"]["username"] == "testa"
 
     missing = c.post("/v1/session/login", json={"athlete_id": "finnes-ikke-xyz"})
     assert missing.status_code == 404
@@ -123,6 +126,49 @@ def test_session_login_success_and_fail(client):
     after = c.post("/v1/session/bootstrap", json={"athlete_id": "finnes-ikke-xyz"})
     assert after.json()["needs_onboarding"] is True
     assert after.json()["athlete"] is None
+
+
+def test_session_login_by_username(client):
+    c, _athletes = client
+    aid = _onboard(c, username="william")
+
+    ok = c.post("/v1/session/login", json={"username": "William"})
+    assert ok.status_code == 200, ok.text
+    body = ok.json()
+    assert body["athlete"]["id"] == aid
+    assert body["athlete"]["username"] == "william"
+
+    missing = c.post("/v1/session/login", json={"username": "finnes-ikke"})
+    assert missing.status_code == 404
+    assert "brukernavn" in missing.json()["detail"].lower()
+
+    empty = c.post("/v1/session/login", json={})
+    assert empty.status_code == 422
+
+
+def test_onboarding_username_unique(client):
+    c, _athletes = client
+    _onboard(c, username="william")
+    dup = c.post(
+        "/v1/onboarding",
+        json={
+            "display_name": "Annen",
+            "username": "William",
+            "coach_display_name": "Rocky",
+        },
+    )
+    assert dup.status_code == 409
+    assert "opptatt" in dup.json()["detail"].lower()
+
+    bad = c.post(
+        "/v1/onboarding",
+        json={
+            "display_name": "Annen",
+            "username": "Bad Name!",
+            "coach_display_name": "Rocky",
+        },
+    )
+    assert bad.status_code == 422
 
 
 def test_session_login_invite_token(client):

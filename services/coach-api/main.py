@@ -19,6 +19,7 @@ from db import (
     db_session,
     delete_plan_block,
     get_athlete,
+    get_athlete_by_username,
     get_athlete_secrets,
     get_pending_action,
     init_db,
@@ -29,6 +30,7 @@ from db import (
     list_plan_blocks,
     list_session_completions,
     mark_pending_action,
+    normalize_username,
     recent_messages,
     secrets_public_view,
     update_athlete,
@@ -36,6 +38,7 @@ from db import (
     upsert_athlete_secrets,
     upsert_session_completion,
     utc_now,
+    validate_username,
 )
 from form_from_intervals import clear_form_caches, persist_estimates_patch, resolve_form_estimates
 from intervals_calendar import (
@@ -95,12 +98,16 @@ class BootstrapIn(BaseModel):
 
 
 class LoginIn(BaseModel):
-    athlete_id: str = Field(min_length=1)
+    """Login with username (preferred) or athlete_id. No passwords."""
+
+    username: str | None = None
+    athlete_id: str | None = None
     invite_token: str | None = None
 
 
 class OnboardingIn(BaseModel):
     display_name: str = Field(min_length=1)
+    username: str = Field(min_length=2, max_length=32)
     coach_display_name: str = "Rocky"
     coach_personality: str = "direkte"
     coach_style_note: str = ""
@@ -230,17 +237,27 @@ def session_bootstrap(body: BootstrapIn) -> dict[str, Any]:
 @app.post("/v1/session/login")
 def session_login(body: LoginIn) -> dict[str, Any]:
     """Reconnect to an existing athlete. Never creates a new profile."""
-    aid = body.athlete_id.strip()
-    if not aid:
-        raise HTTPException(404, "Ukjent profil-ID. Sjekk at ID er riktig, eller opprett ny bruker.")
+    username = normalize_username(body.username)
+    aid = (body.athlete_id or "").strip() or None
+    if not username and not aid:
+        raise HTTPException(422, "Oppgi brukernavn eller profil-ID.")
     token = (body.invite_token or "").strip() or None
     with db_session(config.DATABASE_PATH) as conn:
-        athlete = get_athlete(conn, aid)
-        if not athlete:
-            raise HTTPException(
-                404,
-                "Ukjent profil-ID. Sjekk at ID er riktig, eller opprett ny bruker.",
-            )
+        if username:
+            athlete = get_athlete_by_username(conn, username)
+            if not athlete:
+                raise HTTPException(
+                    404,
+                    "Ukjent brukernavn. Sjekk stavemåte, eller opprett ny bruker.",
+                )
+        else:
+            assert aid is not None
+            athlete = get_athlete(conn, aid)
+            if not athlete:
+                raise HTTPException(
+                    404,
+                    "Ukjent profil-ID. Sjekk at ID er riktig, eller opprett ny bruker.",
+                )
         if token is not None and not invite_token_valid(conn, token):
             raise HTTPException(401, "Ugyldig invite-token.")
     return {"athlete": athlete, "needs_onboarding": False}
@@ -249,8 +266,18 @@ def session_login(body: LoginIn) -> dict[str, Any]:
 @app.post("/v1/onboarding")
 def onboarding(body: OnboardingIn) -> dict[str, Any]:
     data = body.model_dump()
-    with db_session(config.DATABASE_PATH) as conn:
-        athlete = insert_athlete(conn, data)
+    uname = normalize_username(data.get("username"))
+    err = validate_username(uname)
+    if err:
+        raise HTTPException(422, err)
+    data["username"] = uname
+    try:
+        with db_session(config.DATABASE_PATH) as conn:
+            if get_athlete_by_username(conn, uname):
+                raise HTTPException(409, "Brukernavnet er opptatt. Velg et annet.")
+            athlete = insert_athlete(conn, data)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
     path = write_profile(config.ATHLETES_DATA_DIR, athlete)
     return {
         "athlete": athlete,

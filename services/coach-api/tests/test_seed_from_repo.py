@@ -59,6 +59,7 @@ def test_seed_populates_sqlite_and_profile(tmp_path: Path):
 
     assert athlete is not None
     assert athlete["display_name"] == "William"
+    assert athlete["username"] == "william"
     assert athlete["coach_display_name"] == "Ole"
     assert athlete["ftp_tested"] == 210.0
     assert athlete["goal_race_date"] == "2027-08-20"

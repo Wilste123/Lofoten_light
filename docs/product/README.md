@@ -7,7 +7,10 @@
 
 | Fil | Innhold |
 |-----|---------|
-| [PRODUCT-PLAN.md](PRODUCT-PLAN.md) | Kanonisk produktplan (faser, fremskritt, grovplan, UX) |
+| [PRODUCT-PLAN.md](PRODUCT-PLAN.md) | Kanonisk produktplan (faser, dashboard, øktbibliotek, UX) |
+| [gap-analysis-2026-09-27.md](gap-analysis-2026-09-27.md) | Fersk gap vs branch HEAD `5cfb32f` + Fly health |
+| [competitor-humango.md](competitor-humango.md) | HumanGO / TrainAsONE / Athletica — feature-tabell |
+| [gap-analysis.md](gap-analysis.md) | Eldre gap (pre-dashboard-plan); se 2026-09-27 for aktuell |
 | [progress-compliance.md](progress-compliance.md) | Volummål, formler, demo vs Intervals |
 | [periodization-overview.md](periodization-overview.md) | App vs Intervals; `plan_blocks` |
 | [mvp-scope.md](mvp-scope.md) | MVP-suksess: chat + overblikk; non-goals |
@@ -24,7 +27,7 @@
 
 | Sti | Rolle |
 |-----|--------|
-| `apps/coach-web/` | Vite-frontend (Coach / Overblikk / Du) |
+| `apps/coach-web/` | Vite-frontend (Coach / Overblikk / Plan / Compliance / Du) |
 | `services/coach-api/` | FastAPI + SQLite |
 | `data/athletes/{id}/profile.md` | Profilfil ved onboarding / Du-lagring |
 | `knowledge/ernaring/` | Ernæringskunnskap for chat (inkl. IBS/gluten) |

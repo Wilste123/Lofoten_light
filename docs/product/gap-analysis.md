@@ -1,6 +1,8 @@
 # Gap-analyse — plan vs levert (`cursor/web-coach-mvp-42ac`)
 
-**Kildeplan:** [PRODUCT-PLAN.md](PRODUCT-PLAN.md) + søsterdocs · **PR:** [#13](https://github.com/Wilste123/Lofoten_light/pull/13) · **Fly:** `lofoten-coach` → https://lofoten-coach.fly.dev (deploy kjøres lokalt; se [fly-deploy.md](fly-deploy.md))
+> **Oppdatert:** Se [gap-analysis-2026-09-27.md](gap-analysis-2026-09-27.md) for fersk scan (HEAD `5cfb32f`, Fly health OK, dashboard/øktbibliotek som neste).
+
+**Kildeplan:** [PRODUCT-PLAN.md](PRODUCT-PLAN.md) + søsterdocs · **PR:** [#13](https://github.com/Wilste123/Lofoten_light/pull/13) · **Fly:** `lofoten-coach` → https://lofoten-coach.fly.dev (se [fly-deploy.md](fly-deploy.md))
 
 ## Verdict
 

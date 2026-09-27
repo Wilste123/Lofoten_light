@@ -50,7 +50,7 @@ Ingen ekstra chart-bibliotek — CSS + SVG i `apps/coach-web/src/charts.js`.
 | `POST /v1/chat` | Ett LLM-kall; valgfri `session_id` fokuserer `focused_session` |
 | `POST /v1/athlete/me/intervals/workouts/preview` | Forhåndsvis strukturert WORKOUT (`ll-coach-w-…`) → pending |
 | `POST /v1/athlete/me/intervals/calendar/confirm` | Bekreft pending (plan-noter **eller** workout_push) |
-| `PATCH /v1/athlete/me` | `show_body_metrics` (bool, default `true`) |
+| `PATCH /v1/athlete/me` | `show_body_metrics` (bool, default `false`) |
 
 ### `GET /v1/dashboard` query
 
@@ -78,7 +78,11 @@ Trykk kort → **detaljvisning**: tittel, sport, «Fra treneren» (steg), planla
 
 ## `show_body_metrics`
 
-SQLite-kolonne på `athletes` (default 1). Når `false`, Dashboard setter `body_hidden`, utelater vekt/fett%-analyse, og UI **utelater hele Kropp-blokken** (ingen «Skjult»-placeholder). Styres under **Du → Personvern / visning**.
+SQLite-kolonne på `athletes` (default **0** / `false` — personvern først).
+
+**Policy:** nye utøvere (onboarding/`insert_athlete`) får `false`. Eksisterende rader endres **ikke** ved migrate — lagrede verdier beholdes. Du-toggle (`PATCH /v1/athlete/me`) fungerer som før.
+
+Når `false`, Dashboard setter `body_hidden`, utelater vekt/fett%-analyse, og UI **utelater hele Kropp-blokken** (ingen «Skjult»-placeholder). Styres under **Du → Personvern / visning**.
 
 ## Øktlogg
 

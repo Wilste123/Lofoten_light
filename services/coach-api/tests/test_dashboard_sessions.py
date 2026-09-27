@@ -52,14 +52,15 @@ def _onboard(c) -> str:
     return r.json()["athlete"]["id"]
 
 
-def test_show_body_metrics_default_true_and_toggle_hides_body(client):
+def test_show_body_metrics_default_false_and_toggle_shows_body(client):
+    """New athletes default to hidden; Du toggle can enable body metrics."""
     c, _athletes = client
     aid = _onboard(c)
     headers = {"X-Athlete-Id": aid}
 
     me = c.get("/v1/athlete/me", headers=headers)
     assert me.status_code == 200
-    assert me.json()["athlete"]["show_body_metrics"] is True
+    assert me.json()["athlete"]["show_body_metrics"] is False
 
     fake_wellness = {
         "window": {"start": "2026-09-14", "end": "2026-09-27"},
@@ -76,40 +77,49 @@ def test_show_body_metrics_default_true_and_toggle_hides_body(client):
         "load_wellness": {"available": True, "ctl": 40, "atl": 35, "readiness": 8},
     }
 
-    with patch("main.resolve_wellness_bundle", return_value=fake_wellness):
-        dash = c.get("/v1/dashboard", headers=headers)
-    assert dash.status_code == 200, dash.text
-    body = dash.json()
-    assert body["show_body_metrics"] is True
-    assert body["body_hidden"] is False
-    assert body["body"]["latest_weight_kg"] == 78.5
-    assert body["compliance_app_computed"] is True
-    assert body["compliance_written_to_intervals"] is False
-
-    patch_r = c.patch(
-        "/v1/athlete/me",
-        headers=headers,
-        json={"show_body_metrics": False},
-    )
-    assert patch_r.status_code == 200
-    assert patch_r.json()["athlete"]["show_body_metrics"] is False
-
-    def _bundle_hidden(secrets, *, days=14, today=None, include_body=True, start=None, end=None):
+    def _bundle(secrets, *, days=14, today=None, include_body=True, start=None, end=None):
         out = dict(fake_wellness)
         if not include_body:
             out["body"] = None
             out["body_hidden"] = True
         return out
 
-    with patch("main.resolve_wellness_bundle", side_effect=_bundle_hidden):
+    with patch("main.resolve_wellness_bundle", side_effect=_bundle):
+        dash = c.get("/v1/dashboard", headers=headers)
+    assert dash.status_code == 200, dash.text
+    body = dash.json()
+    assert body["show_body_metrics"] is False
+    assert body["body_hidden"] is True
+    assert body["body"] is None
+    assert body["compliance_app_computed"] is True
+    assert body["compliance_written_to_intervals"] is False
+    # UI contract (coach-web renderBodyCard): when body_hidden / !show_body_metrics,
+    # the entire Kropp section is omitted — no «Skjult» placeholder.
+
+    patch_r = c.patch(
+        "/v1/athlete/me",
+        headers=headers,
+        json={"show_body_metrics": True},
+    )
+    assert patch_r.status_code == 200
+    assert patch_r.json()["athlete"]["show_body_metrics"] is True
+
+    with patch("main.resolve_wellness_bundle", side_effect=_bundle):
         dash2 = c.get("/v1/dashboard", headers=headers)
     assert dash2.status_code == 200
     data2 = dash2.json()
-    assert data2["show_body_metrics"] is False
-    assert data2["body_hidden"] is True
-    assert data2["body"] is None
-    # UI contract (coach-web renderBodyCard): when body_hidden / !show_body_metrics,
-    # the entire Kropp section is omitted — no «Skjult» placeholder.
+    assert data2["show_body_metrics"] is True
+    assert data2["body_hidden"] is False
+    assert data2["body"]["latest_weight_kg"] == 78.5
+
+    # Toggle back off still works
+    patch_off = c.patch(
+        "/v1/athlete/me",
+        headers=headers,
+        json={"show_body_metrics": False},
+    )
+    assert patch_off.status_code == 200
+    assert patch_off.json()["athlete"]["show_body_metrics"] is False
 
 
 def test_session_completion_persists_and_profile_note(client):

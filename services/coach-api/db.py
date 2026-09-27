@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS athletes (
   season_strength_hours_target REAL,
   season_start_date TEXT,
   goal_race_date TEXT,
-  show_body_metrics INTEGER DEFAULT 1,
+  show_body_metrics INTEGER DEFAULT 0,
   setup_completed INTEGER DEFAULT 0,
   athlete_type TEXT DEFAULT '',
   athlete_type_notes TEXT DEFAULT '',
@@ -221,7 +221,9 @@ _EXTRA_COLUMNS = [
     ("season_strength_hours_target", "REAL"),
     ("season_start_date", "TEXT"),
     ("goal_race_date", "TEXT"),
-    ("show_body_metrics", "INTEGER DEFAULT 1"),
+    # Privacy-first: body metrics off for new athletes. Existing DBs that
+    # already have this column keep their stored values (no flip-on-migrate).
+    ("show_body_metrics", "INTEGER DEFAULT 0"),
     ("setup_completed", "INTEGER DEFAULT 0"),
     ("athlete_type", "TEXT DEFAULT ''"),
     ("athlete_type_notes", "TEXT DEFAULT ''"),
@@ -353,9 +355,9 @@ def row_to_athlete(row: sqlite3.Row | None) -> dict[str, Any] | None:
     except json.JSONDecodeError:
         d["agreements"] = []
     d["nutrition_lactose"] = bool(d.get("nutrition_lactose"))
-    # Default true when column missing / NULL (migration-safe)
+    # Privacy-first: default false when column missing / NULL
     sbm = d.get("show_body_metrics")
-    d["show_body_metrics"] = True if sbm is None else bool(sbm)
+    d["show_body_metrics"] = False if sbm is None else bool(sbm)
     sc = d.get("setup_completed")
     d["setup_completed"] = bool(sc) if sc is not None else False
     # Training agreements
@@ -432,6 +434,9 @@ def insert_athlete(conn: sqlite3.Connection, data: dict[str, Any]) -> dict[str, 
         if athlete_id == "william-lofoten":
             preferred = "william"
         username = allocate_username(conn, preferred, exclude_id=athlete_id)
+    # Explicit show_body_metrics: do not rely on SQLite column DEFAULT alone —
+    # older DBs may still have DEFAULT 1 from when the column was first added.
+    show_body = 1 if data.get("show_body_metrics") else 0
     conn.execute(
         """
         INSERT INTO athletes (
@@ -441,9 +446,9 @@ def insert_athlete(conn: sqlite3.Connection, data: dict[str, Any]) -> dict[str, 
           sport, schedule_notes,
           nutrition_ibs, nutrition_gluten, nutrition_lactose,
           nutrition_other_restrictions, nutrition_notes, notes,
-          setup_completed,
+          show_body_metrics, setup_completed,
           created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             athlete_id,
@@ -470,6 +475,7 @@ def insert_athlete(conn: sqlite3.Connection, data: dict[str, Any]) -> dict[str, 
             data.get("nutrition_other_restrictions") or "",
             data.get("nutrition_notes") or "",
             data.get("notes") or "",
+            show_body,
             1 if data.get("setup_completed") else 0,
             now,
             now,

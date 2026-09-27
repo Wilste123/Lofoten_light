@@ -1986,10 +1986,10 @@ function renderDu() {
         <h2>Personvern / visning</h2>
         <div class="field">
           <label class="toggle-label">
-            <input type="checkbox" name="show_body_metrics" ${a.show_body_metrics !== false ? 'checked' : ''} />
+            <input type="checkbox" name="show_body_metrics" ${a.show_body_metrics ? 'checked' : ''} />
             Vis vekt og fett% på Dashboard
           </label>
-          <p class="muted tight">Slå av for å skjule kroppsmål fra wellness/BIA. Standard: på.</p>
+          <p class="muted tight">Slå på for å vise kroppsmål fra wellness/BIA. Standard: av (personvern).</p>
         </div>
       </div>
       <div class="section-block">

@@ -1306,7 +1306,7 @@ def dashboard(
         secrets = get_athlete_secrets(conn, aid)
         blocks = list_plan_blocks(conn, aid)
     overview_data = _overview_payload(athlete, secrets, blocks)
-    show_body = bool(athlete.get("show_body_metrics", True))
+    show_body = bool(athlete.get("show_body_metrics", False))
     training = resolve_period_training(secrets, start, end)
     wellness = resolve_wellness_bundle(
         secrets,

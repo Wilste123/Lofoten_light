@@ -42,5 +42,18 @@ ADMIN_SEED_TOKEN = os.environ.get("ADMIN_SEED_TOKEN", "").strip()
 # Built web UI (Fly / Docker). Empty → API only.
 STATIC_DIR = Path(os.environ["STATIC_DIR"]) if os.environ.get("STATIC_DIR") else None
 if STATIC_DIR is None:
-    _candidate = Path(__file__).resolve().parents[2] / "apps" / "coach-web" / "dist"
-    STATIC_DIR = _candidate if _candidate.is_dir() else None
+    # Local monorepo: services/coach-api → repo root → apps/coach-web/dist
+    # Avoid Path.parents[2] — raises IndexError(2) when API lives at /app/*.py
+    _api = Path(__file__).resolve().parent
+    _cand = None
+    cur = _api
+    for _ in range(4):
+        parent = cur.parent
+        if parent == cur:
+            break
+        trial = parent / "apps" / "coach-web" / "dist"
+        if trial.is_dir():
+            _cand = trial
+            break
+        cur = parent
+    STATIC_DIR = _cand

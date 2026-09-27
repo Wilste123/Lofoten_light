@@ -43,6 +43,12 @@ def format_exc_nb(exc: BaseException) -> str:
     if isinstance(exc, KeyError):
         key = exc.args[0] if exc.args else "?"
         return f"{name} for felt/nøkkel {key!r}"
+    if isinstance(exc, IndexError):
+        idx = exc.args[0] if exc.args else "?"
+        return (
+            f"{name} for indeks {idx!r} "
+            "(ofte Path.parents i Docker /app — sjekk _ancestor_paths)"
+        )
     if isinstance(exc, FileNotFoundError):
         path = getattr(exc, "filename", None) or (
             exc.args[1] if len(exc.args) > 1 else str(exc)
@@ -59,6 +65,23 @@ def format_exc_nb(exc: BaseException) -> str:
     if len(msg) < 4 and not any(c.isalpha() for c in msg):
         return f"{name}: {exc!r}"
     return f"{name}: {msg}"
+
+
+def _ancestor_paths(path: Path, max_up: int = 4) -> list[Path]:
+    """Walk parents without IndexError when path is shallow (Docker ``/app``).
+
+    ``Path('/app/x.py').parents[2]`` raises ``IndexError(2)`` — that broke Fly
+    workout preview while notes still built.
+    """
+    out: list[Path] = []
+    cur = path.resolve()
+    for _ in range(max(0, max_up)):
+        parent = cur.parent
+        if parent == cur:
+            break
+        out.append(parent)
+        cur = parent
+    return out
 
 
 DEFAULT_WORKOUT_WEEKS = 2
@@ -147,10 +170,16 @@ def knowledge_paths_for_workouts(
     )
 
 
-def _repo_scripts_dirs() -> list[Path]:
-    roots = [_workouts_root()]
-    here = Path(__file__).resolve().parent
-    for cand in (here.parents[1], here.parents[2], Path(config.REPO_ROOT)):
+def _repo_scripts_dirs(*, module_file: Path | None = None) -> list[Path]:
+    here_file = Path(module_file) if module_file else Path(__file__)
+    here = here_file.resolve().parent
+    roots: list[Path] = []
+    for cand in (
+        _workouts_root(module_file=here_file),
+        here,
+        *_ancestor_paths(here_file, max_up=4),
+        Path(config.REPO_ROOT),
+    ):
         if cand not in roots:
             roots.append(cand)
     dirs: list[Path] = []
@@ -163,10 +192,12 @@ def _repo_scripts_dirs() -> list[Path]:
     return dirs
 
 
-def _import_build_workout_event() -> Callable[..., dict]:
+def _import_build_workout_event(
+    *, module_file: Path | None = None
+) -> Callable[..., dict]:
     """Load CLI builder — source of truth for Intervals WORKOUT shape."""
     last_err: Exception | None = None
-    for d in _repo_scripts_dirs():
+    for d in _repo_scripts_dirs(module_file=module_file):
         if not (d / "intervals_push_calendar.py").is_file():
             continue
         path = str(d)
@@ -185,14 +216,17 @@ def _import_build_workout_event() -> Callable[..., dict]:
     )
 
 
-def _workouts_root() -> Path:
-    """Directory that contains workouts/planned and workouts/zwo."""
-    candidates = [
-        Path(config.REPO_ROOT),
-        Path(__file__).resolve().parents[1],  # services/
-        Path(__file__).resolve().parents[2],  # repo root
-        Path(__file__).resolve().parents[3],
-    ]
+def _workouts_root(*, module_file: Path | None = None) -> Path:
+    """Directory that contains workouts/planned and workouts/zwo.
+
+    Never indexes ``Path.parents[n]`` directly — Docker copies the API to
+    ``/app/*.py`` where ``parents[2]`` raises ``IndexError(2)``.
+    """
+    here_file = Path(module_file) if module_file else Path(__file__)
+    candidates: list[Path] = [Path(config.REPO_ROOT)]
+    for cand in _ancestor_paths(here_file, max_up=4):
+        if cand not in candidates:
+            candidates.append(cand)
     for cand in candidates:
         if (cand / "workouts" / "planned").is_dir() and (cand / "scripts").is_dir():
             return cand
@@ -539,15 +573,19 @@ def build_plan_week_icu_events(
     today: date | None = None,
     athlete: dict[str, Any] | None = None,
     repo_root: Path | None = None,
+    module_file: Path | None = None,
 ) -> list[dict[str, Any]]:
     """ICU WORKOUT events via CLI ``build_workout_event`` (ZWO / planned syntax).
 
     Raises ImportError / OSError when the CLI builder or workouts library is
     missing from the runtime image — callers that must not 500 (setup preview)
     should catch and degrade.
+
+    ``module_file`` is for tests that simulate Docker ``/app/*.py`` (shallow
+    Path.parents); production leaves it None.
     """
-    build_fn = _import_build_workout_event()
-    root = Path(repo_root or _workouts_root())
+    build_fn = _import_build_workout_event(module_file=module_file)
+    root = Path(repo_root or _workouts_root(module_file=module_file))
     planned = root / "workouts" / "planned"
     if not planned.is_dir():
         raise FileNotFoundError(
@@ -654,6 +692,7 @@ def build_plan_sync_bundle(
     today: date | None = None,
     repo_root: Path | None = None,
     allow_degraded: bool = False,
+    module_file: Path | None = None,
 ) -> dict[str, Any]:
     """NOTES (meso) + library WORKOUTs via CLI builder — one sync payload.
 
@@ -672,6 +711,7 @@ def build_plan_sync_bundle(
             today=today,
             athlete=athlete,
             repo_root=repo_root,
+            module_file=module_file,
         )
     except Exception as exc:
         if not allow_degraded:

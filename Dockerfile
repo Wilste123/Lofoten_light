@@ -30,6 +30,9 @@ COPY services/coach-api/ /app/
 COPY knowledge/ /app/knowledge/
 COPY docs/athlete/ /app/docs/athlete/
 COPY plans/ /app/plans/
+# Økt-bibliotek + CLI builder (Intervals WORKOUT shape / ZWO) — plan sync ground truth
+COPY workouts/ /app/workouts/
+COPY scripts/intervals_lib.py scripts/intervals_push_calendar.py scripts/run_intervals_syntax.py /app/repo_scripts/
 COPY --from=web /web/dist /app/static
 
 RUN chmod +x /app/scripts/docker_entrypoint.sh

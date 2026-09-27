@@ -12,7 +12,8 @@ _API_DIR = Path(__file__).resolve().parent
 if (_API_DIR / "docs" / "athlete").is_dir():
     REPO_ROOT = _API_DIR
 else:
-    REPO_ROOT = _API_DIR.parents[2]
+    # parents[0]=services, parents[1]=repo root (lofoten_light)
+    REPO_ROOT = _API_DIR.parents[1]
 load_dotenv(REPO_ROOT / ".env")
 load_dotenv(_API_DIR / ".env")
 

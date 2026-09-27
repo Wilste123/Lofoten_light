@@ -71,10 +71,10 @@ from progress_compliance import (
     public_block,
     resolve_progress,
 )
+from plan_workouts import build_plan_sync_bundle, events_preview_for_plan_sync
 from setup_plan import (
     build_setup_chat_system,
     build_setup_preview,
-    events_preview_for_blocks,
     extract_setup_fields,
     merge_draft,
 )
@@ -407,23 +407,21 @@ def setup_plan_preview(body: SetupDraftIn) -> dict[str, Any]:
         model=config.OPENAI_MODEL or "gpt-4o-mini",
         enrich=bool(body.enrich_with_llm),
     )
-    # Optional: show what Intervals NOTE sync would look like (still no write).
-    events = events_preview_for_blocks(preview["plan_blocks"])
-    preview["intervals_sync"] = {
-        "will_push": False,
-        "kind": "calendar_notes",
-        "description": (
-            "Forhåndsvisning av grovplan-noter (NOTE). Ingenting synces før du "
-            "bekrefter plan lokalt og deretter Sync til Intervals."
-        ),
-        "events_count": len(events),
-        "events_preview": events[:40],
-        "events_truncated": max(0, len(events) - 40),
-        "credentials_present": bool(
-            (body.intervals_athlete_id or "").strip()
-            and (body.intervals_api_key or "").strip()
-        ),
-    }
+    # Optional: show NOTES + first 1–2 weeks WORKOUT (still no write).
+    sync_prev = events_preview_for_plan_sync(
+        preview["plan_blocks"],
+        signals=preview.get("signals") or {},
+    )
+    sync_prev["credentials_present"] = bool(
+        (body.intervals_athlete_id or "").strip()
+        and (body.intervals_api_key or "").strip()
+    )
+    sync_prev["description"] = (
+        "Forhåndsvisning: grovplan-noter + konkrete økter (WORKOUT) for "
+        f"første {sync_prev.get('weeks', 2)} uke(r). Ingenting synces før du "
+        "bekrefter plan lokalt og deretter Sync til Intervals."
+    )
+    preview["intervals_sync"] = sync_prev
     return preview
 
 
@@ -636,29 +634,47 @@ def setup_confirm(
             key = ((secrets or {}).get("intervals_api_key") or "").strip()
             icu = ((secrets or {}).get("intervals_athlete_id") or "").strip()
             if key and icu and saved_blocks:
-                events = build_block_note_events(saved_blocks)
+                bundle = build_plan_sync_bundle(
+                    saved_blocks, athlete=athlete, include_notes=True
+                )
+                events = bundle["events"]
                 if events:
                     payload = {
                         "op": "push",
                         "block_ids": [b["id"] for b in saved_blocks],
                         "events": events,
                         "intervals_athlete_id": icu,
+                        "notes_count": bundle["notes_count"],
+                        "workouts_count": bundle["workouts_count"],
+                        "zwo_count": bundle["zwo_count"],
+                        "weeks": bundle["weeks"],
+                        "builder": bundle["builder"],
+                        "knowledge_paths": bundle["knowledge_paths"],
                     }
                     pending = insert_pending_action(
                         conn, aid, "intervals_calendar_push", payload
                     )
-                    summary = [public_event_preview(e) for e in events]
                     intervals_pending = {
                         "pending_id": pending["id"],
                         "op": "push",
-                        "count": len(events),
+                        "count": bundle["count"],
+                        "notes_count": bundle["notes_count"],
+                        "workouts_count": bundle["workouts_count"],
+                        "zwo_count": bundle["zwo_count"],
+                        "weeks": bundle["weeks"],
+                        "builder": bundle["builder"],
+                        "knowledge_paths": bundle["knowledge_paths"],
                         "expires_at": pending.get("expires_at"),
-                        "events": summary[:40],
-                        "events_truncated": max(0, len(events) - 40),
+                        "events": bundle["events_preview"][:40],
+                        "workouts_preview": bundle["workouts_preview"][:40],
+                        "events_truncated": max(0, bundle["count"] - 40),
                         "confirm_required": True,
                         "message": (
-                            f"Bekreft for å synce {len(events)} grovplan-noter "
-                            "til Intervals. Avbryt = plan beholdes kun i appen."
+                            f"Bekreft for å synce {bundle['workouts_count']} økter "
+                            f"(første {bundle['weeks']} uke(r), "
+                            f"{bundle['zwo_count']} med ZWO) + "
+                            f"{bundle['notes_count']} grovplan-noter til Intervals. "
+                            "Avbryt = plan beholdes kun i appen."
                         ),
                     }
 
@@ -675,7 +691,7 @@ def setup_confirm(
         "message": (
             "Profil og grovplan lagret lokalt."
             + (
-                " Bekreft Intervals-sync for å speile noter."
+                " Bekreft Intervals-sync for å legge økter + noter på kalenderen."
                 if intervals_pending
                 else " Intervals urørt."
             )
@@ -1250,7 +1266,10 @@ def calendar_preview(
         raise HTTPException(400, "Ingen planblokker i utvalget")
 
     if op == "push":
-        events = build_block_note_events(selected)
+        bundle = build_plan_sync_bundle(
+            selected, athlete=_athlete, include_notes=True
+        )
+        events = bundle["events"]
         if not events:
             raise HTTPException(400, "Blokkene mangler start/slutt-dato")
         payload = {
@@ -1258,9 +1277,15 @@ def calendar_preview(
             "block_ids": [b["id"] for b in selected],
             "events": events,
             "intervals_athlete_id": icu,
+            "notes_count": bundle["notes_count"],
+            "workouts_count": bundle["workouts_count"],
+            "zwo_count": bundle["zwo_count"],
+            "weeks": bundle["weeks"],
+            "builder": bundle["builder"],
+            "knowledge_paths": bundle["knowledge_paths"],
         }
-        summary = [public_event_preview(e) for e in events]
-        count = len(events)
+        summary = bundle["events_preview"]
+        count = bundle["count"]
     else:
         events = build_block_note_events(selected)
         external_ids = [e["external_id"] for e in events]
@@ -1277,7 +1302,7 @@ def calendar_preview(
             if eid and eid not in external_ids:
                 external_ids.append(eid)
         if not external_ids:
-            raise HTTPException(400, "Ingen agent-noter å fjerne i utvalget")
+            raise HTTPException(400, "Ingen agent-hendelser (noter/økter) å fjerne i utvalget")
         payload = {
             "op": "delete",
             "block_ids": [b["id"] for b in selected],
@@ -1289,7 +1314,7 @@ def calendar_preview(
 
     with db_session(config.DATABASE_PATH) as conn:
         pending = insert_pending_action(conn, aid, f"intervals_calendar_{op}", payload)
-    return {
+    out: dict[str, Any] = {
         "pending_id": pending["id"],
         "op": op,
         "count": count,
@@ -1306,11 +1331,28 @@ def calendar_preview(
         "events": summary[:40],
         "events_truncated": max(0, count - 40),
         "confirm_required": True,
-        "message": (
-            f"Bekreft for å {'synce' if op == 'push' else 'fjerne'} "
-            f"{count} Intervals-hendelser."
-        ),
     }
+    if op == "push":
+        out["notes_count"] = payload.get("notes_count", 0)
+        out["workouts_count"] = payload.get("workouts_count", 0)
+        out["weeks"] = payload.get("weeks", 2)
+        out["zwo_count"] = payload.get("zwo_count", 0)
+        out["builder"] = payload.get("builder")
+        out["knowledge_paths"] = payload.get("knowledge_paths") or []
+        out["workouts_preview"] = [
+            e for e in summary if e.get("category") == "WORKOUT"
+        ][:40]
+        out["message"] = (
+            f"Bekreft for å synce {out['workouts_count']} økter "
+            f"(første {out['weeks']} uke(r), {out['zwo_count']} med ZWO) + "
+            f"{out['notes_count']} grovplan-noter til Intervals. "
+            "Bygget med samme økt-bygger som CLI. Upsert ll-coach-… / ll-coach-w-…."
+        )
+    else:
+        out["message"] = (
+            f"Bekreft for å fjerne {count} agent-hendelser (noter + økter) fra Intervals."
+        )
+    return out
 
 
 @app.post("/v1/athlete/me/intervals/calendar/confirm")
@@ -1429,6 +1471,10 @@ def calendar_status(x_athlete_id: str | None = Header(default=None)) -> dict[str
         "count": len(events),
         "events": events,
         "external_prefix": "ll-coach-",
+        "note": (
+            "Teller både grovplan-NOTE (ll-coach-…) og WORKOUT (ll-coach-w-…). "
+            "Andre Intervals-hendelser uten dette prefikset telles ikke."
+        ),
     }
 
 

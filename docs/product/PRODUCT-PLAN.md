@@ -43,9 +43,9 @@ Deterministiske tall (Python, ikke LLM). Se [progress-compliance.md](progress-co
 
 - Compliance / volum / form_estimates = **app-side** fra ICU-data (les). Skrives **ikke** tilbake til Intervals.
 - ICU-**write** krever alltid preview → confirm:
-  - **Plan:** grovplan-noter (`ll-coach-…`) under Plan-fanen.
+  - **Plan / setup sync:** første 1–2 uker **bibliotek-WORKOUT** (`ll-coach-w-…`, ZWO/planned via CLI-byggeren) + grovplan-noter (`ll-coach-…`).
   - **Chat:** enkle kalender-WORKOUT (`ll-coach-w-…`) når utøveren ber om å legge inn økt — se [dashboard-okter.md](dashboard-okter.md).
-- Full ZWO/CSV-ukeplan pushes fortsatt via CLI, ikke via chat. Uten Sync forblir Intervals urørt.
+- Full 4-ukers CSV-push er fortsatt CLI; Plan-sync gjenbruker samme `build_workout_event`. Uten Sync forblir Intervals urørt.
 
 Uten Intervals-credentials: **demo/stub**-tall merket «Demo».
 

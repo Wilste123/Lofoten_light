@@ -647,11 +647,12 @@ def build_setup_preview(
         "athlete_patch": athlete_patch,
         "intervals_sync": {
             "will_push": False,
-            "kind": "calendar_notes",
+            "kind": "calendar_notes_and_workouts",
             "description": (
                 "Etter bekreftelse av plan lokalt kan du velge å synce "
-                "grovplan som ukenoter (NOTE, ll-coach-…) til Intervals. "
-                "Full ukeplan/ZWO pushes ikke her."
+                "grovplan-noter (NOTE, ll-coach-…) pluss konkrete økter for "
+                "første 1–2 uker (WORKOUT, ll-coach-w-…) til Intervals. "
+                "Ingen ZWO — beskrivelse + varighet. Preview→confirm."
             ),
             "events_preview": [],
         },
@@ -665,6 +666,7 @@ def build_setup_preview(
 
 
 def events_preview_for_blocks(blocks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Backward-compatible note-only preview (prefer events_preview_for_plan_sync)."""
     from intervals_calendar import build_block_note_events, public_event_preview
 
     prepared = []

@@ -8,13 +8,13 @@ Appen eier **makro- og meso-nivå**. Intervals eier **mikro** (dagsøkter, kalen
 |-----|-----------------|---------------|
 | Makro / sesong | Mål-race, sesongvindu, volummål per disiplin | — |
 | Meso / bulk | `plan_blocks`: tittel, tema, start–slutt, uketimer | — |
-| Mikro / uke | Chat leser sessions-snapshot; valgfri WORKOUT-sync (`ll-coach-w-…`) | Kalender, ZWO, TSS, formkurver |
+| Mikro / uke | Plan-sync: første 1–2 uker bibliotek-WORKOUT + noter; chat: valgfri økt-sync | Kalender, ZWO, TSS, formkurver |
 | Chat-kontekst | Leser blokk + mål + **kommende/siste økter** inn i prompt-stub | — |
 
 **Valgfri sync:**
-- Plan-fanen: ukenoter (`ll-coach-…`) etter preview + bekreftelse — `/v1/athlete/me/intervals/calendar/*`.
-- Coach-chat: enkle WORKOUT-events (`ll-coach-w-…`) når utøveren ber om økt — `/v1/athlete/me/intervals/workouts/preview` → samme confirm-endepunkt.
-- Full ukeplan/ZWO-push fra CSV er fortsatt CLI `scripts/intervals_push_calendar.py`.
+- Plan / setup: første 1–2 uker som WORKOUT via CLI-byggeren (`build_workout_event` → planned/ZWO) + grovplan-noter — `/v1/athlete/me/intervals/calendar/*` (preview→confirm).
+- Coach-chat: enkle WORKOUT-events når utøveren ber om økt — `/v1/athlete/me/intervals/workouts/preview` → samme confirm.
+- Full 4-ukers CSV-push er fortsatt CLI `scripts/intervals_push_calendar.py` (samme builder).
 
 ## Datamodell
 

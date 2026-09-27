@@ -18,7 +18,7 @@ Vi er fortsatt en **tynn coach + Intervals-companion** — ikke TrainingPeaks-/H
 | **Compliance / sesongvolum** | **App-side READ** fra Intervals `activities` + sesongmål i SQLite | Landet (`progress_compliance.py` → Overblikk + Compliance-fane) |
 | **On-pace** | App-side beregning (`completed / expected`) | Landet |
 | **form_estimates (FTP)** | App-side READ sykkel+power 90d → persist i SQLite | Landed (`form_from_intervals.py`, `POST /v1/form/recompute`) |
-| **Sync til Intervals** | **WRITE** — grovplan-**noter** (`ll-coach-…`) + enkle chat-**WORKOUT** (`ll-coach-w-…`) via preview→confirm | Landet (Plan + Coach) |
+| Sync til Intervals | **WRITE** — grovplan-NOTE + bibliotek-WORKOUT (CLI-bygger / ZWO) via preview→confirm | Landet (Plan + setup) |
 | Compliance skrevet til Intervals | Nei | **Ikke** — tallene lever kun i appen |
 | Full ukeplan / ZWO-push | Nei | Ikke (CLI `intervals_push_calendar.py`) |
 

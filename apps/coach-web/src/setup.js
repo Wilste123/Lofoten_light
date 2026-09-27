@@ -256,15 +256,23 @@ export function renderSetupWizard({ state, accents, personalities, escapeHtml: e
             </tr>`,
         )
         .join('')
-      const evCount = p.intervals_sync?.events_count ?? 0
-      const sample = (p.intervals_sync?.events_preview || [])
-        .slice(0, 6)
-        .map(
-          (e) =>
-            `<li><code>${esc(e.day || e.start_date_local || '')}</code> · ${esc(e.name || '')}</li>`,
-        )
+      const sync = p.intervals_sync || {}
+      const wCount = sync.workouts_count ?? 0
+      const nCount = sync.notes_count ?? 0
+      const zCount = sync.zwo_count ?? 0
+      const workoutSample = (sync.workouts_preview || sync.events_preview || [])
+        .filter((e) => !e.category || e.category === 'WORKOUT')
+        .slice(0, 8)
+        .map((e) => {
+          const line =
+            e.preview_no ||
+            `${(e.day || e.start_date_local || '').toString().slice(0, 10)} · ${e.name || ''}${
+              e.has_zwo ? ' · ZWO' : ''
+            }`
+          return `<li>${esc(line)}</li>`
+        })
         .join('')
-      const paths = (p.knowledge?.paths || []).slice(0, 8).join(', ')
+      const paths = (p.knowledge?.paths || sync.knowledge_paths || []).slice(0, 8).join(', ')
       body = `
         <div class="setup-coach-bubble">
           ${
@@ -290,12 +298,14 @@ export function renderSetupWizard({ state, accents, personalities, escapeHtml: e
           <h3>Hva lagres vs Intervals</h3>
           <ul class="setup-persist-list">
             <li><strong>I appen:</strong> profil (SQLite + profile.md), sesongmål, plan_blocks.</li>
-            <li><strong>Intervals (valgfritt):</strong> grovplan-ukenoter (NOTE, <code>ll-coach-…</code>) — ${evCount} i forhåndsvisning. Ikke ZWO.</li>
+            <li><strong>Intervals (valgfritt):</strong> ${wCount} bibliotek-økter (WORKOUT, <code>ll-coach-w-…</code>${
+              zCount ? `, ${zCount} med ZWO` : ''
+            }) + ${nCount} grovplan-noter — samme økt-bygger som CLI.</li>
             <li><strong>Aldri stille:</strong> sync krever egen bekreftelse etter lagring.</li>
           </ul>
           ${
-            sample
-              ? `<p class="muted tight">Eksempel Intervals-noter:</p><ul class="sync-sample">${sample}</ul>`
+            workoutSample
+              ? `<p class="muted tight">Forhåndsvisning første uker (økter):</p><ul class="sync-sample">${workoutSample}</ul>`
               : ''
           }
           <div class="field">
@@ -306,7 +316,7 @@ export function renderSetupWizard({ state, accents, personalities, escapeHtml: e
                   ? 'disabled'
                   : ''
               } />
-              Etter lagring: forbered Sync av grovplan-noter til Intervals
+              Etter lagring: forbered Sync av økter + grovplan-noter til Intervals
             </label>
           </div>
         </div>

@@ -50,11 +50,16 @@ Plan-generering: **ett** LLM-kall med knowledge-bundle → JSON-blokker, valider
 
 ## Preview vs Intervals
 
-| Lagres ved bekreft | Synces til Intervals |
-|--------------------|----------------------|
-| Athlete-felt, `plan_blocks`, `profile.md`, valgfri `athlete_secrets` | Kun grovplan-**NOTE** (`ll-coach-…`) etter Plan-sync confirm |
-| — | Ikke ZWO / fulle ukeøkter (CLI) |
+| Lagres ved bekreft | Synces til Intervals (valgfritt, preview→confirm) |
+|--------------------|-----------------------------------------------------|
+| Athlete-felt, `plan_blocks`, `profile.md`, valgfri `athlete_secrets` | **WORKOUT** første 1–2 uker via CLI-byggeren (`scripts/intervals_push_calendar.build_workout_event`) — planned/ZWO fra `workouts/` (`ll-coach-w-…`) |
+| — | Grovplan-**NOTE** ukemarkører (`ll-coach-…`) |
+| — | Ikke stille auto-push; seed `william` tvinges ikke |
+
+**Builder (struktur):** `scripts/intervals_push_calendar.py` + `scripts/intervals_lib.py`  
+**Prescription (innhold):** knowledge-templated valg av `workouts/planned/**` etter signaler (nybegynner / comeback / skade / tid) — samme `knowledge_ctx` som setup.
 
 ## Tester
 
-`services/coach-api/tests/test_setup_onboarding.py`
+`services/coach-api/tests/test_setup_onboarding.py`  
+`services/coach-api/tests/test_plan_workouts.py`

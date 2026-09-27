@@ -1461,20 +1461,33 @@ function renderSyncPanel() {
   let confirmHtml = ''
   if (pending) {
     const sample = (pending.events || [])
-      .slice(0, 5)
-      .map(
-        (e) =>
-          `<li><code>${escapeHtml(e.external_id || e.name || '')}</code> ${escapeHtml(e.name || e.day || '')}</li>`
-      )
+      .slice(0, 12)
+      .map((e) => {
+        const cat =
+          e.category === 'WORKOUT' ? 'Økt' : e.category === 'NOTE' ? 'Note' : e.category || ''
+        const line =
+          e.preview_no ||
+          `${(e.day || e.start_date_local || '').toString().slice(0, 10)} · ${e.name || ''}${
+            e.has_zwo || e.filename ? ' · ZWO' : ''
+          }${e.duration_minutes ? ` · ${e.duration_minutes} min` : ''}`
+        return `<li><span class="badge badge-off">${escapeHtml(cat)}</span> ${escapeHtml(line)}</li>`
+      })
       .join('')
+    const wc = pending.workouts_count
+    const nc = pending.notes_count
+    const zc = pending.zwo_count
+    const meta =
+      wc != null || nc != null
+        ? `${wc ?? 0} økter${zc != null ? ` (${zc} ZWO)` : ''} + ${nc ?? 0} noter`
+        : `${pending.count} hendelser`
     confirmHtml = `
       <div class="confirm-card" role="dialog" aria-label="Bekreft Intervals-sync">
         <p><strong>${escapeHtml(pending.message || 'Bekreft handling')}</strong></p>
-        <p class="muted tight">${escapeHtml(pending.op)} · ${pending.count} hendelser</p>
+        <p class="muted tight">${escapeHtml(pending.op || '')} · ${escapeHtml(meta)}</p>
         <ul class="sync-sample">${sample}</ul>
         ${pending.events_truncated ? `<p class="muted tight">+${pending.events_truncated} til</p>` : ''}
         <div class="row-actions">
-          <button type="button" class="btn btn-primary" id="sync-confirm-yes" ${state.sync.busy ? 'disabled' : ''}>Ja, kjør</button>
+          <button type="button" class="btn btn-primary" id="sync-confirm-yes" ${state.sync.busy ? 'disabled' : ''}>Ja, sync</button>
           <button type="button" class="btn secondary" id="sync-confirm-no" ${state.sync.busy ? 'disabled' : ''}>Avbryt</button>
         </div>
       </div>`
@@ -1483,7 +1496,7 @@ function renderSyncPanel() {
     .slice(0, 8)
     .map(
       (e) =>
-        `<li>${escapeHtml(e.name || 'Note')} · <span class="dim">${escapeHtml((e.start_date_local || '').slice(0, 10))}</span></li>`
+        `<li>${escapeHtml(e.category === 'WORKOUT' ? 'Økt' : e.category === 'NOTE' ? 'Note' : '')} ${escapeHtml(e.name || 'Hendelse')} · <span class="dim">${escapeHtml((e.start_date_local || '').slice(0, 10))}</span></li>`
     )
     .join('')
   return `
@@ -1492,7 +1505,7 @@ function renderSyncPanel() {
         <h2>Sync til Intervals</h2>
         <span class="badge ${linked ? 'badge-live' : 'badge-off'}">${linked ? 'Koblet' : 'Ikke koblet'}</span>
       </div>
-      <p class="muted tight">Pusher ukenoter for grovplan-blokker (<code>ll-coach-…</code>). Aldri stille auto-push — forhåndsvis, så Ja/Avbryt.</p>
+      <p class="muted tight">Pusher <strong>bibliotek-økter</strong> for første 1–2 uker (samme builder som CLI: ZWO/planned → <code>ll-coach-w-…</code>) pluss grovplan-noter (<code>ll-coach-…</code>). Forhåndsvis → Ja/Avbryt. Upsert — sletter ikke andre kalenderhendelser.</p>
       <div class="sync-actions">
         <button type="button" class="btn btn-primary" id="sync-push" ${!linked || state.sync.busy ? 'disabled' : ''}>Sync til Intervals</button>
         <button type="button" class="btn secondary" id="sync-refresh" ${!linked || state.sync.busy ? 'disabled' : ''}>Oppdater status</button>
@@ -1507,7 +1520,7 @@ function renderSyncPanel() {
           state.sync.statusError
             ? `<p class="error">${escapeHtml(state.sync.statusError)}</p>`
             : status
-              ? `<p class="muted tight">${status.count} agent-noter (${escapeHtml(status.window?.start || '')} – ${escapeHtml(status.window?.end || '')})</p>
+              ? `<p class="muted tight">${status.count} agent-hendelser (${escapeHtml(status.window?.start || '')} – ${escapeHtml(status.window?.end || '')})</p>
                  <ul class="sync-sample">${statusList || '<li class="muted">Ingen</li>'}</ul>`
               : `<p class="muted tight">Trykk Oppdater for å hente status.</p>`
         }

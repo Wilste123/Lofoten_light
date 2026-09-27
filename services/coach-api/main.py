@@ -398,29 +398,60 @@ def onboarding(body: OnboardingIn) -> dict[str, Any]:
 
 @app.post("/v1/setup/plan/preview")
 def setup_plan_preview(body: SetupDraftIn) -> dict[str, Any]:
-    """Build adaptive periodization + training outline. No SQLite / Intervals writes."""
+    """Build adaptive periodization + training outline. No SQLite / Intervals writes.
+
+    Safe for restart (nullstill → Sett opp planen på nytt) and fresh onboarding:
+    empty chat draft still yields plan_blocks. Workout-library preview degrades
+    instead of 500 if Docker image mangler workouts/repo_scripts.
+    """
     draft = body.model_dump()
-    preview = build_setup_preview(
-        draft,
-        knowledge_dir=config.KNOWLEDGE_DIR,
-        api_key=config.OPENAI_API_KEY or "",
-        model=config.OPENAI_MODEL or "gpt-4o-mini",
-        enrich=bool(body.enrich_with_llm),
-    )
-    # Optional: show NOTES + first 1–2 weeks WORKOUT (still no write).
-    sync_prev = events_preview_for_plan_sync(
-        preview["plan_blocks"],
-        signals=preview.get("signals") or {},
-    )
+    try:
+        preview = build_setup_preview(
+            draft,
+            knowledge_dir=config.KNOWLEDGE_DIR,
+            api_key=config.OPENAI_API_KEY or "",
+            model=config.OPENAI_MODEL or "gpt-4o-mini",
+            enrich=bool(body.enrich_with_llm),
+        )
+    except Exception as exc:
+        raise HTTPException(
+            500,
+            f"Kunne ikke generere periodisering: {exc}",
+        ) from exc
+
+    # NOTES + first 1–2 weeks WORKOUT (still no write). Never fail the whole
+    # preview if økt-builder/workouts mangler — periodisering is the product.
+    try:
+        sync_prev = events_preview_for_plan_sync(
+            preview["plan_blocks"],
+            signals=preview.get("signals") or {},
+        )
+    except Exception as exc:
+        sync_prev = {
+            "will_push": False,
+            "kind": "calendar_notes_only_degraded",
+            "error": str(exc),
+            "warning": f"Økt-forhåndsvisning feilet: {exc}",
+            "description": f"Periodisering OK. Økt-forhåndsvisning feilet: {exc}",
+            "events_preview": [],
+            "workouts_preview": [],
+            "notes_preview": [],
+            "events_count": 0,
+            "notes_count": 0,
+            "workouts_count": 0,
+            "zwo_count": 0,
+            "weeks": 2,
+        }
     sync_prev["credentials_present"] = bool(
         (body.intervals_athlete_id or "").strip()
         and (body.intervals_api_key or "").strip()
     )
-    sync_prev["description"] = (
-        "Forhåndsvisning: grovplan-noter + konkrete økter (WORKOUT) for "
-        f"første {sync_prev.get('weeks', 2)} uke(r). Ingenting synces før du "
-        "bekrefter plan lokalt og deretter Sync til Intervals."
-    )
+    if not sync_prev.get("error"):
+        sync_prev["description"] = (
+            "Forhåndsvisning: grovplan-noter + konkrete økter (WORKOUT) for "
+            f"første {sync_prev.get('weeks', 2)} uke(r). Ingenting synces før du "
+            "bekrefter plan lokalt og deretter Sync til Intervals."
+        )
     preview["intervals_sync"] = sync_prev
     return preview
 
@@ -1266,9 +1297,15 @@ def calendar_preview(
         raise HTTPException(400, "Ingen planblokker i utvalget")
 
     if op == "push":
-        bundle = build_plan_sync_bundle(
-            selected, athlete=_athlete, include_notes=True
-        )
+        try:
+            bundle = build_plan_sync_bundle(
+                selected, athlete=_athlete, include_notes=True
+            )
+        except (ImportError, OSError, ValueError, KeyError, TypeError) as exc:
+            raise HTTPException(
+                500,
+                f"Kunne ikke bygge økter til Intervals: {exc}",
+            ) from exc
         events = bundle["events"]
         if not events:
             raise HTTPException(400, "Blokkene mangler start/slutt-dato")

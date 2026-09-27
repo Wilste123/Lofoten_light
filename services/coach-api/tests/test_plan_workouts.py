@@ -208,6 +208,114 @@ def test_calendar_preview_push_uses_builder(client, monkeypatch):
     assert any(e.get("file_contents") for e in captured["events"])
 
 
+def test_setup_preview_survives_missing_workout_builder(client, monkeypatch):
+    """Both fresh + restart hit this: builder ImportError must not 500 preview."""
+    c, *_ = client
+
+    def _boom():
+        raise ImportError(
+            "Kunne ikke importere scripts/intervals_push_calendar.build_workout_event "
+            "(sjekk at workouts/ + scripts er med i image). Sist feil: None"
+        )
+
+    monkeypatch.setattr(
+        "plan_workouts._import_build_workout_event",
+        _boom,
+    )
+    # Fresh-user shaped payload (minimal draft, like after short chat)
+    preview = c.post(
+        "/v1/setup/plan/preview",
+        json={
+            "display_name": "Ada",
+            "username": "ada-degraded",
+            "goal_text": "5k",
+            "background_notes": "nybegynner",
+            "weekly_hours_target": 4,
+            "enrich_with_llm": False,
+        },
+    )
+    assert preview.status_code == 200, preview.text
+    body = preview.json()
+    assert len(body["plan_blocks"]) >= 2
+    assert body["overview_md"]
+    sync = body["intervals_sync"]
+    assert sync["kind"] == "calendar_notes_only_degraded"
+    assert sync.get("error")
+    assert "import" in sync["error"].lower() or "workouts" in sync["error"].lower()
+    assert sync["workouts_count"] == 0
+    assert sync["notes_count"] >= 1
+
+
+def test_setup_preview_after_reset_and_fresh_empty_draft(client):
+    """Nullstill + empty restart draft, and brand-new empty draft, both preview OK."""
+    c, *_ = client
+    # Fresh empty-ish draft (user clicks Forhåndsvis with little chat)
+    fresh = c.post(
+        "/v1/setup/plan/preview",
+        json={
+            "display_name": "Ny",
+            "username": "ny-preview",
+            "coach_display_name": "Rocky",
+            "enrich_with_llm": False,
+        },
+    )
+    assert fresh.status_code == 200, fresh.text
+    assert len(fresh.json()["plan_blocks"]) >= 2
+
+    # Confirm → reset → preview with account-only draft (restart UI)
+    filled = c.post(
+        "/v1/setup/plan/preview",
+        json={
+            "display_name": "Bo",
+            "username": "bo-restart",
+            "goal_text": "comeback halv",
+            "background_notes": "tidligere syklist",
+            "weekly_hours_target": 8,
+            "enrich_with_llm": False,
+        },
+    )
+    assert filled.status_code == 200
+    conf = c.post(
+        "/v1/setup/confirm",
+        json={
+            "display_name": "Bo",
+            "username": "bo-restart",
+            "coach_display_name": "Rocky",
+            "goal_text": "comeback halv",
+            "weekly_hours_target": 8,
+            "plan_blocks": filled.json()["plan_blocks"],
+            "athlete_patch": filled.json()["athlete_patch"],
+            "prepare_intervals_sync": False,
+        },
+    )
+    assert conf.status_code == 200, conf.text
+    aid = conf.json()["athlete"]["id"]
+    reset = c.post(
+        "/v1/athlete/me/setup/reset",
+        headers={"X-Athlete-Id": aid},
+        json={"acknowledge_wipe": True, "confirm_phrase": "SLETT"},
+    )
+    assert reset.status_code == 200
+    assert reset.json()["athlete"]["setup_completed"] is False
+
+    restart_preview = c.post(
+        "/v1/setup/plan/preview",
+        json={
+            "display_name": "Bo",
+            "username": "bo-restart",
+            "coach_display_name": "Rocky",
+            "coach_personality": "direkte",
+            "enrich_with_llm": False,
+        },
+    )
+    assert restart_preview.status_code == 200, restart_preview.text
+    assert len(restart_preview.json()["plan_blocks"]) >= 2
+    assert restart_preview.json()["intervals_sync"]["kind"] in (
+        "calendar_notes_and_library_workouts",
+        "calendar_notes_only_degraded",
+    )
+
+
 def test_setup_preview_shows_workouts_not_notes_only(client):
     c, *_ = client
     preview = c.post(
@@ -226,6 +334,32 @@ def test_setup_preview_shows_workouts_not_notes_only(client):
     assert sync["kind"] == "calendar_notes_and_library_workouts"
     assert sync["workouts_count"] >= 3
     assert sync.get("builder")
+    assert not sync.get("error")
+    assert any(
+        (e.get("category") == "WORKOUT") or e.get("preview_no")
+        for e in (sync.get("workouts_preview") or sync.get("events_preview") or [])
+    )
+
+
+def test_setup_preview_shows_workouts_not_notes_only(client):
+    c, *_ = client
+    preview = c.post(
+        "/v1/setup/plan/preview",
+        json={
+            "display_name": "Ada",
+            "username": "ada-w",
+            "goal_text": "5k",
+            "background_notes": "nybegynner",
+            "weekly_hours_target": 4,
+            "enrich_with_llm": False,
+        },
+    )
+    assert preview.status_code == 200, preview.text
+    sync = preview.json()["intervals_sync"]
+    assert sync["kind"] == "calendar_notes_and_library_workouts"
+    assert sync["workouts_count"] >= 3
+    assert sync.get("builder")
+    assert not sync.get("error")
     assert any(
         (e.get("category") == "WORKOUT") or e.get("preview_no")
         for e in (sync.get("workouts_preview") or sync.get("events_preview") or [])

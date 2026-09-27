@@ -137,7 +137,9 @@ async function api(path, { method = 'GET', body, athleteId, timeoutMs } = {}) {
         ? detail
         : Array.isArray(detail)
           ? detail.map((d) => d.msg || d).join('; ')
-          : data.message || `Feil ${res.status}`
+          : typeof detail === 'object' && detail && detail.message
+            ? String(detail.message)
+            : data.message || data.error || `Feil ${res.status}`
     throw new Error(msg)
   }
   return data

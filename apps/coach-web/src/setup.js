@@ -296,6 +296,13 @@ export function renderSetupWizard({ state, accents, personalities, escapeHtml: e
             </table>
           </div>
           <h3>Hva lagres vs Intervals</h3>
+          ${
+            sync.error || sync.warning
+              ? `<p class="error tight" role="alert">${esc(
+                  sync.warning || sync.error,
+                )}</p>`
+              : ''
+          }
           <ul class="setup-persist-list">
             <li><strong>I appen:</strong> profil (SQLite + profile.md), sesongmål, plan_blocks.</li>
             <li><strong>Intervals (valgfritt):</strong> ${wCount} bibliotek-økter (WORKOUT, <code>ll-coach-w-…</code>${

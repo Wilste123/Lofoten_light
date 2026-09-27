@@ -406,9 +406,20 @@ def build_plan_week_icu_events(
     athlete: dict[str, Any] | None = None,
     repo_root: Path | None = None,
 ) -> list[dict[str, Any]]:
-    """ICU WORKOUT events via CLI ``build_workout_event`` (ZWO / planned syntax)."""
+    """ICU WORKOUT events via CLI ``build_workout_event`` (ZWO / planned syntax).
+
+    Raises ImportError / OSError when the CLI builder or workouts library is
+    missing from the runtime image — callers that must not 500 (setup preview)
+    should catch and degrade.
+    """
     build_fn = _import_build_workout_event()
     root = Path(repo_root or _workouts_root())
+    planned = root / "workouts" / "planned"
+    if not planned.is_dir():
+        raise FileNotFoundError(
+            f"Mangler øktbibliotek under {root}/workouts/planned "
+            "(Docker må COPY workouts/ — sjekk .dockerignore)."
+        )
     plan_start, rows = build_plan_week_rows(
         blocks,
         signals=signals,
@@ -441,6 +452,42 @@ def build_plan_week_icu_events(
     return events
 
 
+def _notes_only_bundle(
+    blocks: list[dict[str, Any]],
+    *,
+    signals: dict[str, bool],
+    weeks: int,
+    error: str,
+    athlete: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Degraded sync payload when library WORKOUT builder is unavailable."""
+    note_events = build_block_note_events(blocks)
+    note_previews = [public_event_preview(e) for e in note_events]
+    k_paths = knowledge_paths_for_workouts(athlete, signals)
+    return {
+        "events": list(note_events),
+        "note_events": note_events,
+        "workout_events": [],
+        "notes_count": len(note_events),
+        "workouts_count": 0,
+        "zwo_count": 0,
+        "count": len(note_events),
+        "notes_preview": note_previews,
+        "workouts_preview": [],
+        "events_preview": note_previews,
+        "signals": {k: v for k, v in signals.items() if not str(k).startswith("_")},
+        "knowledge_paths": k_paths,
+        "weeks": weeks,
+        "builder": "scripts/intervals_push_calendar.build_workout_event",
+        "kind": "calendar_notes_only_degraded",
+        "error": error,
+        "description_no": (
+            f"Grovplan-noter ({len(note_events)}) klar. "
+            f"Øktbibliotek-forhåndsvisning feilet: {error}"
+        ),
+    }
+
+
 def norwegian_workout_preview_line(ev: dict[str, Any]) -> str:
     day = str(ev.get("_day") or ev.get("start_date_local") or "")[:10]
     name = (ev.get("name") or "Økt").strip()
@@ -463,19 +510,47 @@ def build_plan_sync_bundle(
     include_notes: bool = True,
     today: date | None = None,
     repo_root: Path | None = None,
+    allow_degraded: bool = False,
 ) -> dict[str, Any]:
-    """NOTES (meso) + library WORKOUTs via CLI builder — one sync payload."""
+    """NOTES (meso) + library WORKOUTs via CLI builder — one sync payload.
+
+    When ``allow_degraded`` is True (setup Forhåndsvis), missing builder/workouts
+    yields notes-only + ``error`` instead of raising — periodization must still
+    render for restart and fresh onboarding.
+    """
     signals = signals or signals_from_athlete(athlete)
     k_paths = knowledge_paths_for_workouts(athlete, signals)
     note_events = build_block_note_events(blocks) if include_notes else []
-    workout_events = build_plan_week_icu_events(
-        blocks,
-        signals=signals,
-        weeks=weeks,
-        today=today,
-        athlete=athlete,
-        repo_root=repo_root,
-    )
+    try:
+        workout_events = build_plan_week_icu_events(
+            blocks,
+            signals=signals,
+            weeks=weeks,
+            today=today,
+            athlete=athlete,
+            repo_root=repo_root,
+        )
+    except (ImportError, OSError, ValueError, KeyError, TypeError) as exc:
+        if not allow_degraded:
+            raise
+        degraded = _notes_only_bundle(
+            blocks,
+            signals=signals,
+            weeks=weeks,
+            error=str(exc),
+            athlete=athlete,
+        )
+        if not include_notes:
+            degraded["note_events"] = []
+            degraded["notes_count"] = 0
+            degraded["notes_preview"] = []
+            degraded["events"] = []
+            degraded["events_preview"] = []
+            degraded["count"] = 0
+            degraded["description_no"] = (
+                f"Øktbibliotek-forhåndsvisning feilet: {exc}"
+            )
+        return degraded
     workout_previews: list[dict[str, Any]] = []
     for ev in workout_events:
         row = public_event_preview(ev)
@@ -506,6 +581,7 @@ def build_plan_sync_bundle(
         "weeks": weeks,
         "builder": "scripts/intervals_push_calendar.build_workout_event",
         "kind": "calendar_notes_and_library_workouts",
+        "error": None,
         "description_no": (
             f"Grovplan-noter ({len(note_events)}) + {len(workout_events)} økter "
             f"fra workouts/planned (første {weeks} uke(r), {zwo_n} med ZWO). "
@@ -522,6 +598,7 @@ def events_preview_for_plan_sync(
     signals: dict[str, bool] | None = None,
     weeks: int = DEFAULT_WORKOUT_WEEKS,
 ) -> dict[str, Any]:
+    """Setup / Plan forhåndsvisning — never raises on missing workouts image."""
     prepared = []
     for i, b in enumerate(blocks):
         prepared.append({**b, "id": b.get("id") or f"draft-{b.get('key') or i}"})
@@ -531,8 +608,9 @@ def events_preview_for_plan_sync(
         signals=signals,
         weeks=weeks,
         include_notes=True,
+        allow_degraded=True,
     )
-    return {
+    out = {
         "will_push": False,
         "kind": bundle["kind"],
         "description": bundle["description_no"],
@@ -549,3 +627,7 @@ def events_preview_for_plan_sync(
         "signals": bundle["signals"],
         "knowledge_paths": bundle["knowledge_paths"],
     }
+    if bundle.get("error"):
+        out["error"] = bundle["error"]
+        out["warning"] = bundle["description_no"]
+    return out

@@ -63,6 +63,8 @@ const state = {
   },
   /** Chat → Intervals workout proposal (preview → confirm) */
   workoutProposal: null,
+  workoutRemoval: null,
+  athleteTypeProposal: null,
   workoutSync: {
     pending: null,
     busy: false,
@@ -82,6 +84,7 @@ const state = {
   },
   /** Du → restart setup: 0 idle, 1 first confirm, 2 type SLETT */
   resetConfirm: 0,
+  resetDeleteIcu: false,
   busy: false,
   intervalsBusy: false,
   intervalsStatus: '',
@@ -663,16 +666,22 @@ async function runSetupReset() {
   state.error = ''
   render()
   try {
-    await api('/v1/athlete/me/setup/reset', {
+    const data = await api('/v1/athlete/me/setup/reset', {
       method: 'POST',
-      body: { acknowledge_wipe: true, confirm_phrase: 'SLETT' },
+      body: {
+        acknowledge_wipe: true,
+        confirm_phrase: 'SLETT',
+        delete_intervals_coach_events: Boolean(state.resetDeleteIcu),
+        acknowledge_intervals_delete: Boolean(state.resetDeleteIcu),
+      },
     })
     startRestartSetup()
-    toast('Setup nullstilt')
+    toast(data.message || 'Setup nullstilt')
   } catch (err) {
     state.error = err.message || 'Kunne ikke nullstille'
     state.busy = false
     state.resetConfirm = 0
+    state.resetDeleteIcu = false
     render()
   }
 }
@@ -723,6 +732,9 @@ async function confirmSetupPlan() {
         ? `Planen er satt opp på nytt. Jeg er ${data.athlete.coach_display_name}. Si ifra om noe skal justeres.`
         : `Hei ${data.athlete.display_name}. Jeg er ${data.athlete.coach_display_name}. Grovplanen er lagret — spør gjerne om første uke.`
     await enterApp(data.athlete, { welcome })
+    if (data.intervals_prep_error) {
+      state.error = data.intervals_prep_error
+    }
     if (data.intervals_pending) {
       state.tab = 'plan'
       state.sync.pending = data.intervals_pending
@@ -907,6 +919,8 @@ function renderChat() {
     .map((m) => `<div class="bubble ${m.role}">${escapeHtml(m.content)}</div>`)
     .join('')
   const proposal = state.workoutProposal
+  const removal = state.workoutRemoval
+  const typeProp = state.athleteTypeProposal
   const wPending = state.workoutSync.pending
   let proposalCard = ''
   if (wPending) {
@@ -917,6 +931,7 @@ function renderChat() {
           `<li><code>${escapeHtml(e.start_date_local || e.day || '')}</code> · ${escapeHtml(e.name || e.external_id || '')} <span class="dim">${escapeHtml(e.type || e.category || '')}</span></li>`,
       )
       .join('')
+    const isDelete = (wPending.op || '') === 'delete'
     proposalCard = `
       <div class="confirm-card" role="dialog" aria-label="Bekreft økt på Intervals">
         <p><strong>${escapeHtml(wPending.message || 'Bekreft økt-sync')}</strong></p>
@@ -924,8 +939,39 @@ function renderChat() {
         <ul class="sync-sample">${sample}</ul>
         ${wPending.write_gap ? `<p class="muted tight">${escapeHtml(wPending.write_gap)}</p>` : ''}
         <div class="sync-actions">
-          <button type="button" class="btn btn-primary" id="workout-confirm-yes" ${state.workoutSync.busy ? 'disabled' : ''}>Ja, sync til Intervals</button>
+          <button type="button" class="btn btn-primary" id="workout-confirm-yes" ${state.workoutSync.busy ? 'disabled' : ''}>${
+            isDelete ? 'Ja, slett på Intervals' : 'Ja, sync til Intervals'
+          }</button>
           <button type="button" class="btn secondary" id="workout-confirm-no" ${state.workoutSync.busy ? 'disabled' : ''}>Avbryt</button>
+        </div>
+        ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
+      </div>`
+  } else if (removal) {
+    proposalCard = `
+      <div class="confirm-card workout-proposal-card" aria-label="Fjern økt">
+        <p><strong>Foreslått fjerning av coach-økter</strong></p>
+        <p class="muted tight">Kun ll-coach-* — forhåndsvis før sletting.</p>
+        <ul class="sync-sample">
+          ${(removal.external_ids || []).map((id) => `<li><code>${escapeHtml(id)}</code></li>`).join('')}
+          ${(removal.dates || []).map((d) => `<li>dato ${escapeHtml(d)}</li>`).join('')}
+          ${(removal.names || []).map((n) => `<li>${escapeHtml(n)}</li>`).join('')}
+        </ul>
+        <div class="sync-actions">
+          <button type="button" class="btn btn-primary" id="workout-remove-preview-btn" ${state.workoutSync.busy || !state.intervals.connected ? 'disabled' : ''}>Forhåndsvis sletting</button>
+          <button type="button" class="btn secondary" id="workout-dismiss-btn" ${state.workoutSync.busy ? 'disabled' : ''}>Avvis</button>
+        </div>
+        ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
+      </div>`
+  } else if (typeProp) {
+    proposalCard = `
+      <div class="confirm-card workout-proposal-card" aria-label="Oppdater hovedprofil">
+        <p><strong>Oppdater hovedprofil</strong></p>
+        <p class="muted tight">${escapeHtml(typeProp.from_label || typeProp.from || '—')} → <strong>${escapeHtml(typeProp.to_label || typeProp.to || '')}</strong></p>
+        ${typeProp.reason ? `<p class="tight">${escapeHtml(typeProp.reason)}</p>` : ''}
+        <p class="muted tight">Typen er muterbar over tid. Bekreft før plan/økter følger ny type (plan skrives ikke stille om).</p>
+        <div class="sync-actions">
+          <button type="button" class="btn btn-primary" id="athlete-type-confirm-btn" ${state.busy ? 'disabled' : ''}>Bekreft ny type</button>
+          <button type="button" class="btn secondary" id="athlete-type-dismiss-btn">Avvis</button>
         </div>
         ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
       </div>`
@@ -1753,7 +1799,10 @@ function renderDu() {
       ${
         state.resetConfirm === 1
           ? `<div class="confirm-card" role="dialog" aria-label="Bekreft nullstilling steg 1">
-              <p><strong>Steg 1/2:</strong> Dette sletter grovplan-blokker, sesongmål, avtaler og chat-historikk for profilen. Intervals-kalenderen røres ikke her.</p>
+              <p><strong>Steg 1/2:</strong> Dette sletter grovplan-blokker, sesongmål, avtaler, utøvertype og chat-historikk for profilen.</p>
+              <label class="field tight"><input type="checkbox" id="reset-delete-icu" ${state.resetDeleteIcu ? 'checked' : ''} />
+                Slett også coach-økter på Intervals (<code>ll-coach-*</code> / <code>ll-coach-w-*</code> — ikke hele kalenderen)
+              </label>
               <div class="sync-actions">
                 <button type="button" class="btn btn-primary" id="reset-confirm-1">Ja, fortsett</button>
                 <button type="button" class="btn secondary" id="reset-cancel">Avbryt</button>
@@ -1764,7 +1813,12 @@ function renderDu() {
       ${
         state.resetConfirm === 2
           ? `<div class="confirm-card" role="dialog" aria-label="Bekreft nullstilling steg 2">
-              <p><strong>Steg 2/2:</strong> Skriv <code>SLETT</code> for å bekrefte.</p>
+              <p><strong>Steg 2/2:</strong> Skriv <code>SLETT</code> for å bekrefte.
+              ${
+                state.resetDeleteIcu
+                  ? ' Coach-hendelser på Intervals slettes også (dobbelt bekreftet via avhuking + SLETT).'
+                  : ' Intervals-kalenderen røres ikke.'
+              }</p>
               <div class="field">
                 <input id="reset-phrase" autocomplete="off" placeholder="SLETT" ${state.busy ? 'disabled' : ''} />
               </div>
@@ -1902,6 +1956,8 @@ function bindApp() {
     if (!message || state.busy) return
     state.chatDraft = ''
     state.workoutProposal = null
+    state.workoutRemoval = null
+    state.athleteTypeProposal = null
     state.workoutSync.pending = null
     state.workoutSync.error = ''
     state.workoutSync.message = ''
@@ -1918,6 +1974,13 @@ function bindApp() {
         state.workoutProposal = data.workout_proposal
         if (data.proposal_hint) toast(data.proposal_hint)
       }
+      if (data.workout_removal) {
+        state.workoutRemoval = data.workout_removal
+        if (data.removal_hint) toast(data.removal_hint)
+      }
+      if (data.athlete_type_proposal) {
+        state.athleteTypeProposal = data.athlete_type_proposal
+      }
     } catch (err) {
       state.error = err.message || 'Chat feilet'
       state.messages.pop()
@@ -1931,10 +1994,75 @@ function bindApp() {
 
   document.getElementById('workout-dismiss-btn')?.addEventListener('click', () => {
     state.workoutProposal = null
+    state.workoutRemoval = null
     state.workoutSync.pending = null
     state.workoutSync.message = 'Forslag avvist'
     state.workoutSync.error = ''
     render()
+  })
+
+  document.getElementById('athlete-type-dismiss-btn')?.addEventListener('click', () => {
+    state.athleteTypeProposal = null
+    render()
+  })
+
+  document.getElementById('athlete-type-confirm-btn')?.addEventListener('click', async () => {
+    const prop = state.athleteTypeProposal
+    if (!prop?.to && !prop?.athlete_type) return
+    state.busy = true
+    state.workoutSync.error = ''
+    render()
+    try {
+      const data = await api('/v1/athlete/me/athlete-type', {
+        method: 'POST',
+        body: {
+          athlete_type: prop.to || prop.athlete_type,
+          reason: prop.reason || '',
+          rebuild_plan_preview: true,
+        },
+      })
+      state.athlete = data.athlete
+      state.athleteTypeProposal = null
+      state.workoutSync.message = data.message || 'Hovedprofil oppdatert'
+      toast(state.workoutSync.message)
+    } catch (err) {
+      state.workoutSync.error = err.message || 'Kunne ikke oppdatere type'
+    } finally {
+      state.busy = false
+      render()
+    }
+  })
+
+  document.getElementById('workout-remove-preview-btn')?.addEventListener('click', async () => {
+    const removal = state.workoutRemoval
+    if (!removal || state.workoutSync.busy) return
+    if (!state.intervals.connected) {
+      state.workoutSync.error = 'Koble Intervals under Du først'
+      render()
+      return
+    }
+    state.workoutSync.busy = true
+    state.workoutSync.error = ''
+    state.workoutSync.message = 'Lager slette-forhåndsvisning…'
+    render()
+    try {
+      const data = await api('/v1/athlete/me/intervals/workouts/remove/preview', {
+        method: 'POST',
+        body: {
+          external_ids: removal.external_ids || [],
+          dates: removal.dates || [],
+          names: removal.names || [],
+        },
+      })
+      state.workoutSync.pending = data
+      state.workoutSync.message = data.message || 'Bekreft sletting'
+    } catch (err) {
+      state.workoutSync.error = err.message || 'Forhåndsvisning feilet'
+      state.workoutSync.message = ''
+    } finally {
+      state.workoutSync.busy = false
+      render()
+    }
   })
 
   document.getElementById('workout-preview-btn')?.addEventListener('click', async () => {
@@ -1984,10 +2112,14 @@ function bindApp() {
         method: 'POST',
         body: { pending_id: pending.pending_id },
       })
-      const n = data.pushed ?? pending.count
+      const n = data.pushed ?? data.deleted ?? pending.count ?? 0
       state.workoutSync.pending = null
       state.workoutProposal = null
-      state.workoutSync.message = `${n} økt(er) lagt på Intervals-kalenderen`
+      state.workoutRemoval = null
+      state.workoutSync.message =
+        data.op === 'delete'
+          ? `${n} coach-hendelse(r) slettet fra Intervals`
+          : `${n} økt(er) lagt på Intervals-kalenderen`
       toast(state.workoutSync.message)
       try {
         await refreshSessions()
@@ -2437,15 +2569,22 @@ function bindApp() {
   })
   document.getElementById('btn-restart-setup')?.addEventListener('click', () => {
     state.resetConfirm = 1
+    state.resetDeleteIcu = false
     state.error = ''
     render()
   })
   document.getElementById('reset-cancel')?.addEventListener('click', () => {
     state.resetConfirm = 0
+    state.resetDeleteIcu = false
     state.error = ''
     render()
   })
+  document.getElementById('reset-delete-icu')?.addEventListener('change', (e) => {
+    state.resetDeleteIcu = Boolean(e.target.checked)
+  })
   document.getElementById('reset-confirm-1')?.addEventListener('click', () => {
+    const box = document.getElementById('reset-delete-icu')
+    if (box) state.resetDeleteIcu = Boolean(box.checked)
     state.resetConfirm = 2
     state.error = ''
     render()

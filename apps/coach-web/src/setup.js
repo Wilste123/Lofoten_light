@@ -283,7 +283,8 @@ export function renderSetupWizard({ state, accents, personalities, escapeHtml: e
         </div>
         <p class="muted tight">
           Kilde: ${esc(p.plan_source || '—')}
-          ${p.athlete_archetype ? ` · ${esc(p.athlete_archetype)}` : ''}
+          ${p.athlete_type_label || p.athlete_archetype ? ` · ${esc(p.athlete_type_label || p.athlete_archetype)}` : ''}
+          ${p.athlete_type ? ` <code>${esc(p.athlete_type)}</code>` : ''}
           ${paths ? ` · knowledge: ${esc(paths)}` : ''}
         </p>
         <div class="setup-preview-card">

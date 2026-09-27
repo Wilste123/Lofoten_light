@@ -13,6 +13,12 @@ import re
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
+from athlete_type import (
+    infer_athlete_type,
+    label_for,
+    normalize_athlete_type,
+    split_for,
+)
 from chat_service import call_llm
 from knowledge_ctx import (
     detect_athlete_signals,
@@ -95,21 +101,21 @@ def estimate_weekly_hours(
     return 8.0
 
 
-def _split_for_signals(signals: dict[str, bool]) -> dict[str, float]:
-    if signals.get("beginner") and not signals.get("multisport"):
-        # Single-sport lean until they declare triathlon
-        return {"swim": 0.10, "bike": 0.35, "run": 0.45, "strength": 0.10}
-    return {"swim": 0.16, "bike": 0.50, "run": 0.30, "strength": 0.04}
-
-
 def season_targets_from_hours(
     weekly_hours: float,
     start: date,
     race: date,
     signals: dict[str, bool] | None = None,
+    *,
+    athlete_type: str | None = None,
 ) -> dict[str, float]:
     signals = signals or {}
-    split = _split_for_signals(signals)
+    if athlete_type:
+        split = split_for(athlete_type)
+    elif signals.get("beginner") and not signals.get("multisport"):
+        split = {"swim": 0.05, "bike": 0.25, "run": 0.55, "strength": 0.15}
+    else:
+        split = split_for(None)
     weeks = max(1, (race - start).days / 7.0)
     annual = weekly_hours * weeks * 0.90
     return {
@@ -129,12 +135,14 @@ def _fallback_blocks(
     signals: dict[str, bool],
     goal_text: str = "",
     injury_notes: str = "",
+    athlete_type: str | None = None,
 ) -> list[dict[str, Any]]:
     """Adaptive fallback when LLM unavailable — still signal-aware, not one template."""
     if goal_race <= season_start:
         goal_race = season_start + timedelta(weeks=16)
     total_days = max(28, (goal_race - season_start).days)
     end_plan = goal_race - timedelta(days=1)
+    run_primary = (athlete_type or "").endswith("runner") or athlete_type == "runner"
 
     if signals.get("beginner"):
         templates = [
@@ -143,6 +151,22 @@ def _fallback_blocks(
             ("utvikling", "Utvikling", "build", "Lett kvalitet når stabil", 0.25, 1.05),
             ("målblokk", "Mot mål", "peak", "Spesifikk rolig oppbygging", 0.10, 1.0),
             ("taper", "Nedtrapping", "taper", "Frisk til start / milesten", 0.05, 0.70),
+        ]
+    elif run_primary and "half_marathon" in (athlete_type or ""):
+        templates = [
+            ("grunnlag", "Grunnlag", "etablering", "Løpsvaner · skadefri base", 0.20, 0.80),
+            ("base", "Base", "base", "Aerob km · langtur vokser", 0.30, 0.95),
+            ("utvikling", "Utvikling", "build", "Terskel / bakke · HM-spesifikt", 0.30, 1.05),
+            ("målblokk", "Mot HM", "peak", "Race-pace · langtur topp", 0.15, 1.0),
+            ("taper", "Nedtrapping", "taper", "Frisk til halvmaraton", 0.05, 0.65),
+        ]
+    elif run_primary:
+        templates = [
+            ("grunnlag", "Grunnlag", "etablering", "Løpskontinuitet · styrke", 0.20, 0.80),
+            ("base", "Base", "base", "Aerob volum", 0.35, 0.95),
+            ("utvikling", "Utvikling", "build", "Kvalitet · langtur", 0.30, 1.05),
+            ("målblokk", "Mot mål", "peak", "Spesifikk løpsform", 0.10, 1.0),
+            ("taper", "Nedtrapping", "taper", "Frisk til start", 0.05, 0.70),
         ]
     elif signals.get("injury"):
         templates = [
@@ -312,7 +336,13 @@ def build_overview_nb(
     return "\n".join(lines)
 
 
-def _archetype_label(signals: dict[str, bool]) -> str:
+def _archetype_label(
+    signals: dict[str, bool],
+    *,
+    athlete_type: str | None = None,
+) -> str:
+    if athlete_type:
+        return label_for(athlete_type)
     tags = []
     if signals.get("beginner"):
         tags.append("nybegynner")
@@ -355,21 +385,20 @@ def generate_plan_with_llm(
     season_start: date,
     goal_race: date,
     weekly_hours: float,
+    athlete_type: str | None = None,
 ) -> tuple[list[dict[str, Any]], str | None, str]:
     """One LLM pass → blocks + coach_note. Returns (blocks, note, source)."""
+    fb_kwargs = dict(
+        season_start=season_start,
+        goal_race=goal_race,
+        weekly_hours=weekly_hours,
+        signals=signals,
+        goal_text=str(draft.get("goal_text") or ""),
+        injury_notes=str(draft.get("injury_notes") or ""),
+        athlete_type=athlete_type,
+    )
     if not api_key:
-        return (
-            _fallback_blocks(
-                season_start=season_start,
-                goal_race=goal_race,
-                weekly_hours=weekly_hours,
-                signals=signals,
-                goal_text=str(draft.get("goal_text") or ""),
-                injury_notes=str(draft.get("injury_notes") or ""),
-            ),
-            None,
-            "deterministic_fallback",
-        )
+        return (_fallback_blocks(**fb_kwargs), None, "deterministic_fallback")
 
     knowledge = load_knowledge_bundle(
         knowledge_dir,
@@ -378,17 +407,36 @@ def generate_plan_with_llm(
         mode="plan",
         total_budget=9000,
     )
+    type_label = label_for(athlete_type) if athlete_type else "ukjent"
+    discipline_hint = ""
+    if athlete_type and (
+        str(athlete_type).endswith("runner") or athlete_type == "runner"
+    ):
+        discipline_hint = (
+            "Hoveddisiplin er LØPING — ikke bygg triatlon-periodisering med "
+            "svøm/sykkel som primærvolum. Styrke + ev. lett cross-training OK."
+        )
+    elif athlete_type == "cyclist":
+        discipline_hint = "Hoveddisiplin er SYKKEL — ikke default tri-pack."
+    elif athlete_type == "swimmer":
+        discipline_hint = "Hoveddisiplin er SVØMMING — ikke default tri-pack."
+
     system = f"""Du er en norsk utholdenhetstrener som lager grovplan (meso-periodisering).
 Bruk knowledge-basen. ÉN respons — ingen tool-kall.
 
+Utøvertype (hoveddisiplin): {type_label} ({athlete_type or "general_endurance"}).
+{discipline_hint}
+
 Regler:
-- Tilpass strukturen til utøveren (nybegynner ≠ comeback ≠ skade ≠ tidsklemma).
+- Tilpass strukturen til utøveren (nybegynner ≠ comeback ≠ skade ≠ tidsklemma ≠ enkeltidrett).
+- Respekter hoveddisiplin — halvmaraton-løper skal IKKE få swim/bike/run-tri-mal.
 - Ikke hardkod Lofoten/William-volum med mindre utøveren ber om det.
 - Beskytt mot for høyt volum; skade → ACWR-trygg progresjon.
 - Returner KUN en fenced json-blokk:
 ```json
 {{
-  "athlete_archetype": "kort norsk label",
+  "athlete_archetype": "kort norsk label (inkl. hoveddisiplin)",
+  "athlete_type": "{athlete_type or "general_endurance"}",
   "coach_note": "2-4 setninger på norsk",
   "weekly_hours_target": {weekly_hours},
   "season_start_date": "{season_start.isoformat()}",
@@ -427,9 +475,13 @@ Regler:
                         "nutrition_ibs",
                         "nutrition_gluten",
                         "nutrition_lactose",
+                        "athlete_type",
+                        "sport",
                     )
                 },
                 "signals": signals,
+                "athlete_type": athlete_type,
+                "athlete_type_label": type_label,
                 "defaults": {
                     "season_start_date": season_start.isoformat(),
                     "goal_race_date": goal_race.isoformat(),
@@ -448,33 +500,11 @@ Regler:
             user_message=user,
         )
     except Exception:
-        return (
-            _fallback_blocks(
-                season_start=season_start,
-                goal_race=goal_race,
-                weekly_hours=weekly_hours,
-                signals=signals,
-                goal_text=str(draft.get("goal_text") or ""),
-                injury_notes=str(draft.get("injury_notes") or ""),
-            ),
-            None,
-            "deterministic_fallback",
-        )
+        return (_fallback_blocks(**fb_kwargs), None, "deterministic_fallback")
 
     data = _parse_json_object(reply)
     if not data:
-        return (
-            _fallback_blocks(
-                season_start=season_start,
-                goal_race=goal_race,
-                weekly_hours=weekly_hours,
-                signals=signals,
-                goal_text=str(draft.get("goal_text") or ""),
-                injury_notes=str(draft.get("injury_notes") or ""),
-            ),
-            None,
-            "deterministic_fallback",
-        )
+        return (_fallback_blocks(**fb_kwargs), None, "deterministic_fallback")
 
     # Allow LLM to nudge hours/dates slightly
     wh = weekly_hours
@@ -510,6 +540,9 @@ def _draft_blob(draft: dict[str, Any]) -> str:
             "background_notes",
             "coach_respect_notes",
             "notes",
+            "athlete_type",
+            "sport",
+            "weekly_focus",
         )
     ]
     return " ".join(parts)
@@ -543,6 +576,8 @@ def build_setup_preview(
 ) -> dict[str, Any]:
     """Knowledge + athlete answers → periodization preview (no DB writes)."""
     signals = detect_athlete_signals(_draft_blob(draft), draft)
+    type_info = infer_athlete_type(_draft_blob(draft), draft, signals=signals)
+    athlete_type = type_info["athlete_type"]
     start, race = default_season_window(
         season_start=draft.get("season_start_date"),
         goal_race=draft.get("goal_race_date"),
@@ -571,6 +606,7 @@ def build_setup_preview(
             season_start=start,
             goal_race=race,
             weekly_hours=weekly,
+            athlete_type=athlete_type,
         )
         # Re-read dates/hours if LLM shifted window via first/last block
         if blocks:
@@ -584,12 +620,15 @@ def build_setup_preview(
             signals=signals,
             goal_text=str(draft.get("goal_text") or ""),
             injury_notes=str(draft.get("injury_notes") or ""),
+            athlete_type=athlete_type,
         )
         coach_note = None
         source = "deterministic_fallback"
 
-    targets = season_targets_from_hours(weekly, start, race, signals)
-    arch = str(signals.get("_archetype") or _archetype_label(signals))
+    targets = season_targets_from_hours(
+        weekly, start, race, signals, athlete_type=athlete_type
+    )
+    arch = _archetype_label(signals, athlete_type=athlete_type)
     overview = build_overview_nb(
         blocks=blocks,
         season_start=start,
@@ -610,6 +649,8 @@ def build_setup_preview(
         "notes": _combine_notes(draft),
         "weekly_focus": (draft.get("weekly_focus") or "").strip()
         or (blocks[0]["theme"] if blocks else ""),
+        "athlete_type": athlete_type,
+        "sport": type_info.get("sport") or draft.get("sport") or "endurance",
         "season_start_date": start.isoformat(),
         "goal_race_date": race.isoformat(),
         "season_swim_hours_target": targets["season_swim_hours_target"],
@@ -637,6 +678,13 @@ def build_setup_preview(
         "llm_enriched": source == "llm_knowledge",
         "plan_source": source,
         "athlete_archetype": arch,
+        "athlete_type": athlete_type,
+        "athlete_type_label": type_info["label_no"],
+        "athlete_type_meta": {
+            "source": type_info["source"],
+            "sport": type_info["sport"],
+            "split": type_info["split"],
+        },
         "signals": {k: v for k, v in signals.items() if not str(k).startswith("_")},
         "knowledge": knowledge_meta,
         "weekly_hours_target": weekly,
@@ -695,6 +743,8 @@ SETUP_EXTRACT_KEYS = (
     "nutrition_gluten",
     "nutrition_lactose",
     "nutrition_notes",
+    "athlete_type",
+    "sport",
 )
 
 
@@ -722,7 +772,8 @@ def build_setup_chat_system(
     system = f"""Du er {coach}, personlig utholdenhetstrener i onboarding-samtale med {name}.
 Språk: norsk. Tone: konkret, nysgjerrig, ingen fluff. Én LLM-respons — ingen tools.
 
-Mål for samtalen: forstå hvem utøveren er (nybegynner / comeback / skade / tidsklemma / annet),
+Mål for samtalen: forstå hvem utøveren er (nybegynner / comeback / skade / tidsklemma),
+hoveddisiplin / utøvertype (f.eks. halvmaraton-løper, syklist, triatlet, nybegynner flersport),
 mål, helse, bakgrunn, begrensninger, og fritekst du skal respektere.
 Samle også Intervals-klarhet: foreslå å lime inn athlete ID + API-nøkkel når naturlig
 (pek til Settings → Developer Settings) — tving det ikke før de er klare.
@@ -733,6 +784,9 @@ Regler:
 - Ikke diagnostiser skade/GI; tilpass og anbefal fagperson ved behov.
 - Når du har nok til en grovplan (mål + omtrent tid/uke eller livssituasjon + helse-status),
   si at du kan lage forhåndsvisning, og sett ready_for_plan=true i extract.
+- Sett athlete_type når du er sikker, f.eks.:
+  half_marathon_runner | marathon_runner | runner | cyclist | swimmer |
+  triathlete | beginner_multi | general_endurance
 
 Avslutt HVER melding med en fenced blokk merket setup_extract (ikke synlig råd):
 ```setup_extract
@@ -740,7 +794,7 @@ Avslutt HVER melding med en fenced blokk merket setup_extract (ikke synlig råd)
  "background_notes": null, "coach_respect_notes": null, "weekly_hours_target": null,
  "season_start_date": null, "goal_race_date": null, "ftp_tested": null,
  "nutrition_ibs": null, "nutrition_gluten": null, "nutrition_lactose": null,
- "nutrition_notes": null, "notes": null}}
+ "nutrition_notes": null, "notes": null, "athlete_type": null, "sport": null}}
 ```
 Kun fyll felt du faktisk har fått bekreftet; la resten være null.
 
@@ -778,6 +832,11 @@ def extract_setup_fields(reply: str) -> tuple[str, dict[str, Any]]:
             continue
         if k == "nutrition_lactose":
             cleaned[k] = bool(v)
+            continue
+        if k == "athlete_type":
+            norm = normalize_athlete_type(v)
+            if norm:
+                cleaned[k] = norm
             continue
         if k in ("weekly_hours_target", "ftp_tested", "weight_kg", "age_years"):
             try:

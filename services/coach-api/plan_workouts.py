@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 import config
+from athlete_type import infer_athlete_type
 from intervals_calendar import (
     WORKOUT_EXTERNAL_PREFIX,
     build_block_note_events,
@@ -34,6 +35,31 @@ from intervals_calendar import (
     public_event_preview,
 )
 from knowledge_ctx import detect_athlete_signals, select_knowledge_paths
+
+
+def format_exc_nb(exc: BaseException) -> str:
+    """Human-readable Norwegian-facing error (never bare errno like «2»)."""
+    name = type(exc).__name__
+    if isinstance(exc, KeyError):
+        key = exc.args[0] if exc.args else "?"
+        return f"{name} for felt/nøkkel {key!r}"
+    if isinstance(exc, FileNotFoundError):
+        path = getattr(exc, "filename", None) or (
+            exc.args[1] if len(exc.args) > 1 else str(exc)
+        )
+        return f"Mangler fil/mappe: {path}"
+    if isinstance(exc, ModuleNotFoundError):
+        mod = getattr(exc, "name", None) or str(exc)
+        return f"Mangler Python-modul «{mod}» (sjekk Docker COPY av repo_scripts/)"
+    if isinstance(exc, ImportError):
+        return f"Importfeil: {exc}"
+    msg = str(exc).strip()
+    if not msg or msg.isdigit():
+        return f"{name}: {exc!r}"
+    if len(msg) < 4 and not any(c.isalpha() for c in msg):
+        return f"{name}: {exc!r}"
+    return f"{name}: {msg}"
+
 
 DEFAULT_WORKOUT_WEEKS = 2
 
@@ -52,9 +78,29 @@ def signals_from_athlete(athlete: dict[str, Any] | None) -> dict[str, bool]:
             "schedule_notes": athlete.get("schedule_notes") or "",
             "background_notes": athlete.get("notes") or "",
             "notes": athlete.get("notes") or "",
+            "athlete_type": athlete.get("athlete_type") or "",
+            "sport": athlete.get("sport") or "",
             "coach_respect_notes": "",
         },
     )
+
+
+def athlete_type_from_athlete(athlete: dict[str, Any] | None) -> str | None:
+    athlete = athlete or {}
+    if athlete.get("athlete_type"):
+        return str(athlete["athlete_type"])
+    info = infer_athlete_type(
+        "",
+        draft={
+            "goal_text": athlete.get("goal_text") or "",
+            "notes": athlete.get("notes") or "",
+            "schedule_notes": athlete.get("schedule_notes") or "",
+            "sport": athlete.get("sport") or "",
+            "athlete_type": athlete.get("athlete_type") or "",
+        },
+        signals=signals_from_athlete(athlete),
+    )
+    return info["athlete_type"]
 
 
 def knowledge_paths_for_workouts(
@@ -63,12 +109,15 @@ def knowledge_paths_for_workouts(
 ) -> list[str]:
     """Same selection spirit as AI setup plan (ukemaler + conditional packs)."""
     athlete = athlete or {}
+    atype = athlete_type_from_athlete(athlete)
     draft = {
         "goal_text": athlete.get("goal_text") or "",
         "injury_notes": athlete.get("injury_notes") or "",
         "schedule_notes": athlete.get("schedule_notes") or "",
         "background_notes": athlete.get("notes") or "",
         "notes": athlete.get("notes") or "",
+        "athlete_type": atype or "",
+        "sport": athlete.get("sport") or "",
     }
     # Nudge query blob when signals already known
     signals = signals or signals_from_athlete(athlete)
@@ -81,7 +130,15 @@ def knowledge_paths_for_workouts(
         bits.append("skade rehab belastning ACWR")
     if signals.get("time_constrained"):
         bits.append("tidsklemma lite tid")
-    if signals.get("multisport"):
+    if atype and ("runner" in atype or atype == "runner"):
+        bits.append("løping halvmaraton maraton langtur")
+    elif atype == "cyclist":
+        bits.append("sykkel watt utholdenhet")
+    elif atype == "swimmer":
+        bits.append("svøm teknikk basseng")
+    elif signals.get("multisport") or (
+        atype in ("triathlete", "beginner_multi")
+    ):
         bits.append("triatlon lofoten")
     return select_knowledge_paths(
         mode="plan",
@@ -172,6 +229,7 @@ def _templates_for_signals(
     *,
     phase: str,
     weekly_hours: float,
+    athlete_type: str | None = None,
 ) -> list[SessionSpec]:
     """Knowledge-aligned week from planned library (ukemaler-inspired).
 
@@ -182,9 +240,82 @@ def _templates_for_signals(
     injury = bool(signals.get("injury")) or phase == "rehab"
     time_c = bool(signals.get("time_constrained"))
     returning = bool(signals.get("returning"))
+    atype = athlete_type or ""
+    run_primary = atype.endswith("runner") or atype == "runner"
+    bike_primary = atype == "cyclist"
+    swim_primary = atype == "swimmer"
+
+    # --- Run-primary (half/marathon/runner): no default swim/bike pack ---
+    if run_primary and not injury:
+        long_run = (
+            "workouts/planned/run/R04-long-easy-75.txt"
+            if weekly_hours >= 6
+            else "workouts/planned/run/R02-easy-55-strides.txt"
+        )
+        long_min = 75 if weekly_hours >= 6 else 50
+        long_tss = 70 if weekly_hours >= 6 else 45
+        long_title = (
+            "Løp long easy 75 (R04)" if weekly_hours >= 6 else "Løp easy + strides (R02)"
+        )
+        return [
+            (0, "Run", "endurance", "Løp easy 40 (R01)", 40, 40,
+             "workouts/planned/run/R01-easy-40.txt"),
+            (1, "Strength", "general", "Styrke base (ST01)", 35, 20,
+             "workouts/planned/strength/ST01-base.txt"),
+            (2, "Run", "endurance", "Løp easy + strides (R02)", 50, 45,
+             "workouts/planned/run/R02-easy-55-strides.txt"),
+            (4, "Run", "endurance", "Løp trail/easy (R03)", 55, 50,
+             "workouts/planned/run/R03-easy-trail-70.txt"),
+            (5, "Run", "endurance", long_title, long_min, long_tss, long_run),
+            (6, "Run", "recovery", "Løp recovery 30 (R01)", 30, 25,
+             "workouts/planned/run/R01-recovery-30.txt"),
+        ]
+
+    if bike_primary and not injury:
+        return [
+            (0, "Bike", "recovery", "Sykkel recovery 45 (B01)", 45, 28,
+             "workouts/planned/bike/recovery-spin-45.txt"),
+            (1, "Strength", "general", "Styrke base (ST01)", 35, 20,
+             "workouts/planned/strength/ST01-base.txt"),
+            (2, "Bike", "endurance", "Sykkel Z2 90 (B02)", 90, 55,
+             "workouts/planned/bike/endurance-90.txt"),
+            (4, "Bike", "endurance", "Sykkel Z2 90 (B02)", 90, 55,
+             "workouts/planned/bike/endurance-90.txt"),
+            (5, "Bike", "endurance", "Sykkel Z2 120 (B03)", 120, 75,
+             "workouts/planned/bike/endurance-120.txt"),
+            (6, "Run", "recovery", "Løp recovery 30 (R01)", 30, 25,
+             "workouts/planned/run/R01-recovery-30.txt"),
+        ]
+
+    if swim_primary and not injury:
+        return [
+            (0, "Swim", "technique", "Svøm teknikk A (S01)", 50, 35,
+             "workouts/planned/swim/S01-teknikk-a.txt"),
+            (1, "Strength", "general", "Styrke base (ST01)", 35, 20,
+             "workouts/planned/strength/ST01-base.txt"),
+            (2, "Swim", "endurance", "Svøm aerob 3×500 (S03)", 55, 45,
+             "workouts/planned/swim/S03-aerob-3x500.txt"),
+            (4, "Swim", "technique", "Svøm teknikk skulder (S02)", 40, 28,
+             "workouts/planned/swim/S02-teknikk-skulder.txt"),
+            (5, "Swim", "endurance", "Svøm aerob 1500 (S04)", 55, 45,
+             "workouts/planned/swim/S04-aerob-1500.txt"),
+            (6, "Run", "recovery", "Løp recovery 30 (R01)", 30, 25,
+             "workouts/planned/run/R01-recovery-30.txt"),
+        ]
 
     # --- Injury / ACWR-safe (skader/* + ST04 prehab) ---
     if injury:
+        if run_primary:
+            return [
+                (0, "Run", "recovery", "Løp recovery 30 (R01)", 30, 25,
+                 "workouts/planned/run/R01-recovery-30.txt"),
+                (2, "Strength", "general", "Styrke prehab rygg/isjas (ST04)", 35, 18,
+                 "workouts/planned/strength/ST04-prehab-rygg-isjas-hjemme.txt"),
+                (4, "Bike", "recovery", "Sykkel recovery 45 (B01)", 45, 28,
+                 "workouts/planned/bike/recovery-spin-45.txt"),
+                (6, "Run", "endurance", "Løp easy 40 (R01)", 40, 40,
+                 "workouts/planned/run/R01-easy-40.txt"),
+            ]
         return [
             (0, "Swim", "technique", "Svøm teknikk skulder (S02)", 40, 28,
              "workouts/planned/swim/S02-teknikk-skulder.txt"),
@@ -200,7 +331,7 @@ def _templates_for_signals(
              "workouts/planned/run/R01-recovery-30.txt"),
         ]
 
-    # --- Beginner / nybegynner-til-triatlet: fewer sessions, easy library ---
+    # --- Beginner multisport / general: fewer sessions ---
     if beginner or (time_c and weekly_hours < 6):
         return [
             (0, "Swim", "technique", "Svøm teknikk A (S01)", 50, 35,
@@ -354,6 +485,7 @@ def build_plan_week_rows(
     if not blocks:
         return date.today(), []
     signals = signals or signals_from_athlete(athlete)
+    atype = athlete_type_from_athlete(athlete)
     weeks = max(1, min(int(weeks or DEFAULT_WORKOUT_WEEKS), 2))
     anchor = _anchor_start(blocks, today=today)
     if not anchor:
@@ -369,7 +501,9 @@ def build_plan_week_rows(
         except (TypeError, ValueError):
             wh = 8.0
         phase = _phase_of_block(block)
-        specs = _templates_for_signals(signals, phase=phase, weekly_hours=wh)
+        specs = _templates_for_signals(
+            signals, phase=phase, weekly_hours=wh, athlete_type=atype
+        )
         for weekday, sport, subtype, title, dur, tss, planned in specs:
             day = week_start + timedelta(days=weekday)
             owning = _block_for_day(blocks, day)
@@ -429,13 +563,19 @@ def build_plan_week_icu_events(
     )
     events: list[dict[str, Any]] = []
     for i, row in enumerate(rows):
-        ev = build_fn(
-            row,
-            plan_start,
-            row.get("start_time") or "07:00",
-            {},  # bike ZWO resolved from planned txt zwo: line
-            root,
-        )
+        try:
+            ev = build_fn(
+                row,
+                plan_start,
+                row.get("start_time") or "07:00",
+                {},  # bike ZWO resolved from planned txt zwo: line
+                root,
+            )
+        except Exception as exc:
+            raise RuntimeError(
+                f"Økt-bygger feilet for rad {i + 1} "
+                f"({row.get('title') or row.get('sport') or '?'}): {format_exc_nb(exc)}"
+            ) from exc
         # Stable web-coach ids (Plan-tab filter is ll-coach-*); keep builder fields.
         day = parse_iso_date(str(ev.get("start_date_local") or "")[:10])
         name = str(ev.get("name") or row.get("title") or "okt")
@@ -447,7 +587,10 @@ def build_plan_week_icu_events(
         ev["_sport"] = (row.get("sport") or "").lower()
         ev["_planned"] = row.get("description")
         ev["_has_zwo"] = bool(ev.get("file_contents"))
-        ev["_duration_minutes"] = int(float(row.get("duration_minutes") or 0))
+        try:
+            ev["_duration_minutes"] = int(float(row.get("duration_minutes") or 0))
+        except (TypeError, ValueError):
+            ev["_duration_minutes"] = 0
         events.append(ev)
     return events
 
@@ -530,14 +673,15 @@ def build_plan_sync_bundle(
             athlete=athlete,
             repo_root=repo_root,
         )
-    except (ImportError, OSError, ValueError, KeyError, TypeError) as exc:
+    except Exception as exc:
         if not allow_degraded:
             raise
+        err_nb = format_exc_nb(exc)
         degraded = _notes_only_bundle(
             blocks,
             signals=signals,
             weeks=weeks,
-            error=str(exc),
+            error=err_nb,
             athlete=athlete,
         )
         if not include_notes:
@@ -548,7 +692,7 @@ def build_plan_sync_bundle(
             degraded["events_preview"] = []
             degraded["count"] = 0
             degraded["description_no"] = (
-                f"Øktbibliotek-forhåndsvisning feilet: {exc}"
+                f"Øktbibliotek-forhåndsvisning feilet: {err_nb}"
             )
         return degraded
     workout_previews: list[dict[str, Any]] = []

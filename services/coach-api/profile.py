@@ -54,10 +54,15 @@ Kilde for sannhet for coach (app + Cursor). Oppdateres ved onboarding og når Du
 |---|---|
 | Visningsnavn | {name} |
 | Sport | {_fmt(athlete.get("sport"), "triathlon")} |
+| Hovedprofil / utøvertype | {_fmt(athlete.get("athlete_type"), "(ikke satt)")} |
 | Tidssone | {_fmt(athlete.get("timezone"), "Europe/Oslo")} |
 | Alder | {_fmt(athlete.get("age_years"))} |
 | Vekt (kg) | {_fmt(athlete.get("weight_kg"))} |
 | Tilgjengelighet | {_fmt(athlete.get("schedule_notes"), "(ikke satt)")} |
+
+### Utøvertype-historikk
+
+{_fmt(athlete.get("athlete_type_notes"), "(ingen endringer logget ennå — typen kan oppdateres over tid via chat/setup)")}
 
 ### Trener (app)
 

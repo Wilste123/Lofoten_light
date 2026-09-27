@@ -55,6 +55,8 @@ CREATE TABLE IF NOT EXISTS athletes (
   goal_race_date TEXT,
   show_body_metrics INTEGER DEFAULT 1,
   setup_completed INTEGER DEFAULT 0,
+  athlete_type TEXT DEFAULT '',
+  athlete_type_notes TEXT DEFAULT '',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -218,6 +220,8 @@ _EXTRA_COLUMNS = [
     ("goal_race_date", "TEXT"),
     ("show_body_metrics", "INTEGER DEFAULT 1"),
     ("setup_completed", "INTEGER DEFAULT 0"),
+    ("athlete_type", "TEXT DEFAULT ''"),
+    ("athlete_type_notes", "TEXT DEFAULT ''"),
 ]
 
 # Seeded returning athletes — always treated as setup-done; re-seed must not wipe them.
@@ -492,6 +496,8 @@ def update_athlete(
         "goal_race_date",
         "show_body_metrics",
         "setup_completed",
+        "athlete_type",
+        "athlete_type_notes",
     }
     fields: list[str] = []
     values: list[Any] = []

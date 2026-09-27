@@ -250,8 +250,14 @@ def detect_athlete_signals(text: str, draft: dict[str, Any] | None = None) -> di
         "time_constrained": bool(
             re.search(r"lite tid|tidsklemma|full jobb|familie|få timer|busy", blob)
         ),
+        # Require real multi-sport / race cues — bare «løp»/«svøm» alone is NOT triathlon.
         "multisport": bool(
-            re.search(r"triatlon|triathlon|lofoten|svøm|sykkel|løp|brick", blob)
+            re.search(
+                r"triatlon|triathlon|lofoten|half\s*extreme|ironman|halviron|"
+                r"norseman|brick|flersport|alle tre|svøm.*sykkel.*løp|"
+                r"swim.*bike.*run",
+                blob,
+            )
         ),
     }
 

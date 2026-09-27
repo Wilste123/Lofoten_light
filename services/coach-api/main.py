@@ -14,7 +14,21 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 import config
-from chat_service import build_system_prompt, call_llm, extract_workout_proposal
+from athlete_type import (
+    SPORT_FOR_TYPE,
+    append_type_history,
+    infer_athlete_type,
+    label_for,
+    normalize_athlete_type,
+    propose_type_update,
+)
+from chat_service import (
+    build_system_prompt,
+    call_llm,
+    extract_workout_proposal,
+    extract_workout_removal,
+    extract_type_update_proposal,
+)
 from db import (
     add_message,
     athlete_needs_setup,
@@ -71,7 +85,11 @@ from progress_compliance import (
     public_block,
     resolve_progress,
 )
-from plan_workouts import build_plan_sync_bundle, events_preview_for_plan_sync
+from plan_workouts import (
+    build_plan_sync_bundle,
+    events_preview_for_plan_sync,
+    format_exc_nb,
+)
 from setup_plan import (
     build_setup_chat_system,
     build_setup_preview,
@@ -174,6 +192,7 @@ class SetupDraftIn(BaseModel):
     weight_kg: float | None = None
     age_years: int | None = None
     sport: str = "triathlon"
+    athlete_type: str = ""
     nutrition_ibs: str = "no"
     nutrition_gluten: str = "none"
     nutrition_lactose: bool = False
@@ -206,10 +225,34 @@ class SetupConfirmIn(SetupDraftIn):
 
 
 class SetupResetIn(BaseModel):
-    """Two-step wipe: both flags required before deleting plan/goals."""
+    """Two-step wipe: both flags required before deleting plan/goals.
+
+    Optional: delete only coach-pushed Intervals events (ll-coach-*), never wipe
+    the whole calendar.
+    """
 
     acknowledge_wipe: bool = False
     confirm_phrase: str = ""
+    delete_intervals_coach_events: bool = False
+    acknowledge_intervals_delete: bool = False
+
+
+class AthleteTypeUpdateIn(BaseModel):
+    """Explicit confirm to change mutable hovedprofil (may rewrite plan)."""
+
+    athlete_type: str = Field(min_length=1)
+    reason: str = ""
+    rebuild_plan_preview: bool = True
+
+
+class WorkoutRemovePreviewIn(BaseModel):
+    """Preview delete of coach-scheduled workouts — confirm before ICU write."""
+
+    external_ids: list[str] = Field(default_factory=list)
+    dates: list[str] = Field(default_factory=list)
+    names: list[str] = Field(default_factory=list)
+    oldest: str | None = None
+    newest: str | None = None
 
 
 class AthletePatch(BaseModel):
@@ -224,16 +267,18 @@ class AthletePatch(BaseModel):
     weekly_focus: str | None = None
     ftp_tested: float | None = None
     ftp_tested_at: str | None = None
-    weight_kg: float | None = None
-    age_years: int | None = None
+    athlete_type: str | None = None
     sport: str | None = None
     schedule_notes: str | None = None
+    notes: str | None = None
+    show_body_metrics: bool | None = None
+    weight_kg: float | None = None
+    age_years: int | None = None
     nutrition_ibs: str | None = None
     nutrition_gluten: str | None = None
     nutrition_lactose: bool | None = None
     nutrition_other_restrictions: str | None = None
     nutrition_notes: str | None = None
-    notes: str | None = None
     agreements: list[str] | None = None
     season_swim_hours_target: float | None = None
     season_bike_hours_target: float | None = None
@@ -241,7 +286,6 @@ class AthletePatch(BaseModel):
     season_strength_hours_target: float | None = None
     season_start_date: str | None = None
     goal_race_date: str | None = None
-    show_body_metrics: bool | None = None
 
 
 class ChatIn(BaseModel):
@@ -416,7 +460,7 @@ def setup_plan_preview(body: SetupDraftIn) -> dict[str, Any]:
     except Exception as exc:
         raise HTTPException(
             500,
-            f"Kunne ikke generere periodisering: {exc}",
+            f"Kunne ikke generere periodisering: {format_exc_nb(exc)}",
         ) from exc
 
     # NOTES + first 1–2 weeks WORKOUT (still no write). Never fail the whole
@@ -425,14 +469,22 @@ def setup_plan_preview(body: SetupDraftIn) -> dict[str, Any]:
         sync_prev = events_preview_for_plan_sync(
             preview["plan_blocks"],
             signals=preview.get("signals") or {},
+            athlete={
+                **(preview.get("athlete_patch") or {}),
+                "athlete_type": preview.get("athlete_type"),
+                "goal_text": draft.get("goal_text") or "",
+                "sport": (preview.get("athlete_patch") or {}).get("sport")
+                or draft.get("sport"),
+            },
         )
     except Exception as exc:
+        err_nb = format_exc_nb(exc)
         sync_prev = {
             "will_push": False,
             "kind": "calendar_notes_only_degraded",
-            "error": str(exc),
-            "warning": f"Økt-forhåndsvisning feilet: {exc}",
-            "description": f"Periodisering OK. Økt-forhåndsvisning feilet: {exc}",
+            "error": err_nb,
+            "warning": f"Økt-forhåndsvisning feilet: {err_nb}",
+            "description": f"Periodisering OK. Økt-forhåndsvisning feilet: {err_nb}",
             "events_preview": [],
             "workouts_preview": [],
             "notes_preview": [],
@@ -452,6 +504,8 @@ def setup_plan_preview(body: SetupDraftIn) -> dict[str, Any]:
             f"første {sync_prev.get('weeks', 2)} uke(r). Ingenting synces før du "
             "bekrefter plan lokalt og deretter Sync til Intervals."
         )
+    elif not sync_prev.get("warning"):
+        sync_prev["warning"] = f"Økt-forhåndsvisning feilet: {sync_prev['error']}"
     preview["intervals_sync"] = sync_prev
     return preview
 
@@ -634,6 +688,8 @@ def setup_confirm(
                     "goal_text",
                     "injury_notes",
                     "schedule_notes",
+                    "athlete_type",
+                    "sport",
                 )
                 if k in patch
             }
@@ -641,12 +697,43 @@ def setup_confirm(
                 athlete = update_athlete(conn, aid, season_patch) or athlete
             saved_blocks = replace_plan_blocks(conn, aid, blocks)
 
-        athlete = update_athlete(conn, aid, {"setup_completed": True}) or athlete
+        # Ensure athlete_type + history on confirm (mutable; first write here)
+        atype = normalize_athlete_type(
+            patch.get("athlete_type") or body.athlete_type or athlete.get("athlete_type")
+        )
+        if not atype:
+            inferred = infer_athlete_type(
+                "",
+                {
+                    **draft,
+                    **{k: patch.get(k) for k in ("goal_text", "notes", "sport")},
+                },
+            )
+            atype = inferred["athlete_type"]
+        old_type = athlete.get("athlete_type") or ""
+        type_patch: dict[str, Any] = {
+            "athlete_type": atype,
+            "sport": patch.get("sport")
+            or SPORT_FOR_TYPE.get(atype)
+            or body.sport
+            or athlete.get("sport")
+            or "endurance",
+            "setup_completed": True,
+        }
+        if old_type != atype:
+            type_patch["athlete_type_notes"] = append_type_history(
+                athlete.get("athlete_type_notes"),
+                old_type=old_type or None,
+                new_type=atype,
+                reason="setup confirm",
+            )
+        athlete = update_athlete(conn, aid, type_patch) or athlete
 
         # Optional Intervals credentials (store only — soft verify)
         icu_id = (body.intervals_athlete_id or "").strip()
         api_key_in = (body.intervals_api_key or "").strip()
         intervals_view: dict[str, Any] | None = None
+        intervals_prep_error: str | None = None
         if icu_id and api_key_in:
             row = upsert_athlete_secrets(
                 conn,
@@ -665,51 +752,76 @@ def setup_confirm(
             key = ((secrets or {}).get("intervals_api_key") or "").strip()
             icu = ((secrets or {}).get("intervals_athlete_id") or "").strip()
             if key and icu and saved_blocks:
-                bundle = build_plan_sync_bundle(
-                    saved_blocks, athlete=athlete, include_notes=True
-                )
-                events = bundle["events"]
-                if events:
-                    payload = {
-                        "op": "push",
-                        "block_ids": [b["id"] for b in saved_blocks],
-                        "events": events,
-                        "intervals_athlete_id": icu,
-                        "notes_count": bundle["notes_count"],
-                        "workouts_count": bundle["workouts_count"],
-                        "zwo_count": bundle["zwo_count"],
-                        "weeks": bundle["weeks"],
-                        "builder": bundle["builder"],
-                        "knowledge_paths": bundle["knowledge_paths"],
-                    }
-                    pending = insert_pending_action(
-                        conn, aid, "intervals_calendar_push", payload
+                try:
+                    bundle = build_plan_sync_bundle(
+                        saved_blocks,
+                        athlete=athlete,
+                        include_notes=True,
+                        allow_degraded=True,
                     )
-                    intervals_pending = {
-                        "pending_id": pending["id"],
-                        "op": "push",
-                        "count": bundle["count"],
-                        "notes_count": bundle["notes_count"],
-                        "workouts_count": bundle["workouts_count"],
-                        "zwo_count": bundle["zwo_count"],
-                        "weeks": bundle["weeks"],
-                        "builder": bundle["builder"],
-                        "knowledge_paths": bundle["knowledge_paths"],
-                        "expires_at": pending.get("expires_at"),
-                        "events": bundle["events_preview"][:40],
-                        "workouts_preview": bundle["workouts_preview"][:40],
-                        "events_truncated": max(0, bundle["count"] - 40),
-                        "confirm_required": True,
-                        "message": (
-                            f"Bekreft for å synce {bundle['workouts_count']} økter "
-                            f"(første {bundle['weeks']} uke(r), "
-                            f"{bundle['zwo_count']} med ZWO) + "
-                            f"{bundle['notes_count']} grovplan-noter til Intervals. "
-                            "Avbryt = plan beholdes kun i appen."
-                        ),
-                    }
+                except Exception as exc:
+                    intervals_prep_error = (
+                        f"Plan lagret lokalt, men Intervals-forberedelse feilet: "
+                        f"{format_exc_nb(exc)}"
+                    )
+                    bundle = None
+                if bundle is not None:
+                    if bundle.get("error") and not bundle.get("events"):
+                        intervals_prep_error = (
+                            f"Plan lagret lokalt. Økt-sync ikke klar: "
+                            f"{bundle.get('error')}"
+                        )
+                    events = bundle.get("events") or []
+                    if events:
+                        payload = {
+                            "op": "push",
+                            "block_ids": [b["id"] for b in saved_blocks],
+                            "events": events,
+                            "intervals_athlete_id": icu,
+                            "notes_count": bundle["notes_count"],
+                            "workouts_count": bundle["workouts_count"],
+                            "zwo_count": bundle["zwo_count"],
+                            "weeks": bundle["weeks"],
+                            "builder": bundle["builder"],
+                            "knowledge_paths": bundle["knowledge_paths"],
+                        }
+                        pending = insert_pending_action(
+                            conn, aid, "intervals_calendar_push", payload
+                        )
+                        intervals_pending = {
+                            "pending_id": pending["id"],
+                            "op": "push",
+                            "count": bundle["count"],
+                            "notes_count": bundle["notes_count"],
+                            "workouts_count": bundle["workouts_count"],
+                            "zwo_count": bundle["zwo_count"],
+                            "weeks": bundle["weeks"],
+                            "builder": bundle["builder"],
+                            "knowledge_paths": bundle["knowledge_paths"],
+                            "expires_at": pending.get("expires_at"),
+                            "events": bundle["events_preview"][:40],
+                            "workouts_preview": bundle["workouts_preview"][:40],
+                            "events_truncated": max(0, bundle["count"] - 40),
+                            "confirm_required": True,
+                            "degraded": bool(bundle.get("error")),
+                            "warning": bundle.get("error"),
+                            "message": (
+                                f"Bekreft for å synce {bundle['workouts_count']} økter "
+                                f"(første {bundle['weeks']} uke(r), "
+                                f"{bundle['zwo_count']} med ZWO) + "
+                                f"{bundle['notes_count']} grovplan-noter til Intervals. "
+                                "Avbryt = plan beholdes kun i appen."
+                            ),
+                        }
 
     path = write_profile(config.ATHLETES_DATA_DIR, athlete)
+    msg = "Profil og grovplan lagret lokalt."
+    if intervals_pending:
+        msg += " Bekreft Intervals-sync for å legge økter + noter på kalenderen."
+    elif intervals_prep_error:
+        msg += f" {intervals_prep_error}"
+    else:
+        msg += " Intervals urørt."
     return {
         "athlete": athlete,
         "plan_blocks": saved_blocks,
@@ -718,15 +830,9 @@ def setup_confirm(
         else str(path),
         "intervals": intervals_view,
         "intervals_pending": intervals_pending,
+        "intervals_prep_error": intervals_prep_error,
         "written_to_intervals": False,
-        "message": (
-            "Profil og grovplan lagret lokalt."
-            + (
-                " Bekreft Intervals-sync for å legge økter + noter på kalenderen."
-                if intervals_pending
-                else " Intervals urørt."
-            )
-        ),
+        "message": msg,
     }
 
 
@@ -735,7 +841,12 @@ def setup_reset(
     body: SetupResetIn,
     x_athlete_id: str | None = Header(default=None),
 ) -> dict[str, Any]:
-    """Wipe plan + coaching setup fields. Requires double confirmation payload."""
+    """Wipe plan + coaching setup fields. Requires double confirmation payload.
+
+    Optional: delete only coach-pushed Intervals events (``ll-coach-*`` /
+    ``ll-coach-w-*``) — never the whole calendar. Requires
+    ``delete_intervals_coach_events`` + ``acknowledge_intervals_delete``.
+    """
     aid = _require_athlete(x_athlete_id)
     phrase = (body.confirm_phrase or "").strip().upper()
     if not body.acknowledge_wipe or phrase != "SLETT":
@@ -743,6 +854,59 @@ def setup_reset(
             400,
             "Dobbeltbekreftelse kreves: acknowledge_wipe=true og confirm_phrase=SLETT.",
         )
+    if body.delete_intervals_coach_events and not body.acknowledge_intervals_delete:
+        raise HTTPException(
+            400,
+            "For å slette coach-økter på Intervals: sett også "
+            "acknowledge_intervals_delete=true (dobbelt bekreftelse).",
+        )
+
+    intervals_deleted: dict[str, Any] | None = None
+    if body.delete_intervals_coach_events and body.acknowledge_intervals_delete:
+        with db_session(config.DATABASE_PATH) as conn:
+            athlete0 = get_athlete(conn, aid)
+            if not athlete0:
+                raise HTTPException(404, "Utøver ikke funnet")
+            secrets = get_athlete_secrets(conn, aid)
+            blocks = list_plan_blocks(conn, aid)
+        key = ((secrets or {}).get("intervals_api_key") or "").strip()
+        icu = ((secrets or {}).get("intervals_athlete_id") or "").strip()
+        if key and icu:
+            win_start, win_end = status_window_for_blocks(blocks)
+            from datetime import timedelta
+
+            oldest = (win_start - timedelta(days=400)).isoformat()
+            newest = (win_end + timedelta(days=400)).isoformat()
+            try:
+                existing = filter_coach_events(
+                    fetch_events(key, icu, oldest, newest)
+                )
+                external_ids = [
+                    e["external_id"]
+                    for e in existing
+                    if e.get("external_id")
+                ]
+                if external_ids:
+                    result = delete_events_bulk(key, icu, external_ids)
+                    intervals_deleted = {
+                        "deleted": result.get("eventsDeleted", len(external_ids)),
+                        "external_ids": external_ids[:40],
+                        "truncated": max(0, len(external_ids) - 40),
+                    }
+                else:
+                    intervals_deleted = {"deleted": 0, "external_ids": []}
+            except RuntimeError as exc:
+                raise HTTPException(
+                    502,
+                    f"Kunne ikke slette coach-økter på Intervals: {exc}",
+                ) from exc
+        else:
+            intervals_deleted = {
+                "deleted": 0,
+                "skipped": True,
+                "reason": "Ingen Intervals-credentials",
+            }
+
     with db_session(config.DATABASE_PATH) as conn:
         athlete = get_athlete(conn, aid)
         if not athlete:
@@ -759,6 +923,8 @@ def setup_reset(
                 "schedule_notes": "",
                 "notes": "",
                 "agreements": [],
+                "athlete_type": "",
+                "athlete_type_notes": "",
                 "season_swim_hours_target": None,
                 "season_bike_hours_target": None,
                 "season_run_hours_target": None,
@@ -770,15 +936,19 @@ def setup_reset(
         )
     assert cleared is not None
     path = write_profile(config.ATHLETES_DATA_DIR, cleared)
+    msg = "Setup nullstilt. Start veiledet oppsett på nytt."
+    if intervals_deleted and not intervals_deleted.get("skipped"):
+        msg += f" Slettet {intervals_deleted.get('deleted', 0)} coach-hendelse(r) på Intervals."
     return {
         "athlete": cleared,
         "deleted_plan_blocks": n_blocks,
         "cleared_messages": n_msgs,
+        "intervals_deleted": intervals_deleted,
         "profile_path": str(path.relative_to(config.REPO_ROOT))
         if path.is_relative_to(config.REPO_ROOT)
         else str(path),
         "needs_setup": True,
-        "message": "Setup nullstilt. Start veiledet oppsett på nytt.",
+        "message": msg,
     }
 
 
@@ -929,7 +1099,12 @@ def chat(
         history=[{"role": m["role"], "content": m["content"]} for m in history],
         user_message=body.message,
     )
-    reply, proposal = extract_workout_proposal(raw_reply)
+    reply_wp, proposal = extract_workout_proposal(raw_reply)
+    reply_rm, removal = extract_workout_removal(raw_reply)
+    reply_ty, type_prop = extract_type_update_proposal(raw_reply)
+    displays = [d for d in (reply_wp, reply_rm, reply_ty) if d]
+    reply = min(displays, key=len) if displays else raw_reply.strip()
+
     with db_session(config.DATABASE_PATH) as conn:
         add_message(conn, aid, "user", body.message)
         asst = add_message(conn, aid, "assistant", reply)
@@ -946,6 +1121,32 @@ def chat(
             "Treneren foreslo økt(er) på Intervals. "
             "Trykk Forhåndsvis, deretter bekreft — ingenting synces stille."
         )
+    if removal:
+        out["workout_removal"] = removal
+        out["confirm_required"] = True
+        out["removal_hint"] = (
+            "Treneren foreslo å fjerne coach-økter på Intervals. "
+            "Forhåndsvis → bekreft. Kun ll-coach-* slettes."
+        )
+    if type_prop:
+        # Enrich with from→to for UI
+        prop = propose_type_update(
+            athlete,
+            suggested=type_prop.get("athlete_type"),
+            text=body.message,
+        ) or {
+            **type_prop,
+            "from": athlete.get("athlete_type") or "general_endurance",
+            "to": type_prop["athlete_type"],
+            "from_label": label_for(athlete.get("athlete_type")),
+            "to_label": label_for(type_prop["athlete_type"]),
+            "message": type_prop.get("reason")
+            or f"Oppdater hovedprofil til {label_for(type_prop['athlete_type'])}?",
+        }
+        if type_prop.get("reason") and isinstance(prop, dict):
+            prop["reason"] = type_prop["reason"]
+        out["athlete_type_proposal"] = prop
+        out["confirm_required"] = True
     return out
 
 
@@ -1485,6 +1686,171 @@ def workouts_preview(
         "write_gap": (
             "Strukturerte ZWO/CSV-økter pushes fortsatt via CLI "
             "(scripts/intervals_push_calendar.py), ikke via chat."
+        ),
+    }
+
+
+@app.post("/v1/athlete/me/intervals/workouts/remove/preview")
+def workouts_remove_preview(
+    body: WorkoutRemovePreviewIn,
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Preview delete of coach-scheduled Intervals workouts — confirm required.
+
+    Only ``ll-coach-*`` / ``ll-coach-w-*`` external ids. Never wipes the calendar.
+    """
+    aid = _require_athlete(x_athlete_id)
+    _athlete, key, icu = _require_intervals_secrets(aid)
+    from datetime import timedelta
+
+    today = date.today()
+    oldest = (body.oldest or (today - timedelta(days=60)).isoformat())[:10]
+    newest = (body.newest or (today + timedelta(days=120)).isoformat())[:10]
+    try:
+        existing = filter_coach_events(fetch_events(key, icu, oldest, newest))
+    except RuntimeError as exc:
+        raise HTTPException(502, str(exc)[:500]) from exc
+
+    wanted_ids = {
+        str(x).strip()
+        for x in (body.external_ids or [])
+        if str(x).strip().startswith("ll-coach-")
+    }
+    wanted_dates = {str(x).strip()[:10] for x in (body.dates or []) if str(x).strip()}
+    wanted_names = {
+        str(x).strip().lower() for x in (body.names or []) if str(x).strip()
+    }
+
+    matched: list[dict[str, Any]] = []
+    for ev in existing:
+        eid = str(ev.get("external_id") or "")
+        if not eid.startswith("ll-coach-"):
+            continue
+        day = str(ev.get("start_date_local") or "")[:10]
+        name = str(ev.get("name") or "").strip().lower()
+        ok = False
+        if wanted_ids and eid in wanted_ids:
+            ok = True
+        if wanted_dates and day in wanted_dates:
+            ok = True
+        if wanted_names and any(n in name for n in wanted_names):
+            ok = True
+        if not wanted_ids and not wanted_dates and not wanted_names:
+            # Explicit empty filters → refuse (no silent mass delete from chat)
+            continue
+        if ok:
+            matched.append(ev)
+
+    external_ids = [e["external_id"] for e in matched if e.get("external_id")]
+    if not external_ids:
+        raise HTTPException(
+            400,
+            "Ingen matchende coach-økter (ll-coach-*) å fjerne i vinduet.",
+        )
+    payload = {
+        "op": "delete",
+        "external_ids": external_ids,
+        "intervals_athlete_id": icu,
+        "source": "chat_workout_removal",
+    }
+    with db_session(config.DATABASE_PATH) as conn:
+        pending = insert_pending_action(conn, aid, "intervals_calendar_delete", payload)
+    return {
+        "pending_id": pending["id"],
+        "op": "delete",
+        "count": len(external_ids),
+        "expires_at": pending.get("expires_at"),
+        "events": matched[:40],
+        "events_truncated": max(0, len(matched) - 40),
+        "confirm_required": True,
+        "message": (
+            f"Bekreft for å slette {len(external_ids)} coach-hendelse(r) "
+            "(ll-coach-*) fra Intervals. Andre kalenderøkter urørt."
+        ),
+    }
+
+
+@app.post("/v1/athlete/me/athlete-type")
+def update_athlete_type(
+    body: AthleteTypeUpdateIn,
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Persist mutable hovedprofil after explicit confirm (chat/setup).
+
+    Does not silently rewrite plan_blocks — returns optional plan preview when
+    ``rebuild_plan_preview`` so the athlete can confirm a new periodization next.
+    """
+    aid = _require_athlete(x_athlete_id)
+    new_type = normalize_athlete_type(body.athlete_type)
+    if not new_type:
+        raise HTTPException(422, f"Ugyldig athlete_type: {body.athlete_type}")
+    with db_session(config.DATABASE_PATH) as conn:
+        athlete = get_athlete(conn, aid)
+        if not athlete:
+            raise HTTPException(404, "Utøver ikke funnet")
+        old = athlete.get("athlete_type") or ""
+        notes = append_type_history(
+            athlete.get("athlete_type_notes"),
+            old_type=old or None,
+            new_type=new_type,
+            reason=body.reason or "chat/confirm",
+        )
+        athlete = update_athlete(
+            conn,
+            aid,
+            {
+                "athlete_type": new_type,
+                "athlete_type_notes": notes,
+                "sport": SPORT_FOR_TYPE.get(new_type, athlete.get("sport") or "endurance"),
+            },
+        ) or athlete
+    path = write_profile(config.ATHLETES_DATA_DIR, athlete)
+    plan_preview = None
+    if body.rebuild_plan_preview:
+        draft = {
+            "display_name": athlete.get("display_name") or "",
+            "goal_text": athlete.get("goal_text") or "",
+            "injury_notes": athlete.get("injury_notes") or "",
+            "schedule_notes": athlete.get("schedule_notes") or "",
+            "notes": athlete.get("notes") or "",
+            "athlete_type": new_type,
+            "sport": athlete.get("sport") or "",
+            "weekly_hours_target": None,
+            "season_start_date": athlete.get("season_start_date"),
+            "goal_race_date": athlete.get("goal_race_date"),
+        }
+        plan_preview = build_setup_preview(
+            draft,
+            knowledge_dir=config.KNOWLEDGE_DIR,
+            api_key="",
+            enrich=False,
+        )
+    return {
+        "athlete": athlete,
+        "from": old or None,
+        "to": new_type,
+        "to_label": label_for(new_type),
+        "profile_path": str(path.relative_to(config.REPO_ROOT))
+        if path.is_relative_to(config.REPO_ROOT)
+        else str(path),
+        "plan_preview": {
+            "athlete_type": plan_preview.get("athlete_type") if plan_preview else None,
+            "athlete_archetype": plan_preview.get("athlete_archetype")
+            if plan_preview
+            else None,
+            "season_targets": plan_preview.get("season_targets") if plan_preview else None,
+            "plan_blocks": (plan_preview or {}).get("plan_blocks") or [],
+            "overview_md": (plan_preview or {}).get("overview_md"),
+            "confirm_hint": (
+                "Ny type lagret. Bekreft ny grovplan via setup/Plan hvis du vil "
+                "erstatte meso-blokkene (ikke auto-skrevet)."
+            ),
+        }
+        if plan_preview
+        else None,
+        "message": (
+            f"Hovedprofil oppdatert til «{label_for(new_type)}». "
+            "Videre økter/plan følger den nye typen."
         ),
     }
 

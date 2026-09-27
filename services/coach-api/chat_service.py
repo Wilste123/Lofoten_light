@@ -24,6 +24,14 @@ _WORKOUT_PROPOSAL_RE = re.compile(
     r"```(?:json\s+)?workout_proposal\s*\n(.*?)```",
     re.DOTALL | re.IGNORECASE,
 )
+_WORKOUT_REMOVAL_RE = re.compile(
+    r"```(?:json\s+)?workout_removal\s*\n(.*?)```",
+    re.DOTALL | re.IGNORECASE,
+)
+_TYPE_UPDATE_RE = re.compile(
+    r"```(?:json\s+)?athlete_type_update\s*\n(.*?)```",
+    re.DOTALL | re.IGNORECASE,
+)
 
 
 def build_system_prompt(
@@ -39,10 +47,13 @@ def build_system_prompt(
     profile_md = load_profile_md(athletes_dir or Path("."), athlete)
     knowledge = load_knowledge_bundle(knowledge_dir)
     overview_json = json.dumps(overview_stub or {}, ensure_ascii=False)
+    atype = athlete.get("athlete_type") or "(ikke satt)"
 
     return f"""Du er {coach}, personlig utholdenhetstrener for {name}.
 Språk: norsk. Tone: {hint}
 Stil-notat fra utøveren: {athlete.get("coach_style_note") or "(ingen)"}
+Nåværende hovedprofil / utøvertype: {atype}
+(Typen er muterbar over tid — f.eks. generell → løper → halvmaraton/maraton når målet blir klart.)
 
 Regler:
 - Én klar anbefaling; ikke generisk motivasjonsprat.
@@ -58,6 +69,16 @@ Regler:
      {{"workouts":[{{"name":"...","date":"YYYY-MM-DD","sport":"bike|run|swim|strength|other","duration_minutes":60,"description":"...","start_time":"07:00"}}]}}
   3) Du synker IKKE selv — utøveren bekrefter i appen (forhåndsvis → sync).
   4) Bruk workout_proposal KUN når de eksplisitt ber om kalenderøkt; ikke for vanlig råd.
+- Når utøveren ber om å FJERNE coach-planlagte økter fra Intervals:
+  1) Kort råd.
+  2) Fenced block merket workout_removal:
+     {{"external_ids":["ll-coach-w-…"],"dates":["YYYY-MM-DD"],"names":["…"]}}
+  3) Kun coach-ids (ll-coach- / ll-coach-w-). Ingen stille sletting.
+- Når mål/fokus tydelig skifter (f.eks. generell → halvmaraton-løper):
+  1) Forklar kort.
+  2) Fenced block merket athlete_type_update:
+     {{"athlete_type":"half_marathon_runner","reason":"…"}}
+  3) Utøveren må bekrefte før typen lagres og plan følger ny type.
 - Du kan foreslå planblokker/makro i tekst; grovplan-noter synces under Plan-fanen (ikke via workout_proposal).
 
 ## Profil
@@ -116,8 +137,76 @@ def extract_workout_proposal(reply: str) -> tuple[str, dict[str, Any] | None]:
         )
     if not cleaned:
         return display or reply.strip(), None
-    return display or "Her er forslaget — bekreft i appen før det synces til Intervals.", {
+    # Strip other fences from display too
+    display = _WORKOUT_REMOVAL_RE.sub("", display)
+    display = _TYPE_UPDATE_RE.sub("", display)
+    return display.strip() or "Her er forslaget — bekreft i appen før det synces til Intervals.", {
         "workouts": cleaned
+    }
+
+
+def extract_workout_removal(reply: str) -> tuple[str, dict[str, Any] | None]:
+    """Strip workout_removal fence → {external_ids, dates, names}."""
+    if not reply:
+        return "", None
+    match = _WORKOUT_REMOVAL_RE.search(reply)
+    if not match:
+        return reply.strip(), None
+    raw = (match.group(1) or "").strip()
+    display = (_WORKOUT_REMOVAL_RE.sub("", reply)).strip()
+    display = _WORKOUT_PROPOSAL_RE.sub("", display)
+    display = _TYPE_UPDATE_RE.sub("", display)
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return display or reply.strip(), None
+    if not isinstance(data, dict):
+        return display or reply.strip(), None
+    ids = [
+        str(x).strip()
+        for x in (data.get("external_ids") or [])
+        if str(x).strip().startswith("ll-coach-")
+    ]
+    dates = [str(x).strip()[:10] for x in (data.get("dates") or []) if str(x).strip()]
+    names = [str(x).strip()[:120] for x in (data.get("names") or []) if str(x).strip()]
+    if not ids and not dates and not names:
+        return display or reply.strip(), None
+    return display.strip() or "Bekreft fjerning av coach-økter på Intervals.", {
+        "op": "delete",
+        "external_ids": ids,
+        "dates": dates,
+        "names": names,
+    }
+
+
+def extract_type_update_proposal(reply: str) -> tuple[str, dict[str, Any] | None]:
+    """Strip athlete_type_update fence."""
+    if not reply:
+        return "", None
+    match = _TYPE_UPDATE_RE.search(reply)
+    if not match:
+        return reply.strip(), None
+    raw = (match.group(1) or "").strip()
+    display = (_TYPE_UPDATE_RE.sub("", reply)).strip()
+    display = _WORKOUT_PROPOSAL_RE.sub("", display)
+    display = _WORKOUT_REMOVAL_RE.sub("", display)
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return display or reply.strip(), None
+    if not isinstance(data, dict):
+        return display or reply.strip(), None
+    from athlete_type import normalize_athlete_type, label_for
+
+    atype = normalize_athlete_type(data.get("athlete_type"))
+    if not atype:
+        return display or reply.strip(), None
+    return display.strip() or f"Oppdater hovedprofil til {label_for(atype)}?", {
+        "op": "athlete_type_update",
+        "athlete_type": atype,
+        "reason": str(data.get("reason") or "").strip()[:300],
+        "confirm_required": True,
+        "rewrites_plan": True,
     }
 
 

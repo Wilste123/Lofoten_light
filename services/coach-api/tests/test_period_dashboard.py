@@ -1,0 +1,223 @@
+"""Period query parsing + dashboard training aggregation."""
+
+from __future__ import annotations
+
+import sys
+from datetime import date
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+pytest.importorskip("fastapi")
+from fastapi.testclient import TestClient
+
+import config
+import main as main_mod
+from db import init_db
+from period_training import (
+    PeriodValidationError,
+    build_period_training_payload,
+    parse_period_window,
+    resolve_period_training,
+)
+
+
+@pytest.fixture()
+def client(tmp_path, monkeypatch):
+    db = tmp_path / "test.db"
+    athletes = tmp_path / "athletes"
+    athletes.mkdir()
+    monkeypatch.setattr(config, "DATABASE_PATH", db)
+    monkeypatch.setattr(config, "ATHLETES_DATA_DIR", athletes)
+    monkeypatch.setattr(config, "OPENAI_API_KEY", "")
+    init_db(db)
+    with TestClient(main_mod.app) as c:
+        yield c, athletes
+
+
+def _onboard(c) -> str:
+    r = c.post(
+        "/v1/onboarding",
+        json={
+            "display_name": "Testa",
+            "username": "testa",
+            "coach_display_name": "Rocky",
+            "goal_text": "Base",
+        },
+    )
+    assert r.status_code == 200, r.text
+    return r.json()["athlete"]["id"]
+
+
+def test_parse_period_presets():
+    today = date(2026, 9, 27)
+    p7 = parse_period_window("7d", today=today)
+    assert p7 == {
+        "preset": "7d",
+        "start": "2026-09-21",
+        "end": "2026-09-27",
+        "days": 7,
+    }
+    p14 = parse_period_window(None, today=today)
+    assert p14["preset"] == "14d"
+    assert p14["days"] == 14
+    assert p14["start"] == "2026-09-14"
+    p90 = parse_period_window("90d", today=today)
+    assert p90["days"] == 90
+    assert p90["start"] == "2026-06-30"
+
+
+def test_parse_period_custom_and_validation():
+    today = date(2026, 9, 27)
+    custom = parse_period_window(
+        "custom", "2026-09-01", "2026-09-15", today=today
+    )
+    assert custom["preset"] == "custom"
+    assert custom["days"] == 15
+    assert custom["start"] == "2026-09-01"
+    assert custom["end"] == "2026-09-15"
+
+    # Caps future end to today
+    capped = parse_period_window(
+        "custom", "2026-09-20", "2026-10-01", today=today
+    )
+    assert capped["end"] == "2026-09-27"
+
+    with pytest.raises(PeriodValidationError):
+        parse_period_window("custom", today=today)
+    with pytest.raises(PeriodValidationError):
+        parse_period_window("custom", "2026-09-20", "2026-09-10", today=today)
+    with pytest.raises(PeriodValidationError):
+        parse_period_window("nope", today=today)
+
+
+def test_build_period_training_payload_no_targets():
+    start = date(2026, 9, 14)
+    end = date(2026, 9, 27)
+    payload = build_period_training_payload(
+        start=start,
+        end=end,
+        hours={"swim": 2.0, "bike": 8.5, "run": 3.0, "strength": 1.0},
+        session_counts={"swim": 2, "bike": 4, "run": 3, "strength": 1},
+        source="intervals",
+        activity_count=10,
+    )
+    assert payload["total_hours"] == 14.5
+    assert payload["activity_count"] == 10
+    assert payload["days"] == 14
+    assert "target_hours" not in payload["disciplines"][0]
+    assert payload["disciplines"][0]["hours"] == 2.0
+    assert "compliance" not in payload["note"].lower() or "ikke" in payload["note"].lower()
+
+
+def test_resolve_period_training_aggregates_activities():
+    secrets = {
+        "intervals_api_key": "abc",
+        "intervals_athlete_id": "i123",
+    }
+    acts = [
+        {
+            "id": "1",
+            "type": "Ride",
+            "moving_time": 3600,
+            "start_date_local": "2026-09-20T10:00:00",
+        },
+        {
+            "id": "2",
+            "type": "Run",
+            "moving_time": 1800,
+            "start_date_local": "2026-09-21T07:00:00",
+        },
+        {
+            "id": "3",
+            "type": "Swim",
+            "moving_time": 2400,
+            "start_date_local": "2026-09-22T06:00:00",
+        },
+    ]
+    with patch(
+        "period_training.fetch_intervals_activities", return_value=acts
+    ):
+        out = resolve_period_training(
+            secrets, date(2026, 9, 14), date(2026, 9, 27)
+        )
+    assert out["source"] == "intervals"
+    assert out["activity_count"] == 3
+    assert out["total_hours"] == 2.2  # 1 + 0.5 + 0.67 ≈ 2.2
+    by_id = {d["id"]: d for d in out["disciplines"]}
+    assert by_id["bike"]["hours"] == 1.0
+    assert by_id["bike"]["session_count"] == 1
+    assert by_id["run"]["hours"] == 0.5
+    assert by_id["swim"]["session_count"] == 1
+
+
+def test_dashboard_period_query_params(client):
+    c, _athletes = client
+    aid = _onboard(c)
+    headers = {"X-Athlete-Id": aid}
+
+    fake_training = {
+        "window": {"start": "2026-09-21", "end": "2026-09-27"},
+        "days": 7,
+        "source": "demo",
+        "activity_count": 5,
+        "total_hours": 9.0,
+        "disciplines": [
+            {"id": "swim", "label": "Svøm", "hours": 1.0, "session_count": 1},
+            {"id": "bike", "label": "Sykkel", "hours": 5.0, "session_count": 2},
+            {"id": "run", "label": "Løp", "hours": 2.0, "session_count": 1},
+            {"id": "strength", "label": "Styrke", "hours": 1.0, "session_count": 1},
+        ],
+        "note": "Treningsdata for valgt periode.",
+    }
+    fake_wellness = {
+        "window": {"start": "2026-09-21", "end": "2026-09-27"},
+        "source": "intervals",
+        "fetch_error": False,
+        "fetch_error_detail": None,
+        "sleep": {"available": True, "avg_hours": 7.0, "note": "OK", "short_nights": 0},
+        "body": {"available": False},
+        "load_wellness": {"available": True, "ctl": 42, "atl": 38, "readiness": 7},
+    }
+
+    with (
+        patch("main.resolve_period_training", return_value=fake_training) as mock_tr,
+        patch("main.resolve_wellness_bundle", return_value=fake_wellness) as mock_wl,
+    ):
+        r = c.get("/v1/dashboard?period=7d", headers=headers)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["period"]["preset"] == "7d"
+    assert body["period"]["days"] == 7
+    assert body["training"]["total_hours"] == 9.0
+    assert body["hours"]["total_hours"] == 9.0
+    assert body["compliance_app_computed"] is True
+    assert "compliance" in body
+    # Season compliance still present and separate
+    assert body["compliance"] is not None
+    assert mock_tr.called
+    call_start, call_end = mock_tr.call_args[0][1], mock_tr.call_args[0][2]
+    assert (call_end - call_start).days + 1 == 7
+    assert mock_wl.call_args.kwargs.get("start") == call_start
+    assert mock_wl.call_args.kwargs.get("end") == call_end
+
+    with (
+        patch("main.resolve_period_training", return_value=fake_training),
+        patch("main.resolve_wellness_bundle", return_value=fake_wellness),
+    ):
+        r2 = c.get(
+            "/v1/dashboard?period=custom&from=2026-09-01&to=2026-09-10",
+            headers=headers,
+        )
+    assert r2.status_code == 200
+    assert r2.json()["period"]["preset"] == "custom"
+    assert r2.json()["period"]["days"] == 10
+
+    bad = c.get("/v1/dashboard?period=custom", headers=headers)
+    assert bad.status_code == 400
+
+    bad2 = c.get("/v1/dashboard?period=banana", headers=headers)
+    assert bad2.status_code == 400

@@ -882,6 +882,65 @@ button.linkish:hover {
   font-weight: 700;
 }
 
+.period-picker .period-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0.65rem 0 0.35rem;
+}
+
+.period-chip {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg2) 90%, var(--accent) 4%);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  min-height: 2.4rem;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.period-chip:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+}
+
+.period-chip.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent-soft) 85%, var(--bg2));
+  color: var(--text);
+}
+
+.period-custom {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 0.55rem;
+  align-items: end;
+  margin-top: 0.65rem;
+}
+
+.period-custom .field {
+  margin: 0;
+}
+
+.period-window {
+  margin-top: 0.55rem;
+}
+
+@media (max-width: 520px) {
+  .period-custom {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .period-custom .btn {
+    grid-column: 1 / -1;
+  }
+}
+
 .toggle-label {
   display: flex;
   align-items: flex-start;

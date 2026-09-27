@@ -208,11 +208,23 @@ def resolve_wellness_bundle(
     days: int = 14,
     today: date | None = None,
     include_body: bool = True,
+    start: date | None = None,
+    end: date | None = None,
 ) -> dict[str, Any]:
-    """Fetch + analyze wellness. Soft-fail when no credentials or ICU error."""
+    """Fetch + analyze wellness. Soft-fail when no credentials or ICU error.
+
+    Prefer explicit ``start``/``end`` when provided (Dashboard period picker);
+    otherwise last ``days`` ending on ``today``.
+    """
     today = today or date.today()
-    oldest = (today - timedelta(days=max(1, days - 1))).isoformat()
-    newest = today.isoformat()
+    if start is not None and end is not None:
+        if end < start:
+            start, end = end, start
+        oldest = start.isoformat()
+        newest = end.isoformat()
+    else:
+        oldest = (today - timedelta(days=max(1, days - 1))).isoformat()
+        newest = today.isoformat()
     key = ((secrets or {}).get("intervals_api_key") or "").strip()
     aid = ((secrets or {}).get("intervals_athlete_id") or "").strip()
     empty = {

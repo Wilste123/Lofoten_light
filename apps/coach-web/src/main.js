@@ -23,6 +23,11 @@ const state = {
   messages: [],
   overview: null,
   dashboard: null,
+  dashboardPeriod: {
+    preset: '14d',
+    from: '',
+    to: '',
+  },
   sessions: null,
   sessionDetail: null,
   chatDraft: '',
@@ -276,7 +281,16 @@ async function refreshOverview() {
 
 async function refreshDashboard() {
   try {
-    state.dashboard = await api('/v1/dashboard')
+    const p = state.dashboardPeriod || { preset: '14d' }
+    const qs = new URLSearchParams()
+    if (p.preset === 'custom' && p.from && p.to) {
+      qs.set('period', 'custom')
+      qs.set('from', p.from)
+      qs.set('to', p.to)
+    } else {
+      qs.set('period', p.preset || '14d')
+    }
+    state.dashboard = await api(`/v1/dashboard?${qs.toString()}`)
   } catch {
     state.dashboard = null
   }
@@ -946,7 +960,7 @@ function renderOverview() {
   `
 }
 
-function renderSleepCard(sleep, fetchError, detail) {
+function renderSleepCard(sleep, fetchError, detail, periodLabel) {
   if (!sleep) {
     return `<section class="section-block"><h2>Søvn</h2><p class="muted">Ingen data.</p></section>`
   }
@@ -955,11 +969,12 @@ function renderSleepCard(sleep, fetchError, detail) {
     : sleep.available
       ? `<span class="badge badge-live">Intervals</span>`
       : `<span class="badge badge-off">Mangler</span>`
+  const snittLabel = periodLabel ? `Snitt (${periodLabel})` : 'Snitt'
   return `
     <section class="section-block">
       <div class="section-head"><h2>Søvn</h2>${badge}</div>
       ${fetchError && detail ? `<p class="error tight">${escapeHtml(detail)}</p>` : ''}
-      <div class="stat-row"><span>Snitt (14 d)</span><span>${sleep.avg_hours != null ? `${sleep.avg_hours} t` : '—'}</span></div>
+      <div class="stat-row"><span>${escapeHtml(snittLabel)}</span><span>${sleep.avg_hours != null ? `${sleep.avg_hours} t` : '—'}</span></div>
       <div class="stat-row"><span>Søvnscore</span><span>${sleep.avg_score != null ? sleep.avg_score : '—'}</span></div>
       <div class="stat-row"><span>Korte netter (&lt;6,5 t)</span><span>${sleep.short_nights ?? '—'}</span></div>
       <p class="muted tight">${escapeHtml(sleep.note || '')}</p>
@@ -990,30 +1005,98 @@ function renderBodyCard(body, hidden) {
     </section>`
 }
 
+function periodLabelFromDash(dash) {
+  const p = dash?.period || {}
+  if (p.preset === 'custom' && p.start && p.end) {
+    return `${p.start} – ${p.end}`
+  }
+  const map = { '7d': '7 d', '14d': '14 d', '30d': '30 d', '90d': '90 d' }
+  return map[p.preset] || (p.days != null ? `${p.days} d` : 'periode')
+}
+
+function renderPeriodPicker(dash) {
+  const p = state.dashboardPeriod || { preset: '14d', from: '', to: '' }
+  const active = p.preset || '14d'
+  const presets = [
+    ['7d', '7 d'],
+    ['14d', '14 d'],
+    ['30d', '30 d'],
+    ['90d', '90 d'],
+    ['custom', 'Egen'],
+  ]
+  const chips = presets
+    .map(
+      ([id, lab]) =>
+        `<button type="button" class="period-chip ${active === id ? 'active' : ''}" data-period="${id}" aria-pressed="${active === id ? 'true' : 'false'}">${lab}</button>`
+    )
+    .join('')
+  const win = dash?.period
+  const winLabel =
+    win?.start && win?.end
+      ? `<p class="muted tight period-window">${escapeHtml(win.start)} – ${escapeHtml(win.end)}${win.days != null ? ` · ${win.days} dager` : ''}</p>`
+      : ''
+  const custom =
+    active === 'custom'
+      ? `
+      <div class="period-custom">
+        <div class="field">
+          <label for="period_from">Fra</label>
+          <input type="date" id="period_from" value="${escapeHtml(p.from || '')}" />
+        </div>
+        <div class="field">
+          <label for="period_to">Til</label>
+          <input type="date" id="period_to" value="${escapeHtml(p.to || '')}" />
+        </div>
+        <button type="button" class="btn btn-sm btn-primary" id="period-apply">Vis</button>
+      </div>`
+      : ''
+  return `
+    <section class="section-block period-picker" aria-label="Velg periode">
+      <div class="section-head"><h2>Periode</h2></div>
+      <p class="muted tight">Treningsdata for valgt vindu — separat fra sesongmål.</p>
+      <div class="period-chips" role="group">${chips}</div>
+      ${custom}
+      ${winLabel}
+    </section>`
+}
+
 function renderLoadCard(dash) {
   const load = dash.load || {}
   const wl = load.from_wellness || {}
-  const hours = dash.hours || {}
+  const training = dash.training || dash.hours || {}
+  const hours = dash.hours || training
+  const discsSrc = training.disciplines || hours.disciplines || []
   const badge =
-    hours.source === 'intervals'
+    training.source === 'intervals' || hours.source === 'intervals'
       ? `<span class="badge badge-live">Intervals</span>`
-      : hours.fetch_error
+      : training.fetch_error || hours.fetch_error
         ? `<span class="badge badge-demo">Henting feilet</span>`
         : `<span class="badge badge-demo">Demo</span>`
-  const discs = (hours.disciplines || [])
-    .map(
-      (d) =>
-        `<div class="stat-row"><span>${escapeHtml(d.label)}</span><span>${formatHours(d.completed_hours)}${d.target_hours != null ? ` / ${formatHours(d.target_hours)} t` : ' t'}</span></div>`
-    )
+  const discs = discsSrc
+    .map((d) => {
+      const h = d.hours != null ? d.hours : d.completed_hours
+      const sessions =
+        d.session_count != null ? ` · ${d.session_count} økter` : ''
+      return `<div class="stat-row"><span>${escapeHtml(d.label)}</span><span>${formatHours(h)} t${escapeHtml(sessions)}</span></div>`
+    })
     .join('')
+  const total =
+    training.total_hours != null
+      ? training.total_hours
+      : hours.total_hours != null
+        ? hours.total_hours
+        : null
+  const actCount = training.activity_count ?? hours.activity_count
+  const label = periodLabelFromDash(dash)
   return `
-    <section class="section-block">
-      <div class="section-head"><h2>Timer &amp; belastning</h2>${badge}</div>
+    <section class="section-block" data-testid="period-training">
+      <div class="section-head"><h2>Trening (${escapeHtml(label)})</h2>${badge}</div>
+      <div class="stat-row"><span>Totalt</span><span>${total != null ? `${formatHours(total)} t` : '—'}${actCount != null ? ` · ${actCount} økter` : ''}</span></div>
       <div class="stat-row"><span>CTL</span><span>${wl.ctl != null ? wl.ctl : '—'}</span></div>
       <div class="stat-row"><span>ATL</span><span>${wl.atl != null ? wl.atl : '—'}</span></div>
       <div class="stat-row"><span>Readiness</span><span>${wl.readiness != null ? wl.readiness : '—'}</span></div>
       <div class="hours-mini">${discs || `<p class="muted">Ingen timedata.</p>`}</div>
-      <p class="muted tight">${escapeHtml(load.note || '')}</p>
+      <p class="muted tight">${escapeHtml(load.note || training.note || '')}</p>
     </section>`
 }
 
@@ -1029,19 +1112,21 @@ function renderDashboard() {
       </div>`
   }
   const progressForSection = { progress: dash.compliance || {} }
+  const sleepLabel = periodLabelFromDash(dash)
   return `
     <div class="tab-hero">
       <p class="brand-mark">Dashboard</p>
       <h2>Treningsstatus</h2>
-      <p class="muted">${escapeHtml(dash.uplift_line || 'Timer, søvn, compliance — app-beregnet.')}</p>
+      <p class="muted">${escapeHtml(dash.uplift_line || 'Timer, søvn og sesongmål — app-beregnet.')}</p>
     </div>
-    <p class="compliance-banner" role="note">
-      <strong>Compliance</strong> beregnes i appen (aktiviteter vs sesongmål) og
-      <em>skrives ikke</em> til Intervals.
-    </p>
+    ${renderPeriodPicker(dash)}
     ${renderLoadCard(dash)}
-    ${renderSleepCard(dash.sleep, dash.wellness_fetch_error, dash.wellness_fetch_error_detail)}
+    ${renderSleepCard(dash.sleep, dash.wellness_fetch_error, dash.wellness_fetch_error_detail, sleepLabel)}
     ${renderBodyCard(dash.body, dash.body_hidden || !dash.show_body_metrics)}
+    <p class="compliance-banner" role="note">
+      <strong>Sesongmål &amp; compliance</strong> er uavhengig av periodevalget over.
+      Beregnes i appen (aktiviteter vs sesongmål) og <em>skrives ikke</em> til Intervals.
+    </p>
     ${renderProgressSection(progressForSection)}
     ${renderFormCard({ ...(dash.form || {}), ...o })}
     ${renderPlanStrip(o)}
@@ -1469,6 +1554,60 @@ function bindApp() {
       }
       render()
     })
+  })
+
+  document.querySelectorAll('[data-period]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const preset = btn.dataset.period
+      if (!preset || state.busy) return
+      state.dashboardPeriod = {
+        ...(state.dashboardPeriod || {}),
+        preset,
+      }
+      if (preset !== 'custom') {
+        state.busy = true
+        render()
+        await refreshDashboard()
+        state.busy = false
+        render()
+        return
+      }
+      // Custom: show date fields; apply on Vis
+      const today = new Date()
+      const iso = (d) => {
+        const y = d.getFullYear()
+        const m = String(d.getMonth() + 1).padStart(2, '0')
+        const day = String(d.getDate()).padStart(2, '0')
+        return `${y}-${m}-${day}`
+      }
+      if (!state.dashboardPeriod.from || !state.dashboardPeriod.to) {
+        const end = iso(today)
+        const start = new Date(today)
+        start.setDate(start.getDate() - 13)
+        state.dashboardPeriod.from = iso(start)
+        state.dashboardPeriod.to = end
+      }
+      render()
+    })
+  })
+
+  document.getElementById('period-apply')?.addEventListener('click', async () => {
+    const fromEl = document.getElementById('period_from')
+    const toEl = document.getElementById('period_to')
+    const from = (fromEl?.value || '').trim()
+    const to = (toEl?.value || '').trim()
+    if (!from || !to) {
+      state.planError = 'Velg både fra- og tildato.'
+      render()
+      return
+    }
+    state.dashboardPeriod = { preset: 'custom', from, to }
+    state.planError = ''
+    state.busy = true
+    render()
+    await refreshDashboard()
+    state.busy = false
+    render()
   })
 
   document.getElementById('copy-username')?.addEventListener('click', async () => {

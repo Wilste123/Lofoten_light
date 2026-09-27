@@ -93,7 +93,7 @@ def test_show_body_metrics_default_true_and_toggle_hides_body(client):
     assert patch_r.status_code == 200
     assert patch_r.json()["athlete"]["show_body_metrics"] is False
 
-    def _bundle_hidden(secrets, *, days=14, today=None, include_body=True):
+    def _bundle_hidden(secrets, *, days=14, today=None, include_body=True, start=None, end=None):
         out = dict(fake_wellness)
         if not include_body:
             out["body"] = None

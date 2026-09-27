@@ -52,9 +52,11 @@ Dedikert (eller utvidet Overblikk) **training status**-flate — fortsatt compan
 
 | Blokk | Innhold | Kilde |
 |-------|---------|--------|
+| **Periode** | 7d / 14d / 30d / 90d / custom fra–til | Query på `GET /v1/dashboard` |
 | **Training status** | Kort uplift, nåværende blokk, dager til race, Intervals-koblet? | Overview + plan_blocks |
-| **Timer / volum** | Per disiplin completed/target + compliance % | App-beregnet fra ICU activities |
-| **Søvnanalyse** | Trend siste 7–14 d | App-beregnet fra Intervals **wellness** hvis tilgjengelig |
+| **Timer / volum (periode)** | Per disiplin hours + øktantall for valgt vindu | App-beregnet fra ICU activities |
+| **Sesong compliance** | Completed/target + % (egen blokk) | Sesongvindu vs targets |
+| **Søvnanalyse** | Trend i valgt periode | App-beregnet fra Intervals **wellness** |
 | **Vekt + body-fat** | Trend / enkel analyse | Wellness/BIA eller manuell; **kan slås AV** under Du |
 
 ### Toggle (Du-innstillinger)
@@ -105,22 +107,13 @@ Gate ≥ 5 sykkeløkter med watt. Se [form-estimates.md](form-estimates.md).
 | Fase | Innhold |
 |------|---------|
 | 0–1 | ~~Docs + onboarding + chat + Du + Intervals-settings~~ (landet på PR #13) |
-<<<<<<< Updated upstream
-| 2 | ~~ICU activity-les + fremskritt/compliance~~ |
-| 2b | ~~Grovplan-strip~~ (current/next + dager til race) |
-| 2c | UX-polish leftovers |
-| 2d | ~~Returning-user login (athlete-id)~~ |
-| 2d+ | **Username login** — unik slug; login med brukernavn; athlete-id valgfritt |
-| 2e | ~~Plan + Compliance-faner, form_estimates, Sync til Intervals~~ (`5cfb32f`) |
-| 2f | **Dashboard** — status, timer, søvn (wellness READ), vekt/fett med Du-toggle |
-| 2g | **Øktbibliotek** — list, spør coach, completion + reason |
-=======
 | 2 | ~~ICU activity-les + fremskritt/compliance~~ (Intervals når credentials; demo ellers) |
 | 2b | ~~Grovplan-strip~~ (current/next + dager til race); form_estimates fortsatt gated |
 | 2c | UX-polish leftovers (unngå konflikt med Du/Intervals Lagre-fix) |
 | 2d | ~~Returning-user login~~ (profil-ID + `POST /v1/session/login`) |
+| 2d+ | ~~Username login~~ — unik slug; login med brukernavn; athlete-id valgfritt |
 | 2e | ~~Dashboard + Økter~~ (wellness/søvn, kropp-toggle, øktlogg) — se [dashboard-okter.md](dashboard-okter.md) |
->>>>>>> Stashed changes
+| 2e+ | **Dashboard periode** — 7d/14d/30d/90d/custom; trening vs sesong compliance separert |
 | 3 | Invite + training_pair |
 | 4 | Intervals-write videre etter telefon-test av sync |
 | 5 | Proaktiv post-MVP |
@@ -133,8 +126,4 @@ Ingen Pondus-import, ingen Slack i MVP, ingen tool-spam-chat, ingen full kalende
 
 ## Relaterte docs
 
-<<<<<<< Updated upstream
-[gap-analysis-2026-09-27.md](gap-analysis-2026-09-27.md) · [competitor-humango.md](competitor-humango.md) · [mvp-scope.md](mvp-scope.md) · [progress-compliance.md](progress-compliance.md) · [periodization-overview.md](periodization-overview.md) · [athlete-profile.md](athlete-profile.md) · [partner-sync.md](partner-sync.md) · [returning-login.md](returning-login.md) · [README.md](README.md)
-=======
-[mvp-scope.md](mvp-scope.md) · [progress-compliance.md](progress-compliance.md) · [dashboard-okter.md](dashboard-okter.md) · [periodization-overview.md](periodization-overview.md) · [athlete-profile.md](athlete-profile.md) · [partner-sync.md](partner-sync.md) · [returning-login.md](returning-login.md) · [README.md](README.md)
->>>>>>> Stashed changes
+[gap-analysis-2026-09-27.md](gap-analysis-2026-09-27.md) · [competitor-humango.md](competitor-humango.md) · [mvp-scope.md](mvp-scope.md) · [progress-compliance.md](progress-compliance.md) · [dashboard-okter.md](dashboard-okter.md) · [periodization-overview.md](periodization-overview.md) · [athlete-profile.md](athlete-profile.md) · [partner-sync.md](partner-sync.md) · [returning-login.md](returning-login.md) · [README.md](README.md)

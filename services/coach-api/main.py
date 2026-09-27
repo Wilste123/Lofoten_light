@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from pathlib import Path
+from datetime import date
 from typing import Any
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -52,6 +53,11 @@ from intervals_calendar import (
     status_window_for_blocks,
 )
 from intervals_smoke import smoke_test_intervals
+from period_training import (
+    PeriodValidationError,
+    parse_period_window,
+    resolve_period_training,
+)
 from profile import write_profile
 from progress_compliance import (
     days_to_goal,
@@ -433,12 +439,36 @@ def overview(x_athlete_id: str | None = Header(default=None)) -> dict[str, Any]:
 
 
 @app.get("/v1/dashboard")
-def dashboard(x_athlete_id: str | None = Header(default=None)) -> dict[str, Any]:
-    """Hours/load + sleep + optional body metrics + app-computed compliance.
+def dashboard(
+    x_athlete_id: str | None = Header(default=None),
+    period: str | None = Query(
+        default=None,
+        description="Periode-preset: 7d, 14d, 30d, 90d eller custom (default 14d)",
+    ),
+    from_: str | None = Query(
+        default=None,
+        alias="from",
+        description="Custom startdato YYYY-MM-DD (sammen med to)",
+    ),
+    to: str | None = Query(
+        default=None,
+        description="Custom sluttdato YYYY-MM-DD (sammen med from)",
+    ),
+) -> dict[str, Any]:
+    """Period training + sleep/body + season compliance (separate blocks).
 
-    Compliance is never written to Intervals — only computed here from
-    activities vs season targets (same as /v1/overview progress).
+    Query ``period`` / ``from`` / ``to`` scopes training + wellness to a window.
+    Compliance stays season/plan targets and is never written to Intervals.
     """
+    try:
+        period_meta = parse_period_window(period, from_, to)
+    except PeriodValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    start = date.fromisoformat(period_meta["start"])
+    end = date.fromisoformat(period_meta["end"])
+    period_days = int(period_meta["days"])
+
     aid = _require_athlete(x_athlete_id)
     with db_session(config.DATABASE_PATH) as conn:
         athlete = get_athlete(conn, aid)
@@ -448,26 +478,47 @@ def dashboard(x_athlete_id: str | None = Header(default=None)) -> dict[str, Any]
         blocks = list_plan_blocks(conn, aid)
     overview_data = _overview_payload(athlete, secrets, blocks)
     show_body = bool(athlete.get("show_body_metrics", True))
-    wellness = resolve_wellness_bundle(secrets, days=14, include_body=show_body)
+    training = resolve_period_training(secrets, start, end)
+    wellness = resolve_wellness_bundle(
+        secrets,
+        days=period_days,
+        include_body=show_body,
+        start=start,
+        end=end,
+    )
     progress = overview_data.get("progress") or {}
+    # Back-compat: hours/load mirror period training (no season targets mixed in)
     hours = {
-        "disciplines": progress.get("disciplines") or [],
-        "window": progress.get("window"),
-        "source": progress.get("source"),
-        "activity_count": progress.get("activity_count"),
-        "fetch_error": progress.get("fetch_error"),
-        "formula": progress.get("formula"),
+        "disciplines": [
+            {
+                "id": d["id"],
+                "label": d["label"],
+                "completed_hours": d["hours"],
+                "session_count": d["session_count"],
+            }
+            for d in (training.get("disciplines") or [])
+        ],
+        "window": training.get("window"),
+        "days": training.get("days"),
+        "source": training.get("source"),
+        "activity_count": training.get("activity_count"),
+        "total_hours": training.get("total_hours"),
+        "fetch_error": training.get("fetch_error"),
+        "fetch_error_detail": training.get("fetch_error_detail"),
+        "note": training.get("note"),
     }
     load = {
         "from_wellness": wellness.get("load_wellness"),
         "hours_summary": hours,
         "note": (
-            "Belastning/timer er app-beregnet fra Intervals-aktiviteter. "
-            "Compliance lagres ikke i Intervals."
+            "Belastning/timer for valgt periode — app-beregnet fra Intervals. "
+            "Sesongmål/compliance er egen blokk."
         ),
     }
     return {
         "show_body_metrics": show_body,
+        "period": period_meta,
+        "training": training,
         "hours": hours,
         "load": load,
         "sleep": wellness.get("sleep"),

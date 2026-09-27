@@ -232,7 +232,7 @@ def test_plan_adjust_preview_confirm(client):
         },
     )
     aid = conf.json()["athlete"]["id"]
-    # Update Du fields
+    # Update Du fields — including sessions_per_week + earlier goal
     c.patch(
         "/v1/athlete/me",
         headers={"X-Athlete-Id": aid},
@@ -242,6 +242,9 @@ def test_plan_adjust_preview_confirm(client):
             "agreements": ["Ingen terskel denne uka"],
             "notes": "Jobb-reise onsdag",
             "weekly_focus": "Lett kontinuitet",
+            "sessions_per_week": 5,
+            "goal_race_date": "2027-06-15",
+            "allowed_disciplines": ["run"],
         },
     )
     adj = c.post(
@@ -253,6 +256,13 @@ def test_plan_adjust_preview_confirm(client):
     body = adj.json()
     assert body["plan_blocks"]
     assert "seed_chat_prompt" in body
+    # Must re-read saved 5/week — not stale setup «3 økter»
+    assert body.get("sessions_per_week") == 5
+    assert "5 økter" in (body.get("constraints_summary_nb") or "")
+    assert "3 økter" not in (body.get("constraints_summary_nb") or "")
+    sync = body.get("intervals_sync") or {}
+    assert sync.get("workouts_count") == 10  # 5 × 2 weeks
+    assert "2 uker" in (body.get("workout_horizon_note_nb") or "")
     done = c.post(
         "/v1/athlete/me/plan/adjust/confirm",
         headers={"X-Athlete-Id": aid},
@@ -266,4 +276,8 @@ def test_plan_adjust_preview_confirm(client):
     assert done.json()["written_to_intervals"] is False
     with db_session(config.DATABASE_PATH) as conn:
         ath = get_athlete(conn, aid)
+        assert ath["sessions_per_week"] == 5
         assert "sub 1:45" in (ath["goal_text"] or "") or ath["goal_text"]
+        agr = " ".join(ath.get("agreements") or [])
+        assert "5 økter/uke" in agr
+        assert "3 økter/uke" not in agr

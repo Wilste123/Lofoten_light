@@ -367,12 +367,13 @@ def _athlete_type_plan_paths(draft: dict[str, Any] | None, blob: str) -> list[st
     ) or atype in ("triathlete", "beginner_multi")
     low_freq = bool(
         re.search(
-            r"3 økter|3 okter|tre økter|2 økter|4 økter|kun løp|løp og styrke|"
-            r"sessions_per_week.: ?[234]",
+            r"3 økter|3 okter|tre økter|2 økter|4 økter|5 økter|fem økter|"
+            r"kun løp|løp og styrke|"
+            r"sessions_per_week.: ?[2345]",
             blob + " " + discs,
         )
     ) or (
-        str(draft.get("sessions_per_week") or "") in ("2", "3", "4")
+        str(draft.get("sessions_per_week") or "") in ("2", "3", "4", "5")
     )
 
     if multi and not run_primary:

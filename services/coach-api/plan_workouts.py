@@ -341,29 +341,44 @@ def _cap_specs(specs: list[SessionSpec], n: int) -> list[SessionSpec]:
     return picked
 
 
-def _run_strength_low_freq_week(
+def _fit_specs_to_session_count(
+    specs: list[SessionSpec],
+    n: int,
     *,
-    sessions: int,
-    phase: str,
-    weekly_hours: float,
+    disciplines: list[str],
+    phase: str = "base",
+    weekly_hours: float = 6.0,
+    injury: bool = False,
+    beginner: bool = False,
+    athlete: dict[str, Any] | None = None,
+) -> list[SessionSpec]:
+    """Filter → cap → if under-count, rebuild from run/strength knowledge tables."""
+    filtered = _filter_specs_by_disciplines(specs, disciplines)
+    capped = _cap_specs(filtered, n if n < 90 else len(filtered))
+    target = n if n < 90 else len(capped)
+    if target < 90 and len(capped) < target:
+        # Discipline filter ate strength/swim/bike — rebuild to honor sessions_per_week
+        return _run_strength_low_freq_week(
+            sessions=target,
+            phase=phase,
+            weekly_hours=weekly_hours,
+            injury=injury,
+            beginner=beginner,
+            athlete=athlete,
+            disciplines=disciplines or [DISC_RUN],
+        )
+    return capped
+
+
+def _easy_run_spec(
+    weekday: int,
+    *,
     injury: bool,
     beginner: bool,
-    athlete: dict[str, Any] | None,
-) -> list[SessionSpec]:
-    """Knowledge: lop/ukeplaner-lav-frekvens.md + styrke-og-lop.md + HM-periodisering."""
-    inj_title, inj_path = injury_strength_session(athlete)
-    strength = _spec(
-        2,
-        "Strength",
-        "general",
-        inj_title if injury else "Styrke base (ST01)",
-        35,
-        18 if injury else 20,
-        inj_path if injury else "workouts/planned/strength/ST01-base.txt",
-        "Skadefrihet / holdning midt i uka — ikke dagen før langtur",
-    )
-    easy = _spec(
-        0,
+    purpose_nb: str = "Kontinuitet · lav intensitet (80/20 · Seiler)",
+) -> SessionSpec:
+    return _spec(
+        weekday,
         "Run",
         "recovery" if injury or beginner else "endurance",
         "Løp recovery 30 (R01)" if injury else "Løp easy 40 (R01)",
@@ -374,11 +389,50 @@ def _run_strength_low_freq_week(
             if injury
             else "workouts/planned/run/R01-easy-40.txt"
         ),
-        "Kontinuitet · lav intensitet (80/20)",
+        purpose_nb,
     )
+
+
+def _strides_run_spec(weekday: int = 1) -> SessionSpec:
+    return _spec(
+        weekday,
+        "Run",
+        "endurance",
+        "Løp easy + strides (R02)",
+        50,
+        45,
+        "workouts/planned/run/R02-easy-55-strides.txt",
+        "Nevromotorikk (strides) — ikke terskel (80/20)",
+    )
+
+
+def _trail_run_spec(weekday: int = 3) -> SessionSpec:
+    return _spec(
+        weekday,
+        "Run",
+        "endurance",
+        "Løp trail/easy (R03)",
+        55,
+        50,
+        "workouts/planned/run/R03-easy-trail-70.txt",
+        "Aerob volum uten hard dag før langtur (hard–easy)",
+    )
+
+
+def _long_run_spec(
+    *,
+    phase: str,
+    weekly_hours: float,
+    injury: bool,
+    beginner: bool,
+    weekday: int = 5,
+) -> SessionSpec:
     long_run = (
         "workouts/planned/run/R04-long-easy-75.txt"
-        if weekly_hours >= 6 and not injury and not beginner and phase not in ("etablering",)
+        if weekly_hours >= 6
+        and not injury
+        and not beginner
+        and phase not in ("etablering",)
         else "workouts/planned/run/R02-easy-55-strides.txt"
         if not injury
         else "workouts/planned/run/R01-easy-40.txt"
@@ -395,30 +449,114 @@ def _run_strength_low_freq_week(
         )
     )
     long_purpose = (
-        "Aerob progresjon / langtur med restitusjon etterpå"
+        "Aerob progresjon / langtur — restitusjon etterpå (IOC load)"
         if "R04" in long_run
         else "Aerob + nevromotorikk (strides) — ikke terskel"
     )
-    long = _spec(5, "Run", "endurance", long_title, long_min, long_tss, long_run, long_purpose)
-
-    if sessions <= 2:
-        return [easy, strength]
-    if sessions == 3:
-        return [easy, strength, long]
-    # 4: add mid-week easy trail or second easy (Tue), keep Thu free-ish
-    mid = _spec(
-        3,
-        "Run",
-        "endurance",
-        "Løp trail/easy (R03)",
-        55,
-        50,
-        "workouts/planned/run/R03-easy-trail-70.txt",
-        "Ekstra aerob kontakt uten hard dag før helg",
+    return _spec(
+        weekday, "Run", "endurance", long_title, long_min, long_tss, long_run, long_purpose
     )
-    if sessions >= 4:
-        return [easy, strength, mid, long]
-    return [easy, strength, long]
+
+
+def _strength_spec(
+    athlete: dict[str, Any] | None,
+    *,
+    injury: bool,
+    weekday: int = 2,
+) -> SessionSpec:
+    inj_title, inj_path = injury_strength_session(athlete)
+    return _spec(
+        weekday,
+        "Strength",
+        "general",
+        inj_title if injury else "Styrke base (ST01)",
+        35,
+        18 if injury else 20,
+        inj_path if injury else "workouts/planned/strength/ST01-base.txt",
+        "Skadefrihet / holdning midt i uka — ikke dagen før langtur",
+    )
+
+
+def _run_strength_low_freq_week(
+    *,
+    sessions: int,
+    phase: str,
+    weekly_hours: float,
+    injury: bool,
+    beginner: bool,
+    athlete: dict[str, Any] | None,
+    disciplines: list[str] | None = None,
+) -> list[SessionSpec]:
+    """Knowledge-grounded week: ukeplaner-lav-frekvens + HM + styrke-og-lop + 80/20.
+
+    Builds exactly ``sessions`` specs from *allowed* disciplines — never drops below
+    N after a strength filter (bug that produced only Man+Lør for «3 økter · løp»).
+    """
+    discs = set(disciplines or [DISC_RUN, DISC_STRENGTH])
+    has_strength = DISC_STRENGTH in discs
+    has_run = DISC_RUN in discs or not discs
+    n = max(2, min(int(sessions or 3), 8))
+
+    easy = _easy_run_spec(0, injury=injury, beginner=beginner)
+    strength = _strength_spec(athlete, injury=injury, weekday=2)
+    strides = _strides_run_spec(1)
+    trail = _trail_run_spec(4 if n >= 5 else 3)
+    long = _long_run_spec(
+        phase=phase,
+        weekly_hours=weekly_hours,
+        injury=injury,
+        beginner=beginner,
+        weekday=5,
+    )
+    # Extra easy Fri when 5 run-only (Tor trail already used)
+    easy_fri = _easy_run_spec(
+        4,
+        injury=injury,
+        beginner=beginner,
+        purpose_nb="Volum før helg · fortsatt easy (80/20)",
+    )
+    mid_run = _strides_run_spec(2)  # Wed run when no strength
+
+    # --- Run + strength (styrke-og-lop frekvenstabell) ---
+    if has_run and has_strength:
+        if n <= 2:
+            return [easy, strength]
+        if n == 3:
+            # Man easy · Ons styrke · Lør lang — classic lav-frekvens
+            return [easy, strength, long]
+        if n == 4:
+            # Man · Ons styrke · Fre mid · Lør lang
+            return [easy, strength, trail, long]
+        # 5+: Man easy · Tir strides · Ons styrke · Fre trail/easy · Lør lang
+        specs = [easy, strides, strength, trail, long]
+        if n >= 6:
+            specs.insert(3, _easy_run_spec(3, injury=injury, beginner=beginner))
+        return specs[:n]
+
+    # --- Run only (styrke ikke i avtalen) — still hit N, spread weekdays ---
+    if has_run and not has_strength:
+        if n <= 2:
+            return [easy, long]
+        if n == 3:
+            # Man · Ons mid · Lør — never sparse Man+Lør alone
+            # Avoid two identical R02 when etablering/low hours forces long→strides
+            mid = mid_run
+            if "R02" in str(long[6]):
+                mid = _trail_run_spec(2)
+            return [easy, mid, long]
+        if n == 4:
+            mid = trail if "R02" not in str(long[6]) else _easy_run_spec(
+                3, injury=injury, beginner=beginner
+            )
+            return [easy, strides, mid, long]
+        # 5: Man · Tir strides · Tor trail · Fre easy · Lør lang
+        return [easy, strides, _trail_run_spec(3), easy_fri, long][:n]
+
+    # Strength-only edge case
+    if has_strength and not has_run:
+        return [strength] if n == 1 else [strength, _strength_spec(athlete, injury=injury, weekday=5)][:n]
+
+    return [easy, strength, long][:n]
 
 
 def _templates_for_signals(
@@ -455,8 +593,9 @@ def _templates_for_signals(
     if run_strength_only or (
         run_primary and DISC_SWIM not in discs and DISC_BIKE not in discs
     ):
-        # Run+strength path always has a concrete weekly count
+        # Run±strength path — build exactly N from allowed disciplines (knowledge tables)
         sess = sessions_n if sessions_n < 90 else 4
+        allowed = discs or [DISC_RUN, DISC_STRENGTH]
         specs = _run_strength_low_freq_week(
             sessions=sess,
             phase=phase,
@@ -464,11 +603,10 @@ def _templates_for_signals(
             injury=injury,
             beginner=beginner,
             athlete=athlete,
+            disciplines=allowed,
         )
-        return _cap_specs(
-            _filter_specs_by_disciplines(specs, discs or [DISC_RUN, DISC_STRENGTH]),
-            sess,
-        )
+        # Specs already discipline-aware; only filter if extra sports slipped in
+        return _cap_specs(_filter_specs_by_disciplines(specs, allowed), sess)
 
     # --- Bike-primary ---
     if bike_primary and not injury:
@@ -486,7 +624,16 @@ def _templates_for_signals(
             _spec(6, "Run", "recovery", "Løp recovery 30 (R01)", 30, 25,
                   "workouts/planned/run/R01-recovery-30.txt", "Lett løpskontakt"),
         ]
-        return _cap_specs(_filter_specs_by_disciplines(specs, discs), sessions_n)
+        return _fit_specs_to_session_count(
+            specs,
+            sessions_n,
+            disciplines=discs,
+            phase=phase,
+            weekly_hours=weekly_hours,
+            injury=injury,
+            beginner=beginner,
+            athlete=athlete,
+        )
 
     if swim_primary and not injury:
         specs = [
@@ -503,7 +650,16 @@ def _templates_for_signals(
             _spec(6, "Run", "recovery", "Løp recovery 30 (R01)", 30, 25,
                   "workouts/planned/run/R01-recovery-30.txt", "Lett løp"),
         ]
-        return _cap_specs(_filter_specs_by_disciplines(specs, discs), sessions_n)
+        return _fit_specs_to_session_count(
+            specs,
+            sessions_n,
+            disciplines=discs,
+            phase=phase,
+            weekly_hours=weekly_hours,
+            injury=injury,
+            beginner=beginner,
+            athlete=athlete,
+        )
 
     # --- Injury / ACWR-safe ---
     if injury:
@@ -523,7 +679,16 @@ def _templates_for_signals(
                     _spec(3, "Bike", "recovery", "Sykkel recovery 45 (B01)", 45, 28,
                           "workouts/planned/bike/recovery-spin-45.txt", "Alternativ load"),
                 )
-            return _cap_specs(_filter_specs_by_disciplines(specs, discs), sessions_n)
+            return _fit_specs_to_session_count(
+            specs,
+            sessions_n,
+            disciplines=discs,
+            phase=phase,
+            weekly_hours=weekly_hours,
+            injury=injury,
+            beginner=beginner,
+            athlete=athlete,
+        )
         specs = [
             _spec(0, "Swim", "technique", "Svøm teknikk skulder (S02)", 40, 28,
                   "workouts/planned/swim/S02-teknikk-skulder.txt", "Lav impact"),
@@ -537,7 +702,16 @@ def _templates_for_signals(
             _spec(6, "Run", "recovery", "Løp recovery 30 (R01)", 30, 25,
                   "workouts/planned/run/R01-recovery-30.txt", "Lett løp"),
         ]
-        return _cap_specs(_filter_specs_by_disciplines(specs, discs), sessions_n)
+        return _fit_specs_to_session_count(
+            specs,
+            sessions_n,
+            disciplines=discs,
+            phase=phase,
+            weekly_hours=weekly_hours,
+            injury=injury,
+            beginner=beginner,
+            athlete=athlete,
+        )
 
     # --- Beginner / time-constrained multi ---
     if beginner or (time_c and weekly_hours < 6):
@@ -553,7 +727,16 @@ def _templates_for_signals(
             _spec(5, "Run", "endurance", "Løp easy + strides (R02)", 50, 45,
                   "workouts/planned/run/R02-easy-55-strides.txt", "Strides"),
         ]
-        return _cap_specs(_filter_specs_by_disciplines(specs, discs), sessions_n)
+        return _fit_specs_to_session_count(
+            specs,
+            sessions_n,
+            disciplines=discs,
+            phase=phase,
+            weekly_hours=weekly_hours,
+            injury=injury,
+            beginner=beginner,
+            athlete=athlete,
+        )
 
     if time_c:
         specs = [
@@ -568,7 +751,16 @@ def _templates_for_signals(
             _spec(5, "Bike", "endurance", "Sykkel Z2 120 (B03)", 120, 75,
                   "workouts/planned/bike/endurance-120.txt", "Lengre sykkel"),
         ]
-        return _cap_specs(_filter_specs_by_disciplines(specs, discs), sessions_n)
+        return _fit_specs_to_session_count(
+            specs,
+            sessions_n,
+            disciplines=discs,
+            phase=phase,
+            weekly_hours=weekly_hours,
+            injury=injury,
+            beginner=beginner,
+            athlete=athlete,
+        )
 
     # --- Returning / base tri (ukemaler Fase A) — only when multi + uncapped ---
     # Explicit low frequency (≤5) → capped week, not full daily pack then slice
@@ -593,7 +785,16 @@ def _templates_for_signals(
                 _spec(5, "Run", "endurance", "Løp easy + strides (R02)", 50, 45,
                       "workouts/planned/run/R02-easy-55-strides.txt", "Strides")
             )
-        return _cap_specs(_filter_specs_by_disciplines(specs, discs), sessions_n)
+        return _fit_specs_to_session_count(
+            specs,
+            sessions_n,
+            disciplines=discs,
+            phase=phase,
+            weekly_hours=weekly_hours,
+            injury=injury,
+            beginner=beginner,
+            athlete=athlete,
+        )
 
     use_rebuild_pack = (returning and not signals.get("fitness_ok")) or phase in (
         "etablering",
@@ -627,7 +828,16 @@ def _templates_for_signals(
             _spec(6, "Run", "endurance", "Løp easy + strides (R02)", 50, 45,
                   "workouts/planned/run/R02-easy-55-strides.txt", "Strides"),
         ]
-        return _cap_specs(_filter_specs_by_disciplines(specs, discs), sessions_n)
+        return _fit_specs_to_session_count(
+            specs,
+            sessions_n,
+            disciplines=discs,
+            phase=phase,
+            weekly_hours=weekly_hours,
+            injury=injury,
+            beginner=beginner,
+            athlete=athlete,
+        )
 
     specs = [
         _spec(0, "Swim", "endurance", "Svøm aerob 1500 (S04)", 55, 45,
@@ -645,7 +855,16 @@ def _templates_for_signals(
         _spec(6, "Run", "endurance", "Løp long easy 75 (R04)", 75, 70,
               "workouts/planned/run/R04-long-easy-75.txt", "Langtur løp"),
     ]
-    return _cap_specs(_filter_specs_by_disciplines(specs, discs), sessions_n)
+    return _fit_specs_to_session_count(
+            specs,
+            sessions_n,
+            disciplines=discs,
+            phase=phase,
+            weekly_hours=weekly_hours,
+            injury=injury,
+            beginner=beginner,
+            athlete=athlete,
+        )
 
 
 def build_prescription_rationale_nb(
@@ -691,17 +910,27 @@ def build_prescription_rationale_nb(
     sig_line = "; ".join(signal_bits) if signal_bits else "jevn progresjon"
     k_short = [
         p for p in knowledge_paths
-        if p.startswith(("lop/", "coach/ukeplaner", "load-and-intensity", "skader/"))
-    ][:5]
+        if p.startswith(
+            (
+                "lop/",
+                "coach/ukeplaner",
+                "load-and-intensity",
+                "skader/",
+                "kilder/",
+            )
+        )
+    ][:6]
     k_line = ", ".join(k_short) if k_short else "coach/ukemaler + load-and-intensity"
 
     lines = [
         f"Ukesstruktur: {n} økter · {disc} · {phase_bit}.",
         f"Hvorfor: {sig_line}. Hviledager er bevisste — vi fyller ikke kalenderen.",
+        "Evidens: ~80 % easy (Seiler & Tønnessen 2009); hard–easy / IOC load 2016 — "
+        "se load-and-intensity + lop/ukeplaner-lav-frekvens.",
         "Økter:",
         *purposes,
         f"Knowledge: {k_line}.",
-        "Kun første 2 uker pushes som WORKOUT til Intervals; grovplan dekker sesongen.",
+        "Intervals: kun første 2 uker som WORKOUT; grovplan-noter kan dekke sesong til måldato.",
     ]
     return "\n".join(lines)
 

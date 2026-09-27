@@ -47,7 +47,9 @@ Halvmaraton / «kun løp + styrke» / «3 økter» → **ikke** default tri-uke.
 
 **Preview === push:** Samme `build_plan_sync_bundle` for Forhåndsvis og Intervals-pending. `draftPayload` sender `sessions_per_week` / `allowed_disciplines` / `athlete_type` / `fitness_notes`. Confirm kjører `merge_confirm_athlete_patch` så Du-fanen ikke blir blank.
 
-**Du → chat → plan:** Lagre profil under Du, deretter **«Snakk med treneren om endringene»** → `POST /v1/athlete/me/plan/adjust/preview` (knowledge-grounded) → bekreft med `…/plan/adjust/confirm`. Intervals skrives **ikke** stille — samme preview→confirm-mønster.
+**Du → chat → plan:** «Snakk med treneren om endringene» **lagrer Du-skjemaet først**, deretter `POST /v1/athlete/me/plan/adjust/preview` (knowledge-grounded; `sessions_per_week` / `goal_race_date` fra lagret profil). Bekreft med `…/plan/adjust/confirm`. Intervals skrives **ikke** stille.
+
+**Intervals WORKOUT-horisont:** alltid første **2 uker** × avtalt økter/uke (f.eks. 3 → ~6, 5 → ~10). Grovplan-**NOTE** kan dekke sesong til måldato — UI forklarer skillet så det ikke føles «broken».
 
 **Muterbar over tid:** `generell` → `runner` → `half_marathon_runner` / maraton når mål blir klart. Historikk i `athlete_type_notes`. Chat kan foreslå `athlete_type_update` (preview → `POST /v1/athlete/me/athlete-type`) — plan skrives **ikke** stille om; øktvalg følger ny type etter bekreftelse.
 
@@ -56,7 +58,7 @@ Halvmaraton / «kun løp + styrke» / «3 økter» → **ikke** default tri-uke.
 | Situasjon | Nøkkelfiler |
 |-----------|-------------|
 | HM / løpsfokus | `lop/halvmaraton-periodisering.md`, `lop/ukeplaner-lav-frekvens.md`, `lop/styrke-og-lop.md` |
-| 2–4 økter / tidsklemma | `lop/ukeplaner-lav-frekvens.md`, `coach/ukeplaner-generell-utholdenhet.md` |
+| 2–5 økter / tidsklemma | `lop/ukeplaner-lav-frekvens.md`, `coach/ukeplaner-generell-utholdenhet.md`, Seiler 80/20 + IOC load (`kilder/referanser.md`) |
 | Nybegynner løp | `lop/nybegynner-lop.md` |
 | Comeback | `lop/oppbygging-etter-pause.md` |
 | Load / intensitet | `load-and-intensity.md` |

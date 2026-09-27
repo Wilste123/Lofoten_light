@@ -19,7 +19,7 @@ Referanse for **topp-coach**-agenten. Alt skal kunne brukes til **konkrete ukepl
 | [skader/](skader/) | ACWR, styrkeprogram, løp, oversikt |
 | [svom/](svom/) | Faser 0–3, øktbibliotek, OWS/kulde |
 | [sykkel/](sykkel/) | Langtur, motivasjon, intervall-presets |
-| [lop/](lop/) | Oppbygging, **HM-periodisering**, lav-frekvens ukeplaner, styrke+løp, nybegynner, intervall, terreng |
+| [lop/](lop/) | Oppbygging, **HM-periodisering**, lav/middels frekvens (2–5) ukeplaner, styrke+løp, nybegynner, intervall, terreng |
 | [coach/ukeplaner-generell-utholdenhet.md](coach/ukeplaner-generell-utholdenhet.md) | Ikke-tri / generell kondis — 2–4 økter |
 | [utstyr/](utstyr/) | Race checklist, sykkel, vinter |
 | [triathlon/](triathlon/) | Brick, Lofoten, periodisering |

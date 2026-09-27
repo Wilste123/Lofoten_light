@@ -14,8 +14,14 @@
 
 ## Belastning / skade
 
-- Gabbett TJ. Training-injury prevention paradox. BJSM 2016. https://bjsm.bmj.com/content/50/5/273
+- Soligard et al. How much is too much? IOC consensus on load in sport and risk of injury. BJSM 2016 (PDF i `external/`).
+- Gabbett TJ. The training–injury prevention paradox. BJSM 2016. https://bjsm.bmj.com/content/50/5/273
 - Science for Sport — ACWR: https://www.scienceforsport.com/acutechronic-workload-ratio/
+
+## Intensitetsfordeling (utholdenhet)
+
+- Seiler S, Tønnessen E. Intervals, Thresholds, and Long Slow Distance: the Role of Intensity and Duration in Endurance Training. Sportscience 2009 — ~80 % lav intensitet hos elite.
+- Praktisk oppsummering i `load-and-intensity.md` og `lop/ukeplaner-lav-frekvens.md` (ukeplaner skal speile dette, ikke «tilfeldig sparse» Man+Lør).
 
 ## Svøm / OWS
 

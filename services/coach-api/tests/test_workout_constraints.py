@@ -154,3 +154,70 @@ def test_resolve_constraints_persisted_fields():
     )
     assert c["sessions_per_week"] == 3
     assert c["allowed_disciplines"] == ["run", "strength"]
+
+
+def test_run_only_three_per_week_not_sparse_mon_sat():
+    """Bug: filter dropped strength → only R01+R04. Must still hit 3 runs."""
+    athlete = {
+        "athlete_type": TYPE_HALF_MARATHON,
+        "allowed_disciplines": ["run"],
+        "sessions_per_week": 3,
+        "goal_text": "Halvmaraton",
+    }
+    _, rows = build_plan_week_rows(
+        BLOCKS,
+        athlete=athlete,
+        weeks=2,
+        today=date(2026, 9, 28),
+    )
+    assert len(rows) == 6  # 3 × 2
+    sports = {r["sport"] for r in rows}
+    assert sports == {"Run"}
+    week0 = [r for r in rows if int(r["day"]) <= 7]
+    assert len(week0) == 3
+    weekdays = sorted(int(r["day"]) for r in week0)
+    # Spread: not only Mon+Sat (1 and 6)
+    assert weekdays != [1, 6]
+    meta = prescription_meta_from_athlete(athlete, blocks=BLOCKS)
+    assert meta["sessions_this_week"] == 3
+    assert "3 økter" in meta["constraints_summary_nb"]
+    assert "løp" in meta["constraints_summary_nb"]
+    assert "Seiler" in meta["prescription_rationale_nb"] or "80" in meta["prescription_rationale_nb"]
+
+
+def test_run_only_five_per_week_fills_count():
+    athlete = {
+        "athlete_type": TYPE_HALF_MARATHON,
+        "allowed_disciplines": ["run"],
+        "sessions_per_week": 5,
+    }
+    _, rows = build_plan_week_rows(
+        BLOCKS,
+        athlete=athlete,
+        weeks=2,
+        today=date(2026, 9, 28),
+    )
+    assert len(rows) == 10  # 5 × 2
+    meta = prescription_meta_from_athlete(athlete, blocks=BLOCKS)
+    assert meta["sessions_this_week"] == 5
+    assert "5 økter" in meta["constraints_summary_nb"]
+
+
+def test_run_strength_five_per_week_includes_strength():
+    athlete = {
+        "athlete_type": TYPE_HALF_MARATHON,
+        "allowed_disciplines": ["run", "strength"],
+        "sessions_per_week": 5,
+    }
+    events = build_plan_week_icu_events(
+        BLOCKS,
+        athlete=athlete,
+        weeks=2,
+        today=date(2026, 9, 28),
+    )
+    assert len(events) == 10
+    types = {str(e.get("type") or "") for e in events}
+    assert "Run" in types
+    assert "WeightTraining" in types or "Strength" in types or any(
+        "styrke" in (e.get("name") or "").lower() for e in events
+    )

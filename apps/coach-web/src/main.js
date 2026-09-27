@@ -1,0 +1,3307 @@
+import {
+  renderDisciplineBars,
+  renderLoadLines,
+  renderVolumeBars,
+  volumeBucketTitle,
+} from './charts.js'
+import {
+  SETUP_STEPS,
+  applyExtractedToDraft,
+  draftPayload,
+  emptySetupDraft,
+  readSetupForm,
+  renderSetupWizard,
+} from './setup.js'
+
+const API = import.meta.env.VITE_API_URL || ''
+const STORAGE_KEY = 'lofoten_athlete_id'
+
+const ACCENTS = ['#1a6b4a', '#c45c26', '#1e4d6b', '#6b3a1e', '#3d5a1e', '#5a2a4a']
+
+const PERSONALITIES = [
+  { id: 'direkte', label: 'Direkte' },
+  { id: 'støttende', label: 'Støttende' },
+  { id: 'teknisk', label: 'Teknisk' },
+  { id: 'opv', label: 'OPV-stil' },
+]
+
+const state = {
+  athlete: null,
+  /** null = logged in; entry | login | onboarding before session */
+  gate: null,
+  login: {
+    username: '',
+    athlete_id: '',
+    invite_token: '',
+  },
+  tab: 'coach',
+  messages: [],
+  overview: null,
+  dashboard: null,
+  dashboardPeriod: {
+    preset: '14d',
+    from: '',
+    to: '',
+  },
+  sessions: null,
+  /** library | chronological */
+  sessionsView: 'library',
+  sessionDetail: null,
+  sessionChat: {
+    messages: [],
+    draft: '',
+    busy: false,
+    error: '',
+  },
+  /** Edit form open by default for coach-editable sessions */
+  sessionEditOpen: true,
+  chatDraft: '',
+  planBlocks: [],
+  intervals: {
+    connected: false,
+    intervals_athlete_id: '',
+    api_key_hint: null,
+    form_athlete_id: '',
+    form_api_key: '',
+  },
+  sync: {
+    status: null,
+    statusError: '',
+    busy: false,
+    pending: null,
+    message: '',
+    error: '',
+  },
+  /** Chat → Intervals workout proposal (preview → confirm) */
+  workoutProposal: null,
+  workoutRemoval: null,
+  athleteTypeProposal: null,
+  /** Chat → negotiated training agreements (confirm → PATCH Du) */
+  agreementsProposal: null,
+  /** Du → plan adjust preview (local blocks; Intervals only after Sync confirm) */
+  planAdjust: null,
+  profileSavedForCoach: false,
+  workoutSync: {
+    pending: null,
+    busy: false,
+    message: '',
+    error: '',
+  },
+  /** Guided setup (new user or restart) — conversation-first */
+  setup: {
+    mode: 'new',
+    step: 'account',
+    draft: emptySetupDraft({ accent_color: ACCENTS[0] }),
+    messages: [],
+    chatDraft: '',
+    readyForPlan: false,
+    preview: null,
+    prepareIntervals: false,
+  },
+  /** Du → restart setup: 0 idle, 1 first confirm, 2 type SLETT */
+  resetConfirm: 0,
+  resetDeleteIcu: false,
+  busy: false,
+  intervalsBusy: false,
+  intervalsStatus: '',
+  error: '',
+  intervalsError: '',
+  planError: '',
+}
+
+const app = document.getElementById('app')
+
+function getAthleteId() {
+  return localStorage.getItem(STORAGE_KEY)
+}
+
+function setAthleteId(id) {
+  localStorage.setItem(STORAGE_KEY, id)
+}
+
+function clearAthleteId() {
+  localStorage.removeItem(STORAGE_KEY)
+}
+
+async function api(path, { method = 'GET', body, athleteId, timeoutMs } = {}) {
+  const headers = { 'Content-Type': 'application/json' }
+  const id = athleteId ?? getAthleteId()
+  if (id) headers['X-Athlete-Id'] = id
+  const ctrl = typeof timeoutMs === 'number' ? new AbortController() : null
+  const timer =
+    ctrl && timeoutMs > 0
+      ? setTimeout(() => ctrl.abort(), timeoutMs)
+      : null
+  let res
+  try {
+    res = await fetch(`${API}${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+      signal: ctrl?.signal,
+    })
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      throw new Error('Tidsavbrudd — prøv igjen')
+    }
+    throw err
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    const detail = data.detail
+    const msg =
+      typeof detail === 'string'
+        ? detail
+        : Array.isArray(detail)
+          ? detail.map((d) => d.msg || d).join('; ')
+          : typeof detail === 'object' && detail && detail.message
+            ? String(detail.message)
+            : data.message || data.error || `Feil ${res.status}`
+    throw new Error(msg)
+  }
+  return data
+}
+
+/** Client wall budget for Intervals save/verify — must exceed server soft-verify (~5s). */
+const INTERVALS_CLIENT_TIMEOUT_MS = 10000
+
+function setAccent(color) {
+  document.documentElement.style.setProperty('--accent', color || ACCENTS[0])
+}
+
+function toast(msg) {
+  let el = document.querySelector('.toast')
+  if (!el) {
+    el = document.createElement('div')
+    el.className = 'toast'
+    document.body.appendChild(el)
+  }
+  el.textContent = msg
+  el.classList.add('show')
+  setTimeout(() => el.classList.remove('show'), 2200)
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+async function enterApp(athlete, { welcome } = {}) {
+  state.athlete = athlete
+  state.gate = null
+  state.error = ''
+  state.busy = false
+  setAccent(athlete.accent_color)
+  setAthleteId(athlete.id)
+  if (welcome) {
+    state.messages = [{ role: 'assistant', content: welcome }]
+  }
+  await Promise.all([
+    refreshOverview(),
+    refreshIntervals(),
+    refreshPlanBlocks(),
+    refreshDashboard(),
+    refreshSessions(),
+  ])
+  render()
+}
+
+function slugifyUsername(raw) {
+  const text = String(raw || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+  const slug = text.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+  return (slug || 'utover').slice(0, 32)
+}
+
+/**
+ * Reconnect to existing athlete via POST /v1/session/login.
+ * Does not create profiles. Prefer username; athlete_id is advanced fallback.
+ * @returns {{ athlete: object, needs_setup: boolean }}
+ */
+async function loginSession({ username, athleteId, inviteToken } = {}) {
+  const uname = String(username || '').trim().toLowerCase()
+  const id = String(athleteId || '').trim()
+  if (!uname && !id) {
+    throw new Error('Skriv inn brukernavn')
+  }
+  const body = {}
+  if (uname) body.username = uname
+  else body.athlete_id = id
+  const token = String(inviteToken || '').trim()
+  if (token) body.invite_token = token
+  const data = await api('/v1/session/login', {
+    method: 'POST',
+    body,
+    athleteId: null,
+  })
+  if (!data.athlete) {
+    throw new Error(
+      uname
+        ? 'Ukjent brukernavn. Sjekk stavemåte, eller opprett ny bruker.'
+        : 'Ukjent profil-ID. Sjekk at ID er riktig, eller opprett ny bruker.',
+    )
+  }
+  return {
+    athlete: data.athlete,
+    needs_setup: Boolean(data.needs_setup),
+  }
+}
+
+/** @deprecated use loginSession — kept name for call-site clarity with id/query */
+async function loginWithId(athleteId, inviteToken) {
+  return loginSession({ athleteId, inviteToken })
+}
+
+/** After login: completed athletes enter the app; incomplete get AI setup. */
+async function enterAfterLogin(session, { welcome } = {}) {
+  const athlete = session.athlete
+  if (session.needs_setup) {
+    setAthleteId(athlete.id)
+    state.athlete = athlete
+    startRestartSetup()
+    toast('Fullfør veiledet setup')
+    return
+  }
+  await enterApp(athlete, { welcome })
+}
+
+async function bootstrap() {
+  const params = new URLSearchParams(location.search)
+  const fromUser = params.get('user')
+  const fromQuery = params.get('athlete')
+  if (fromUser || fromQuery) {
+    state.busy = true
+    state.error = ''
+    try {
+      const session = fromUser
+        ? await loginSession({ username: fromUser })
+        : await loginWithId(fromQuery)
+      await enterAfterLogin(session, {
+        welcome: `Hei ${session.athlete.display_name}. Jeg er ${session.athlete.coach_display_name}. Velkommen tilbake.`,
+      })
+      // Drop query so refresh uses localStorage
+      if (location.search) {
+        history.replaceState({}, '', location.pathname)
+      }
+    } catch (err) {
+      clearAthleteId()
+      state.athlete = null
+      state.gate = 'login'
+      if (fromUser) state.login.username = fromUser
+      if (fromQuery) state.login.athlete_id = fromQuery
+      state.error = err.message || 'Kunne ikke logge inn'
+      state.busy = false
+      render()
+    }
+    return
+  }
+
+  const id = getAthleteId()
+  if (!id) {
+    state.athlete = null
+    state.gate = 'entry'
+    render()
+    return
+  }
+
+  try {
+    const session = await loginWithId(id)
+    await enterAfterLogin(session)
+  } catch (err) {
+    clearAthleteId()
+    state.athlete = null
+    state.gate = 'login'
+    state.login.athlete_id = id
+    state.error = err.message || 'Ukjent profil'
+    render()
+  }
+}
+
+async function refreshOverview() {
+  try {
+    state.overview = await api('/v1/overview')
+  } catch {
+    state.overview = null
+  }
+}
+
+async function refreshDashboard() {
+  try {
+    const p = state.dashboardPeriod || { preset: '14d' }
+    const qs = new URLSearchParams()
+    if (p.preset === 'custom' && p.from && p.to) {
+      qs.set('period', 'custom')
+      qs.set('from', p.from)
+      qs.set('to', p.to)
+    } else {
+      qs.set('period', p.preset || '14d')
+    }
+    state.dashboard = await api(`/v1/dashboard?${qs.toString()}`)
+  } catch {
+    state.dashboard = null
+  }
+}
+
+async function refreshSessions() {
+  try {
+    state.sessions = await api('/v1/sessions')
+  } catch {
+    state.sessions = null
+  }
+}
+
+async function refreshPlanBlocks() {
+  try {
+    const data = await api('/v1/athlete/me/plan-blocks')
+    state.planBlocks = data.blocks || []
+  } catch {
+    state.planBlocks = []
+  }
+}
+
+async function refreshIntervals() {
+  try {
+    const data = await api('/v1/athlete/me/intervals')
+    state.intervals.connected = !!data.connected
+    state.intervals.intervals_athlete_id = data.intervals_athlete_id || ''
+    state.intervals.api_key_hint = data.api_key_hint || null
+    state.intervals.form_athlete_id = data.intervals_athlete_id || ''
+    // Never put the real key in state — leave blank for re-entry
+    state.intervals.form_api_key = ''
+  } catch {
+    state.intervals.connected = false
+    state.intervals.intervals_athlete_id = ''
+    state.intervals.api_key_hint = null
+  }
+}
+
+function render() {
+  if (!state.athlete) {
+    if (state.gate === 'login') {
+      app.innerHTML = renderLogin()
+      bindLogin()
+      return
+    }
+    if (state.gate === 'onboarding') {
+      app.innerHTML = renderOnboarding()
+      bindOnboarding()
+      return
+    }
+    app.innerHTML = renderEntry()
+    bindEntry()
+    return
+  }
+  const a = state.athlete
+  const initial = (a.coach_display_name || 'T').trim().charAt(0).toUpperCase()
+  setAccent(a.accent_color)
+  app.innerHTML = `
+    <header class="app-header">
+      <div class="coach-avatar" aria-hidden="true">${escapeHtml(initial)}</div>
+      <div>
+        <h1>${escapeHtml(a.coach_display_name || 'Trener')}</h1>
+        <p>Hei ${escapeHtml(a.display_name)} — Lofoten-coach</p>
+      </div>
+    </header>
+    <main>
+      <section class="panel ${state.tab === 'coach' ? 'active' : ''}" data-panel="coach">
+        ${renderChat()}
+      </section>
+      <section class="panel ${state.tab === 'dashboard' ? 'active' : ''}" data-panel="dashboard">
+        ${renderDashboard()}
+      </section>
+      <section class="panel ${state.tab === 'plan' ? 'active' : ''}" data-panel="plan">
+        ${renderPlanTab()}
+      </section>
+      <section class="panel ${state.tab === 'okter' ? 'active' : ''}" data-panel="okter">
+        ${renderOkterTab()}
+      </section>
+      <section class="panel ${state.tab === 'du' ? 'active' : ''}" data-panel="du">
+        ${renderDu()}
+      </section>
+    </main>
+    <nav class="tabs tabs-five" aria-label="Hovedfaner">
+      <button type="button" data-tab="coach" class="${state.tab === 'coach' ? 'active' : ''}">Coach</button>
+      <button type="button" data-tab="dashboard" class="${state.tab === 'dashboard' ? 'active' : ''}">Dashboard</button>
+      <button type="button" data-tab="plan" class="${state.tab === 'plan' ? 'active' : ''}">Plan</button>
+      <button type="button" data-tab="okter" class="${state.tab === 'okter' ? 'active' : ''}">Økter</button>
+      <button type="button" data-tab="du" class="${state.tab === 'du' ? 'active' : ''}">Du</button>
+    </nav>
+  `
+  bindApp()
+}
+
+function renderEntry() {
+  return `
+    <div class="onboarding entry-gate">
+      <p class="brand-mark">Lofoten coach</p>
+      <h1>Velkommen</h1>
+      <p class="lead">Ny her, eller tilbake etter ny enhet / tømt nettleser?</p>
+      ${state.error ? `<p class="error">${escapeHtml(state.error)}</p>` : ''}
+      <div class="entry-actions">
+        <button type="button" class="btn btn-primary" id="gate-new" ${state.busy ? 'disabled' : ''}>
+          Ny bruker
+        </button>
+        <button type="button" class="btn" id="gate-returning" ${state.busy ? 'disabled' : ''}>
+          Jeg har allerede profil
+        </button>
+      </div>
+      <p class="muted" style="margin-top:1.5rem">Allerede seedet fra repo (Fly / lokal)?</p>
+      <button type="button" class="btn secondary" id="use-seed-william" ${state.busy ? 'disabled' : ''}>
+        Bruk seedet William-profil
+      </button>
+    </div>
+  `
+}
+
+function bindEntry() {
+  document.getElementById('gate-new')?.addEventListener('click', () => {
+    state.setup = {
+      mode: 'new',
+      step: 'account',
+      draft: emptySetupDraft({ accent_color: ACCENTS[0] }),
+      messages: [],
+      chatDraft: '',
+      readyForPlan: false,
+      preview: null,
+      prepareIntervals: false,
+    }
+    state.gate = 'onboarding'
+    state.error = ''
+    render()
+  })
+  document.getElementById('gate-returning')?.addEventListener('click', () => {
+    state.gate = 'login'
+    state.error = ''
+    render()
+  })
+  document.getElementById('use-seed-william')?.addEventListener('click', () => {
+    void runSeedWilliamLogin()
+  })
+}
+
+function renderLogin() {
+  const L = state.login
+  const advancedOpen = !!(L.athlete_id || L.invite_token)
+  return `
+    <div class="onboarding">
+      <p class="brand-mark">Lofoten coach</p>
+      <h1>Logg inn</h1>
+      <p class="lead">Skriv brukernavnet ditt (f.eks. <code>william</code>). Ingen passord.</p>
+      <form id="login-form">
+        <div class="field">
+          <label for="login_username">Brukernavn</label>
+          <input id="login_username" name="username" autocomplete="username"
+            value="${escapeHtml(L.username)}"
+            placeholder="william" ${state.busy ? 'disabled' : ''} />
+        </div>
+        <details class="login-advanced" ${advancedOpen ? 'open' : ''}>
+          <summary>Avansert — profil-ID / invite</summary>
+          <div class="field">
+            <label for="login_athlete_id">Profil-ID</label>
+            <input id="login_athlete_id" name="athlete_id" autocomplete="off"
+              value="${escapeHtml(L.athlete_id)}"
+              placeholder="william-lofoten eller UUID" ${state.busy ? 'disabled' : ''} />
+          </div>
+          <div class="field">
+            <label for="login_invite_token">Invite-token (valgfritt)</label>
+            <input id="login_invite_token" name="invite_token" autocomplete="off"
+              value="${escapeHtml(L.invite_token)}"
+              placeholder="Kun hvis du har fått token" ${state.busy ? 'disabled' : ''} />
+          </div>
+        </details>
+        ${state.error ? `<p class="error">${escapeHtml(state.error)}</p>` : ''}
+        <button class="btn btn-primary" type="submit" ${state.busy ? 'disabled' : ''}>
+          ${state.busy ? 'Logger inn…' : 'Fortsett'}
+        </button>
+      </form>
+      <p class="muted" style="margin-top:1.25rem">
+        <button type="button" class="linkish" id="login-back">Tilbake</button>
+        ·
+        <button type="button" class="linkish" id="login-to-onboard">Ny bruker</button>
+      </p>
+      <p class="muted" style="margin-top:1rem">Snarvei:</p>
+      <button type="button" class="btn secondary" id="use-seed-william" ${state.busy ? 'disabled' : ''}>
+        Bruk seedet William-profil
+      </button>
+    </div>
+  `
+}
+
+function bindLogin() {
+  document.getElementById('login-back')?.addEventListener('click', () => {
+    state.gate = 'entry'
+    state.error = ''
+    render()
+  })
+  document.getElementById('login-to-onboard')?.addEventListener('click', () => {
+    state.setup = {
+      mode: 'new',
+      step: 'account',
+      draft: emptySetupDraft({ accent_color: ACCENTS[0] }),
+      messages: [],
+      chatDraft: '',
+      readyForPlan: false,
+      preview: null,
+      prepareIntervals: false,
+    }
+    state.gate = 'onboarding'
+    state.error = ''
+    render()
+  })
+  document.getElementById('use-seed-william')?.addEventListener('click', () => {
+    void runSeedWilliamLogin()
+  })
+  document.getElementById('login-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const fd = new FormData(e.target)
+    const username = String(fd.get('username') || '').trim().toLowerCase()
+    const athleteId = String(fd.get('athlete_id') || '').trim()
+    const inviteToken = String(fd.get('invite_token') || '').trim()
+    state.login.username = username
+    state.login.athlete_id = athleteId
+    state.login.invite_token = inviteToken
+    if (!username && !athleteId) {
+      state.error = 'Skriv inn brukernavn (eller profil-ID under Avansert)'
+      render()
+      return
+    }
+    state.busy = true
+    state.error = ''
+    render()
+    try {
+      // Prefer username when both filled
+      const session = username
+        ? await loginSession({ username, inviteToken })
+        : await loginSession({ athleteId, inviteToken })
+      await enterAfterLogin(session, {
+        welcome: `Hei ${session.athlete.display_name}. Jeg er ${session.athlete.coach_display_name}. Velkommen tilbake — spør om mål, skade eller ukens fokus.`,
+      })
+      if (!session.needs_setup) toast('Innlogget')
+    } catch (err) {
+      state.error = err.message || 'Kunne ikke logge inn'
+      state.busy = false
+      render()
+    }
+  })
+}
+
+async function runSeedWilliamLogin() {
+  state.busy = true
+  state.error = ''
+  render()
+  try {
+    const session = await loginSession({ username: 'william' })
+    if (session.needs_setup) {
+      throw new Error(
+        'William-profil mangler setup_completed — kjør seed på nytt (SEED_ON_BOOT).',
+      )
+    }
+    await enterAfterLogin(session, {
+      welcome: `Hei ${session.athlete.display_name}. Jeg er ${session.athlete.coach_display_name}. Profilen er seedet fra repo — spør om avtaler, rygg eller ukens fokus.`,
+    })
+    toast('Seedet William lastet')
+  } catch (err) {
+    state.error =
+      err.message ||
+      'Fant ikke brukernavn william. Kjør seed / fly deploy med SEED_ON_BOOT=1.'
+    state.busy = false
+    if (!state.gate) state.gate = 'login'
+    render()
+  }
+}
+
+function renderOnboarding() {
+  setAccent(state.setup.draft.accent_color)
+  return renderSetupWizard({
+    state,
+    accents: ACCENTS,
+    personalities: PERSONALITIES,
+    escapeHtml,
+  })
+}
+
+function startRestartSetup() {
+  const a = state.athlete || {}
+  const aid = a.id || getAthleteId()
+  if (aid) setAthleteId(aid)
+  state.setup = {
+    mode: 'restart',
+    step: 'chat',
+    draft: emptySetupDraft({
+      display_name: a.display_name,
+      username: a.username,
+      coach_display_name: a.coach_display_name,
+      coach_personality: a.coach_personality,
+      coach_style_note: a.coach_style_note,
+      accent_color: a.accent_color || ACCENTS[0],
+    }),
+    messages: [
+      {
+        role: 'assistant',
+        content: `Hei ${a.display_name || ''}. Vi nullstiller planen og bygger på nytt. Fortell mål, erfaring og begrensninger — jeg tilpasser (ikke én mal for alle).`,
+      },
+    ],
+    chatDraft: '',
+    readyForPlan: false,
+    preview: null,
+    prepareIntervals: false,
+  }
+  state.athlete = null
+  state.gate = 'onboarding'
+  state.resetConfirm = 0
+  state.error = ''
+  state.tab = 'coach'
+  render()
+}
+
+function logoutLocal() {
+  clearAthleteId()
+  state.athlete = null
+  state.messages = []
+  state.overview = null
+  state.dashboard = null
+  state.sessions = null
+  state.sessionDetail = null
+  state.sessionChat = { messages: [], draft: '', busy: false, error: '' }
+  state.sessionEditOpen = false
+  state.planBlocks = []
+  state.workoutProposal = null
+  state.sync.pending = null
+  state.gate = 'entry'
+  state.resetConfirm = 0
+  state.error = ''
+  toast('Logget ut')
+  render()
+}
+
+async function runSetupReset() {
+  state.busy = true
+  state.error = ''
+  render()
+  try {
+    const data = await api('/v1/athlete/me/setup/reset', {
+      method: 'POST',
+      body: {
+        acknowledge_wipe: true,
+        confirm_phrase: 'SLETT',
+        delete_intervals_coach_events: Boolean(state.resetDeleteIcu),
+        acknowledge_intervals_delete: Boolean(state.resetDeleteIcu),
+      },
+    })
+    startRestartSetup()
+    toast(data.message || 'Setup nullstilt')
+  } catch (err) {
+    state.error = err.message || 'Kunne ikke nullstille'
+    state.busy = false
+    state.resetConfirm = 0
+    state.resetDeleteIcu = false
+    render()
+  }
+}
+
+async function generateSetupPreview() {
+  state.busy = true
+  state.error = ''
+  render()
+  try {
+    const data = await api('/v1/setup/plan/preview', {
+      method: 'POST',
+      body: draftPayload(state.setup.draft),
+      athleteId: null,
+    })
+    state.setup.preview = data
+    state.busy = false
+    render()
+  } catch (err) {
+    state.error = err.message || 'Kunne ikke generere plan'
+    state.busy = false
+    render()
+  }
+}
+
+async function confirmSetupPlan() {
+  state.busy = true
+  state.error = ''
+  render()
+  try {
+    const preview = state.setup.preview
+    const draft = state.setup.draft
+    const payload = {
+      ...draftPayload(draft),
+      plan_blocks: preview.plan_blocks || [],
+      athlete_patch: preview.athlete_patch || {},
+      prepare_intervals_sync: Boolean(state.setup.prepareIntervals),
+    }
+    if (state.setup.mode === 'restart') {
+      payload.athlete_id = getAthleteId()
+    }
+    const data = await api('/v1/setup/confirm', {
+      method: 'POST',
+      body: payload,
+      athleteId: state.setup.mode === 'restart' ? getAthleteId() : null,
+    })
+    const welcome =
+      state.setup.mode === 'restart'
+        ? `Planen er satt opp på nytt. Jeg er ${data.athlete.coach_display_name}. Si ifra om noe skal justeres.`
+        : `Hei ${data.athlete.display_name}. Jeg er ${data.athlete.coach_display_name}. Grovplanen er lagret — spør gjerne om første uke.`
+    await enterApp(data.athlete, { welcome })
+    if (data.intervals_prep_error) {
+      state.error = data.intervals_prep_error
+    }
+    if (data.intervals_pending) {
+      state.tab = 'plan'
+      state.sync.pending = data.intervals_pending
+      state.sync.message = data.intervals_pending.message || ''
+      render()
+    }
+    toast(data.message || 'Plan lagret')
+  } catch (err) {
+    state.error = err.message || 'Kunne ikke lagre setup'
+    state.busy = false
+    render()
+  }
+}
+
+function bindOnboarding() {
+  document.getElementById('setup-to-login')?.addEventListener('click', () => {
+    state.gate = 'login'
+    state.error = ''
+    render()
+  })
+  document.getElementById('setup-back')?.addEventListener('click', () => {
+    const idx = SETUP_STEPS.indexOf(state.setup.step)
+    if (idx <= 0) {
+      state.gate = 'entry'
+      state.error = ''
+      render()
+      return
+    }
+    if (state.setup.step === 'preview') state.setup.preview = null
+    state.setup.step = SETUP_STEPS[idx - 1]
+    state.error = ''
+    render()
+  })
+
+  const form = document.getElementById('setup-form')
+  document.querySelectorAll('#setup-swatches .swatch, .setup-flow .swatch').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (form) state.setup.draft = readSetupForm(form, state.setup.draft)
+      state.setup.draft.accent_color = btn.dataset.color
+      setAccent(btn.dataset.color)
+      render()
+    })
+  })
+  const nameInput = document.getElementById('display_name')
+  const userInput = document.getElementById('username')
+  nameInput?.addEventListener('input', () => {
+    state.setup.draft.display_name = nameInput.value
+    if (!state.setup.draft.username_touched && userInput && state.setup.mode === 'new') {
+      const suggested = slugifyUsername(nameInput.value)
+      state.setup.draft.username = suggested
+      userInput.value = suggested
+    }
+  })
+  userInput?.addEventListener('input', () => {
+    state.setup.draft.username_touched = true
+    state.setup.draft.username = userInput.value
+  })
+  form?.querySelector('[name=skip_intervals]')?.addEventListener('change', () => {
+    state.setup.draft = readSetupForm(form, state.setup.draft)
+    render()
+  })
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    state.setup.draft = readSetupForm(form, state.setup.draft)
+    const step = state.setup.step
+    const draft = state.setup.draft
+    if (step === 'account') {
+      if (!draft.display_name.trim()) {
+        state.error = 'Skriv inn navnet ditt'
+        render()
+        return
+      }
+      if (state.setup.mode === 'new') {
+        let username = (draft.username || '').trim().toLowerCase()
+        if (!username) username = slugifyUsername(draft.display_name)
+        draft.username = username
+        if (username.length < 2) {
+          state.error = 'Brukernavn må være minst 2 tegn'
+          render()
+          return
+        }
+      }
+      state.setup.step = 'chat'
+      if (!(state.setup.messages || []).length) {
+        state.setup.messages = [
+          {
+            role: 'assistant',
+            content: `Hei ${draft.display_name}. Jeg er ${draft.coach_display_name}. Fortell om mål og bakgrunn — nybegynner, comeback, skade, lite tid, eller noe annet. Vi lager planen etterpå med forhåndsvisning.`,
+          },
+        ]
+      }
+      state.error = ''
+      render()
+      return
+    }
+    if (step === 'intervals') {
+      if (!draft.skip_intervals) {
+        const hasId = Boolean((draft.intervals_athlete_id || '').trim())
+        const hasKey = Boolean((draft.intervals_api_key || '').trim())
+        if ((hasId && !hasKey) || (!hasId && hasKey)) {
+          state.error = 'Fyll inn både athlete ID og API-nøkkel, eller huk av «Hopp over».'
+          render()
+          return
+        }
+      }
+      state.setup.step = 'preview'
+      state.setup.preview = null
+      state.error = ''
+      render()
+      void generateSetupPreview()
+    }
+  })
+
+  document.getElementById('setup-to-intervals')?.addEventListener('click', () => {
+    state.setup.step = 'intervals'
+    state.error = ''
+    render()
+  })
+  document.getElementById('setup-gen-preview')?.addEventListener('click', () => {
+    void generateSetupPreview()
+  })
+  document.getElementById('prepare_intervals_sync')?.addEventListener('change', (e) => {
+    state.setup.prepareIntervals = e.target.checked
+  })
+  document.getElementById('setup-confirm-plan')?.addEventListener('click', () => {
+    const box = document.getElementById('prepare_intervals_sync')
+    if (box) state.setup.prepareIntervals = box.checked
+    void confirmSetupPlan()
+  })
+
+  const chatForm = document.getElementById('setup-chat-form')
+  chatForm?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const input = document.getElementById('setup-chat-input')
+    const text = (input?.value || '').trim()
+    if (!text || state.busy) return
+    state.setup.chatDraft = ''
+    state.setup.messages = [...(state.setup.messages || []), { role: 'user', content: text }]
+    state.busy = true
+    state.error = ''
+    render()
+    try {
+      const data = await api('/v1/setup/chat', {
+        method: 'POST',
+        body: {
+          message: text,
+          draft: draftPayload(state.setup.draft),
+          history: (state.setup.messages || []).slice(0, -1).map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+        },
+        athleteId: null,
+      })
+      state.setup.draft = applyExtractedToDraft(
+        { ...state.setup.draft, ...(data.draft || {}) },
+        data.extracted || {},
+      )
+      // Keep account fields
+      if (data.draft?.goal_text) state.setup.draft.goal_text = data.draft.goal_text
+      state.setup.readyForPlan = Boolean(data.ready_for_plan)
+      state.setup.messages = [
+        ...(state.setup.messages || []),
+        { role: 'assistant', content: data.reply || '…' },
+      ]
+      state.busy = false
+      render()
+      const log = document.getElementById('setup-chat-log')
+      if (log) log.scrollTop = log.scrollHeight
+    } catch (err) {
+      state.error = err.message || 'Samtale feilet'
+      state.busy = false
+      render()
+    }
+  })
+}
+
+function renderChatBubbles(messages, emptyHtml) {
+  const bubbles = (messages || [])
+    .map((m) => `<div class="bubble ${m.role}">${escapeHtml(m.content)}</div>`)
+    .join('')
+  return bubbles || emptyHtml || ''
+}
+
+function renderChatComposer({
+  formId = 'chat-form',
+  inputId = 'chat-input',
+  draft = '',
+  busy = false,
+  placeholder = 'Spør treneren…',
+  sticky = false,
+  ariaLabel = 'Chat med treneren',
+} = {}) {
+  return `
+    <form class="chat-form${sticky ? ' chat-composer-sticky' : ''}" id="${escapeHtml(formId)}" aria-label="${escapeHtml(ariaLabel)}">
+      <input id="${escapeHtml(inputId)}" autocomplete="off" placeholder="${escapeHtml(placeholder)}" value="${escapeHtml(draft)}" ${busy ? 'disabled' : ''} />
+      <button class="btn btn-primary" type="submit" ${busy ? 'disabled' : ''}>Send</button>
+    </form>`
+}
+
+function applyChatResponse(data, { mirrorToMain = false, userText = '' } = {}) {
+  if (data.workout_proposal?.workouts?.length) {
+    state.workoutProposal = data.workout_proposal
+    state.workoutRemoval = null
+    if (data.proposal_hint) toast(data.proposal_hint)
+  }
+  if (data.workout_removal) {
+    state.workoutRemoval = data.workout_removal
+    state.workoutProposal = null
+    if (data.removal_hint) toast(data.removal_hint)
+  }
+  if (data.athlete_type_proposal) {
+    state.athleteTypeProposal = data.athlete_type_proposal
+  }
+  if (data.agreements_proposal) {
+    state.agreementsProposal = data.agreements_proposal
+    if (data.agreements_hint) toast(data.agreements_hint)
+  }
+  if (mirrorToMain && userText) {
+    state.messages = [
+      ...state.messages,
+      { role: 'user', content: userText },
+      data.message || { role: 'assistant', content: data.reply || '…' },
+    ]
+  }
+}
+
+async function sendCoachMessage(message, { sessionId = null } = {}) {
+  const body = { message }
+  if (sessionId) body.session_id = sessionId
+  return api('/v1/chat', { method: 'POST', body })
+}
+
+function renderChat() {
+  const draft = state.chatDraft || ''
+  const empty = `<p class="muted">Skriv til ${escapeHtml(state.athlete.coach_display_name)} — eller åpne en økt under Økter. Spør f.eks. «hva har jeg denne uka?».</p>`
+  const proposal = state.workoutProposal
+  const removal = state.workoutRemoval
+  const typeProp = state.athleteTypeProposal
+  const agrProp = state.agreementsProposal
+  const wPending = state.workoutSync.pending
+  let proposalCard = ''
+  if (wPending) {
+    const sample = (wPending.events || [])
+      .slice(0, 8)
+      .map(
+        (e) =>
+          `<li><code>${escapeHtml(e.start_date_local || e.day || '')}</code> · ${escapeHtml(e.name || e.external_id || '')} <span class="dim">${escapeHtml(e.type || e.category || '')}</span></li>`,
+      )
+      .join('')
+    const isDelete = (wPending.op || '') === 'delete'
+    proposalCard = `
+      <div class="confirm-card" role="dialog" aria-label="Bekreft økt på Intervals">
+        <p><strong>${escapeHtml(wPending.message || 'Bekreft økt-sync')}</strong></p>
+        <p class="muted tight">${escapeHtml(wPending.op || 'workout_push')} · ${wPending.count} hendelse(r)</p>
+        <ul class="sync-sample">${sample}</ul>
+        ${wPending.write_gap ? `<p class="muted tight">${escapeHtml(wPending.write_gap)}</p>` : ''}
+        <div class="sync-actions">
+          <button type="button" class="btn btn-primary" id="workout-confirm-yes" ${state.workoutSync.busy ? 'disabled' : ''}>${
+            isDelete ? 'Ja, slett på Intervals' : 'Ja, sync til Intervals'
+          }</button>
+          <button type="button" class="btn secondary" id="workout-confirm-no" ${state.workoutSync.busy ? 'disabled' : ''}>Avbryt</button>
+        </div>
+        ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
+      </div>`
+  } else if (removal) {
+    proposalCard = `
+      <div class="confirm-card workout-proposal-card" aria-label="Fjern økt">
+        <p><strong>Foreslått fjerning av coach-økter</strong></p>
+        <p class="muted tight">Kun ll-coach-* — forhåndsvis før sletting.</p>
+        <ul class="sync-sample">
+          ${(removal.external_ids || []).map((id) => `<li><code>${escapeHtml(id)}</code></li>`).join('')}
+          ${(removal.dates || []).map((d) => `<li>dato ${escapeHtml(d)}</li>`).join('')}
+          ${(removal.names || []).map((n) => `<li>${escapeHtml(n)}</li>`).join('')}
+        </ul>
+        <div class="sync-actions">
+          <button type="button" class="btn btn-primary" id="workout-remove-preview-btn" ${state.workoutSync.busy || !state.intervals.connected ? 'disabled' : ''}>Forhåndsvis sletting</button>
+          <button type="button" class="btn secondary" id="workout-dismiss-btn" ${state.workoutSync.busy ? 'disabled' : ''}>Avvis</button>
+        </div>
+        ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
+      </div>`
+  } else if (typeProp) {
+    proposalCard = `
+      <div class="confirm-card workout-proposal-card" aria-label="Oppdater hovedprofil">
+        <p><strong>Oppdater hovedprofil</strong></p>
+        <p class="muted tight">${escapeHtml(typeProp.from_label || typeProp.from || '—')} → <strong>${escapeHtml(typeProp.to_label || typeProp.to || '')}</strong></p>
+        ${typeProp.reason ? `<p class="tight">${escapeHtml(typeProp.reason)}</p>` : ''}
+        <p class="muted tight">Typen er muterbar over tid. Bekreft før plan/økter følger ny type (plan skrives ikke stille om).</p>
+        <div class="sync-actions">
+          <button type="button" class="btn btn-primary" id="athlete-type-confirm-btn" ${state.busy ? 'disabled' : ''}>Bekreft ny type</button>
+          <button type="button" class="btn secondary" id="athlete-type-dismiss-btn">Avvis</button>
+        </div>
+        ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
+      </div>`
+  } else if (agrProp) {
+    const agrLines = []
+    if (agrProp.sessions_per_week != null) agrLines.push(`${agrProp.sessions_per_week} økter/uke`)
+    if (agrProp.goal_race_date) agrLines.push(`Måldato ${agrProp.goal_race_date}`)
+    if (agrProp.goal_text) agrLines.push(agrProp.goal_text)
+    if (Array.isArray(agrProp.allowed_disciplines) && agrProp.allowed_disciplines.length) {
+      agrLines.push('Disipliner: ' + agrProp.allowed_disciplines.join(' + '))
+    }
+    if (Array.isArray(agrProp.agreements)) {
+      for (const a of agrProp.agreements.slice(0, 6)) agrLines.push(a)
+    }
+    const agrList = agrLines.map((l) => `<li>${escapeHtml(String(l))}</li>`).join('')
+    proposalCard = `
+      <div class="confirm-card workout-proposal-card" aria-label="Oppdater treningsavtaler">
+        <p><strong>Oppdater treningsavtaler</strong></p>
+        ${agrProp.reason ? `<p class="tight">${escapeHtml(agrProp.reason)}</p>` : ''}
+        <ul class="sync-sample">${agrList}</ul>
+        <p class="muted tight">Bekreft for å lagre til Du-fanen — ingen stille endring.</p>
+        <div class="sync-actions">
+          <button type="button" class="btn btn-primary" id="agreements-confirm-btn" ${state.busy ? 'disabled' : ''}>Bekreft avtaler</button>
+          <button type="button" class="btn secondary" id="agreements-dismiss-btn">Avvis</button>
+        </div>
+        ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
+      </div>`
+  } else if (state.planAdjust?.plan_blocks?.length) {
+    const pa = state.planAdjust
+    const sync = pa.intervals_sync || {}
+    const csum =
+      pa.constraints_summary_nb ||
+      sync.constraints_summary_nb ||
+      ''
+    const horizon =
+      pa.workout_horizon_note_nb ||
+      'Intervals WORKOUT: kun første 2 uker. Grovplan-noter kan dekke sesong.'
+    const rows = (pa.plan_blocks || [])
+      .slice(0, 8)
+      .map(
+        (b) =>
+          `<li><strong>${escapeHtml(b.title || '')}</strong> · ${escapeHtml(b.start_date || '')}–${escapeHtml(b.end_date || '')} · ${escapeHtml(b.theme || '')}</li>`,
+      )
+      .join('')
+    const wprev = (sync.workouts_preview || [])
+      .slice(0, 8)
+      .map((e) => `<li>${escapeHtml(e.preview_no || e.name || '')}</li>`)
+      .join('')
+    proposalCard = `
+      <div class="confirm-card workout-proposal-card" aria-label="Justert grovplan">
+        <p><strong>Foreslått planjustering (fra Du-profil)</strong></p>
+        <p class="muted tight">${escapeHtml(pa.confirm_hint || 'Bekreft for å lagre meso-blokker lokalt — ikke auto-sync til Intervals.')}</p>
+        <p class="muted tight">${escapeHtml(csum)}</p>
+        <p class="muted tight">${escapeHtml(horizon)}</p>
+        ${sync.workouts_count != null ? `<p class="muted tight">${escapeHtml(String(sync.workouts_count))} WORKOUT-økter i forhåndsvisning (2 uker × økter/uke).</p>` : ''}
+        <ul class="sync-sample">${rows}</ul>
+        ${wprev ? `<p class="plan-kicker">Første 2 uker (WORKOUT)</p><ul class="sync-sample">${wprev}</ul>` : ''}
+        <div class="sync-actions">
+          <button type="button" class="btn btn-primary" id="plan-adjust-confirm-btn" ${state.busy ? 'disabled' : ''}>Bekreft ny grovplan</button>
+          <button type="button" class="btn secondary" id="plan-adjust-dismiss-btn">Avvis</button>
+        </div>
+        ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
+      </div>`
+  } else if (proposal?.workouts?.length) {
+    const rows = proposal.workouts
+      .map(
+        (w) =>
+          `<li><strong>${escapeHtml(w.date || '')}</strong> · ${escapeHtml(w.name || '')} · ${escapeHtml(w.sport || '')}${
+            w.duration_minutes != null ? ` · ${escapeHtml(String(w.duration_minutes))} min` : ''
+          }</li>`,
+      )
+      .join('')
+    proposalCard = `
+      <div class="confirm-card workout-proposal-card" aria-label="Foreslått økt">
+        <p><strong>Foreslått økt til Intervals</strong></p>
+        <p class="muted tight">Ingenting er synct ennå — forhåndsvis først.</p>
+        <ul class="sync-sample">${rows}</ul>
+        <div class="sync-actions">
+          <button type="button" class="btn btn-primary" id="workout-preview-btn" ${state.workoutSync.busy || !state.intervals.connected ? 'disabled' : ''}>Forhåndsvis sync</button>
+          <button type="button" class="btn secondary" id="workout-dismiss-btn" ${state.workoutSync.busy ? 'disabled' : ''}>Avvis</button>
+        </div>
+        ${!state.intervals.connected ? `<p class="muted tight">Koble Intervals under Du først.</p>` : ''}
+        ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
+        ${state.workoutSync.message ? `<p class="intervals-status is-ok">${escapeHtml(state.workoutSync.message)}</p>` : ''}
+      </div>`
+  } else if (state.workoutSync.message) {
+    proposalCard = `<p class="intervals-status is-ok">${escapeHtml(state.workoutSync.message)}</p>`
+  }
+  return `
+    <div class="chat-log" id="chat-log">${renderChatBubbles(state.messages, empty)}</div>
+    ${proposalCard}
+    ${renderChatComposer({
+      formId: 'chat-form',
+      inputId: 'chat-input',
+      draft,
+      busy: state.busy,
+      placeholder: 'Spør treneren…',
+    })}
+    ${state.error && state.tab === 'coach' ? `<p class="error">${escapeHtml(state.error)}</p>` : ''}
+  `
+}
+
+function formatHours(n) {
+  if (n == null || Number.isNaN(Number(n))) return '—'
+  const v = Number(n)
+  return Number.isInteger(v) ? String(v) : v.toFixed(1)
+}
+
+function renderProgressSection(o, { compact = false } = {}) {
+  const progress = o.progress || {}
+  const rows = progress.disciplines || []
+  const source = progress.source || 'demo'
+  const fetchFailed = Boolean(progress.fetch_error)
+  const badge = fetchFailed
+    ? `<span class="badge badge-demo">Henting feilet</span>`
+    : source === 'demo'
+      ? `<span class="badge badge-demo">Demo</span>`
+      : progress.estimate
+        ? `<span class="badge badge-est">Estimat</span>`
+        : `<span class="badge badge-live">Intervals</span>`
+  const windowLabel =
+    progress.window?.start && progress.window?.end
+      ? `${progress.window.start} – ${progress.window.end}`
+      : ''
+  const bars = rows
+    .map((d) => {
+      const pct = d.progress_pct != null ? d.progress_pct : 0
+      const sessions =
+        d.session_count != null && source === 'intervals'
+          ? ` · ${d.session_count} økter`
+          : ''
+      const target =
+        d.target_hours != null
+          ? `${formatHours(d.completed_hours)} / ${formatHours(d.target_hours)} t`
+          : `${formatHours(d.completed_hours)} t · sett mål i Du`
+      const compliance =
+        d.compliance_pct != null ? `${d.compliance_pct} %` : '—'
+      const paceNote = d.on_pace_note
+        ? `<span class="pace-note ${d.on_pace === false ? 'behind' : d.on_pace ? 'ok' : ''}">${escapeHtml(d.on_pace_note)}</span>`
+        : ''
+      const expected =
+        !compact && d.expected_hours != null
+          ? `<span class="dim">forventet ${formatHours(d.expected_hours)} t</span>`
+          : ''
+      return `
+        <div class="progress-row">
+          <div class="progress-meta">
+            <span class="progress-label">${escapeHtml(d.label)}</span>
+            <span class="progress-nums">${escapeHtml(target)}${escapeHtml(sessions)}</span>
+            <span class="progress-pct">${escapeHtml(compliance)}</span>
+          </div>
+          <div class="progress-track" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="${escapeHtml(d.label)}">
+            <div class="progress-fill" style="width:${Math.min(100, Math.max(0, pct))}%"></div>
+          </div>
+          <div class="progress-sub">${paceNote}${expected}</div>
+        </div>`
+    })
+    .join('')
+  let blurb = 'Sesongvolum vs mål (fullført / mål).'
+  if (fetchFailed) {
+    blurb = `Kunne ikke hente Intervals — viser 0 t. ${progress.fetch_error_detail || ''} Prøv igjen snart.`
+  } else if (source === 'demo') {
+    blurb = 'Illustrasjonstall — koble Intervals under Du for ekte volum.'
+  } else if (progress.season_not_started) {
+    blurb = 'Sesongen er ikke startet ennå — volum er 0 til sesongstart.'
+  } else if (progress.activity_count != null) {
+    blurb = `Sesongvolum vs mål · ${progress.activity_count} aktiviteter i vinduet.`
+  }
+  const formula = compact
+    ? ''
+    : `<p class="muted tight dim formula-note">Compliance: completed / season_target (maks 100&nbsp;%). On-pace: completed / (target × elapsed/season).</p>`
+  return `
+    <section class="section-block">
+      <div class="section-head">
+        <h2>${compact ? 'Sesongvolum' : 'Fremskritt & compliance'}</h2>
+        ${badge}
+      </div>
+      <p class="muted tight">${escapeHtml(blurb.trim())}${windowLabel ? ` <span class="dim">(${escapeHtml(windowLabel)})</span>` : ''}</p>
+      <div class="progress-list">${bars || `<p class="muted">Ingen disipliner.</p>`}</div>
+      ${formula}
+    </section>`
+}
+
+function renderFormCard(o) {
+  const q = o.qualifying_sessions
+  const req = o.required_sessions || 5
+  const gate = o.gate_open
+  const ftpEst =
+    o.ftp_estimated != null
+      ? `${o.ftp_estimated} W${o.estimate_confidence ? ` · ${o.estimate_confidence}` : ''}`
+      : o.estimate_disclaimer || `Estimat etter ${req} sykkeløkter med watt`
+  const gateLabel =
+    gate === true
+      ? `<span class="badge badge-live">Gate åpen</span>`
+      : `<span class="badge badge-off">${q != null ? `${q}/${req}` : '—'} økter</span>`
+  return `
+    <section class="section-block form-card">
+      <div class="section-head">
+        <h2>Form</h2>
+        ${gateLabel}
+      </div>
+      <div class="stat-row"><span>Testet FTP</span><span>${o.ftp_tested != null ? `${o.ftp_tested} W` : '—'}</span></div>
+      <div class="stat-row"><span>Estimert FTP</span><span>${escapeHtml(String(ftpEst))}</span></div>
+      <div class="stat-row"><span>VO₂</span><span>${o.vo2_estimate != null ? o.vo2_estimate : '—'}</span></div>
+      ${
+        o.estimate_disclaimer && o.ftp_estimated != null
+          ? `<p class="muted tight">${escapeHtml(o.estimate_disclaimer)}</p>`
+          : ''
+      }
+    </section>`
+}
+
+function renderPlanStrip(o) {
+  const p = o.periodization || {}
+  const cur = p.current_block
+  const next = p.next_block
+  const days = p.days_to_goal
+  const raceDate = p.goal_race_date
+  const daysLabel =
+    days == null
+      ? 'Sett racedato i Du'
+      : days < 0
+        ? `${Math.abs(days)} dager siden mål`
+        : `${days} dager til mål`
+  const raceSub =
+    raceDate && days != null
+      ? `<p class="muted tight race-sub">${escapeHtml(raceDate)}</p>`
+      : ''
+  const curHtml = cur
+    ? `<div class="plan-current">
+        <p class="plan-kicker">Nåværende blokk</p>
+        <h3>${escapeHtml(cur.title || 'Uten tittel')}</h3>
+        <p class="plan-theme">${escapeHtml(cur.theme || '—')}</p>
+        <p class="muted tight">${escapeHtml(cur.start_date || '?')} – ${escapeHtml(cur.end_date || '?')}${cur.weekly_hours != null ? ` · ${formatHours(cur.weekly_hours)} t/uke` : ''}</p>
+      </div>`
+    : `<div class="plan-current">
+        <p class="plan-kicker">Grovplan</p>
+        <h3>Ingen blokk ennå</h3>
+        <p class="muted tight">Legg til under Du — appen eier makro, Intervals eier dagsøkter.</p>
+      </div>`
+  const nextHtml = next
+    ? `<div class="plan-next">
+        <p class="plan-kicker">Neste</p>
+        <p class="plan-next-title">${escapeHtml(next.title || 'Uten tittel')}</p>
+        <p class="muted tight">fra ${escapeHtml(next.start_date || '?')}${next.theme ? ` · ${escapeHtml(next.theme)}` : ''}</p>
+      </div>`
+    : `<div class="plan-next">
+        <p class="plan-kicker">Neste</p>
+        <p class="muted tight">Ingen neste blokk</p>
+      </div>`
+  return `
+    <section class="section-block plan-strip">
+      <div class="section-head">
+        <h2>Periodisering</h2>
+        <div class="days-block">
+          <span class="days-pill">${escapeHtml(daysLabel)}</span>
+          ${raceSub}
+        </div>
+      </div>
+      <div class="plan-grid">
+        ${curHtml}
+        ${nextHtml}
+      </div>
+      <p class="muted tight plan-footnote">Detaljer i Intervals — her bare grovplan / bulk.</p>
+    </section>`
+}
+
+function renderOverview() {
+  const o = state.overview || {}
+  return `
+    <div class="overview-hero">
+      <p class="brand-mark">Lofoten Coach</p>
+      <h2>Kjapt overblikk</h2>
+      <p class="muted">${escapeHtml(o.uplift_line || '')}</p>
+    </div>
+    ${renderPlanStrip(o)}
+    ${renderFormCard(o)}
+    ${renderProgressSection(o, { compact: true })}
+    <section class="section-block">
+      <h2>Kontekst</h2>
+      <div class="stat-row"><span>Mål</span><span>${escapeHtml(o.goal_text || '—')}</span></div>
+      <div class="stat-row"><span>Ukens fokus</span><span>${escapeHtml(o.weekly_focus || '—')}</span></div>
+      <div class="stat-row"><span>Skade</span><span>${escapeHtml(o.injury_notes || '—')}</span></div>
+    </section>
+    <p class="muted tight jump-hint">Full grovplan under <strong>Plan</strong> · status under <strong>Dashboard</strong>.</p>
+  `
+}
+
+function renderSleepCard(sleep, fetchError, detail, periodLabel) {
+  if (!sleep) {
+    return `<section class="section-block"><h2>Søvn</h2><p class="muted">Ingen data.</p></section>`
+  }
+  const badge = fetchError
+    ? `<span class="badge badge-demo">Henting feilet</span>`
+    : sleep.available
+      ? `<span class="badge badge-live">Intervals</span>`
+      : `<span class="badge badge-off">Mangler</span>`
+  const snittLabel = periodLabel ? `Snitt (${periodLabel})` : 'Snitt'
+  return `
+    <section class="section-block">
+      <div class="section-head"><h2>Søvn</h2>${badge}</div>
+      ${fetchError && detail ? `<p class="error tight">${escapeHtml(detail)}</p>` : ''}
+      <div class="stat-row"><span>${escapeHtml(snittLabel)}</span><span>${sleep.avg_hours != null ? `${sleep.avg_hours} t` : '—'}</span></div>
+      <div class="stat-row"><span>Søvnscore</span><span>${sleep.avg_score != null ? sleep.avg_score : '—'}</span></div>
+      <div class="stat-row"><span>Korte netter (&lt;6,5 t)</span><span>${sleep.short_nights ?? '—'}</span></div>
+      <p class="muted tight">${escapeHtml(sleep.note || '')}</p>
+    </section>`
+}
+
+function renderBodyCard(body, hidden) {
+  // When show_body_metrics is off: omit the entire module (no «Skjult» placeholder).
+  if (hidden) return ''
+  if (!body) {
+    return `<section class="section-block"><h2>Kropp</h2><p class="muted">Ingen data.</p></section>`
+  }
+  const badge = body.available
+    ? `<span class="badge badge-live">Wellness</span>`
+    : `<span class="badge badge-off">Mangler</span>`
+  return `
+    <section class="section-block" data-testid="body-metrics">
+      <div class="section-head"><h2>Kropp</h2>${badge}</div>
+      <div class="stat-row"><span>Siste vekt</span><span>${body.latest_weight_kg != null ? `${body.latest_weight_kg} kg` : '—'}</span></div>
+      <div class="stat-row"><span>Fett %</span><span>${body.latest_body_fat_pct != null ? `${body.latest_body_fat_pct} %` : '—'}</span></div>
+      <div class="stat-row"><span>Snitt vekt</span><span>${body.avg_weight_kg != null ? `${body.avg_weight_kg} kg` : '—'}</span></div>
+      <p class="muted tight">${escapeHtml(body.note || '')}</p>
+    </section>`
+}
+
+function periodLabelFromDash(dash) {
+  const p = dash?.period || {}
+  if (p.preset === 'custom' && p.start && p.end) {
+    return `${p.start} – ${p.end}`
+  }
+  const map = { '7d': '7 d', '14d': '14 d', '30d': '30 d', '90d': '90 d' }
+  return map[p.preset] || (p.days != null ? `${p.days} d` : 'periode')
+}
+
+function renderPeriodPicker(dash) {
+  const p = state.dashboardPeriod || { preset: '14d', from: '', to: '' }
+  const active = p.preset || '14d'
+  const presets = [
+    ['7d', '7 d'],
+    ['14d', '14 d'],
+    ['30d', '30 d'],
+    ['90d', '90 d'],
+    ['custom', 'Egen'],
+  ]
+  const chips = presets
+    .map(
+      ([id, lab]) =>
+        `<button type="button" class="period-chip ${active === id ? 'active' : ''}" data-period="${id}" aria-pressed="${active === id ? 'true' : 'false'}">${lab}</button>`
+    )
+    .join('')
+  const win = dash?.period
+  const winLabel =
+    win?.start && win?.end
+      ? `<p class="muted tight period-window">${escapeHtml(win.start)} – ${escapeHtml(win.end)}${win.days != null ? ` · ${win.days} dager` : ''}</p>`
+      : ''
+  const custom =
+    active === 'custom'
+      ? `
+      <div class="period-custom">
+        <div class="field">
+          <label for="period_from">Fra</label>
+          <input type="date" id="period_from" value="${escapeHtml(p.from || '')}" />
+        </div>
+        <div class="field">
+          <label for="period_to">Til</label>
+          <input type="date" id="period_to" value="${escapeHtml(p.to || '')}" />
+        </div>
+        <button type="button" class="btn btn-sm btn-primary" id="period-apply">Vis</button>
+      </div>`
+      : ''
+  return `
+    <section class="section-block period-picker" aria-label="Velg periode">
+      <div class="section-head"><h2>Periode</h2></div>
+      <p class="muted tight">Treningsdata for valgt vindu — separat fra sesongmål.</p>
+      <div class="period-chips" role="group">${chips}</div>
+      ${custom}
+      ${winLabel}
+    </section>`
+}
+
+function renderLoadCard(dash) {
+  const load = dash.load || {}
+  const wl = load.from_wellness || {}
+  const training = dash.training || dash.hours || {}
+  const hours = dash.hours || training
+  const charts = training.charts || {}
+  const volume = charts.volume || { bars: [], bucket: 'day' }
+  const discBars =
+    charts.by_discipline ||
+    (training.disciplines || hours.disciplines || []).map((d) => ({
+      id: d.id,
+      label: d.label,
+      hours: d.hours != null ? d.hours : d.completed_hours,
+    }))
+  const loadSeries = load.series || {}
+  const badge =
+    training.source === 'intervals' || hours.source === 'intervals'
+      ? `<span class="badge badge-live">Intervals</span>`
+      : training.fetch_error || hours.fetch_error
+        ? `<span class="badge badge-demo">Henting feilet</span>`
+        : `<span class="badge badge-demo">Demo</span>`
+  const total =
+    training.total_hours != null
+      ? training.total_hours
+      : hours.total_hours != null
+        ? hours.total_hours
+        : null
+  const actCount = training.activity_count ?? hours.activity_count
+  const label = periodLabelFromDash(dash)
+  const volTitle = volumeBucketTitle(volume.bucket)
+  return `
+    <section class="section-block" data-testid="period-training">
+      <div class="section-head"><h2>Trening (${escapeHtml(label)})</h2>${badge}</div>
+      <div class="stat-row"><span>Totalt</span><span>${total != null ? `${formatHours(total)} t` : '—'}${actCount != null ? ` · ${actCount} økter` : ''}</span></div>
+      <div class="stat-row"><span>CTL</span><span>${wl.ctl != null ? wl.ctl : '—'}</span></div>
+      <div class="stat-row"><span>ATL</span><span>${wl.atl != null ? wl.atl : '—'}</span></div>
+      <div class="stat-row"><span>Readiness</span><span>${wl.readiness != null ? wl.readiness : '—'}</span></div>
+      <p class="muted tight">${escapeHtml(load.note || training.note || '')}</p>
+    </section>
+    <section class="section-block chart-block" data-testid="chart-volume" aria-label="${escapeHtml(volTitle)}">
+      <div class="section-head"><h2>${escapeHtml(volTitle)}</h2></div>
+      ${renderVolumeBars(volume)}
+    </section>
+    <section class="section-block chart-block" data-testid="chart-discipline" aria-label="Timer per disiplin">
+      <div class="section-head"><h2>Per disiplin</h2></div>
+      ${renderDisciplineBars(discBars)}
+    </section>
+    <section class="section-block chart-block" data-testid="chart-load" aria-label="Belastning CTL ATL">
+      <div class="section-head"><h2>Belastning (CTL / ATL)</h2></div>
+      ${renderLoadLines(loadSeries)}
+    </section>`
+}
+
+function renderDashboard() {
+  const dash = state.dashboard
+  const o = state.overview || {}
+  if (!dash) {
+    return `
+      <div class="tab-hero">
+        <p class="brand-mark">Dashboard</p>
+        <h2>Treningsstatus</h2>
+        <p class="muted">Laster… eller koble Intervals under Du.</p>
+      </div>`
+  }
+  const progressForSection = { progress: dash.compliance || {} }
+  const sleepLabel = periodLabelFromDash(dash)
+  return `
+    <div class="tab-hero">
+      <p class="brand-mark">Dashboard</p>
+      <h2>Treningsstatus</h2>
+      <p class="muted">${escapeHtml(dash.uplift_line || 'Timer, søvn og sesongmål — app-beregnet.')}</p>
+    </div>
+    ${renderPeriodPicker(dash)}
+    ${renderLoadCard(dash)}
+    ${renderSleepCard(dash.sleep, dash.wellness_fetch_error, dash.wellness_fetch_error_detail, sleepLabel)}
+    ${renderBodyCard(dash.body, dash.body_hidden || !dash.show_body_metrics)}
+    <p class="compliance-banner" role="note">
+      <strong>Sesongmål &amp; compliance</strong> er uavhengig av periodevalget over.
+      Beregnes i appen (aktiviteter vs sesongmål) og <em>skrives ikke</em> til Intervals.
+    </p>
+    ${renderProgressSection(progressForSection)}
+    ${renderFormCard({ ...(dash.form || {}), ...o })}
+    ${renderPlanStrip(o)}
+  `
+}
+
+function statusLabel(status) {
+  const map = {
+    completed: 'Fullført',
+    skipped: 'Hoppet over',
+    injured: 'Skade',
+    tired: 'For sliten',
+    sick: 'Syk',
+    other: 'Annet',
+  }
+  return map[status] || status || ''
+}
+
+function formatDateChips(dates, { max = 6 } = {}) {
+  const list = (dates || []).filter(Boolean)
+  if (!list.length) return `<span class="muted tight">Ingen datoer</span>`
+  const shown = list.slice(0, max)
+  const extra = list.length - shown.length
+  const chips = shown
+    .map((d) => `<span class="date-chip">${escapeHtml(d)}</span>`)
+    .join('')
+  return `${chips}${extra > 0 ? `<span class="date-chip more">+${extra}</span>` : ''}`
+}
+
+function renderSessionRow(s) {
+  const comp = s.completion
+  const statusBit = comp
+    ? `<span class="badge badge-live">${escapeHtml(statusLabel(comp.status))}</span>`
+    : `<span class="badge badge-off">Ulågget</span>`
+  const dur =
+    s.duration_hours != null ? ` · ${formatHours(s.duration_hours)} t` : ''
+  return `
+    <article class="session-row" data-open-detail="${escapeHtml(s.id)}" role="button" tabindex="0">
+      <div class="session-main">
+        <p class="session-date">${escapeHtml(s.date || '—')} · ${escapeHtml(s.discipline_label || s.type || '')}${escapeHtml(dur)}</p>
+        <h3>${escapeHtml(s.name || 'Økt')}</h3>
+        ${statusBit}
+      </div>
+      <div class="session-actions">
+        <span class="btn btn-sm fake-btn">Åpne</span>
+        <button type="button" class="btn btn-sm secondary" data-open-log="${escapeHtml(s.id)}">Logg</button>
+      </div>
+    </article>`
+}
+
+function renderLibraryCard(item) {
+  const dates = item.dates || []
+  const next = item.next_date || dates[0] || '—'
+  const sid = item.sample_session_id || item.representative_id || ''
+  const preview = item.description_preview
+    ? `<p class="session-preview">${escapeHtml(item.description_preview)}</p>`
+    : ''
+  return `
+    <article class="library-card" data-open-detail="${escapeHtml(sid)}" role="button" tabindex="0">
+      <div class="library-card-top">
+        <p class="session-date">${escapeHtml(item.discipline_label || item.type || '')}${
+          item.occurrence_count > 1
+            ? ` · ${item.occurrence_count} datoer`
+            : next !== '—'
+              ? ` · neste ${escapeHtml(next)}`
+              : ''
+        }</p>
+        <h3>${escapeHtml(item.name || 'Økt')}</h3>
+        ${preview}
+      </div>
+      <div class="date-chip-row" aria-label="Datoer">${formatDateChips(dates)}</div>
+      <div class="session-actions">
+        <span class="btn btn-sm fake-btn">Detaljer</span>
+        <button type="button" class="btn btn-sm secondary" data-open-log="${escapeHtml(sid)}">Logg</button>
+      </div>
+    </article>`
+}
+
+function renderSessionProposalCard() {
+  const proposal = state.workoutProposal
+  const removal = state.workoutRemoval
+  const wPending = state.workoutSync.pending
+  if (wPending) {
+    const sample = (wPending.events || [])
+      .slice(0, 8)
+      .map(
+        (e) =>
+          `<li><code>${escapeHtml(e.start_date_local || e.day || '')}</code> · ${escapeHtml(e.name || e.external_id || '')}</li>`,
+      )
+      .join('')
+    const isDelete = (wPending.op || '') === 'delete'
+    return `
+      <div class="confirm-card" role="dialog" aria-label="Bekreft økt på Intervals">
+        <p><strong>${escapeHtml(wPending.message || 'Bekreft økt-sync')}</strong></p>
+        <p class="muted tight">${escapeHtml(wPending.op || 'workout_push')} · ${wPending.count} hendelse(r)</p>
+        <ul class="sync-sample">${sample}</ul>
+        <div class="sync-actions">
+          <button type="button" class="btn btn-primary" id="workout-confirm-yes" ${state.workoutSync.busy ? 'disabled' : ''}>${
+            isDelete ? 'Ja, slett på Intervals' : 'Ja, sync til Intervals'
+          }</button>
+          <button type="button" class="btn secondary" id="workout-confirm-no" ${state.workoutSync.busy ? 'disabled' : ''}>Avbryt</button>
+        </div>
+        ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
+      </div>`
+  }
+  if (removal) {
+    return `
+      <div class="confirm-card workout-proposal-card">
+        <p><strong>Foreslått fjerning</strong></p>
+        <div class="sync-actions">
+          <button type="button" class="btn btn-primary" id="workout-remove-preview-btn" ${state.workoutSync.busy || !state.intervals.connected ? 'disabled' : ''}>Forhåndsvis sletting</button>
+          <button type="button" class="btn secondary" id="workout-dismiss-btn">Avvis</button>
+        </div>
+      </div>`
+  }
+  if (proposal?.workouts?.length) {
+    const rows = proposal.workouts
+      .map(
+        (w) =>
+          `<li><strong>${escapeHtml(w.date || '')}</strong> · ${escapeHtml(w.name || '')} · ${escapeHtml(w.sport || '')}${
+            w.duration_minutes != null ? ` · ${escapeHtml(String(w.duration_minutes))} min` : ''
+          }</li>`,
+      )
+      .join('')
+    return `
+      <div class="confirm-card workout-proposal-card">
+        <p><strong>Foreslått endring til Intervals</strong></p>
+        <p class="muted tight">Ingenting er synct — forhåndsvis først.</p>
+        <ul class="sync-sample">${rows}</ul>
+        <div class="sync-actions">
+          <button type="button" class="btn btn-primary" id="workout-preview-btn" ${state.workoutSync.busy || !state.intervals.connected ? 'disabled' : ''}>Forhåndsvis sync</button>
+          <button type="button" class="btn secondary" id="workout-dismiss-btn">Avvis</button>
+        </div>
+        ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
+      </div>`
+  }
+  if (state.workoutSync.message) {
+    return `<p class="intervals-status is-ok">${escapeHtml(state.workoutSync.message)}</p>`
+  }
+  return ''
+}
+
+function renderSessionStructure(structure, steps) {
+  const phases = structure?.phases || []
+  if (phases.length) {
+    return phases
+      .map((ph) => {
+        const items = (ph.items || [])
+          .map((it) => `<li>${escapeHtml(it)}</li>`)
+          .join('')
+        return `
+          <div class="structure-phase" data-phase="${escapeHtml(ph.id || '')}">
+            <h4 class="structure-phase-label">${escapeHtml(ph.label || ph.id || '')}</h4>
+            <ol class="coach-steps structure-steps">${items}</ol>
+          </div>`
+      })
+      .join('')
+  }
+  const flat = (steps || []).map((st) => `<li>${escapeHtml(st)}</li>`).join('')
+  return flat ? `<ol class="coach-steps">${flat}</ol>` : ''
+}
+
+function renderSessionDetail() {
+  const d = state.sessionDetail
+  if (!d) return ''
+  const s = d.session || {}
+  const fields = d.editable_fields || {}
+  const statuses = [
+    ['completed', 'Fullført'],
+    ['skipped', 'Hoppet over'],
+    ['injured', 'Skade'],
+    ['tired', 'For sliten'],
+    ['sick', 'Syk'],
+    ['other', 'Annet'],
+  ]
+  const opts = statuses
+    .map(
+      ([v, lab]) =>
+        `<option value="${v}" ${s.completion?.status === v ? 'selected' : ''}>${lab}</option>`,
+    )
+    .join('')
+  const structureHtml = renderSessionStructure(d.structure || d.coach_block?.structure, d.steps)
+  const coachBody = d.coach_block?.body || d.description || ''
+  const occChips = formatDateChips(d.dates || [])
+  const chatBubbles = renderChatBubbles(
+    state.sessionChat.messages,
+    `<p class="muted">F.eks. «kan vi kutte hovedsettet?» eller «gjør den mer spesifikk for Lofoten».</p>`,
+  )
+  const editOpen = state.sessionEditOpen
+  const canEdit = Boolean(d.editable)
+  const sportOpts = [
+    ['bike', 'Sykkel'],
+    ['run', 'Løp'],
+    ['swim', 'Svøm'],
+    ['strength', 'Styrke'],
+    ['other', 'Annet'],
+  ]
+    .map(
+      ([v, lab]) =>
+        `<option value="${v}" ${(fields.sport || s.discipline || '') === v ? 'selected' : ''}>${lab}</option>`,
+    )
+    .join('')
+  const chips = [
+    ['Kutt hovedsett', 'Kan vi kutte hovedsettet litt?'],
+    ['Mer spesifikk', 'Gjør økten mer spesifikk for Lofoten'],
+    ['Plan B', 'Foreslå Plan B hvis jeg er sliten'],
+  ]
+    .map(
+      ([lab, msg]) =>
+        `<button type="button" class="chip session-chat-chip" data-session-chip="${escapeHtml(msg)}">${escapeHtml(lab)}</button>`,
+    )
+    .join('')
+
+  return `
+    <div class="session-detail-view has-sticky-chat" id="session-detail">
+      <div class="section-head">
+        <button type="button" class="btn btn-sm secondary" id="close-session-detail">← Bibliotek</button>
+        <span class="badge ${s.completion ? 'badge-live' : 'badge-off'}">${
+          s.completion ? escapeHtml(statusLabel(s.completion.status)) : 'Ulågget'
+        }</span>
+      </div>
+      <header class="detail-hero">
+        <p class="brand-mark">${escapeHtml(s.discipline_label || s.type || 'Økt')}</p>
+        <h2>${escapeHtml(s.name || 'Økt')}</h2>
+        <p class="muted tight">${escapeHtml(s.date || '—')}${
+          s.duration_hours != null ? ` · ${formatHours(s.duration_hours)} t` : ''
+        }${s.editable ? ' · coach-økt' : ''}</p>
+        <div class="date-chip-row detail-dates" aria-label="Planlagte datoer">${occChips}</div>
+      </header>
+
+      <section class="section-block coach-block">
+        <h3>Struktur</h3>
+        ${
+          structureHtml
+            ? `<div class="session-structure">${structureHtml}</div>`
+            : coachBody
+              ? `<pre class="coach-desc">${escapeHtml(coachBody)}</pre>`
+              : `<p class="muted">Ingen steg lagret på denne økten ennå.</p>`
+        }
+        ${
+          structureHtml && coachBody
+            ? `<details class="coach-raw"><summary>Full beskrivelse</summary><pre class="coach-desc">${escapeHtml(coachBody)}</pre></details>`
+            : ''
+        }
+      </section>
+
+      ${
+        canEdit
+          ? `<section class="section-block">
+        <div class="section-head">
+          <h3>Rediger økt</h3>
+          <button type="button" class="btn btn-sm secondary" id="toggle-session-edit">${editOpen ? 'Skjul' : 'Åpne felter'}</button>
+        </div>
+        ${
+          editOpen
+            ? `<form id="session-edit-form" class="session-edit-form">
+          <div class="field">
+            <label for="edit_name">Tittel</label>
+            <input id="edit_name" name="name" required value="${escapeHtml(fields.name || '')}" />
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="edit_date">Dato</label>
+              <input id="edit_date" name="date" type="date" required value="${escapeHtml(fields.date || '')}" />
+            </div>
+            <div class="field">
+              <label for="edit_sport">Sport</label>
+              <select id="edit_sport" name="sport">${sportOpts}</select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="edit_duration">Varighet (min)</label>
+              <input id="edit_duration" name="duration_minutes" type="number" min="1" value="${
+                fields.duration_minutes != null ? escapeHtml(String(fields.duration_minutes)) : ''
+              }" />
+            </div>
+            <div class="field">
+              <label for="edit_start">Start</label>
+              <input id="edit_start" name="start_time" value="${escapeHtml(fields.start_time || '07:00')}" />
+            </div>
+          </div>
+          <div class="structure-edit">
+            <div class="field">
+              <label for="edit_warmup">Oppvarming (én linje per steg)</label>
+              <textarea id="edit_warmup" name="warmup" rows="2" placeholder="Warmup 10m Z2">${escapeHtml(fields.warmup || '')}</textarea>
+            </div>
+            <div class="field">
+              <label for="edit_main">Hoveddel / intervaller</label>
+              <textarea id="edit_main" name="main" rows="4" placeholder="5x 3 min Z4 / 2 min soft">${escapeHtml(fields.main || '')}</textarea>
+            </div>
+            <div class="field">
+              <label for="edit_cooldown">Nedkjøling</label>
+              <textarea id="edit_cooldown" name="cooldown" rows="2" placeholder="Cooldown 10m">${escapeHtml(fields.cooldown || '')}</textarea>
+            </div>
+          </div>
+          <details class="coach-raw">
+            <summary>Rå beskrivelse (valgfri overstyring)</summary>
+            <div class="field">
+              <label for="edit_description" class="sr-only">Beskrivelse</label>
+              <textarea id="edit_description" name="description" rows="4">${escapeHtml(fields.description || '')}</textarea>
+            </div>
+          </details>
+          <input type="hidden" name="external_id" value="${escapeHtml(fields.external_id || '')}" />
+          <div class="row-actions">
+            <button type="submit" class="btn btn-primary" ${state.workoutSync.busy ? 'disabled' : ''}>Forhåndsvis endring</button>
+          </div>
+          <p class="muted tight">Skriver til Intervals først etter bekreftelse (samme flyt som chat).</p>
+        </form>`
+            : `<p class="muted tight">Endre tittel, dato, steg — eller spør coach under.</p>`
+        }
+      </section>`
+          : `<p class="muted tight">Aktiviteter fra Intervals er skrivebeskyttet her — logg status under.</p>`
+      }
+
+      ${renderSessionProposalCard()}
+
+      <section class="section-block session-chat-block" id="session-chat-block">
+        <h3>Spør coach om denne</h3>
+        <p class="muted tight">Samme coach-chat som Coach-fanen — fokusert på denne økten (${escapeHtml(
+          s.discipline_label || s.discipline || 'sport',
+        )}). Endringer → forhåndsvis → bekreft.</p>
+        <div class="chat-log session-chat-log" id="session-chat-log">${chatBubbles}</div>
+        <div class="session-chat-chips" aria-label="Hurtigspørsmål">${chips}</div>
+        ${state.sessionChat.error ? `<p class="error">${escapeHtml(state.sessionChat.error)}</p>` : ''}
+      </section>
+
+      <section class="section-block" id="session-log-block">
+        <h3>Logg fullføring</h3>
+        <form id="completion-form">
+          <div class="field">
+            <label for="completion_status">Status</label>
+            <select id="completion_status" name="status" required>${opts}</select>
+          </div>
+          <div class="field">
+            <label for="completion_reason">Grunn (valgfri)</label>
+            <input id="completion_reason" name="reason" value="${escapeHtml(s.completion?.reason || '')}" placeholder="f.eks. for kort søvn" />
+          </div>
+          <div class="field">
+            <label for="completion_note">Notat</label>
+            <textarea id="completion_note" name="note" rows="2">${escapeHtml(s.completion?.note || '')}</textarea>
+          </div>
+          <div class="row-actions">
+            <button type="submit" class="btn btn-primary" ${state.busy ? 'disabled' : ''}>Lagre logg</button>
+          </div>
+        </form>
+        ${state.planError ? `<p class="error">${escapeHtml(state.planError)}</p>` : ''}
+        <p class="muted tight">Lagres i appen — ikke i Intervals.</p>
+      </section>
+
+      ${renderChatComposer({
+        formId: 'session-chat-form',
+        inputId: 'session-chat-input',
+        draft: state.sessionChat.draft || '',
+        busy: state.sessionChat.busy,
+        placeholder: 'Spør om denne økten…',
+        sticky: true,
+        ariaLabel: 'Chat om denne økten',
+      })}
+    </div>`
+}
+
+function renderOkterTab() {
+  if (state.sessionDetail) {
+    return renderSessionDetail()
+  }
+  const sess = state.sessions
+  const linked = state.intervals.connected
+  const view = state.sessionsView || 'library'
+  let body = ''
+  if (!sess) {
+    body = `<p class="muted">Laster økter…</p>`
+  } else if (sess.source === 'none') {
+    body = `<p class="muted">Koble Intervals under Du for å se bibliotek og kommende økter.</p>`
+  } else if (sess.fetch_error) {
+    body = `<p class="error">Kunne ikke hente økter: ${escapeHtml(sess.fetch_error_detail || '')}</p>`
+  } else if (view === 'chronological') {
+    const today = (sess.today || []).map(renderSessionRow).join('')
+    const upcoming = (sess.upcoming || []).map(renderSessionRow).join('')
+    const recent = (sess.recent || []).map(renderSessionRow).join('')
+    body = `
+      ${today ? `<section class="section-block"><h2>I dag</h2><div class="session-list">${today}</div></section>` : ''}
+      <section class="section-block">
+        <h2>Kommende</h2>
+        <div class="session-list">${upcoming || `<p class="muted">Ingen planlagte økter i vinduet.</p>`}</div>
+      </section>
+      <section class="section-block">
+        <h2>Siste</h2>
+        <div class="session-list">${recent || `<p class="muted">Ingen aktiviteter i vinduet.</p>`}</div>
+      </section>`
+  } else {
+    const lib = (sess.library || []).map(renderLibraryCard).join('')
+    body = `
+      <section class="section-block">
+        <h2>Bibliotek</h2>
+        <p class="muted tight">Samme økt én gang — datoene den går på listes under.</p>
+        <div class="library-list">${lib || `<p class="muted">Ingen økter i vinduet.</p>`}</div>
+      </section>`
+  }
+  return `
+    <div class="tab-hero">
+      <p class="brand-mark">Økter</p>
+      <h2>Bibliotek &amp; detalj</h2>
+      <p class="muted">Trykk en økt for steg, coach-chat og logg. Endringer til Intervals krever bekreftelse.</p>
+    </div>
+    <div class="view-toggle" role="tablist" aria-label="Visning">
+      <button type="button" class="chip ${view === 'library' ? 'active' : ''}" data-sessions-view="library">Bibliotek</button>
+      <button type="button" class="chip ${view === 'chronological' ? 'active' : ''}" data-sessions-view="chronological">Kommende</button>
+    </div>
+    <p class="compliance-banner muted tight">${escapeHtml(sess?.compliance_note || 'Compliance beregnes i appen, ikke i Intervals.')}</p>
+    <p class="muted tight">${linked ? 'Intervals koblet.' : 'Ikke koblet ennå.'}</p>
+    ${body}
+  `
+}
+
+function renderSyncPanel() {
+  const linked = state.intervals.connected
+  const pending = state.sync.pending
+  const status = state.sync.status
+  let confirmHtml = ''
+  if (pending) {
+    const sample = (pending.events || [])
+      .slice(0, 12)
+      .map((e) => {
+        const cat =
+          e.category === 'WORKOUT' ? 'Økt' : e.category === 'NOTE' ? 'Note' : e.category || ''
+        const line =
+          e.preview_no ||
+          `${(e.day || e.start_date_local || '').toString().slice(0, 10)} · ${e.name || ''}${
+            e.has_zwo || e.filename ? ' · ZWO' : ''
+          }${e.duration_minutes ? ` · ${e.duration_minutes} min` : ''}`
+        return `<li><span class="badge badge-off">${escapeHtml(cat)}</span> ${escapeHtml(line)}</li>`
+      })
+      .join('')
+    const wc = pending.workouts_count
+    const nc = pending.notes_count
+    const zc = pending.zwo_count
+    const meta =
+      wc != null || nc != null
+        ? `${wc ?? 0} økter${zc != null ? ` (${zc} ZWO)` : ''} + ${nc ?? 0} noter`
+        : `${pending.count} hendelser`
+    confirmHtml = `
+      <div class="confirm-card" role="dialog" aria-label="Bekreft Intervals-sync">
+        <p><strong>${escapeHtml(pending.message || 'Bekreft handling')}</strong></p>
+        <p class="muted tight">${escapeHtml(pending.op || '')} · ${escapeHtml(meta)}</p>
+        <ul class="sync-sample">${sample}</ul>
+        ${pending.events_truncated ? `<p class="muted tight">+${pending.events_truncated} til</p>` : ''}
+        <div class="row-actions">
+          <button type="button" class="btn btn-primary" id="sync-confirm-yes" ${state.sync.busy ? 'disabled' : ''}>Ja, sync</button>
+          <button type="button" class="btn secondary" id="sync-confirm-no" ${state.sync.busy ? 'disabled' : ''}>Avbryt</button>
+        </div>
+      </div>`
+  }
+  const statusList = (status?.events || [])
+    .slice(0, 8)
+    .map(
+      (e) =>
+        `<li>${escapeHtml(e.category === 'WORKOUT' ? 'Økt' : e.category === 'NOTE' ? 'Note' : '')} ${escapeHtml(e.name || 'Hendelse')} · <span class="dim">${escapeHtml((e.start_date_local || '').slice(0, 10))}</span></li>`
+    )
+    .join('')
+  return `
+    <section class="section-block sync-panel">
+      <div class="section-head">
+        <h2>Sync til Intervals</h2>
+        <span class="badge ${linked ? 'badge-live' : 'badge-off'}">${linked ? 'Koblet' : 'Ikke koblet'}</span>
+      </div>
+      <p class="muted tight">Pusher <strong>bibliotek-økter</strong> for første <strong>2 uker</strong> — antall ≈ avtalt økter/uke × 2 (samme builder som CLI: ZWO/planned → <code>ll-coach-w-…</code>). Grovplan-noter (<code>ll-coach-…</code>) kan dekke hele sesongen til måldato. Forhåndsvis → Ja/Avbryt. Upsert — sletter ikke andre kalenderhendelser.</p>
+      <div class="sync-actions">
+        <button type="button" class="btn btn-primary" id="sync-push" ${!linked || state.sync.busy ? 'disabled' : ''}>Sync til Intervals</button>
+        <button type="button" class="btn secondary" id="sync-refresh" ${!linked || state.sync.busy ? 'disabled' : ''}>Oppdater status</button>
+        <button type="button" class="btn secondary danger-outline" id="sync-delete" ${!linked || state.sync.busy ? 'disabled' : ''}>Fjern fra Intervals</button>
+      </div>
+      ${state.sync.message ? `<p class="intervals-status is-ok">${escapeHtml(state.sync.message)}</p>` : ''}
+      ${state.sync.error ? `<p class="error">${escapeHtml(state.sync.error)}</p>` : ''}
+      ${confirmHtml}
+      <div class="sync-status-box">
+        <p class="plan-kicker">På Intervals nå</p>
+        ${
+          state.sync.statusError
+            ? `<p class="error">${escapeHtml(state.sync.statusError)}</p>`
+            : status
+              ? `<p class="muted tight">${status.count} agent-hendelser (${escapeHtml(status.window?.start || '')} – ${escapeHtml(status.window?.end || '')})</p>
+                 <ul class="sync-sample">${statusList || '<li class="muted">Ingen</li>'}</ul>`
+              : `<p class="muted tight">Trykk Oppdater for å hente status.</p>`
+        }
+      </div>
+    </section>`
+}
+
+function renderPlanTab() {
+  const o = state.overview || {}
+  return `
+    <div class="tab-hero">
+      <p class="brand-mark">Grovplan</p>
+      <h2>Plan &amp; Intervals</h2>
+      <p class="muted">Makro/meso her — dagsøkter under Økter / Intervals.</p>
+    </div>
+    ${renderPlanStrip(o)}
+    ${renderPlanBlocksEditor()}
+    ${renderSyncPanel()}
+  `
+}
+
+function renderPlanBlocksEditor() {
+  const rows = (state.planBlocks || [])
+    .map(
+      (b, i) => `
+      <div class="block-edit" data-block-id="${escapeHtml(b.id)}">
+        <div class="grid-2">
+          <div class="field"><label>Tittel</label><input name="title" value="${escapeHtml(b.title || '')}" /></div>
+          <div class="field"><label>Uketimer</label><input name="weekly_hours" type="number" step="0.5" value="${b.weekly_hours ?? ''}" /></div>
+        </div>
+        <div class="field"><label>Tema</label><input name="theme" value="${escapeHtml(b.theme || '')}" /></div>
+        <div class="grid-2">
+          <div class="field"><label>Start</label><input name="start_date" type="date" value="${escapeHtml(b.start_date || '')}" /></div>
+          <div class="field"><label>Slutt</label><input name="end_date" type="date" value="${escapeHtml(b.end_date || '')}" /></div>
+        </div>
+        <div class="row-actions">
+          <button type="button" class="btn btn-sm" data-save-block="${escapeHtml(b.id)}">Lagre blokk</button>
+          <button type="button" class="btn btn-sm secondary" data-delete-block="${escapeHtml(b.id)}">Slett</button>
+        </div>
+      </div>`
+    )
+    .join('')
+  return `
+    <div class="section-block">
+      <div class="section-head">
+        <h2>Grovplan / blokker</h2>
+      </div>
+      <p class="muted tight">Makro og meso — ikke ukeplan. Tom liste er OK for MVP.</p>
+      ${rows || `<p class="muted">Ingen blokker ennå.</p>`}
+      ${state.planError ? `<p class="error">${escapeHtml(state.planError)}</p>` : ''}
+      <button type="button" class="btn secondary" id="add-plan-block" ${state.busy ? 'disabled' : ''}>Legg til blokk</button>
+    </div>`
+}
+
+function renderDu() {
+  const a = state.athlete
+  const pers = PERSONALITIES.map(
+    (p) => `<option value="${p.id}" ${a.coach_personality === p.id ? 'selected' : ''}>${p.label}</option>`
+  ).join('')
+  const swatches = ACCENTS.map(
+    (c) =>
+      `<button type="button" class="swatch ${a.accent_color === c ? 'selected' : ''}" data-color="${c}" style="background:${c}"></button>`
+  ).join('')
+  const agreements = (a.agreements || []).join('\n')
+  return `
+    <form id="du-form">
+      <div class="section-block">
+        <h2>Profil</h2>
+        <div class="field profile-id-field">
+          <label for="username_display">Brukernavn</label>
+          <div class="profile-id-row">
+            <input id="username_display" type="text" readonly value="${escapeHtml(a.username || '')}" />
+            <button type="button" class="btn secondary" id="copy-username">Kopier</button>
+          </div>
+          <p class="muted tight">Lagre dette — brukes for «Jeg har allerede profil» på ny enhet.</p>
+        </div>
+        <details class="login-advanced profile-id-advanced">
+          <summary>Profil-ID (avansert)</summary>
+          <div class="field profile-id-field">
+            <label for="profile_id_display">Intern profil-ID</label>
+            <div class="profile-id-row">
+              <input id="profile_id_display" type="text" readonly value="${escapeHtml(a.id || '')}" />
+              <button type="button" class="btn secondary" id="copy-profile-id">Kopier</button>
+            </div>
+            <p class="muted tight">Teknisk ID — trengs sjelden når du har brukernavn.</p>
+          </div>
+        </details>
+        <div class="field"><label>Navn</label><input name="display_name" value="${escapeHtml(a.display_name || '')}" /></div>
+        <div class="grid-2">
+          <div class="field"><label>Trener</label><input name="coach_display_name" value="${escapeHtml(a.coach_display_name || '')}" /></div>
+          <div class="field"><label>Personlighet</label><select name="coach_personality">${pers}</select></div>
+        </div>
+        <div class="field"><label>Aksentfarge</label><div class="swatches" id="du-swatches">${swatches}</div></div>
+      </div>
+      <div class="section-block">
+        <h2>Mål & avtaler</h2>
+        <div class="field"><label>Mål</label><textarea name="goal_text" rows="2">${escapeHtml(a.goal_text || '')}</textarea></div>
+        <div class="field"><label>Ukens fokus</label><input name="weekly_focus" value="${escapeHtml(a.weekly_focus || '')}" /></div>
+        <div class="field"><label>Skade / begrensninger</label><textarea name="injury_notes" rows="2">${escapeHtml(a.injury_notes || '')}</textarea></div>
+        <div class="field"><label>Avtaler (én per linje)</label><textarea name="agreements" rows="3" placeholder="f.eks. Ingen langløp denne uka">${escapeHtml(agreements)}</textarea></div>
+        <div class="field"><label>Notater</label><textarea name="notes" rows="2">${escapeHtml(a.notes || '')}</textarea></div>
+        <div class="field"><label>Form (setup)</label><textarea name="fitness_notes" rows="2" placeholder="f.eks. Form OK — trener allerede 4×/uke">${escapeHtml(a.fitness_notes || '')}</textarea></div>
+        <div class="grid-2">
+          <div class="field"><label>Økter / uke</label><input name="sessions_per_week" type="number" min="2" max="8" value="${a.sessions_per_week ?? ''}" placeholder="4" /></div>
+          <div class="field"><label>Disipliner (kommaseparert)</label><input name="allowed_disciplines" value="${escapeHtml((a.allowed_disciplines || []).join(', '))}" placeholder="run, strength" /></div>
+        </div>
+      </div>
+      <div class="section-block">
+        <h2>Sesongmål (timer)</h2>
+        <p class="muted tight">Volummål for fremskritt / compliance på Dashboard.</p>
+        <div class="grid-2">
+          <div class="field"><label>Svøm (t)</label><input name="season_swim_hours_target" type="number" step="1" min="0" value="${a.season_swim_hours_target ?? ''}" placeholder="100" /></div>
+          <div class="field"><label>Sykkel (t)</label><input name="season_bike_hours_target" type="number" step="1" min="0" value="${a.season_bike_hours_target ?? ''}" placeholder="500" /></div>
+          <div class="field"><label>Løp (t)</label><input name="season_run_hours_target" type="number" step="1" min="0" value="${a.season_run_hours_target ?? ''}" placeholder="150" /></div>
+          <div class="field"><label>Styrke (t)</label><input name="season_strength_hours_target" type="number" step="1" min="0" value="${a.season_strength_hours_target ?? ''}" placeholder="50" /></div>
+        </div>
+        <div class="grid-2">
+          <div class="field"><label>Sesongstart</label><input name="season_start_date" type="date" value="${escapeHtml(a.season_start_date || '')}" /></div>
+          <div class="field"><label>Racedato / mål</label><input name="goal_race_date" type="date" value="${escapeHtml(a.goal_race_date || '')}" /></div>
+        </div>
+      </div>
+      <div class="section-block">
+        <h2>Ernæring / GI</h2>
+        <div class="field">
+          <label>IBS</label>
+          <select name="nutrition_ibs">
+            <option value="no" ${a.nutrition_ibs === 'no' ? 'selected' : ''}>Nei</option>
+            <option value="yes" ${a.nutrition_ibs === 'yes' ? 'selected' : ''}>Ja</option>
+            <option value="unsure" ${a.nutrition_ibs === 'unsure' ? 'selected' : ''}>Usikker</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Gluten</label>
+          <select name="nutrition_gluten">
+            <option value="none" ${a.nutrition_gluten === 'none' ? 'selected' : ''}>Ingen</option>
+            <option value="sensitive" ${a.nutrition_gluten === 'sensitive' ? 'selected' : ''}>Sensitivitet</option>
+            <option value="celiac" ${a.nutrition_gluten === 'celiac' ? 'selected' : ''}>Cøliaki</option>
+          </select>
+        </div>
+        <div class="field">
+          <label><input type="checkbox" name="nutrition_lactose" ${a.nutrition_lactose ? 'checked' : ''} /> Laktoseproblemer</label>
+        </div>
+        <div class="field"><label>Andre restriksjoner</label><textarea name="nutrition_other_restrictions" rows="2">${escapeHtml(a.nutrition_other_restrictions || '')}</textarea></div>
+        <div class="field"><label>Ernæringsnotater</label><textarea name="nutrition_notes" rows="2">${escapeHtml(a.nutrition_notes || '')}</textarea></div>
+      </div>
+      <div class="section-block">
+        <h2>Personvern / visning</h2>
+        <div class="field">
+          <label class="toggle-label">
+            <input type="checkbox" name="show_body_metrics" ${a.show_body_metrics ? 'checked' : ''} />
+            Vis vekt og fett% på Dashboard
+          </label>
+          <p class="muted tight">Slå på for å vise kroppsmål fra wellness/BIA. Standard: av (personvern).</p>
+        </div>
+      </div>
+      <div class="section-block">
+        <h2>Form</h2>
+        <div class="grid-2">
+          <div class="field"><label>Testet FTP</label><input name="ftp_tested" type="number" value="${a.ftp_tested ?? ''}" /></div>
+          <div class="field"><label>FTP-dato</label><input name="ftp_tested_at" type="date" value="${escapeHtml(a.ftp_tested_at || '')}" /></div>
+        </div>
+        <div class="grid-2">
+          <div class="field"><label>Vekt kg</label><input name="weight_kg" type="number" value="${a.weight_kg ?? ''}" /></div>
+          <div class="field"><label>Alder</label><input name="age_years" type="number" value="${a.age_years ?? ''}" /></div>
+        </div>
+      </div>
+      ${state.error && state.tab === 'du' ? `<p class="error">${escapeHtml(state.error)}</p>` : ''}
+      <div class="sync-actions" style="margin-top:0.75rem">
+        <button class="btn btn-primary" type="submit" ${state.busy ? 'disabled' : ''}>Lagre profil</button>
+        <button type="button" class="btn secondary" id="du-talk-coach-btn" ${state.busy ? 'disabled' : ''}>
+          Snakk med treneren om endringene
+        </button>
+      </div>
+      ${
+        state.profileSavedForCoach
+          ? `<p class="muted tight">Profil lagret. Trykk «Snakk med treneren…» for foreslått planjustering (forhåndsvis → bekreft — ingen stille Intervals-skriving).</p>`
+          : `<p class="muted tight">Etter lagring kan du be treneren foreslå planjustering ut fra nye mål/avtaler.</p>`
+      }
+    </form>
+    <form id="intervals-form" class="section-block intervals-section">
+      <div class="section-head">
+        <h2>Intervals</h2>
+        <span class="badge ${state.intervals.connected ? 'badge-live' : 'badge-off'}" id="intervals-status-badge">
+          ${state.intervals.connected ? 'Koblet' : 'Ikke koblet'}
+        </span>
+      </div>
+      <p class="muted tight">
+        ${
+          state.intervals.connected
+            ? `ID ${escapeHtml(state.intervals.intervals_athlete_id || '—')}${
+                state.intervals.api_key_hint
+                  ? ` · nøkkel ${escapeHtml(state.intervals.api_key_hint)}`
+                  : ''
+              }. Nøkkel lagres kun på server.`
+            : 'Hent nøkkel under Intervals → Settings → Developer Settings. Lagres kun på server.'
+        }
+      </p>
+      <div class="field">
+        <label for="intervals_athlete_id">Athlete ID</label>
+        <input id="intervals_athlete_id" name="intervals_athlete_id" autocomplete="off"
+          inputmode="text" enterkeyhint="next"
+          value="${escapeHtml(state.intervals.form_athlete_id || '')}"
+          placeholder="f.eks. i123456" required ${state.intervalsBusy ? 'disabled' : ''} />
+      </div>
+      <div class="field">
+        <label for="intervals_api_key">API-nøkkel</label>
+        <input id="intervals_api_key" name="intervals_api_key" type="password" autocomplete="off"
+          enterkeyhint="done"
+          value="${escapeHtml(state.intervals.form_api_key || '')}"
+          placeholder="${
+            state.intervals.api_key_hint
+              ? `Lagret ${escapeHtml(state.intervals.api_key_hint)} — tomt = behold`
+              : 'Lim inn API-nøkkel'
+          }"
+          ${state.intervals.connected ? '' : 'required'}
+          ${state.intervalsBusy ? 'disabled' : ''} />
+      </div>
+      ${
+        state.intervalsStatus
+          ? `<p class="intervals-status ${state.intervalsError ? 'is-warn' : 'is-ok'}">${escapeHtml(state.intervalsStatus)}</p>`
+          : ''
+      }
+      ${state.intervalsError ? `<p class="error">${escapeHtml(state.intervalsError)}</p>` : ''}
+      <div class="intervals-actions">
+        <button class="btn btn-primary" type="submit" ${state.intervalsBusy ? 'disabled' : ''}>
+          ${state.intervalsBusy ? 'Lagrer…' : 'Lagre'}
+        </button>
+        <button class="btn secondary" type="button" id="intervals-test"
+          ${state.intervalsBusy || !state.intervals.connected ? 'disabled' : ''}>
+          Test tilkobling
+        </button>
+      </div>
+    </form>
+    <div class="section-block settings-danger">
+      <h2>Innstillinger / sesjon</h2>
+      <p class="muted tight">Logg ut tømmer lokal sesjon på denne enheten. Nullstill setup sletter grovplan og mål (krever dobbelt bekreftelse).</p>
+      <div class="setup-nav" style="margin-top:0.75rem">
+        <button type="button" class="btn secondary" id="btn-logout" ${state.busy ? 'disabled' : ''}>Logg ut</button>
+        <button type="button" class="btn secondary danger-outline" id="btn-restart-setup" ${state.busy ? 'disabled' : ''}>
+          Start setup på nytt
+        </button>
+      </div>
+      ${
+        state.resetConfirm === 1
+          ? `<div class="confirm-card" role="dialog" aria-label="Bekreft nullstilling steg 1">
+              <p><strong>Steg 1/2:</strong> Dette sletter grovplan-blokker, sesongmål, avtaler, utøvertype og chat-historikk for profilen.</p>
+              <label class="field tight"><input type="checkbox" id="reset-delete-icu" ${state.resetDeleteIcu ? 'checked' : ''} />
+                Slett også coach-økter på Intervals (<code>ll-coach-*</code> / <code>ll-coach-w-*</code> — ikke hele kalenderen)
+              </label>
+              <div class="sync-actions">
+                <button type="button" class="btn btn-primary" id="reset-confirm-1">Ja, fortsett</button>
+                <button type="button" class="btn secondary" id="reset-cancel">Avbryt</button>
+              </div>
+            </div>`
+          : ''
+      }
+      ${
+        state.resetConfirm === 2
+          ? `<div class="confirm-card" role="dialog" aria-label="Bekreft nullstilling steg 2">
+              <p><strong>Steg 2/2:</strong> Skriv <code>SLETT</code> for å bekrefte.
+              ${
+                state.resetDeleteIcu
+                  ? ' Coach-hendelser på Intervals slettes også (dobbelt bekreftet via avhuking + SLETT).'
+                  : ' Intervals-kalenderen røres ikke.'
+              }</p>
+              <div class="field">
+                <input id="reset-phrase" autocomplete="off" placeholder="SLETT" ${state.busy ? 'disabled' : ''} />
+              </div>
+              <div class="sync-actions">
+                <button type="button" class="btn btn-primary" id="reset-confirm-2" ${state.busy ? 'disabled' : ''}>Nullstill nå</button>
+                <button type="button" class="btn secondary" id="reset-cancel" ${state.busy ? 'disabled' : ''}>Avbryt</button>
+              </div>
+            </div>`
+          : ''
+      }
+      ${state.error && state.tab === 'du' && state.resetConfirm ? `<p class="error">${escapeHtml(state.error)}</p>` : ''}
+    </div>
+  `
+}
+
+function bindApp() {
+  document.querySelectorAll('.tabs button').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      state.tab = btn.dataset.tab
+      state.error = ''
+      state.intervalsError = ''
+      state.intervalsStatus = ''
+      state.planError = ''
+      state.sync.error = ''
+      state.sync.message = ''
+      if (state.tab === 'dashboard') {
+        await refreshOverview()
+        await refreshDashboard()
+      }
+      if (state.tab === 'plan') {
+        await refreshOverview()
+        await refreshPlanBlocks()
+        await refreshIntervals()
+      }
+      if (state.tab === 'okter') {
+        await refreshIntervals()
+        await refreshSessions()
+      }
+      if (state.tab === 'du') {
+        await refreshIntervals()
+      }
+      render()
+    })
+  })
+
+  document.querySelectorAll('[data-period]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const preset = btn.dataset.period
+      if (!preset || state.busy) return
+      state.dashboardPeriod = {
+        ...(state.dashboardPeriod || {}),
+        preset,
+      }
+      if (preset !== 'custom') {
+        state.busy = true
+        render()
+        await refreshDashboard()
+        state.busy = false
+        render()
+        return
+      }
+      // Custom: show date fields; apply on Vis
+      const today = new Date()
+      const iso = (d) => {
+        const y = d.getFullYear()
+        const m = String(d.getMonth() + 1).padStart(2, '0')
+        const day = String(d.getDate()).padStart(2, '0')
+        return `${y}-${m}-${day}`
+      }
+      if (!state.dashboardPeriod.from || !state.dashboardPeriod.to) {
+        const end = iso(today)
+        const start = new Date(today)
+        start.setDate(start.getDate() - 13)
+        state.dashboardPeriod.from = iso(start)
+        state.dashboardPeriod.to = end
+      }
+      render()
+    })
+  })
+
+  document.getElementById('period-apply')?.addEventListener('click', async () => {
+    const fromEl = document.getElementById('period_from')
+    const toEl = document.getElementById('period_to')
+    const from = (fromEl?.value || '').trim()
+    const to = (toEl?.value || '').trim()
+    if (!from || !to) {
+      state.planError = 'Velg både fra- og tildato.'
+      render()
+      return
+    }
+    state.dashboardPeriod = { preset: 'custom', from, to }
+    state.planError = ''
+    state.busy = true
+    render()
+    await refreshDashboard()
+    state.busy = false
+    render()
+  })
+
+  document.getElementById('copy-username')?.addEventListener('click', async () => {
+    const username = state.athlete?.username || ''
+    if (!username) return
+    try {
+      await navigator.clipboard.writeText(username)
+      toast('Brukernavn kopiert')
+    } catch {
+      const input = document.getElementById('username_display')
+      if (input) {
+        input.select()
+        toast('Marker brukernavn og kopier manuelt')
+      }
+    }
+  })
+
+  document.getElementById('copy-profile-id')?.addEventListener('click', async () => {
+    const id = state.athlete?.id || ''
+    if (!id) return
+    try {
+      await navigator.clipboard.writeText(id)
+      toast('Profil-ID kopiert')
+    } catch {
+      const input = document.getElementById('profile_id_display')
+      if (input) {
+        input.select()
+        toast('Marker ID og kopier manuelt')
+      }
+    }
+  })
+
+  const chatForm = document.getElementById('chat-form')
+  chatForm?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const input = document.getElementById('chat-input')
+    const message = (input?.value || '').trim()
+    if (!message || state.busy) return
+    state.chatDraft = ''
+    state.workoutProposal = null
+    state.workoutRemoval = null
+    state.athleteTypeProposal = null
+    state.agreementsProposal = null
+    state.workoutSync.pending = null
+    state.workoutSync.error = ''
+    state.workoutSync.message = ''
+    state.messages.push({ role: 'user', content: message })
+    state.busy = true
+    state.error = ''
+    render()
+    const log = document.getElementById('chat-log')
+    if (log) log.scrollTop = log.scrollHeight
+    try {
+      const data = await sendCoachMessage(message)
+      state.messages.push({ role: 'assistant', content: data.reply })
+      applyChatResponse(data, { mirrorToMain: false })
+    } catch (err) {
+      state.error = err.message || 'Chat feilet'
+      state.messages.pop()
+    } finally {
+      state.busy = false
+      render()
+      const log2 = document.getElementById('chat-log')
+      if (log2) log2.scrollTop = log2.scrollHeight
+    }
+  })
+
+  document.getElementById('workout-dismiss-btn')?.addEventListener('click', () => {
+    state.workoutProposal = null
+    state.workoutRemoval = null
+    state.workoutSync.pending = null
+    state.workoutSync.message = 'Forslag avvist'
+    state.workoutSync.error = ''
+    render()
+  })
+
+  document.getElementById('athlete-type-dismiss-btn')?.addEventListener('click', () => {
+    state.athleteTypeProposal = null
+    render()
+  })
+
+  document.getElementById('agreements-dismiss-btn')?.addEventListener('click', () => {
+    state.agreementsProposal = null
+    render()
+  })
+
+  document.getElementById('agreements-confirm-btn')?.addEventListener('click', async () => {
+    const prop = state.agreementsProposal
+    if (!prop) return
+    state.busy = true
+    state.workoutSync.error = ''
+    render()
+    try {
+      const patch = {}
+      for (const k of [
+        'sessions_per_week',
+        'goal_race_date',
+        'goal_text',
+        'allowed_disciplines',
+        'agreements',
+        'fitness_notes',
+        'schedule_notes',
+      ]) {
+        if (prop[k] != null && prop[k] !== '') patch[k] = prop[k]
+      }
+      const data = await api('/v1/athlete/me', { method: 'PATCH', body: patch })
+      state.athlete = data.athlete
+      state.agreementsProposal = null
+      state.workoutSync.message = 'Treningsavtaler oppdatert'
+      toast(state.workoutSync.message)
+    } catch (err) {
+      state.workoutSync.error = err.message || 'Kunne ikke lagre avtaler'
+    } finally {
+      state.busy = false
+      render()
+    }
+  })
+
+  document.getElementById('plan-adjust-dismiss-btn')?.addEventListener('click', () => {
+    state.planAdjust = null
+    state.workoutSync.error = ''
+    render()
+  })
+
+  document.getElementById('plan-adjust-confirm-btn')?.addEventListener('click', async () => {
+    const pa = state.planAdjust
+    if (!pa?.plan_blocks?.length) return
+    state.busy = true
+    state.workoutSync.error = ''
+    render()
+    try {
+      const data = await api('/v1/athlete/me/plan/adjust/confirm', {
+        method: 'POST',
+        body: {
+          plan_blocks: pa.plan_blocks,
+          athlete_patch: pa.athlete_patch || {},
+          prepare_intervals_sync: false,
+        },
+      })
+      state.athlete = data.athlete
+      state.planAdjust = null
+      state.workoutSync.message = data.message || 'Grovplan oppdatert'
+      toast(state.workoutSync.message)
+      await refreshPlanBlocks()
+      await refreshOverview()
+      if (data.intervals_pending) {
+        state.tab = 'plan'
+        state.sync.pending = data.intervals_pending
+      }
+    } catch (err) {
+      state.workoutSync.error = err.message || 'Kunne ikke bekrefte planjustering'
+    } finally {
+      state.busy = false
+      render()
+    }
+  })
+
+  document.getElementById('athlete-type-confirm-btn')?.addEventListener('click', async () => {
+    const prop = state.athleteTypeProposal
+    if (!prop?.to && !prop?.athlete_type) return
+    state.busy = true
+    state.workoutSync.error = ''
+    render()
+    try {
+      const data = await api('/v1/athlete/me/athlete-type', {
+        method: 'POST',
+        body: {
+          athlete_type: prop.to || prop.athlete_type,
+          reason: prop.reason || '',
+          rebuild_plan_preview: true,
+        },
+      })
+      state.athlete = data.athlete
+      state.athleteTypeProposal = null
+      state.workoutSync.message = data.message || 'Hovedprofil oppdatert'
+      toast(state.workoutSync.message)
+    } catch (err) {
+      state.workoutSync.error = err.message || 'Kunne ikke oppdatere type'
+    } finally {
+      state.busy = false
+      render()
+    }
+  })
+
+  document.getElementById('workout-remove-preview-btn')?.addEventListener('click', async () => {
+    const removal = state.workoutRemoval
+    if (!removal || state.workoutSync.busy) return
+    if (!state.intervals.connected) {
+      state.workoutSync.error = 'Koble Intervals under Du først'
+      render()
+      return
+    }
+    state.workoutSync.busy = true
+    state.workoutSync.error = ''
+    state.workoutSync.message = 'Lager slette-forhåndsvisning…'
+    render()
+    try {
+      const data = await api('/v1/athlete/me/intervals/workouts/remove/preview', {
+        method: 'POST',
+        body: {
+          external_ids: removal.external_ids || [],
+          dates: removal.dates || [],
+          names: removal.names || [],
+        },
+      })
+      state.workoutSync.pending = data
+      state.workoutSync.message = data.message || 'Bekreft sletting'
+    } catch (err) {
+      state.workoutSync.error = err.message || 'Forhåndsvisning feilet'
+      state.workoutSync.message = ''
+    } finally {
+      state.workoutSync.busy = false
+      render()
+    }
+  })
+
+  document.getElementById('workout-preview-btn')?.addEventListener('click', async () => {
+    const workouts = state.workoutProposal?.workouts
+    if (!workouts?.length || state.workoutSync.busy) return
+    if (!state.intervals.connected) {
+      state.workoutSync.error = 'Koble Intervals under Du først'
+      render()
+      return
+    }
+    state.workoutSync.busy = true
+    state.workoutSync.error = ''
+    state.workoutSync.message = 'Lager forhåndsvisning…'
+    render()
+    try {
+      const data = await api('/v1/athlete/me/intervals/workouts/preview', {
+        method: 'POST',
+        body: { workouts },
+      })
+      state.workoutSync.pending = data
+      state.workoutSync.message = data.message || 'Bekreft sync'
+    } catch (err) {
+      state.workoutSync.error = err.message || 'Forhåndsvisning feilet'
+      state.workoutSync.message = ''
+    } finally {
+      state.workoutSync.busy = false
+      render()
+    }
+  })
+
+  document.getElementById('workout-confirm-no')?.addEventListener('click', () => {
+    state.workoutSync.pending = null
+    state.workoutSync.message = 'Avbrutt'
+    state.workoutSync.error = ''
+    render()
+  })
+
+  document.getElementById('workout-confirm-yes')?.addEventListener('click', async () => {
+    const pending = state.workoutSync.pending
+    if (!pending?.pending_id || state.workoutSync.busy) return
+    state.workoutSync.busy = true
+    state.workoutSync.error = ''
+    state.workoutSync.message = 'Syncer…'
+    render()
+    try {
+      const data = await api('/v1/athlete/me/intervals/calendar/confirm', {
+        method: 'POST',
+        body: { pending_id: pending.pending_id },
+      })
+      const n = data.pushed ?? data.deleted ?? pending.count ?? 0
+      state.workoutSync.pending = null
+      state.workoutProposal = null
+      state.workoutRemoval = null
+      state.workoutSync.message =
+        data.op === 'delete'
+          ? `${n} coach-hendelse(r) slettet fra Intervals`
+          : `${n} økt(er) lagt på Intervals-kalenderen`
+      toast(state.workoutSync.message)
+      try {
+        await refreshSessions()
+        const sid = state.sessionDetail?.session?.id
+        if (sid) {
+          state.sessionDetail = await api(`/v1/sessions/${encodeURIComponent(sid)}`)
+        }
+      } catch {
+        /* soft */
+      }
+    } catch (err) {
+      state.workoutSync.error = err.message || 'Bekreftelse feilet'
+      state.workoutSync.message = ''
+    } finally {
+      state.workoutSync.busy = false
+      render()
+    }
+  })
+
+  const findSession = (id) => {
+    const sess = state.sessions || {}
+    for (const bucket of ['today', 'upcoming', 'recent']) {
+      for (const s of sess[bucket] || []) {
+        if (s.id === id || s.external_id === id) return s
+      }
+    }
+    for (const item of sess.library || []) {
+      for (const o of item.occurrences || []) {
+        if (o.id === id || o.external_id === id) return { ...item, ...o, name: item.name }
+      }
+    }
+    return state.sessionDetail?.session?.id === id
+      ? state.sessionDetail.session
+      : null
+  }
+
+  const openSessionDetail = async (sessionId, { scrollLog = false } = {}) => {
+    if (!sessionId) return
+    try {
+      const data = await api(`/v1/sessions/${encodeURIComponent(sessionId)}`)
+      state.sessionDetail = data
+      state.sessionEditOpen = Boolean(data.editable)
+      state.sessionChat = {
+        messages: [],
+        draft: '',
+        busy: false,
+        error: '',
+      }
+      state.planError = ''
+      state.tab = 'okter'
+      render()
+      if (scrollLog) {
+        document.getElementById('session-log-block')?.scrollIntoView({ behavior: 'smooth' })
+      } else {
+        document.getElementById('session-chat-block')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        document.getElementById('session-chat-input')?.focus({ preventScroll: true })
+      }
+    } catch (err) {
+      state.planError = err.message || 'Kunne ikke åpne økt'
+      toast(state.planError)
+      render()
+    }
+  }
+
+  document.querySelectorAll('[data-sessions-view]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.sessionsView = btn.getAttribute('data-sessions-view') || 'library'
+      render()
+    })
+  })
+
+  document.querySelectorAll('[data-open-detail]').forEach((el) => {
+    const open = () => void openSessionDetail(el.getAttribute('data-open-detail'))
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('[data-open-log]')) return
+      open()
+    })
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        open()
+      }
+    })
+  })
+
+  document.querySelectorAll('[data-open-log]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      void openSessionDetail(btn.getAttribute('data-open-log'), { scrollLog: true })
+    })
+  })
+
+  document.getElementById('close-session-detail')?.addEventListener('click', () => {
+    state.sessionDetail = null
+    state.sessionEditOpen = false
+    state.sessionChat = { messages: [], draft: '', busy: false, error: '' }
+    render()
+  })
+
+  document.getElementById('toggle-session-edit')?.addEventListener('click', () => {
+    state.sessionEditOpen = !state.sessionEditOpen
+    render()
+  })
+
+  document.getElementById('session-edit-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const detail = state.sessionDetail?.session
+    if (!detail?.id || state.workoutSync.busy) return
+    const fd = new FormData(e.target)
+    const durationRaw = String(fd.get('duration_minutes') || '').trim()
+    const warmup = String(fd.get('warmup') || '').trim()
+    const main = String(fd.get('main') || '').trim()
+    const cooldown = String(fd.get('cooldown') || '').trim()
+    const rawDesc = String(fd.get('description') || '').trim()
+    const linesFrom = (block, label) => {
+      const rows = block
+        .split('\n')
+        .map((l) => l.replace(/^[-*•]\s*/, '').trim())
+        .filter(Boolean)
+      if (!rows.length) return []
+      return [`${label}:`, ...rows.map((r) => `- ${r}`), '']
+    }
+    let description = rawDesc
+    if (warmup || main || cooldown) {
+      description = [
+        ...linesFrom(warmup, 'Oppvarming'),
+        ...linesFrom(main, 'Hoveddel'),
+        ...linesFrom(cooldown, 'Nedkjøling'),
+      ]
+        .join('\n')
+        .trim()
+      // Keep raw coach prose above intervals block if it looked like planned format
+      if (rawDesc && rawDesc.includes('###')) {
+        const head = rawDesc.split(/\n---\n/)[0].trim()
+        description = `${head}\n\n---\n\n${description}`
+      }
+    }
+    const payload = {
+      name: String(fd.get('name') || '').trim(),
+      date: String(fd.get('date') || '').trim().slice(0, 10),
+      sport: String(fd.get('sport') || 'other'),
+      description,
+      start_time: String(fd.get('start_time') || '07:00'),
+      external_id: String(fd.get('external_id') || '') || null,
+    }
+    if (durationRaw) payload.duration_minutes = Number(durationRaw)
+    state.workoutSync.busy = true
+    state.workoutSync.error = ''
+    render()
+    try {
+      const data = await api(
+        `/v1/sessions/${encodeURIComponent(detail.id)}/edit/preview`,
+        { method: 'POST', body: payload },
+      )
+      state.workoutSync.pending = data
+      state.workoutProposal = null
+      toast('Forhåndsvisning klar — bekreft for å skrive til Intervals')
+    } catch (err) {
+      state.workoutSync.error = err.message || 'Forhåndsvisning feilet'
+    } finally {
+      state.workoutSync.busy = false
+      render()
+    }
+  })
+
+  document.querySelectorAll('[data-session-chip]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const msg = btn.getAttribute('data-session-chip') || ''
+      state.sessionChat.draft = msg
+      render()
+      document.getElementById('session-chat-input')?.focus()
+    })
+  })
+
+  document.getElementById('session-chat-input')?.addEventListener('input', (e) => {
+    state.sessionChat.draft = e.target.value
+  })
+
+  document.getElementById('session-chat-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const detail = state.sessionDetail?.session
+    const input = document.getElementById('session-chat-input')
+    const text = (input?.value || state.sessionChat.draft || '').trim()
+    if (!text || !detail?.id || state.sessionChat.busy) return
+    state.sessionChat.messages = [
+      ...state.sessionChat.messages,
+      { role: 'user', content: text },
+    ]
+    state.sessionChat.draft = ''
+    state.sessionChat.busy = true
+    state.sessionChat.error = ''
+    state.workoutProposal = null
+    state.workoutRemoval = null
+    state.workoutSync.pending = null
+    state.workoutSync.error = ''
+    render()
+    try {
+      // Same /v1/chat + build_system_prompt as Coach-fanen; session_id only focuses context
+      const data = await sendCoachMessage(text, { sessionId: detail.id })
+      state.sessionChat.messages = [
+        ...state.sessionChat.messages,
+        { role: 'assistant', content: data.reply || '…' },
+      ]
+      applyChatResponse(data, { mirrorToMain: true, userText: text })
+      if (!data.proposal_hint && !data.removal_hint) toast('Svar fra coach')
+    } catch (err) {
+      state.sessionChat.error = err.message || 'Samtale feilet'
+    } finally {
+      state.sessionChat.busy = false
+      render()
+      const log = document.getElementById('session-chat-log')
+      if (log) log.scrollTop = log.scrollHeight
+    }
+  })
+
+  document.getElementById('completion-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const detail = state.sessionDetail?.session
+    if (!detail?.id || state.busy) return
+    const fd = new FormData(e.target)
+    const payload = {
+      status: String(fd.get('status') || ''),
+      reason: String(fd.get('reason') || ''),
+      note: String(fd.get('note') || ''),
+      session_name: detail.name || '',
+      session_date: detail.date || null,
+      discipline: detail.discipline || '',
+      append_profile_note: true,
+    }
+    state.busy = true
+    state.planError = ''
+    render()
+    try {
+      await api(`/v1/sessions/${encodeURIComponent(detail.id)}/completion`, {
+        method: 'POST',
+        body: payload,
+      })
+      toast('Øktlogg lagret (app — ikke Intervals)')
+      await refreshSessions()
+      try {
+        state.sessionDetail = await api(
+          `/v1/sessions/${encodeURIComponent(detail.id)}`,
+        )
+      } catch {
+        /* keep prior detail */
+      }
+      const me = await api('/v1/athlete/me')
+      if (me.athlete) state.athlete = me.athlete
+    } catch (err) {
+      state.planError = err.message || 'Lagring feilet'
+    } finally {
+      state.busy = false
+      render()
+    }
+  })
+
+  let pendingAccent = state.athlete?.accent_color
+  document.querySelectorAll('#du-swatches .swatch').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      pendingAccent = btn.dataset.color
+      setAccent(pendingAccent)
+      document.querySelectorAll('#du-swatches .swatch').forEach((b) => b.classList.toggle('selected', b === btn))
+    })
+  })
+
+  const numOrNull = (v) => {
+    const s = String(v ?? '').trim()
+    if (!s) return null
+    const n = Number(s)
+    return Number.isFinite(n) ? n : null
+  }
+
+  const buildDuPayload = (form) => {
+    const fd = new FormData(form)
+    const agreementsRaw = String(fd.get('agreements') || '')
+    return {
+      display_name: String(fd.get('display_name') || '').trim(),
+      coach_display_name: String(fd.get('coach_display_name') || '').trim(),
+      coach_personality: String(fd.get('coach_personality') || 'direkte'),
+      accent_color: pendingAccent || state.athlete.accent_color,
+      goal_text: String(fd.get('goal_text') || ''),
+      weekly_focus: String(fd.get('weekly_focus') || ''),
+      injury_notes: String(fd.get('injury_notes') || ''),
+      notes: String(fd.get('notes') || ''),
+      fitness_notes: String(fd.get('fitness_notes') || ''),
+      sessions_per_week: numOrNull(fd.get('sessions_per_week')),
+      allowed_disciplines: String(fd.get('allowed_disciplines') || '')
+        .split(/[,;/|]+/)
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean),
+      nutrition_ibs: String(fd.get('nutrition_ibs') || 'no'),
+      nutrition_gluten: String(fd.get('nutrition_gluten') || 'none'),
+      nutrition_lactose: fd.get('nutrition_lactose') === 'on',
+      nutrition_other_restrictions: String(fd.get('nutrition_other_restrictions') || ''),
+      nutrition_notes: String(fd.get('nutrition_notes') || ''),
+      agreements: agreementsRaw
+        .split('\n')
+        .map((s) => s.trim())
+        .filter(Boolean),
+      ftp_tested: fd.get('ftp_tested') ? Number(fd.get('ftp_tested')) : null,
+      ftp_tested_at: String(fd.get('ftp_tested_at') || '') || null,
+      weight_kg: fd.get('weight_kg') ? Number(fd.get('weight_kg')) : null,
+      age_years: fd.get('age_years') ? Number(fd.get('age_years')) : null,
+      season_swim_hours_target: numOrNull(fd.get('season_swim_hours_target')),
+      season_bike_hours_target: numOrNull(fd.get('season_bike_hours_target')),
+      season_run_hours_target: numOrNull(fd.get('season_run_hours_target')),
+      season_strength_hours_target: numOrNull(fd.get('season_strength_hours_target')),
+      season_start_date: String(fd.get('season_start_date') || '') || null,
+      goal_race_date: String(fd.get('goal_race_date') || '') || null,
+      show_body_metrics: fd.get('show_body_metrics') === 'on',
+    }
+  }
+
+  const duForm = document.getElementById('du-form')
+  duForm?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const payload = buildDuPayload(duForm)
+    state.busy = true
+    state.error = ''
+    render()
+    try {
+      const data = await api('/v1/athlete/me', { method: 'PATCH', body: payload })
+      state.athlete = data.athlete
+      state.profileSavedForCoach = true
+      setAccent(data.athlete.accent_color)
+      toast('Profil oppdatert')
+      await refreshOverview()
+      await refreshDashboard()
+    } catch (err) {
+      state.error = err.message || 'Lagring feilet'
+    } finally {
+      state.busy = false
+      render()
+    }
+  })
+
+  document.getElementById('du-talk-coach-btn')?.addEventListener('click', async () => {
+    state.busy = true
+    state.error = ''
+    state.workoutSync.error = ''
+    render()
+    try {
+      // Always persist current Du form so sessions_per_week / goal date drive adjust
+      if (duForm) {
+        const payload = buildDuPayload(duForm)
+        const saved = await api('/v1/athlete/me', { method: 'PATCH', body: payload })
+        state.athlete = saved.athlete
+        setAccent(saved.athlete.accent_color)
+      }
+      const data = await api('/v1/athlete/me/plan/adjust/preview', {
+        method: 'POST',
+        body: { enrich_with_llm: true, prepare_intervals_sync: false },
+      })
+      state.planAdjust = data
+      state.profileSavedForCoach = false
+      state.chatDraft = data.seed_chat_prompt || ''
+      state.tab = 'coach'
+      state.messages.push({
+        role: 'assistant',
+        content:
+          data.coach_note ||
+          'Jeg har laget en forhåndsvisning av justert grovplan ut fra profilen din under Du. Se kortet under — bekreft for å lagre lokalt (Intervals først etter Sync).',
+      })
+      toast('Planjustering klar til bekreftelse')
+    } catch (err) {
+      state.error = err.message || 'Kunne ikke foreslå planjustering'
+      // Still open chat with a seed even if preview failed
+      state.chatDraft =
+        'Jeg har endret mål/avtaler under Du. Kan du foreslå justering av grovplan og kommende økter? Ikke sync Intervals før jeg bekrefter.'
+      state.tab = 'coach'
+    } finally {
+      state.busy = false
+      render()
+    }
+  })
+
+  document.getElementById('add-plan-block')?.addEventListener('click', async () => {
+    state.busy = true
+    state.planError = ''
+    render()
+    try {
+      const today = new Date()
+      const start = today.toISOString().slice(0, 10)
+      const endD = new Date(today)
+      endD.setDate(endD.getDate() + 27)
+      const end = endD.toISOString().slice(0, 10)
+      await api('/v1/athlete/me/plan-blocks', {
+        method: 'POST',
+        body: {
+          title: 'Ny blokk',
+          theme: '',
+          start_date: start,
+          end_date: end,
+          weekly_hours: 8,
+          sort_order: state.planBlocks.length,
+        },
+      })
+      await refreshPlanBlocks()
+      await refreshOverview()
+      toast('Blokk lagt til')
+    } catch (err) {
+      state.planError = err.message || 'Kunne ikke legge til blokk'
+    } finally {
+      state.busy = false
+      render()
+    }
+  })
+
+  document.querySelectorAll('[data-save-block]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-save-block')
+      const wrap = document.querySelector(`.block-edit[data-block-id="${id}"]`)
+      if (!wrap) return
+      const payload = {
+        title: wrap.querySelector('[name="title"]')?.value || '',
+        theme: wrap.querySelector('[name="theme"]')?.value || '',
+        start_date: wrap.querySelector('[name="start_date"]')?.value || null,
+        end_date: wrap.querySelector('[name="end_date"]')?.value || null,
+        weekly_hours: numOrNull(wrap.querySelector('[name="weekly_hours"]')?.value),
+      }
+      state.busy = true
+      state.planError = ''
+      render()
+      try {
+        await api(`/v1/athlete/me/plan-blocks/${id}`, { method: 'PATCH', body: payload })
+        await refreshPlanBlocks()
+        await refreshOverview()
+        toast('Blokk lagret')
+      } catch (err) {
+        state.planError = err.message || 'Kunne ikke lagre blokk'
+      } finally {
+        state.busy = false
+        render()
+      }
+    })
+  })
+
+  document.querySelectorAll('[data-delete-block]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-delete-block')
+      state.busy = true
+      state.planError = ''
+      render()
+      try {
+        await api(`/v1/athlete/me/plan-blocks/${id}`, { method: 'DELETE' })
+        await refreshPlanBlocks()
+        await refreshOverview()
+        toast('Blokk slettet')
+      } catch (err) {
+        state.planError = err.message || 'Kunne ikke slette'
+      } finally {
+        state.busy = false
+        render()
+      }
+    })
+  })
+
+  const applyIntervalsPublic = (data) => {
+    state.intervals.connected = !!data.connected
+    state.intervals.intervals_athlete_id = data.intervals_athlete_id || ''
+    state.intervals.api_key_hint = data.api_key_hint || null
+    state.intervals.form_athlete_id = data.intervals_athlete_id || ''
+    state.intervals.form_api_key = ''
+  }
+
+  const intervalsForm = document.getElementById('intervals-form')
+  intervalsForm?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    if (state.intervalsBusy) return
+    const fd = new FormData(intervalsForm)
+    const payload = {
+      intervals_athlete_id: String(fd.get('intervals_athlete_id') || '').trim(),
+      intervals_api_key: String(fd.get('intervals_api_key') || '').trim(),
+      verify: true,
+    }
+    if (!payload.intervals_athlete_id) {
+      state.intervalsError = 'Athlete ID mangler'
+      state.intervalsStatus = ''
+      render()
+      return
+    }
+    if (!payload.intervals_api_key && !state.intervals.connected) {
+      state.intervalsError = 'API-nøkkel mangler'
+      state.intervalsStatus = ''
+      render()
+      return
+    }
+    state.intervals.form_athlete_id = payload.intervals_athlete_id
+    state.intervals.form_api_key = payload.intervals_api_key
+    state.intervalsBusy = true
+    state.intervalsError = ''
+    state.intervalsStatus = 'Lagrer…'
+    render()
+    try {
+      const data = await api('/v1/athlete/me/intervals', {
+        method: 'PUT',
+        body: payload,
+        timeoutMs: INTERVALS_CLIENT_TIMEOUT_MS,
+      })
+      applyIntervalsPublic(data)
+      if (data.verified === false && data.verify_error) {
+        state.intervalsStatus = `Lagret, men tilkobling feilet: ${data.verify_error}`
+        toast('Lagret — tilkobling feilet')
+      } else if (data.verified) {
+        state.intervalsStatus = 'Lagret og tilkobling OK'
+        toast('Intervals lagret')
+      } else {
+        state.intervalsStatus = 'Lagret'
+        toast('Intervals lagret')
+      }
+      try {
+        await refreshOverview()
+      } catch {
+        /* overview is best-effort after save */
+      }
+    } catch (err) {
+      state.intervalsError = err.message || 'Kunne ikke lagre Intervals'
+      state.intervalsStatus = ''
+    } finally {
+      state.intervalsBusy = false
+      render()
+    }
+  })
+
+  document.getElementById('intervals-test')?.addEventListener('click', async () => {
+    if (state.intervalsBusy || !state.intervals.connected) return
+    state.intervalsBusy = true
+    state.intervalsError = ''
+    state.intervalsStatus = 'Tester tilkobling…'
+    render()
+    try {
+      const data = await api('/v1/athlete/me/intervals/verify', {
+        method: 'POST',
+        timeoutMs: INTERVALS_CLIENT_TIMEOUT_MS,
+      })
+      applyIntervalsPublic(data)
+      if (data.verified) {
+        state.intervalsStatus = 'Tilkobling OK'
+        toast('Tilkobling OK')
+      } else {
+        state.intervalsStatus = `Tilkobling feilet: ${data.verify_error || 'ukjent feil'}`
+        toast('Tilkobling feilet')
+      }
+    } catch (err) {
+      state.intervalsError = err.message || 'Test feilet'
+      state.intervalsStatus = ''
+    } finally {
+      state.intervalsBusy = false
+      render()
+    }
+  })
+
+  const runSyncPreview = async (op) => {
+    if (state.sync.busy || !state.intervals.connected) return
+    state.sync.busy = true
+    state.sync.error = ''
+    state.sync.message = ''
+    state.sync.pending = null
+    render()
+    try {
+      const data = await api('/v1/athlete/me/intervals/calendar/preview', {
+        method: 'POST',
+        body: { op },
+        timeoutMs: 20000,
+      })
+      state.sync.pending = data
+      state.sync.message = data.message || 'Bekreft handling'
+    } catch (err) {
+      state.sync.error = err.message || 'Forhåndsvisning feilet'
+    } finally {
+      state.sync.busy = false
+      render()
+    }
+  }
+
+  document.getElementById('sync-push')?.addEventListener('click', () => runSyncPreview('push'))
+  document.getElementById('sync-delete')?.addEventListener('click', () => runSyncPreview('delete'))
+
+  document.getElementById('sync-refresh')?.addEventListener('click', async () => {
+    if (state.sync.busy || !state.intervals.connected) return
+    state.sync.busy = true
+    state.sync.statusError = ''
+    state.sync.message = 'Henter status…'
+    render()
+    try {
+      const data = await api('/v1/athlete/me/intervals/calendar/status', {
+        timeoutMs: 20000,
+      })
+      state.sync.status = data
+      state.sync.message = `${data.count} agent-noter på Intervals`
+      toast('Status oppdatert')
+    } catch (err) {
+      state.sync.statusError = err.message || 'Status feilet'
+      state.sync.message = ''
+    } finally {
+      state.sync.busy = false
+      render()
+    }
+  })
+
+  document.getElementById('sync-confirm-no')?.addEventListener('click', () => {
+    state.sync.pending = null
+    state.sync.message = 'Avbrutt'
+    render()
+  })
+
+  document.getElementById('sync-confirm-yes')?.addEventListener('click', async () => {
+    const pending = state.sync.pending
+    if (!pending?.pending_id || state.sync.busy) return
+    state.sync.busy = true
+    state.sync.error = ''
+    state.sync.message = 'Kjører…'
+    render()
+    try {
+      const data = await api('/v1/athlete/me/intervals/calendar/confirm', {
+        method: 'POST',
+        body: { pending_id: pending.pending_id },
+        timeoutMs: 120000,
+      })
+      state.sync.pending = null
+      const n = data.pushed ?? data.deleted ?? pending.count
+      state.sync.message =
+        data.op === 'delete'
+          ? `Fjernet ${n} hendelser fra Intervals`
+          : `Synct ${n} hendelser til Intervals`
+      toast(state.sync.message)
+      try {
+        state.sync.status = await api('/v1/athlete/me/intervals/calendar/status', {
+          timeoutMs: 20000,
+        })
+      } catch {
+        /* status best-effort */
+      }
+    } catch (err) {
+      state.sync.error = err.message || 'Bekreftelse feilet'
+      state.sync.message = ''
+    } finally {
+      state.sync.busy = false
+      render()
+    }
+  })
+
+  document.getElementById('btn-logout')?.addEventListener('click', () => {
+    logoutLocal()
+  })
+  document.getElementById('btn-restart-setup')?.addEventListener('click', () => {
+    state.resetConfirm = 1
+    state.resetDeleteIcu = false
+    state.error = ''
+    render()
+  })
+  document.getElementById('reset-cancel')?.addEventListener('click', () => {
+    state.resetConfirm = 0
+    state.resetDeleteIcu = false
+    state.error = ''
+    render()
+  })
+  document.getElementById('reset-delete-icu')?.addEventListener('change', (e) => {
+    state.resetDeleteIcu = Boolean(e.target.checked)
+  })
+  document.getElementById('reset-confirm-1')?.addEventListener('click', () => {
+    const box = document.getElementById('reset-delete-icu')
+    if (box) state.resetDeleteIcu = Boolean(box.checked)
+    state.resetConfirm = 2
+    state.error = ''
+    render()
+  })
+  document.getElementById('reset-confirm-2')?.addEventListener('click', () => {
+    const phrase = (document.getElementById('reset-phrase')?.value || '').trim().toUpperCase()
+    if (phrase !== 'SLETT') {
+      state.error = 'Skriv SLETT (store bokstaver) for å bekrefte.'
+      render()
+      return
+    }
+    void runSetupReset()
+  })
+}
+
+bootstrap().catch((err) => {
+  app.innerHTML = `<div class="onboarding"><h1>Kunne ikke starte</h1><p class="error">${escapeHtml(err.message)}</p><p class="muted">Sjekk at coach-api kjører på port 8000.</p></div>`
+})

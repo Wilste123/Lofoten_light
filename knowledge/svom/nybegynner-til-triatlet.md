@@ -2,6 +2,12 @@
 
 William: **svakeste ben**, men **ikke** ny på idrett generelt — lær raskt med **struktur**, ikke panikk-volum.
 
+## Realisme for nybegynner / lav erfaring
+
+- **Null svøm-erfaring** → Fase 0–1 er uker til måneder, ikke «race om 8 uker med 2 økter totalt».
+- Race-distanse (f.eks. ~1,9 km) forutsetter kontinuerlig svøm-progresjon *og* at øvrige disipliner også trenes — ikke bare én lang økt i uka.
+- Hvis utøveren har **få økter/uke**: prioriter vaner + én disiplin om gangen, eller øk frekvens før du lover tri-mål. Si det rett ut (`coach/feil-og-fixes.md` §9).
+
 ## Fase 0 — Vannkomfort (uke 1–4)
 
 **Mål:** rolig puls, kontinuerlig 200 m uten panikk.

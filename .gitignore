@@ -3,7 +3,15 @@ data/trainingpeaks/exports/*
 !data/trainingpeaks/exports/.gitkeep
 data/intervals/exports/*
 !data/intervals/exports/.gitkeep
+data/coach.db
+data/athletes/*
+!data/athletes/.gitignore
 *.env
 docs/trainingpeaks/api-credentials.md
 __pycache__/
+.pytest_cache/
 reports/wellness/*.png
+services/coach-api/.venv/
+services/coach-api/tests/_tmp/
+apps/coach-web/node_modules/
+apps/coach-web/dist/

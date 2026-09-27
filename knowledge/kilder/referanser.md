@@ -12,10 +12,29 @@
 - [Half Extreme](https://thearctictriple.no/lofoten-triathlon-half-extreme)
 - [Race Manual](https://thearctictriple.no/lofoten-triathlon-half-extreme-race-manual)
 
-## Belastning / skade
+## Belastning / skade / intensitet
 
 - Gabbett TJ. Training-injury prevention paradox. BJSM 2016. https://bjsm.bmj.com/content/50/5/273
-- Science for Sport — ACWR: https://www.scienceforsport.com/acutechronic-workload-ratio/
+- Soligard T et al. IOC consensus: load in sport and risk of injury. BJSM 2016 (PDF i `external/`).
+- Seiler S. What is best practice for training intensity…? Int J Sports Physiol Perform 2010.
+- Stöggl T, Sperlich B. Polarized training… Front Physiol 2014/2015.
+- Mujika I, Padilla S. Scientific bases for precompetition tapering (reviews).
+- Lauersen JB et al. Strength training as injury prevention. BJSM 2014.
+- Foster C et al. Session RPE / monitoring training.
+- ACSM position stands — progressive overload / FITT.
+- Burke / IOC sports nutrition consensus; Jeukendrup — CHO under trening.
+- Watson AM. Sleep and athletic performance. Curr Sports Med Rep 2017.
+
+Science for Sport — ACWR: https://www.scienceforsport.com/acutechronic-workload-ratio/
+
+## Målrealisme / dose
+
+Heuristikk i `coach/maalrealisme.md` bygger på load-konsensus + spesifisitet + at adaptasjon tar tid — ikke en prediksjonsmodell. Tidmål uten nylig test = usikkert.
+
+## Intensitetsfordeling (utholdenhet)
+
+- Seiler S, Tønnessen E. Intervals, Thresholds, and Long Slow Distance: the Role of Intensity and Duration in Endurance Training. Sportscience 2009 — ~80 % lav intensitet hos elite.
+- Praktisk oppsummering i `load-and-intensity.md` og `lop/ukeplaner-lav-frekvens.md` (ukeplaner skal speile dette, ikke «tilfeldig sparse» Man+Lør).
 
 ## Svøm / OWS
 

@@ -4,6 +4,25 @@
 
 **Operativ blokkplan (William):** [`../../plans/blokker-periodisering-2026-2027.md`](../../plans/blokker-periodisering-2026-2027.md)
 
+## Langdistanse-tri — generelle prinsipper (alle utøvere)
+
+Format ~1,9 / 90–100 / 21 km (Half / 70.3 / Extreme). Full IM/Norseman er **ikke** default.
+
+**Prioritering:** kontinuitet → skadefrihet → aerob base → svøm → sykkel-tid → brick → fueling → spesifikt.
+
+| Klar for half-løp | Vent / alternativ |
+|-------------------|-------------------|
+| Svømmekontakt eller planlagt bassengfase | Null svøm uten opplæring |
+| 4–6+ t/uke over måneder | 2 økter + aggressiv dato → `coach/maalrealisme.md` |
+| Aksepterer base før «kul» intensitet | Kun VO2 |
+
+Indikativ base-fordeling (*praksis*): sykkel 45–55 % · løp 20–30 % · svøm 15–25 % · styrke 5–10 %.  
+Intensitet: pyramidal/Z2-tung (Seiler; Stöggl & Sperlich). Brick etter base (`brick-og-overgang.md`). Fueling: Burke/Jeukendrup/IOC nutrition — øv i trening. Taper: Mujika.
+
+Race-fakta Lofoten: `lofoten-half-extreme.md`.
+
+---
+
 ## Årshjul (konseptuelt)
 
 | Måned (relativ) | Fase | Uketime | CTL-trend | Hovedfokus |

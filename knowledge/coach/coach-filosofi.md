@@ -86,3 +86,46 @@ For hver uke agenten skriver til `plans/`:
 Spør før du legger inn en økt: *«Hjelper dette 1,9 km svøm, 100 km sykkel, eller 21 km løp med Tjeldbergtinden etterpå — uten å bryte prioritering 1–3?»* Hvis nei → dropp eller erstatt.
 
 Se også `coach/treneridentitet.md`, `coach/ole-petter-vibekken-referanse.md`, `coach/ukemaler.md` og `coach/feil-og-fixes.md`.
+
+---
+
+## Nybegynner vs trent vs comeback
+
+Ikke bland profilene i samme uke-mal. Signalheuristikk: `knowledge_ctx.detect_athlete_signals` (`fitness_ok` slår `returning`).
+
+| Profil | Første 4–8 uker | Hard start | Cut-back |
+|--------|-----------------|------------|----------|
+| Nybegynner | 2–3 easy + styrke | Uke 6–10 | Hver 2.–3. |
+| Comeback (pause) | Lav *belastning*, høy forståelse | Uke 4–8 | Hver 3. |
+| Form OK / trent | Base fornuftig | Når base finnes | Hver 3.–4. |
+
+Brå load-økning → skaderisiko (IOC 2016; Gabbett). Eks-elite: grenser mot historisk volum — ikke 2019-uke 1. Mål vs dose: `maalrealisme.md`.
+
+## Hvorfor denne uken (forklaring til utøver)
+
+Alltid: **fase · ukens jobb · hvorfor struktur · risiko · suksesskriterium** (2–4 setninger).
+
+> «Base-uke: aerob vane, tre økter med luft, ingen terskel. Risiko: ego på langtur. Suksess: alle tre i snakkefart.»
+
+Ved urealistisk mål: forklar *hvorfor* vi flytter/myker målet (`maalrealisme.md`) — ikke smigre.
+
+Unngå pseudovitenskap: «~10 % over snitt» fremfor falsk ACWR-presisjon; «80/20-retning» fremfor lov; tidsmål som C til test finnes.
+
+## Økt-chat (`focused_session`)
+
+1. Rolle i uka (easy/Q/lang/styrke/brick).  
+2. Hva som er nok i dag (RPE/tid).  
+3. Plan B (vær, verk, tid).  
+4. Endring av Intervals-økt kun ved eksplisitt ønske → `workout_proposal`.  
+
+Ved verk: tilpass load / henvis — ikke diagnostiser (`skader/oversikt-utholdenhet.md`).
+
+## Du → planjustering
+
+1. Les ny profil.  
+2. Kjør **målrealisme** før heroisk mesoplan.  
+3. Samme knowledge-pack som setup.  
+4. Preview → confirm lokalt; Sync = eget steg.  
+5. Konfliktorden: skade → avtalt dose → målrealisme → fase → notat → textbook.
+
+Anti-mønstre: stille ICU-write; bytte athlete_type uten bekreftelse; fylle svøm når avtalen er løp+styrke; godkjenne aggressivt race på 2 økter «for motivasjon».

@@ -1,37 +1,44 @@
 # Kunnskapsbase — treningscoach (utvidet)
 
-Referanse for **topp-coach**-agenten. Alt skal kunne brukes til **konkrete ukeplaner** for William (Half Extreme 2027, 750–800 t/år, comeback-MSK).
+Referanse for **topp-coach**-agenten og web-MVP (setup / plan / session-chat).
+Alt skal kunne brukes til **konkrete ukeplaner** — evidensbasert der det er vitenskapelige påstander.
 
-## Start her (agent)
+**Vedlikehold:** Utvid **eksisterende** filer fremfor nye overlappende docs. Nye filer kun ved klart gap uten naturlig hjem (nå: `coach/maalrealisme.md`, `lop/maraton-periodisering.md`).
 
-1. `coach/coach-filosofi.md` — tone, beslutningsregler, kvalitetskrav  
-2. `coach/treneridentitet.md` + `coach/ole-petter-vibekken-referanse.md` — hvem treneren er for William  
-3. `docs/athlete/profile.md` + `goals.md`  
-4. `coach/ukemaler.md` — fasebaserte uker  
-5. `triathlon/periodisering-mot-2027.md` + `lofoten-half-extreme.md`
+**Evidensmarkering** (lett): *konsensus* · *sterk* · *moderat* · *praksis* (heuristikk).
+
+## Start her (agent / retrieval)
+
+1. `coach/coach-filosofi.md` — tone, nybegynner vs trent, «hvorfor uka», økt-chat, planjustering  
+2. `coach/maalrealisme.md` — **mål × dose × tid** (setup alltid)  
+3. `coach/treneridentitet.md` + `ole-petter-vibekken-referanse.md`  
+4. `docs/athlete/profile.md` + `goals.md`  
+5. `load-and-intensity.md` — soner, 80/20, periodisering base→taper, deload  
+6. `coach/ukemaler.md` / `lop/ukeplaner-lav-frekvens.md` / disiplinfiler  
+
+Retrieval: `services/coach-api/knowledge_ctx.py` (CORE_* + CONDITIONAL_PACKS).
 
 ## Indeks
 
-| Mappe | Innhold |
-|-------|---------|
-| **[coach/](coach/)** | Filosofi, treneridentitet (OPV-modell), `opv-nokkelokter.md`, ukemaler, typiske feil |
-| [ernaring/](ernaring/) | Daglig, fueling, race |
-| [skader/](skader/) | ACWR, styrkeprogram, løp, oversikt |
-| [svom/](svom/) | Faser 0–3, øktbibliotek, OWS/kulde |
-| [sykkel/](sykkel/) | Langtur, motivasjon, intervall-presets |
-| [lop/](lop/) | Oppbygging, intervallbibliotek, terreng |
-| [utstyr/](utstyr/) | Race checklist, sykkel, vinter |
-| [triathlon/](triathlon/) | Brick, Lofoten, periodisering |
-| [restitusjon/](restitusjon/) | Søvn, sykdom, stress |
-| [mental/](mental/) | Kontinuitet, motivasjon |
-| [kilder/](kilder/) | Lenker + PDF |
-| [load-and-intensity.md](load-and-intensity.md) | TSS, soner, CTL |
+| Mappe / fil | Innhold |
+|-------------|---------|
+| **[coach/](coach/)** | Filosofi, OPV, ukemaler, feil/fixes, generell kondis, **maalrealisme** |
+| [load-and-intensity.md](load-and-intensity.md) | TSS, polarisert/pyramidal, periodisering, deload |
+| [ernaring/](ernaring/) | Daglig, fueling, IBS/gluten |
+| [skader/](skader/) | ACWR, styrke+concurrent, løp, oversikt + load-begrensninger |
+| [svom/](svom/) | Faser, OWS |
+| [sykkel/](sykkel/) | Langtur, intervall |
+| [lop/](lop/) | Oppbygging, **HM**, **maraton**, lav-frekvens (**2–5** økter), styrke+løp |
+| [triathlon/](triathlon/) | Periodisering (inkl. langdistanse-intro), brick, Lofoten |
+| [restitusjon/](restitusjon/) | Søvn, stress, deload-triggers |
+| [mental/](mental/) | Kontinuitet |
+| [utstyr/](utstyr/) | Race / vinter |
+| [kilder/](kilder/) | Referanser + PDF |
 
 ## PDF-arkiv
 
-`external/` — IOC belastning/skade, OWS sikkerhet.  
-`./scripts/fetch_knowledge_archives.sh`
+`external/` — IOC belastning/skade, OWS. `./scripts/fetch_knowledge_archives.sh`
 
 ## Vedlikehold
 
-Når William får nye tester eller skader: oppdater `docs/athlete/profile.md` **og** ev. ett avsnitt i relevant `knowledge/`-fil hvis det endrer standard anbefalinger.
+Når William får nye tester/skader: oppdater `docs/athlete/profile.md` **og** ev. relevant `knowledge/`-avsnitt.

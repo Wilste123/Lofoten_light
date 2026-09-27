@@ -28,6 +28,7 @@ from chat_service import (
     extract_workout_proposal,
     extract_workout_removal,
     extract_type_update_proposal,
+    knowledge_meta_for_chat,
 )
 from db import (
     add_message,
@@ -1189,6 +1190,14 @@ def chat(
         config.KNOWLEDGE_DIR,
         overview_stub=overview,
         athletes_dir=config.ATHLETES_DATA_DIR,
+        focused_session=focused,
+        user_message=body.message,
+    )
+    knowledge_meta = knowledge_meta_for_chat(
+        config.KNOWLEDGE_DIR,
+        athlete=athlete,
+        focused_session=focused,
+        user_message=body.message,
     )
     raw_reply = call_llm(
         api_key=config.OPENAI_API_KEY,
@@ -1211,6 +1220,7 @@ def chat(
         "message": asst,
         "sessions_in_context": True,
         "sessions_source": sessions_snap.get("source"),
+        "knowledge": knowledge_meta,
     }
     if focused:
         out["focused_session_id"] = focused.get("id")
@@ -1218,6 +1228,7 @@ def chat(
             "id": focused.get("id"),
             "name": focused.get("name"),
             "date": focused.get("date"),
+            "discipline": focused.get("discipline"),
         }
     if proposal:
         out["workout_proposal"] = proposal

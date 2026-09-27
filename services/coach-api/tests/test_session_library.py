@@ -68,6 +68,51 @@ def test_parse_coach_steps_bullets_and_warmup():
     assert not any("Plan B" in s for s in steps)
 
 
+def test_parse_session_structure_phases():
+    from sessions_service import parse_session_structure
+
+    desc = (
+        "### Fra treneren\n\nRolig dag.\n\n---\n\n"
+        "- Warmup 10m 55-60% FTP\n"
+        "- 5x 3m 95% FTP / 2m soft\n"
+        "- Cooldown 10m 50% FTP\n"
+    )
+    structure = parse_session_structure(desc)
+    ids = [p["id"] for p in structure["phases"]]
+    assert ids == ["warmup", "main", "cooldown"]
+    assert structure["phases"][0]["items"][0].startswith("Warmup")
+    assert any("5x" in i for i in structure["phases"][1]["items"])
+    assert structure["phases"][2]["items"][0].startswith("Cooldown")
+
+
+def test_session_knowledge_paths_inject_sport_pack():
+    from knowledge_ctx import select_knowledge_paths
+
+    bike = {
+        "name": "Easy Z2",
+        "discipline": "bike",
+        "description": "- Warmup\n- 40m Z2\n- Cooldown",
+        "steps": ["Warmup", "40m Z2", "Cooldown"],
+    }
+    paths = select_knowledge_paths(
+        mode="session",
+        focused_session=bike,
+        query_text="Kan vi kutte hovedsettet?",
+    )
+    assert any(p.startswith("sykkel/") for p in paths)
+    assert "coach/coach-filosofi.md" in paths
+
+    run = {
+        "name": "Elghufs 5x4",
+        "discipline": "run",
+        "description": "elghufs staver terreng",
+        "steps": ["Oppvarming", "5x4 elghufs"],
+    }
+    rpaths = select_knowledge_paths(mode="session", focused_session=run)
+    assert any(p.startswith("lop/") for p in rpaths)
+    assert "coach/opv-nokkelokter.md" in rpaths
+
+
 def test_library_key_groups_coach_slug_across_dates():
     a = {
         "external_id": "ll-coach-w-20261001-easyz2-0",
@@ -168,6 +213,8 @@ def test_session_detail_payload_structured():
     detail = session_detail_payload(bundle, bundle["upcoming"][0], today=date(2026, 9, 27))
     assert detail["library_key"].startswith("w:easyz2")
     assert detail["steps"][0] == "Warmup"
+    assert detail["structure"]["phases"]
+    assert detail["editable_fields"]["warmup"]
     assert detail["coach_block"]["title"] == "Fra treneren"
     assert detail["editable"] is True
     assert detail["editable_fields"]["duration_minutes"] == 60
@@ -338,6 +385,11 @@ def test_chat_with_session_id_focus(client):
     data = r.json()
     assert data["focused_session_id"] == "evt:focus"
     assert "focused_session" in captured["system"] or "Easy Z2" in captured["system"]
+    # Knowledge-grounded: bike pack must be in system prompt
+    assert "sykkel/" in captured["system"] or "intervaller-og-sonearbeid" in captured["system"]
+    assert data.get("knowledge", {}).get("mode") == "session"
+    assert data["knowledge"].get("discipline") == "bike"
+    assert any(p.startswith("sykkel/") for p in data["knowledge"].get("paths") or [])
 
 
 def test_session_edit_preview_creates_pending(client):

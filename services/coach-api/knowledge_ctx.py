@@ -48,6 +48,61 @@ ERNARING_CORE = [
     "ernaring/ibs-og-gluten.md",
 ]
 
+# Sport packs for session-detail chat (always inject when focused økt matches)
+SESSION_SPORT_PACKS: dict[str, list[str]] = {
+    "bike": [
+        "sykkel/intervaller-og-sonearbeid.md",
+        "sykkel/kraft-og-utholdenhet.md",
+        "sykkel/ror-sykkel-og-terreng.md",
+        "coach/opv-nokkelokter.md",
+        "coach/intervals-tekst-opv.md",
+    ],
+    "run": [
+        "lop/intervaller-og-fart.md",
+        "lop/terreng-og-fjell.md",
+        "lop/oppbygging-etter-pause.md",
+        "lop/styrke-og-lop.md",
+        "coach/opv-nokkelokter.md",
+    ],
+    "swim": [
+        "svom/trening-og-periodisering.md",
+        "svom/nybegynner-til-triatlet.md",
+        "svom/apent-vann-kulde.md",
+    ],
+    "strength": [
+        "skader/forebygging-styrke-mobilitet.md",
+        "lop/styrke-og-lop.md",
+    ],
+    "other": [
+        "load-and-intensity.md",
+        "coach/ukemaler.md",
+    ],
+}
+
+# Session-type cues → extra files (elghufs, brick, open water, …)
+SESSION_TYPE_PACKS: list[tuple[list[str], list[str]]] = [
+    (
+        ["elghufs", "myr", "staver", "trail", "terreng", "fjell"],
+        ["coach/opv-nokkelokter.md", "lop/terreng-og-fjell.md"],
+    ),
+    (
+        ["brick", "overgang", "kombinert"],
+        ["triathlon/brick-og-overgang.md"],
+    ),
+    (
+        ["ows", "åpent vann", "apent vann", "kulde", "våtdrakt"],
+        ["svom/apent-vann-kulde.md"],
+    ),
+    (
+        ["z4", "terskel", "threshold", "vo2", "intervaller", "crisscross", "18×3", "18x3"],
+        ["sykkel/intervaller-og-sonearbeid.md", "lop/intervaller-og-fart.md", "coach/opv-nokkelokter.md"],
+    ),
+    (
+        ["styrke", "strength", "core", "mobilitet"],
+        ["skader/forebygging-styrke-mobilitet.md", "lop/styrke-og-lop.md"],
+    ),
+]
+
 # Conditional packs (path → trigger keywords, Norwegian + English stems)
 CONDITIONAL_PACKS: list[tuple[list[str], list[str]]] = [
     (
@@ -411,11 +466,47 @@ def _athlete_type_plan_paths(draft: dict[str, Any] | None, blob: str) -> list[st
     return out
 
 
+def _discipline_key(raw: str | None) -> str:
+    d = _norm(raw or "")
+    if d in ("bike", "sykkel", "cycling", "ride"):
+        return "bike"
+    if d in ("run", "løp", "lop", "running", "trail"):
+        return "run"
+    if d in ("swim", "svøm", "svom", "swimming"):
+        return "swim"
+    if d in ("strength", "styrke", "weight", "gym"):
+        return "strength"
+    return "other"
+
+
+def session_query_text(
+    session: dict[str, Any] | None,
+    *,
+    user_message: str = "",
+) -> str:
+    """Build retrieval blob from focused økt + athlete message."""
+    if not session:
+        return user_message or ""
+    bits = [
+        user_message or "",
+        str(session.get("name") or ""),
+        str(session.get("discipline") or ""),
+        str(session.get("discipline_label") or ""),
+        str(session.get("type") or ""),
+        str(session.get("category") or ""),
+        str(session.get("description") or "")[:1200],
+    ]
+    for step in session.get("steps") or []:
+        bits.append(str(step))
+    return " ".join(bits)
+
+
 def select_knowledge_paths(
     *,
     mode: str = "chat",
     query_text: str = "",
     draft: dict[str, Any] | None = None,
+    focused_session: dict[str, Any] | None = None,
     max_conditional: int = 10,
 ) -> list[str]:
     """Ordered unique relative paths under knowledge/."""
@@ -423,6 +514,8 @@ def select_knowledge_paths(
     paths.extend(CORE_COACH)
 
     blob = _norm(query_text)
+    if focused_session:
+        blob += " " + _norm(session_query_text(focused_session))
     if draft:
         for k in (
             "goal_text",
@@ -439,6 +532,22 @@ def select_knowledge_paths(
 
     if mode == "plan":
         paths.extend(_athlete_type_plan_paths(draft, blob))
+    elif mode == "session":
+        # Session-detail chat: sport pack first, then light type hints
+        disc = _discipline_key(
+            (focused_session or {}).get("discipline")
+            or (focused_session or {}).get("sport")
+            or ""
+        )
+        for p in SESSION_SPORT_PACKS.get(disc, SESSION_SPORT_PACKS["other"]):
+            if p not in paths:
+                paths.append(p)
+        paths.append("load-and-intensity.md")
+        for triggers, files in SESSION_TYPE_PACKS:
+            if any(t in blob for t in triggers):
+                for f in files:
+                    if f not in paths:
+                        paths.append(f)
     elif mode in ("setup", "chat"):
         # Lighter core + type-aware hints
         paths.extend(_athlete_type_plan_paths(draft, blob)[:4])
@@ -452,7 +561,9 @@ def select_knowledge_paths(
             for f in files:
                 if f not in paths and f not in conditional:
                     conditional.append(f)
-    paths.extend(conditional[:max_conditional])
+    # Session mode: allow a few more conditional hits (sport already packed)
+    cap = max_conditional + (4 if mode == "session" else 0)
+    paths.extend(conditional[:cap])
 
     # Deduplicate preserving order
     seen: set[str] = set()
@@ -471,11 +582,13 @@ def load_knowledge_bundle(
     ernaring_budget: int = 2500,
     query_text: str = "",
     draft: dict[str, Any] | None = None,
+    focused_session: dict[str, Any] | None = None,
     mode: str = "chat",
     total_budget: int | None = None,
 ) -> str:
-    """Backward-compatible loader; when query/draft given, uses adaptive selection."""
-    if not query_text and not draft:
+    """Backward-compatible loader; when query/draft/session given, uses adaptive selection."""
+    adaptive = bool(query_text or draft or focused_session or mode == "session")
+    if not adaptive:
         # Legacy chat path
         parts: list[str] = []
         per_coach = coach_budget // max(len(CORE_COACH), 1)
@@ -490,8 +603,15 @@ def load_knowledge_bundle(
                 parts.append(f"### {rel}\n{chunk}")
         return "\n\n".join(parts)
 
-    budget = total_budget or (9000 if mode == "plan" else 6500)
-    paths = select_knowledge_paths(mode=mode, query_text=query_text, draft=draft)
+    budget = total_budget or (
+        9000 if mode == "plan" else (7500 if mode == "session" else 6500)
+    )
+    paths = select_knowledge_paths(
+        mode=mode,
+        query_text=query_text,
+        draft=draft,
+        focused_session=focused_session,
+    )
     if not paths:
         return ""
     per = max(400, budget // len(paths))
@@ -511,12 +631,24 @@ def knowledge_selection_meta(
     *,
     query_text: str = "",
     draft: dict[str, Any] | None = None,
+    focused_session: dict[str, Any] | None = None,
     mode: str = "plan",
 ) -> dict[str, Any]:
-    paths = select_knowledge_paths(mode=mode, query_text=query_text, draft=draft)
+    paths = select_knowledge_paths(
+        mode=mode,
+        query_text=query_text,
+        draft=draft,
+        focused_session=focused_session,
+    )
     existing = [p for p in paths if (knowledge_dir / p).is_file()]
+    disc = None
+    if focused_session:
+        disc = _discipline_key(
+            focused_session.get("discipline") or focused_session.get("sport")
+        )
     return {
         "signals": detect_athlete_signals(query_text, draft),
         "paths": existing,
         "mode": mode,
+        "discipline": disc,
     }

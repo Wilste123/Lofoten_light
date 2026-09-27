@@ -861,10 +861,12 @@ Utøvertype (hoveddisiplin): {type_label} ({athlete_type or "general_endurance"}
 
 Regler:
 - Tilpass strukturen til utøveren (nybegynner ≠ comeback ≠ skade ≠ tidsklemma ≠ enkeltidrett).
-- Respekter hoveddisiplin og allowed_disciplines — halvmaraton-løper skal IKKE få swim/bike/run-tri-mal.
+- Respekter hoveddisiplin og allowed_disciplines — halvmaraton-løper / «komme i form»
+  skal IKKE få swim/bike/run-tri-mal.
 - goal_race_date i defaults er fasit for sesongslutt — ikke flytt til ~8 mnd hvis året er 2028+.
 - Form OK / trener allerede N×/uke → første blokk «Base» (ikke Re-etablering).
-- Ikke hardkod Lofoten/William-volum med mindre utøveren ber om det.
+- Ikke hardkod Lofoten/William/Half Extreme/750t med mindre utøveren ber om det.
+- Respekter sessions_per_week — 2 økter/uke er lav frekvens, ikke ukemaler Fase A.
 - Beskytt mot for høyt volum; skade → ACWR-trygg progresjon.
 - Returner KUN en fenced json-blokk:
 ```json
@@ -1304,19 +1306,30 @@ Samle også Intervals-klarhet: foreslå å lime inn athlete ID + API-nøkkel nå
 
 Regler:
 - Still 1–2 spørsmål om gangen. Ikke et langt skjema.
-- Ikke anta Lofoten/William/750t med mindre de sier det.
+- Ikke anta Lofoten/William/750t/Half Extreme med mindre de sier det eksplisitt.
+- **Spør om hovedidrett / disipliner** når utøveren ikke har sagt det
+  (løp, sykkel, svøm, styrke, triatlon, …). Ikke sett athlete_type=triathlete
+  eller allowed_disciplines med svøm+sykkel+løp uten at de ba om flersport.
+- «Komme i form» uten idrett → general_endurance + spør idrett; foreslå løp+styrke
+  som start — ikke Lofoten-tri-uke.
+- Respekter sessions_per_week strengt (2 økter/uke ≠ 7 økter/uke).
 - Ikke diagnostiser skade/GI; tilpass og anbefal fagperson ved behov.
 - Ikke godkjenn urealistiske mål «for motivasjon» — foreslå A/B/C-målhierarki.
-- Når du har nok til en grovplan (mål + omtrent tid/uke eller livssituasjon + helse-status),
-  si at du kan lage forhåndsvisning, og sett ready_for_plan=true i extract.
+- Når du har nok til en grovplan (mål + **hovedidrett/disiplin** + omtrent tid/uke
+  eller livssituasjon + helse-status), si at du kan lage forhåndsvisning, og sett
+  ready_for_plan=true i extract.
+  Mangler disiplin: ready_for_plan=false og spør først.
   Hvis målet fortsatt er urealistisk uten avtalt justering: ready_for_plan=false og forhandl først.
 - Sett athlete_type når du er sikker, f.eks.:
   half_marathon_runner | marathon_runner | runner | cyclist | swimmer |
   triathlete | beginner_multi | general_endurance
+  Default uten klare signaler: general_endurance — aldri triathlete «fordi knowledge
+  handler om Lofoten».
 - Sett sessions_per_week (heltall 2–8) når utøveren sier f.eks. «3 økter i uka» —
   og oppdater feltet hvis dere avtaler et annet tall etter ærlig forhandling.
 - Sett allowed_disciplines som liste når avtalt, f.eks. ["run","strength"]
-  (gyldige: run, bike, swim, strength). Halvmaraton/løper uten tri → ikke svøm/sykkel.
+  (gyldige: run, bike, swim, strength). Halvmaraton/løper/komme-i-form uten tri
+  → ikke svøm/sykkel.
 - Når utøveren nevner år («triatlon 2028»), sett goal_race_date til sen sesong det året
   (f.eks. YYYY-09-15) ELLER spør én gang om eksakt racedato — aldri finn opp ~8 mnd frem.
   Oppdater goal_race_date hvis dere avtaler senere dato.

@@ -587,11 +587,26 @@ def _templates_for_signals(
     run_primary = atype.endswith("runner") or atype == "runner"
     bike_primary = atype == "cyclist"
     swim_primary = atype == "swimmer"
+    # Explicit commercial type only — empty atype keeps legacy multi/rebuild packs
+    # (seeded william / returning tests). general_endurance never inherits ukemaler.
+    general = atype in ("general_endurance", "general")
+    multi = atype in ("triathlete", "beginner_multi") or bool(
+        signals.get("multisport")
+    )
     inj_title, inj_path = injury_strength_session(athlete)
 
     run_strength_only = set(discs) <= {DISC_RUN, DISC_STRENGTH} and DISC_RUN in discs
-    if run_strength_only or (
-        run_primary and DISC_SWIM not in discs and DISC_BIKE not in discs
+    # Commercial / get-in-shape: never inherit William ukemaler swim+bike+run
+    if (
+        run_strength_only
+        or (run_primary and DISC_SWIM not in discs and DISC_BIKE not in discs)
+        or (general and not multi)
+        or (
+            discs
+            and DISC_SWIM not in discs
+            and DISC_BIKE not in discs
+            and DISC_RUN in discs
+        )
     ):
         # Run±strength path — build exactly N from allowed disciplines (knowledge tables)
         sess = sessions_n if sessions_n < 90 else 4

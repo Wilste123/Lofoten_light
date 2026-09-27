@@ -80,9 +80,20 @@ def test_builder_emits_zwo_and_planned_shape():
     ]
     events = build_plan_week_icu_events(
         blocks,
-        signals={"returning": True, "beginner": False, "injury": False},
+        signals={
+            "returning": True,
+            "beginner": False,
+            "injury": False,
+            "multisport": True,
+        },
         weeks=1,
         today=date(2026, 9, 28),
+        athlete={
+            "athlete_type": "triathlete",
+            "goal_text": "triatlon comeback",
+            "sessions_per_week": None,
+            "allowed_disciplines": [],
+        },
     )
     assert len(events) >= 5
     assert all(e["category"] == "WORKOUT" for e in events)
@@ -112,19 +123,26 @@ def test_beginner_differs_from_injury_templates():
     ]
     beg = build_plan_week_icu_events(
         blocks,
-        signals={"beginner": True},
+        signals={"beginner": True, "multisport": True},
         weeks=1,
         today=date(2026, 9, 28),
-        athlete={"display_name": "Ada", "injury_notes": ""},
+        athlete={
+            "display_name": "Ada",
+            "injury_notes": "",
+            "athlete_type": "beginner_multi",
+            "goal_text": "første tri",
+        },
     )
     inj = build_plan_week_icu_events(
         blocks,
-        signals={"injury": True, "beginner": False},
+        signals={"injury": True, "beginner": False, "multisport": True},
         weeks=1,
         today=date(2026, 9, 28),
         athlete={
             "display_name": "William",
             "injury_notes": "isjas og ryggplager",
+            "athlete_type": "triathlete",
+            "goal_text": "triatlon",
         },
     )
     beg_names = {e["name"] for e in beg}
@@ -146,7 +164,11 @@ def test_bundle_includes_notes_and_workouts():
     ]
     bundle = build_plan_sync_bundle(
         blocks,
-        athlete={"notes": "comeback etter pause", "goal_text": "triatlon"},
+        athlete={
+            "notes": "comeback etter pause",
+            "goal_text": "triatlon",
+            "athlete_type": "triathlete",
+        },
         weeks=2,
         today=date(2026, 9, 28),
     )

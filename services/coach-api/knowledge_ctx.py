@@ -14,8 +14,13 @@ import re
 from pathlib import Path
 from typing import Any
 
-# Always-on coaching identity + decision rules
-CORE_COACH = [
+# Commercial / generic always-on — no William/Lofoten lock-in.
+# Honest voice: chat_service.HONEST_COACH_VOICE. Feasibility: CORE_FEASIBILITY.
+# feil-og-fixes is William-profile-heavy; inject via william pack or conditionals.
+CORE_COACH: list[str] = []
+
+# Seeded william / explicit Lofoten–Half Extreme goal only
+CORE_COACH_WILLIAM = [
     "coach/coach-filosofi.md",
     "coach/treneridentitet.md",
     "coach/ole-grenser.md",
@@ -27,7 +32,7 @@ CORE_FEASIBILITY = [
     "coach/maalrealisme.md",
 ]
 
-# Periodization / load — plan generation (tri default)
+# Periodization / load — ONLY when athlete is multi/tri or seeded william
 CORE_PLAN = [
     "coach/maalrealisme.md",
     "triathlon/periodisering-mot-2027.md",
@@ -97,7 +102,7 @@ SESSION_SPORT_PACKS: dict[str, list[str]] = {
     ],
     "other": [
         "load-and-intensity.md",
-        "coach/ukemaler.md",
+        "coach/ukeplaner-generell-utholdenhet.md",
     ],
 }
 
@@ -127,6 +132,7 @@ SESSION_TYPE_PACKS: list[tuple[list[str], list[str]]] = [
 
 # Conditional packs (path → trigger keywords, Norwegian + English stems)
 CONDITIONAL_PACKS: list[tuple[list[str], list[str]]] = [
+    # Generic beginner — NOT automatic triathlon pack
     (
         [
             "nybegynner",
@@ -135,13 +141,30 @@ CONDITIONAL_PACKS: list[tuple[list[str], list[str]]] = [
             "aldri trena",
             "helt ny",
             "første gang",
-            "første tri",
             "beginner",
             "newbie",
             "null erfaring",
             "ingen erfaring",
+            "komme i form",
+            "komme i gang",
+            "utrent",
+        ],
+        [
+            "coach/maalrealisme.md",
+            "mental/kontinuitet-motivasjon.md",
+            "coach/ukeplaner-generell-utholdenhet.md",
+            "lop/ukeplaner-lav-frekvens.md",
+        ],
+    ),
+    # Tri / swim beginner only when multi-sport cues present
+    (
+        [
+            "første tri",
+            "første triatlon",
             "kan ikke svømme",
             "lære å svømme",
+            "nybegynner tri",
+            "beginner tri",
         ],
         [
             "svom/nybegynner-til-triatlet.md",
@@ -213,8 +236,8 @@ CONDITIONAL_PACKS: list[tuple[list[str], list[str]]] = [
         ],
         [
             "coach/maalrealisme.md",
-            "coach/ukemaler.md",
             "lop/ukeplaner-lav-frekvens.md",
+            "coach/ukeplaner-generell-utholdenhet.md",
             "mental/kontinuitet-motivasjon.md",
             "restitusjon/sovn-stress.md",
         ],
@@ -433,7 +456,6 @@ CONDITIONAL_PACKS: list[tuple[list[str], list[str]]] = [
             "load-and-intensity.md",
             "coach/ukeplaner-generell-utholdenhet.md",
             "lop/ukeplaner-lav-frekvens.md",
-            "svom/nybegynner-til-triatlet.md",
         ],
     ),
     (
@@ -469,10 +491,10 @@ CONDITIONAL_PACKS: list[tuple[list[str], list[str]]] = [
         [
             "lofoten",
             "half extreme",
+            "half-extreme",
             "norseman",
-            "extreme",
             "ironman",
-            "half",
+            "halviron",
             "triatlon",
             "triathlon",
             "brick",
@@ -482,6 +504,7 @@ CONDITIONAL_PACKS: list[tuple[list[str], list[str]]] = [
             "triathlon/brick-og-overgang.md",
             "triathlon/periodisering-mot-2027.md",
             "coach/maalrealisme.md",
+            "coach/ukemaler.md",
         ],
     ),
     (
@@ -515,6 +538,40 @@ def _read_trimmed(path: Path, max_chars: int) -> str:
 
 def _norm(text: str) -> str:
     return (text or "").lower()
+
+
+def is_william_seed_or_lofoten_goal(
+    draft: dict[str, Any] | None = None,
+    *,
+    blob: str = "",
+) -> bool:
+    """True only for seeded william or explicit Lofoten / Half Extreme goal.
+
+    Commercial/generic athletes must NOT inherit William CORE_PLAN / ole-grenser.
+    """
+    draft = draft or {}
+    uid = _norm(str(draft.get("username") or ""))
+    aid = _norm(str(draft.get("id") or draft.get("athlete_id") or ""))
+    if uid == "william" or aid in ("william-lofoten", "william"):
+        return True
+    text = blob or ""
+    if not text and draft:
+        for k in (
+            "goal_text",
+            "notes",
+            "background_notes",
+            "schedule_notes",
+            "weekly_focus",
+        ):
+            text += " " + _norm(str(draft.get(k) or ""))
+    text = _norm(text)
+    return bool(
+        re.search(
+            r"lofoten|half\s*extreme|half-extreme|norseman|"
+            r"periodisering-mot-2027|william-lofoten",
+            text,
+        )
+    )
 
 
 def detect_athlete_signals(text: str, draft: dict[str, Any] | None = None) -> dict[str, bool]:
@@ -553,7 +610,8 @@ def detect_athlete_signals(text: str, draft: dict[str, Any] | None = None) -> di
         "beginner": bool(
             re.search(
                 r"nybegynner|aldri trent|helt ny|ingen erfaring|null erfaring|"
-                r"beginner|kan ikke svømme|dårlig form|utrent|ingen base",
+                r"beginner|kan ikke svømme|dårlig form|utrent|ingen base|"
+                r"komme i form|komme i gang",
                 blob,
             )
         )
@@ -582,6 +640,7 @@ def detect_athlete_signals(text: str, draft: dict[str, Any] | None = None) -> di
                 blob,
             )
         ),
+        "william_seed": is_william_seed_or_lofoten_goal(draft, blob=blob),
     }
 
 
@@ -596,9 +655,10 @@ def _athlete_type_plan_paths(draft: dict[str, Any] | None, blob: str) -> list[st
         or "half_marathon" in atype
         or "marathon" in atype
     )
+    william = is_william_seed_or_lofoten_goal(draft, blob=blob)
     multi = bool(
         re.search(r"triatlon|triathlon|lofoten|half\s*extreme|ironman", blob)
-    ) or atype in ("triathlete", "beginner_multi")
+    ) or atype in ("triathlete", "beginner_multi") or william
     low_freq = bool(
         re.search(
             r"3 økter|3 okter|tre økter|2 økter|4 økter|5 økter|fem økter|"
@@ -610,7 +670,8 @@ def _athlete_type_plan_paths(draft: dict[str, Any] | None, blob: str) -> list[st
         str(draft.get("sessions_per_week") or "") in ("2", "3", "4", "5")
     )
 
-    if multi and not run_primary:
+    # William / explicit Lofoten or tri type → William CORE_PLAN
+    if (multi or william) and not run_primary:
         return list(CORE_PLAN)
 
     out: list[str] = []
@@ -622,13 +683,14 @@ def _athlete_type_plan_paths(draft: dict[str, Any] | None, blob: str) -> list[st
         out.extend(CORE_MARATHON_PLAN)
     elif run_primary or re.search(r"\bløper\b|\bløping\b|running", blob):
         out.extend(CORE_RUN_PLAN)
-        if re.search(r"nybegynner|aldri trent|starte å løpe", blob):
+        if re.search(r"nybegynner|aldri trent|starte å løpe|komme i form", blob):
             out.append("lop/nybegynner-lop.md")
         out.append("lop/oppbygging-etter-pause.md")
     elif atype in ("general_endurance", "general", "") or not multi:
         out.extend(CORE_GENERAL_PLAN)
     else:
-        out.extend(CORE_PLAN)
+        # Should not reach for commercial — fail safe to general, not William CORE
+        out.extend(CORE_GENERAL_PLAN)
 
     if low_freq:
         for p in (
@@ -642,8 +704,8 @@ def _athlete_type_plan_paths(draft: dict[str, Any] | None, blob: str) -> list[st
     # Always keep load science
     if "load-and-intensity.md" not in out:
         out.append("load-and-intensity.md")
-    # Tri periodization only when multi
-    if multi and "triathlon/periodisering-mot-2027.md" not in out:
+    # Tri periodization ONLY when multi / william — never default for commercial
+    if (multi or william) and "triathlon/periodisering-mot-2027.md" not in out:
         out.insert(0, "triathlon/periodisering-mot-2027.md")
         if "coach/ukemaler.md" not in out:
             out.insert(1, "coach/ukemaler.md")
@@ -695,9 +757,6 @@ def select_knowledge_paths(
 ) -> list[str]:
     """Ordered unique relative paths under knowledge/."""
     paths: list[str] = []
-    paths.extend(CORE_COACH)
-    paths.extend(CORE_FEASIBILITY)
-
     blob = _norm(query_text)
     if focused_session:
         blob += " " + _norm(session_query_text(focused_session))
@@ -712,8 +771,18 @@ def select_knowledge_paths(
             "athlete_type",
             "allowed_disciplines",
             "sessions_per_week",
+            "username",
+            "id",
+            "athlete_id",
         ):
             blob += " " + _norm(str(draft.get(k) or ""))
+
+    william = is_william_seed_or_lofoten_goal(draft, blob=blob)
+    if william:
+        paths.extend(CORE_COACH_WILLIAM)
+    else:
+        paths.extend(CORE_COACH)
+    paths.extend(CORE_FEASIBILITY)
 
     if mode == "plan":
         paths.extend(_athlete_type_plan_paths(draft, blob))
@@ -791,10 +860,11 @@ def load_knowledge_bundle(
     """Backward-compatible loader; when query/draft/session given, uses adaptive selection."""
     adaptive = bool(query_text or draft or focused_session)
     if not adaptive:
-        # Legacy chat path
+        # Legacy chat path — commercial-safe (no William CORE)
         parts: list[str] = []
-        per_coach = coach_budget // max(len(CORE_COACH), 1)
-        for rel in CORE_COACH:
+        legacy_core = list(CORE_COACH) + list(CORE_FEASIBILITY)
+        per_coach = coach_budget // max(len(legacy_core), 1)
+        for rel in legacy_core:
             chunk = _read_trimmed(knowledge_dir / rel, per_coach)
             if chunk:
                 parts.append(f"### {rel}\n{chunk}")

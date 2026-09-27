@@ -71,12 +71,13 @@ DEFAULT_SESSIONS: dict[str, int | None] = {
     TYPE_RUNNER: 4,
     TYPE_CYCLIST: 5,
     TYPE_SWIMMER: 5,
-    TYPE_TRIATHLETE: None,  # use full ukemaler week
+    TYPE_TRIATHLETE: None,  # use full ukemaler week (william / explicit tri)
     TYPE_BEGINNER_MULTI: 5,
-    TYPE_GENERAL: None,
+    TYPE_GENERAL: 3,  # commercial get-in-shape — never uncapped tri week
 }
 
-# Empty list = no discipline filter (legacy / multi default)
+# Empty list = no discipline filter (legacy multi / william tri default)
+# Commercial general → run+strength until athlete names sports
 DEFAULT_DISCIPLINES: dict[str, list[str]] = {
     TYPE_HALF_MARATHON: [DISC_RUN, DISC_STRENGTH],
     TYPE_MARATHON: [DISC_RUN, DISC_STRENGTH],
@@ -85,7 +86,7 @@ DEFAULT_DISCIPLINES: dict[str, list[str]] = {
     TYPE_SWIMMER: [DISC_SWIM, DISC_STRENGTH, DISC_RUN],
     TYPE_TRIATHLETE: [],  # all
     TYPE_BEGINNER_MULTI: [],
-    TYPE_GENERAL: [],
+    TYPE_GENERAL: [DISC_RUN, DISC_STRENGTH],
 }
 
 MIN_SESSIONS = 2

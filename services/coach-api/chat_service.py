@@ -86,6 +86,9 @@ def _athlete_knowledge_draft(athlete: dict[str, Any]) -> dict[str, Any]:
         "agreements": athlete.get("agreements") or [],
         "goal_race_date": athlete.get("goal_race_date"),
         "weekly_hours_target": athlete.get("weekly_hours_target"),
+        "username": athlete.get("username") or "",
+        "id": athlete.get("id") or "",
+        "athlete_id": athlete.get("id") or "",
     }
 
 
@@ -176,6 +179,7 @@ Regler:
 - Ros kontinuitet og smarte valg — ikke hero-TSS.
 - Ikke still medisinsk diagnose. Ved smerte/GI: tilpass råd og anbefal fagperson ved behov.
 - Ikke anta Williams historikk med mindre det står i profilen.
+- Ikke anta Lofoten Half Extreme / triatlon 2027 / 750t med mindre utøveren (eller seeded william-profil) har det som mål.
 - Ernæring/IBS: les GI-feltene i profilen; bruk knowledge/ernaring; aldri diagnostiser.
 - Intervals eier øktdetaljer; du eier mål/avtaler/skade/ernæring/form-kontekst.
 - Hvis overblikk mangler ICU-data: si ærlig at belastning krever Intervals-kobling.

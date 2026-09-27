@@ -100,7 +100,7 @@ def test_session_knowledge_paths_inject_sport_pack():
         query_text="Kan vi kutte hovedsettet?",
     )
     assert any(p.startswith("sykkel/") for p in paths)
-    assert "coach/coach-filosofi.md" in paths
+    assert "coach/maalrealisme.md" in paths
 
     run = {
         "name": "Elghufs 5x4",

@@ -1,4 +1,9 @@
-"""Single-LLM-call chat — no intent router, no tool loop."""
+"""Single-LLM-call chat — no intent router, no tool loop.
+
+Main Coach-tab chat (`POST /v1/chat`), session-detail chat (same endpoint +
+`session_id`), and setup chat share the same honest coach voice via
+``HONEST_COACH_VOICE`` (imported by setup_plan).
+"""
 
 from __future__ import annotations
 
@@ -19,6 +24,21 @@ PERSONALITY_HINTS = {
     "opv": "Ole Petter Vibekken-inspirert: struktur, krav, ærlig risiko — tilpasset tri/comeback.",
 }
 
+# One coherent voice for ALL chat surfaces (Coach-fane, session-fokus, setup).
+HONEST_COACH_VOICE = """
+Stemme (all chat — ikke tippy):
+- Selvsikker, ærlig, anbefalingsorientert. Én klar anbefaling per svar; ikke «det kommer an på» uten konklusjon.
+- Når mål + erfaring/form/volum/økter-per-uke ikke henger sammen ifølge Knowledge: si det rett ut
+  («dette er ikke realistisk slik det står nå»), begrunn kort, deretter 2–4 konkrete alternativer
+  (flere økter, senere racedato, annet/enklere mål, eller fasert rebuild). Hardkod ikke enkelt-scenario —
+  generaliser fra knowledge (maalrealisme, feil-og-fixes §9, load-and-intensity, lav-frekvens).
+- Be om manglende nøkkelinfo når du trenger det (1–2 spørsmål om gangen): erfaring, nåværende form/volum,
+  tilgjengelige økter/uke, mål-event + dato + målsetning, skader, begrensninger.
+- Når utøveren godtar et alternativ: bekreft avtalen eksplisitt og bruk extract/proposal-feltene så den persisteres
+  (sessions_per_week, goal_race_date, agreements, osv.).
+- Ingen Pondus / tool-loop. Én LLM-respons. Ingen tom motivasjon.
+""".strip()
+
 # Optional structured proposal the UI can preview→confirm onto Intervals.
 _WORKOUT_PROPOSAL_RE = re.compile(
     r"```(?:json\s+)?workout_proposal\s*\n(.*?)```",
@@ -32,6 +52,44 @@ _TYPE_UPDATE_RE = re.compile(
     r"```(?:json\s+)?athlete_type_update\s*\n(.*?)```",
     re.DOTALL | re.IGNORECASE,
 )
+_AGREEMENTS_UPDATE_RE = re.compile(
+    r"```(?:json\s+)?agreements_update\s*\n(.*?)```",
+    re.DOTALL | re.IGNORECASE,
+)
+
+
+def _athlete_knowledge_draft(athlete: dict[str, Any]) -> dict[str, Any]:
+    """Map persisted athlete → draft shape for adaptive knowledge selection."""
+    return {
+        "goal_text": athlete.get("goal_text") or "",
+        "injury_notes": athlete.get("injury_notes") or "",
+        "schedule_notes": athlete.get("schedule_notes") or "",
+        "background_notes": athlete.get("notes") or "",
+        "notes": athlete.get("notes") or "",
+        "coach_respect_notes": athlete.get("coach_style_note") or "",
+        "fitness_notes": athlete.get("fitness_notes") or "",
+        "athlete_type": athlete.get("athlete_type") or "",
+        "allowed_disciplines": athlete.get("allowed_disciplines") or [],
+        "sessions_per_week": athlete.get("sessions_per_week"),
+        "agreements": athlete.get("agreements") or [],
+        "goal_race_date": athlete.get("goal_race_date"),
+        "weekly_hours_target": athlete.get("weekly_hours_target"),
+    }
+
+
+def _athlete_query_blob(athlete: dict[str, Any], extra: str = "") -> str:
+    parts = [
+        str(athlete.get("goal_text") or ""),
+        str(athlete.get("injury_notes") or ""),
+        str(athlete.get("schedule_notes") or ""),
+        str(athlete.get("fitness_notes") or ""),
+        str(athlete.get("notes") or ""),
+        str(athlete.get("athlete_type") or ""),
+        str(athlete.get("sessions_per_week") or ""),
+        " ".join(str(a) for a in (athlete.get("agreements") or [])),
+        extra or "",
+    ]
+    return " ".join(p for p in parts if p)
 
 
 def build_system_prompt(
@@ -41,43 +99,38 @@ def build_system_prompt(
     athletes_dir: Path | None = None,
     query_text: str = "",
 ) -> str:
+    """System prompt for main Coach-tab `/v1/chat` (and session-focused chat)."""
     personality = athlete.get("coach_personality") or "direkte"
     hint = PERSONALITY_HINTS.get(personality, PERSONALITY_HINTS["direkte"])
     coach = athlete.get("coach_display_name") or "Trener"
     name = athlete.get("display_name") or "utøveren"
     profile_md = load_profile_md(athletes_dir or Path("."), athlete)
-    draft = {
-        "goal_text": athlete.get("goal_text") or "",
-        "injury_notes": athlete.get("injury_notes") or "",
-        "schedule_notes": athlete.get("schedule_notes") or "",
-        "background_notes": athlete.get("notes") or "",
-        "notes": athlete.get("notes") or "",
-        "fitness_notes": athlete.get("fitness_notes") or "",
-        "athlete_type": athlete.get("athlete_type") or "",
-        "allowed_disciplines": athlete.get("allowed_disciplines") or "",
-        "sessions_per_week": athlete.get("sessions_per_week") or "",
-    }
-    q = (query_text or "").strip()
+    draft = _athlete_knowledge_draft(athlete)
+    q = (query_text or "").strip() or _athlete_query_blob(athlete)
     if overview_stub and overview_stub.get("focused_session"):
         q = f"{q} denne økten focused økt-detalj".strip()
     knowledge = load_knowledge_bundle(
         knowledge_dir,
-        query_text=q
-        or " ".join(
-            str(draft.get(k) or "")
-            for k in ("goal_text", "athlete_type", "injury_notes", "schedule_notes")
-        ),
+        query_text=q,
         draft=draft,
         mode="chat",
+        total_budget=6500,
     )
     overview_json = json.dumps(overview_stub or {}, ensure_ascii=False)
     atype = athlete.get("athlete_type") or "(ikke satt)"
+    sess = athlete.get("sessions_per_week")
+    sess_line = f"{sess} økter/uke" if sess else "(ikke avtalt)"
+    agreements = athlete.get("agreements") or []
+    agr_line = "; ".join(str(a) for a in agreements[:12]) if agreements else "(ingen)"
 
     return f"""Du er {coach}, personlig utholdenhetstrener for {name}.
 Språk: norsk. Tone: {hint}
+{HONEST_COACH_VOICE}
 Stil-notat fra utøveren: {athlete.get("coach_style_note") or "(ingen)"}
 Nåværende hovedprofil / utøvertype: {atype}
-(Typen er muterbar over tid — f.eks. generell → løper → halvmaraton/maraton når målet blir klart.)
+Avtalt frekvens: {sess_line}
+Avtaler: {agr_line}
+(Typen og avtaler er muterbare — etter ærlig forhandling, foreslå oppdatering og la utøveren bekrefte.)
 
 Regler:
 - Én klar anbefaling; ikke generisk motivasjonsprat.
@@ -88,7 +141,7 @@ Regler:
 - Intervals eier øktdetaljer; du eier mål/avtaler/skade/ernæring/form-kontekst.
 - Hvis overblikk mangler ICU-data: si ærlig at belastning krever Intervals-kobling.
 - «Hva har jeg denne uka?» / kommende økter: bruk feltet sessions i snapshotet (upcoming/today/recent). Ikke finn opp økter.
-- Hvis feltet focused_session finnes i snapshotet: utøveren er i økt-detaljvisning. Svar konkret om DEN økten (beskrivelse/steg). Ikke bytt tema uten at de ber om det.
+- Hvis feltet focused_session finnes i snapshotet: utøveren er i økt-detaljvisning. Svar konkret om DEN økten (beskrivelse/steg). Ikke bytt tema uten at de ber om det. Samme ærlige stemme.
 - Når utøveren ber om å legge inn / endre en konkret økt på Intervals-kalenderen:
   1) Skriv kort råd på norsk.
   2) Avslutt med ÉN fenced code block merket workout_proposal (ikke vanlig json), med:
@@ -106,6 +159,11 @@ Regler:
   2) Fenced block merket athlete_type_update:
      {{"athlete_type":"half_marathon_runner","reason":"…"}}
   3) Utøveren må bekrefte før typen lagres og plan følger ny type.
+- Når ærlig forhandling endrer avtaler (økter/uke, måldato, måltekst, disipliner):
+  1) Oppsummer avtalen klart.
+  2) Fenced block merket agreements_update:
+     {{"sessions_per_week":4,"goal_race_date":"YYYY-MM-DD","goal_text":"…","allowed_disciplines":["run","strength"],"agreements":["4 økter/uke","…"],"reason":"…"}}
+  3) Kun felt som faktisk er avtalt; null/utelat resten. Utøveren bekrefter før lagring.
 - Du kan foreslå planblokker/makro i tekst; grovplan-noter synces under Plan-fanen (ikke via workout_proposal).
 
 ## Profil
@@ -114,7 +172,7 @@ Regler:
 ## Overblikk-snapshot (JSON)
 {overview_json}
 
-## Knowledge (trimmet)
+## Knowledge (trimmet, adaptiv)
 {knowledge}
 """
 
@@ -167,6 +225,7 @@ def extract_workout_proposal(reply: str) -> tuple[str, dict[str, Any] | None]:
     # Strip other fences from display too
     display = _WORKOUT_REMOVAL_RE.sub("", display)
     display = _TYPE_UPDATE_RE.sub("", display)
+    display = _AGREEMENTS_UPDATE_RE.sub("", display)
     return display.strip() or "Her er forslaget — bekreft i appen før det synces til Intervals.", {
         "workouts": cleaned
     }
@@ -183,6 +242,7 @@ def extract_workout_removal(reply: str) -> tuple[str, dict[str, Any] | None]:
     display = (_WORKOUT_REMOVAL_RE.sub("", reply)).strip()
     display = _WORKOUT_PROPOSAL_RE.sub("", display)
     display = _TYPE_UPDATE_RE.sub("", display)
+    display = _AGREEMENTS_UPDATE_RE.sub("", display)
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:
@@ -217,6 +277,7 @@ def extract_type_update_proposal(reply: str) -> tuple[str, dict[str, Any] | None
     display = (_TYPE_UPDATE_RE.sub("", reply)).strip()
     display = _WORKOUT_PROPOSAL_RE.sub("", display)
     display = _WORKOUT_REMOVAL_RE.sub("", display)
+    display = _AGREEMENTS_UPDATE_RE.sub("", display)
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:
@@ -235,6 +296,78 @@ def extract_type_update_proposal(reply: str) -> tuple[str, dict[str, Any] | None
         "confirm_required": True,
         "rewrites_plan": True,
     }
+
+
+def extract_agreements_update(reply: str) -> tuple[str, dict[str, Any] | None]:
+    """Strip agreements_update fence → patch fields for Du-fanen (confirm before save)."""
+    if not reply:
+        return "", None
+    match = _AGREEMENTS_UPDATE_RE.search(reply)
+    if not match:
+        return reply.strip(), None
+    raw = (match.group(1) or "").strip()
+    display = (_AGREEMENTS_UPDATE_RE.sub("", reply)).strip()
+    display = _WORKOUT_PROPOSAL_RE.sub("", display)
+    display = _WORKOUT_REMOVAL_RE.sub("", display)
+    display = _TYPE_UPDATE_RE.sub("", display)
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return display or reply.strip(), None
+    if not isinstance(data, dict):
+        return display or reply.strip(), None
+
+    from athlete_constraints import normalize_disciplines, normalize_sessions_per_week
+
+    patch: dict[str, Any] = {"op": "agreements_update", "confirm_required": True}
+    reason = str(data.get("reason") or "").strip()[:300]
+    if reason:
+        patch["reason"] = reason
+    if data.get("goal_text"):
+        patch["goal_text"] = str(data["goal_text"]).strip()[:500]
+    if data.get("goal_race_date"):
+        patch["goal_race_date"] = str(data["goal_race_date"]).strip()[:10]
+    if data.get("fitness_notes"):
+        patch["fitness_notes"] = str(data["fitness_notes"]).strip()[:500]
+    if data.get("schedule_notes"):
+        patch["schedule_notes"] = str(data["schedule_notes"]).strip()[:500]
+    sess = normalize_sessions_per_week(data.get("sessions_per_week"))
+    if sess is not None:
+        patch["sessions_per_week"] = sess
+    discs = normalize_disciplines(data.get("allowed_disciplines"))
+    if discs:
+        patch["allowed_disciplines"] = discs
+    agr = data.get("agreements")
+    if isinstance(agr, list):
+        cleaned = [str(a).strip()[:200] for a in agr if str(a).strip()]
+        if cleaned:
+            patch["agreements"] = cleaned[:20]
+    # Need at least one real field beyond op/confirm/reason
+    if not any(
+        k in patch
+        for k in (
+            "sessions_per_week",
+            "goal_race_date",
+            "goal_text",
+            "allowed_disciplines",
+            "agreements",
+            "fitness_notes",
+            "schedule_notes",
+        )
+    ):
+        return display or reply.strip(), None
+    summary_bits = []
+    if "sessions_per_week" in patch:
+        summary_bits.append(f"{patch['sessions_per_week']} økter/uke")
+    if "goal_race_date" in patch:
+        summary_bits.append(f"måldato {patch['goal_race_date']}")
+    if "goal_text" in patch:
+        summary_bits.append(patch["goal_text"][:80])
+    patch["message"] = (
+        "Oppdater treningsavtaler: " + (", ".join(summary_bits) if summary_bits else "ny avtale")
+        + "?"
+    )
+    return display.strip() or patch["message"], patch
 
 
 def call_llm(

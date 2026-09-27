@@ -87,6 +87,15 @@ Sykkel: `TSS ≈ timer × IF² × 100` (når power finnes). Løp/svøm: HR- elle
 
 Se `skader/belastningsstyring-acwr.md`. Praktisk: ikke mer enn ~10 % flere timer enn snitt siste 3 uker (unntak: etter recovery-uke).
 
+## Frekvens vs mål (realisme)
+
+Belastning er ikke bare timer — **økter/uke × disipliner × tid til race** må henge sammen. Detaljert matrise: `coach/maalrealisme.md`.
+
+- **2 økter/uke:** kontinuitet/skadebuffer — ikke triathlon-spesifikk progresjon.
+- **3–4 økter/uke:** lav-frekvens base (`lop/ukeplaner-lav-frekvens.md`); én disiplin + styrke, eller svært lett multi.
+- **Triathlon med tre disipliner:** planlegg nok frekvens til at svøm ikke dør (ofte ≥2 svøm/uke når race er målet).
+- **Aggressivt tidsmål + lav load:** si nei til «håpet»; forhandl frekvens, dato eller mål — lagre avtalen.
+
 ## Hard/easy og recovery / deload
 
 | Mønster | Eksempel |

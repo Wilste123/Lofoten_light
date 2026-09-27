@@ -64,9 +64,9 @@ Respons (utdrag): `period`, `training` (timer/økter per disiplin, `daily_hours`
 
 ## Coach chat ↔ Intervals
 
-**READ:** `/v1/chat` henter samme øktliste som Økter-fanen (`list_sessions`) og legger en kompakt `sessions`-strip i LLM-snapshotet. Med `session_id` legges også `focused_session` (navn, dato, beskrivelse/steg) inn — brukt av detaljvisningens chat.
+**READ:** `/v1/chat` (hovedchat nederst på Coach-fanen) henter samme øktliste som Økter-fanen (`list_sessions`) og legger en kompakt `sessions`-strip i LLM-snapshotet. Med `session_id` legges også `focused_session` (navn, dato, beskrivelse/steg) inn — brukt av detaljvisningens chat. Begge bruker `build_system_prompt` med **samme ærlige, anbefalingsorienterte stemme** som setup (`HONEST_COACH_VOICE`) + adaptiv knowledge (inkl. realisme ved urealistisk mål/frekvens).
 
-**WRITE (tynn):** Når utøveren ber om å legge inn / endre en økt, kan LLM returnere en `workout_proposal`-blokk. UI viser **Forhåndsvis → Ja, sync** (samme pending_actions-mønster som Plan-noter). Redigering i detaljvisning bruker `POST /v1/sessions/{id}/edit/preview` mot samme confirm-endpoint. Skriver enkle `WORKOUT`-events — **ikke** full ZWO/CSV-push.
+**WRITE (tynn):** Når utøveren ber om å legge inn / endre en økt, kan LLM returnere en `workout_proposal`-blokk. UI viser **Forhåndsvis → Ja, sync** (samme pending_actions-mønster som Plan-noter). Redigering i detaljvisning bruker `POST /v1/sessions/{id}/edit/preview` mot samme confirm-endpoint. Skriver enkle `WORKOUT`-events — **ikke** full ZWO/CSV-push. Forhandlede treningsavtaler: `agreements_update` → bekreft → `PATCH /v1/athlete/me`.
 
 **Ikke:** stille tool-loop, Pondus-orchestrator, eller auto-overwrite av Intervals-økter.
 

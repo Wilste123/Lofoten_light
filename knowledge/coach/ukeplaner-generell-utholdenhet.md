@@ -51,3 +51,7 @@ Ikke default. Kun når utøver har compliance og søvn.
 **6:** samme + én ekstra easy/teknikk — ikke ekstra hard.
 
 Tri-intro på lav dose: fordel svøm/sykkel/løp; maks 1 hard totalt. Long-course på 2–3 økter: se `maalrealisme.md` før du lover half.
+
+## Realisme-sjekk
+
+Hvis utøveren ber om triathlon/Half Extreme (eller lignende) på **2–3 økter/uke** uten base: dette er **generell utholdenhet / rebuild**, ikke tri-periodisering. Forklar gapet, foreslå flere økter eller senere mål, avtal — se `coach/maalrealisme.md` og `feil-og-fixes.md` §9.

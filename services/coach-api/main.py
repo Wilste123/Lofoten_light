@@ -25,6 +25,7 @@ from athlete_type import (
 from chat_service import (
     build_system_prompt,
     call_llm,
+    extract_agreements_update,
     extract_workout_proposal,
     extract_workout_removal,
     extract_type_update_proposal,
@@ -1184,6 +1185,7 @@ def chat(
         if found:
             focused = session_focus_for_chat(found)
             overview["focused_session"] = focused
+    # Main Coach-tab chat + session-detail chat share this prompt (honest voice).
     system = build_system_prompt(
         athlete,
         config.KNOWLEDGE_DIR,
@@ -1201,7 +1203,8 @@ def chat(
     reply_wp, proposal = extract_workout_proposal(raw_reply)
     reply_rm, removal = extract_workout_removal(raw_reply)
     reply_ty, type_prop = extract_type_update_proposal(raw_reply)
-    displays = [d for d in (reply_wp, reply_rm, reply_ty) if d]
+    reply_ag, agr_prop = extract_agreements_update(raw_reply)
+    displays = [d for d in (reply_wp, reply_rm, reply_ty, reply_ag) if d]
     reply = min(displays, key=len) if displays else raw_reply.strip()
 
     with db_session(config.DATABASE_PATH) as conn:
@@ -1253,6 +1256,13 @@ def chat(
             prop["reason"] = type_prop["reason"]
         out["athlete_type_proposal"] = prop
         out["confirm_required"] = True
+    if agr_prop:
+        out["agreements_proposal"] = agr_prop
+        out["confirm_required"] = True
+        out["agreements_hint"] = (
+            "Treneren foreslo oppdaterte treningsavtaler. "
+            "Bekreft for å lagre til Du-fanen — ingen stille endring."
+        )
     return out
 
 

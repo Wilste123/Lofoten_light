@@ -75,6 +75,8 @@ const state = {
   workoutProposal: null,
   workoutRemoval: null,
   athleteTypeProposal: null,
+  /** Chat → negotiated training agreements (confirm → PATCH Du) */
+  agreementsProposal: null,
   /** Du → plan adjust preview (local blocks; Intervals only after Sync confirm) */
   planAdjust: null,
   profileSavedForCoach: false,
@@ -937,6 +939,7 @@ function renderChat() {
   const proposal = state.workoutProposal
   const removal = state.workoutRemoval
   const typeProp = state.athleteTypeProposal
+  const agrProp = state.agreementsProposal
   const wPending = state.workoutSync.pending
   let proposalCard = ''
   if (wPending) {
@@ -988,6 +991,30 @@ function renderChat() {
         <div class="sync-actions">
           <button type="button" class="btn btn-primary" id="athlete-type-confirm-btn" ${state.busy ? 'disabled' : ''}>Bekreft ny type</button>
           <button type="button" class="btn secondary" id="athlete-type-dismiss-btn">Avvis</button>
+        </div>
+        ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
+      </div>`
+  } else if (agrProp) {
+    const agrLines = []
+    if (agrProp.sessions_per_week != null) agrLines.push(`${agrProp.sessions_per_week} økter/uke`)
+    if (agrProp.goal_race_date) agrLines.push(`Måldato ${agrProp.goal_race_date}`)
+    if (agrProp.goal_text) agrLines.push(agrProp.goal_text)
+    if (Array.isArray(agrProp.allowed_disciplines) && agrProp.allowed_disciplines.length) {
+      agrLines.push('Disipliner: ' + agrProp.allowed_disciplines.join(' + '))
+    }
+    if (Array.isArray(agrProp.agreements)) {
+      for (const a of agrProp.agreements.slice(0, 6)) agrLines.push(a)
+    }
+    const agrList = agrLines.map((l) => `<li>${escapeHtml(String(l))}</li>`).join('')
+    proposalCard = `
+      <div class="confirm-card workout-proposal-card" aria-label="Oppdater treningsavtaler">
+        <p><strong>Oppdater treningsavtaler</strong></p>
+        ${agrProp.reason ? `<p class="tight">${escapeHtml(agrProp.reason)}</p>` : ''}
+        <ul class="sync-sample">${agrList}</ul>
+        <p class="muted tight">Bekreft for å lagre til Du-fanen — ingen stille endring.</p>
+        <div class="sync-actions">
+          <button type="button" class="btn btn-primary" id="agreements-confirm-btn" ${state.busy ? 'disabled' : ''}>Bekreft avtaler</button>
+          <button type="button" class="btn secondary" id="agreements-dismiss-btn">Avvis</button>
         </div>
         ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
       </div>`
@@ -2241,6 +2268,7 @@ function bindApp() {
     state.workoutProposal = null
     state.workoutRemoval = null
     state.athleteTypeProposal = null
+    state.agreementsProposal = null
     state.workoutSync.pending = null
     state.workoutSync.error = ''
     state.workoutSync.message = ''
@@ -2263,6 +2291,10 @@ function bindApp() {
       }
       if (data.athlete_type_proposal) {
         state.athleteTypeProposal = data.athlete_type_proposal
+      }
+      if (data.agreements_proposal) {
+        state.agreementsProposal = data.agreements_proposal
+        if (data.agreements_hint) toast(data.agreements_hint)
       }
     } catch (err) {
       state.error = err.message || 'Chat feilet'
@@ -2287,6 +2319,43 @@ function bindApp() {
   document.getElementById('athlete-type-dismiss-btn')?.addEventListener('click', () => {
     state.athleteTypeProposal = null
     render()
+  })
+
+  document.getElementById('agreements-dismiss-btn')?.addEventListener('click', () => {
+    state.agreementsProposal = null
+    render()
+  })
+
+  document.getElementById('agreements-confirm-btn')?.addEventListener('click', async () => {
+    const prop = state.agreementsProposal
+    if (!prop) return
+    state.busy = true
+    state.workoutSync.error = ''
+    render()
+    try {
+      const patch = {}
+      for (const k of [
+        'sessions_per_week',
+        'goal_race_date',
+        'goal_text',
+        'allowed_disciplines',
+        'agreements',
+        'fitness_notes',
+        'schedule_notes',
+      ]) {
+        if (prop[k] != null && prop[k] !== '') patch[k] = prop[k]
+      }
+      const data = await api('/v1/athlete/me', { method: 'PATCH', body: patch })
+      state.athlete = data.athlete
+      state.agreementsProposal = null
+      state.workoutSync.message = 'Treningsavtaler oppdatert'
+      toast(state.workoutSync.message)
+    } catch (err) {
+      state.workoutSync.error = err.message || 'Kunne ikke lagre avtaler'
+    } finally {
+      state.busy = false
+      render()
+    }
   })
 
   document.getElementById('plan-adjust-dismiss-btn')?.addEventListener('click', () => {

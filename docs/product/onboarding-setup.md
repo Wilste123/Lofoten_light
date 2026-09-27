@@ -90,13 +90,27 @@ Seed `william` er `setup_completed=true` (seed / migrate) — login går rett ti
 | `POST /v1/athlete/me/intervals/workouts/remove/preview` | Pending delete (ll-coach-* only) |
 | `POST /v1/athlete/me/intervals/calendar/confirm` | Ja ICU — etter pending |
 
+## Ærlig coach-stemme (setup + Coach-fane)
+
+Én felles stemme (`HONEST_COACH_VOICE` i `chat_service.py`) brukes i:
+
+| Flate | Prompt-bygger | Endpoint |
+|-------|---------------|----------|
+| **Hovedchat** (Coach-fane nederst) | `build_system_prompt` | `POST /v1/chat` |
+| Økt-detalj-chat | samme + `session_id` → `focused_session` | `POST /v1/chat` |
+| Setup/onboarding | `build_setup_chat_system` (importerer samme stemme) | `POST /v1/setup/chat` |
+
+Krav: selvsikker, anbefalingsorientert — ikke tippy. Når mål + frekvens/erfaring/form ikke henger sammen ifølge knowledge (`coach/maalrealisme.md`, `feil-og-fixes` §9, `load-and-intensity`, lav-frekvens): si det rett ut, foreslå alternativer, lagre avtalen (`sessions_per_week`, `goal_race_date`, `agreements`). Hovedchat: `agreements_update`-fence → UI-bekreft → `PATCH /v1/athlete/me`. Setup: `setup_extract` + `merge_draft` → confirm.
+
 ## Knowledge-injeksjon
 
 Heuristisk utvalg i `knowledge_ctx.py` (ingen vector DB):
 
 **Alltid:** `coach/coach-filosofi.md`, `treneridentitet.md`, `ole-grenser.md`, `feil-og-fixes.md`, periodisering/`ukemaler`/`load-and-intensity`, ernæring-kort.
 
-**Betinget** (nøkkelord i samtale/draft): beginner → svøm-nybegynner; returning → oppbygging-etter-pause + OPV; injury → ACWR/skader; tid → sovn/mental; disiplinord → svøm/sykkel/løp; race → lofoten/brick. Multisport krever eksplisitte tri-/race-cues (ikke bare ordet «løp»).
+**Betinget** (nøkkelord i samtale/draft): beginner → svøm-nybegynner; returning → oppbygging-etter-pause + OPV; injury → ACWR/skader; tid/lav frekvens → lav-frekvens + generell utholdenhet; disiplinord → svøm/sykkel/løp; race → lofoten/brick. **Tri + lav frekvens/nybegynner** → ekstra realisme-pack (`feil-og-fixes`, load, nybegynner-svøm, lav-frekvens). Multisport krever eksplisitte tri-/race-cues (ikke bare ordet «løp»).
+
+`POST /v1/chat` bruker nå **adaptiv** knowledge (query = brukermelding + profil) — ikke bare legacy core-coach.
 
 Plan-generering: **ett** LLM-kall med knowledge-bundle → JSON-blokker, validert i Python. Uten API-nøkkel: signal-aware deterministic fallback (fortsatt ulik struktur per arketype + athlete_type).
 
@@ -118,6 +132,7 @@ Setup-preview/confirm skal aldri bare vise «Feil 500» — API returnerer `deta
 ## Tester
 
 `services/coach-api/tests/test_setup_onboarding.py`  
+`services/coach-api/tests/test_honest_coach_chat.py` — stemme + realism-knowledge i setup **og** `/v1/chat`; agreements persist/proposal  
 `services/coach-api/tests/test_plan_align_onboarding.py` — 2028-mål, ingen re-etablering ved form OK, preview≡sync, Du-persist, plan-adjust  
 `services/coach-api/tests/test_plan_workouts.py`  
 `services/coach-api/tests/test_athlete_type.py`  

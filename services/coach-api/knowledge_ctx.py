@@ -330,6 +330,8 @@ CONDITIONAL_PACKS: list[tuple[list[str], list[str]]] = [
             "3 okter",
             "tre økter",
             "2 økter",
+            "2 okter",
+            "to økter",
             "4 økter",
             "5 økter",
             "6 økter",
@@ -342,13 +344,41 @@ CONDITIONAL_PACKS: list[tuple[list[str], list[str]]] = [
             "sessions per week",
             "økter/uke",
             "okter/uke",
+            "økter i uka",
+            "okter i uka",
         ],
         [
             "lop/ukeplaner-lav-frekvens.md",
             "lop/styrke-og-lop.md",
             "coach/ukeplaner-generell-utholdenhet.md",
             "coach/maalrealisme.md",
+            "coach/feil-og-fixes.md",
+            "load-and-intensity.md",
             "restitusjon/sovn-stress.md",
+        ],
+    ),
+    (
+        [
+            "urealistisk",
+            "ikke realistisk",
+            "for ambisiøst",
+            "rekker ikke",
+            "for lite tid til",
+            "dårlig form",
+            "null erfaring",
+            "ingen erfaring",
+            "5:30",
+            "sub 6",
+            "mål tid",
+            "måltid",
+        ],
+        [
+            "coach/maalrealisme.md",
+            "coach/feil-og-fixes.md",
+            "load-and-intensity.md",
+            "coach/ukeplaner-generell-utholdenhet.md",
+            "lop/ukeplaner-lav-frekvens.md",
+            "svom/nybegynner-til-triatlet.md",
         ],
     ),
     (
@@ -467,7 +497,8 @@ def detect_athlete_signals(text: str, draft: dict[str, Any] | None = None) -> di
     return {
         "beginner": bool(
             re.search(
-                r"nybegynner|aldri trent|helt ny|ingen erfaring|beginner|kan ikke svømme",
+                r"nybegynner|aldri trent|helt ny|ingen erfaring|null erfaring|"
+                r"beginner|kan ikke svømme|dårlig form|utrent|ingen base",
                 blob,
             )
         )
@@ -478,7 +509,14 @@ def detect_athlete_signals(text: str, draft: dict[str, Any] | None = None) -> di
             re.search(r"skade|isjas|rygg|kne|achilles|smerte|rehab|plager", blob)
         ),
         "time_constrained": bool(
-            re.search(r"lite tid|tidsklemma|full jobb|familie|få timer|busy", blob)
+            re.search(
+                r"lite tid|tidsklemma|full jobb|familie|få timer|busy|"
+                r"2\s*økter|2\s*okter|to\s*økter|kun\s*2|bare\s*2",
+                blob,
+            )
+        )
+        or (
+            str((draft or {}).get("sessions_per_week") or "") in ("2", "3")
         ),
         # Require real multi-sport / race cues — bare «løp»/«svøm» alone is NOT triathlon.
         "multisport": bool(
@@ -591,6 +629,25 @@ def select_knowledge_paths(
         paths.append("load-and-intensity.md")
 
     paths.extend(ERNARING_CORE)
+
+    # Feasibility pack: multi-sport ambition + low frequency / beginner
+    signals = detect_athlete_signals(query_text, draft)
+    if signals.get("multisport") and (
+        signals.get("beginner")
+        or signals.get("time_constrained")
+        or str((draft or {}).get("sessions_per_week") or "") in ("2", "3", "4")
+        or bool(re.search(r"2\s*økter|3\s*økter|to\s*økter|tre\s*økter", blob))
+    ):
+        for f in (
+            "coach/maalrealisme.md",
+            "coach/feil-og-fixes.md",
+            "load-and-intensity.md",
+            "svom/nybegynner-til-triatlet.md",
+            "coach/ukeplaner-generell-utholdenhet.md",
+            "lop/ukeplaner-lav-frekvens.md",
+        ):
+            if f not in paths:
+                paths.append(f)
 
     conditional: list[str] = []
     for triggers, files in CONDITIONAL_PACKS:

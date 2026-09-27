@@ -26,7 +26,7 @@ from athlete_constraints import (
     resolve_constraints,
     split_for_disciplines,
 )
-from chat_service import call_llm
+from chat_service import HONEST_COACH_VOICE, call_llm
 from knowledge_ctx import (
     detect_athlete_signals,
     knowledge_selection_meta,
@@ -1252,6 +1252,7 @@ SETUP_EXTRACT_KEYS = (
     "nutrition_notes",
     "athlete_type",
     "sport",
+    "agreements",
 )
 
 
@@ -1277,14 +1278,16 @@ def build_setup_chat_system(
     coach = draft.get("coach_display_name") or "Rocky"
     name = draft.get("display_name") or "utøveren"
     system = f"""Du er {coach}, personlig utholdenhetstrener i onboarding-samtale med {name}.
-Språk: norsk. Tone: konkret, nysgjerrig, ingen fluff. Én LLM-respons — ingen tools.
+Språk: norsk. Tone: konkret, ærlig, anbefalingsorientert — ingen fluff. Én LLM-respons — ingen tools.
+{HONEST_COACH_VOICE}
 
-Mål for samtalen: forstå hvem utøveren er (nybegynner / comeback / skade / tidsklemma),
-hoveddisiplin / utøvertype (f.eks. halvmaraton-løper, syklist, triatlet, nybegynner flersport),
-mål, helse, bakgrunn, begrensninger, og fritekst du skal respektere.
-**Vurder målrealisme** (erfaring × nåværende form × økter/uke × uker til race × fullføre vs tidmål)
-før du bekrefter aggressivt race — se knowledge maalrealisme; ved tvil: si det ærlig og foreslå
-senere dato / kortere format / fullføre fremfor PB. Samle nok om de fem aksene (1–2 spørsmål om gangen).
+Mål for samtalen: samle nok til en ærlig plan — ikke bare «være hyggelig»:
+erfaring, nåværende form/volum, tilgjengelige økter/uke, mål-event + dato + målsetning,
+skader/begrensninger, hoveddisiplin / utøvertype, og fritekst du skal respektere.
+**Vurder målrealisme** (erfaring × form × økter/uke × uker til race × fullføre vs tidmål)
+før du bekrefter aggressivt race — se knowledge `maalrealisme`; ved tvil: si det ærlig og foreslå
+senere dato / kortere format / fullføre fremfor PB / fasert rebuild. Gi klare anbefalinger;
+lagre det utøveren faktisk godtar.
 Samle også Intervals-klarhet: foreslå å lime inn athlete ID + API-nøkkel når naturlig
 (pek til Settings → Developer Settings) — tving det ikke før de er klare.
 
@@ -1295,15 +1298,20 @@ Regler:
 - Ikke godkjenn urealistiske mål «for motivasjon» — foreslå A/B/C-målhierarki.
 - Når du har nok til en grovplan (mål + omtrent tid/uke eller livssituasjon + helse-status),
   si at du kan lage forhåndsvisning, og sett ready_for_plan=true i extract.
+  Hvis målet fortsatt er urealistisk uten avtalt justering: ready_for_plan=false og forhandl først.
 - Sett athlete_type når du er sikker, f.eks.:
   half_marathon_runner | marathon_runner | runner | cyclist | swimmer |
   triathlete | beginner_multi | general_endurance
-- Sett sessions_per_week (heltall 2–8) når utøveren sier f.eks. «3 økter i uka».
+- Sett sessions_per_week (heltall 2–8) når utøveren sier f.eks. «3 økter i uka» —
+  og oppdater feltet hvis dere avtaler et annet tall etter ærlig forhandling.
 - Sett allowed_disciplines som liste når avtalt, f.eks. ["run","strength"]
   (gyldige: run, bike, swim, strength). Halvmaraton/løper uten tri → ikke svøm/sykkel.
 - Når utøveren nevner år («triatlon 2028»), sett goal_race_date til sen sesong det året
   (f.eks. YYYY-09-15) ELLER spør én gang om eksakt racedato — aldri finn opp ~8 mnd frem.
+  Oppdater goal_race_date hvis dere avtaler senere dato.
 - Når form er OK / trener allerede: sett fitness_notes (kort) — ikke merk som comeback.
+- Fyll agreements (liste med korte norske setninger) når noe er forhandlet og godkjent
+  (f.eks. «4 økter/uke», «Måldato flyttet til 2027-09», «Base først — ikke race-tid ennå»).
 
 Avslutt HVER melding med en fenced blokk merket setup_extract (ikke synlig råd):
 ```setup_extract
@@ -1312,7 +1320,8 @@ Avslutt HVER melding med en fenced blokk merket setup_extract (ikke synlig råd)
  "sessions_per_week": null, "allowed_disciplines": null, "fitness_notes": null,
  "season_start_date": null, "goal_race_date": null, "ftp_tested": null,
  "nutrition_ibs": null, "nutrition_gluten": null, "nutrition_lactose": null,
- "nutrition_notes": null, "notes": null, "athlete_type": null, "sport": null}}
+ "nutrition_notes": null, "notes": null, "athlete_type": null, "sport": null,
+ "agreements": null}}
 ```
 Kun fyll felt du faktisk har fått bekreftet; la resten være null.
 Alltid fyll goal_text så snart målet er klart (f.eks. «Triatlon 2028») — Du-fanen trenger det.
@@ -1367,6 +1376,14 @@ def extract_setup_fields(reply: str) -> tuple[str, dict[str, Any]]:
             if discs:
                 cleaned[k] = discs
             continue
+        if k == "agreements":
+            if isinstance(v, list):
+                agr = [str(a).strip()[:200] for a in v if str(a).strip()]
+                if agr:
+                    cleaned[k] = agr[:20]
+            elif isinstance(v, str) and v.strip():
+                cleaned[k] = [v.strip()[:200]]
+            continue
         if k in ("weekly_hours_target", "ftp_tested", "weight_kg", "age_years"):
             try:
                 cleaned[k] = float(v) if k != "age_years" else int(float(v))
@@ -1384,5 +1401,26 @@ def merge_draft(draft: dict[str, Any], extracted: dict[str, Any]) -> dict[str, A
             continue
         if v is None or v == "":
             continue
+        if k == "agreements" and isinstance(v, list):
+            # Merge uniquely; negotiated lines win order after existing
+            prev = out.get("agreements") if isinstance(out.get("agreements"), list) else []
+            merged_agr: list[str] = []
+            for a in list(prev) + list(v):
+                s = str(a).strip()
+                if s and s not in merged_agr:
+                    merged_agr.append(s)
+            out[k] = merged_agr[:20]
+            continue
         out[k] = v
+    # Rebuild human-readable agreements from structured fields after negotiation
+    try:
+        constraints = resolve_constraints(draft=out)
+    except Exception:
+        constraints = {}
+    out["agreements"] = build_agreements_list(
+        out,
+        constraints=constraints,
+        goal_text=str(out.get("goal_text") or ""),
+        fitness_notes=str(out.get("fitness_notes") or ""),
+    )
     return out

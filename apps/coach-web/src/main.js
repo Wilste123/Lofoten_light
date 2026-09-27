@@ -44,7 +44,16 @@ const state = {
     to: '',
   },
   sessions: null,
+  /** library | chronological */
+  sessionsView: 'library',
   sessionDetail: null,
+  sessionChat: {
+    messages: [],
+    draft: '',
+    busy: false,
+    error: '',
+  },
+  sessionEditOpen: false,
   chatDraft: '',
   planBlocks: [],
   intervals: {
@@ -655,6 +664,9 @@ function logoutLocal() {
   state.overview = null
   state.dashboard = null
   state.sessions = null
+  state.sessionDetail = null
+  state.sessionChat = { messages: [], draft: '', busy: false, error: '' }
+  state.sessionEditOpen = false
   state.planBlocks = []
   state.workoutProposal = null
   state.sync.pending = null
@@ -1415,6 +1427,17 @@ function statusLabel(status) {
   return map[status] || status || ''
 }
 
+function formatDateChips(dates, { max = 6 } = {}) {
+  const list = (dates || []).filter(Boolean)
+  if (!list.length) return `<span class="muted tight">Ingen datoer</span>`
+  const shown = list.slice(0, max)
+  const extra = list.length - shown.length
+  const chips = shown
+    .map((d) => `<span class="date-chip">${escapeHtml(d)}</span>`)
+    .join('')
+  return `${chips}${extra > 0 ? `<span class="date-chip more">+${extra}</span>` : ''}`
+}
+
 function renderSessionRow(s) {
   const comp = s.completion
   const statusBit = comp
@@ -1423,23 +1446,116 @@ function renderSessionRow(s) {
   const dur =
     s.duration_hours != null ? ` · ${formatHours(s.duration_hours)} t` : ''
   return `
-    <article class="session-row" data-session-id="${escapeHtml(s.id)}">
+    <article class="session-row" data-open-detail="${escapeHtml(s.id)}" role="button" tabindex="0">
       <div class="session-main">
         <p class="session-date">${escapeHtml(s.date || '—')} · ${escapeHtml(s.discipline_label || s.type || '')}${escapeHtml(dur)}</p>
         <h3>${escapeHtml(s.name || 'Økt')}</h3>
         ${statusBit}
       </div>
       <div class="session-actions">
-        <button type="button" class="btn btn-sm" data-ask-coach="${escapeHtml(s.id)}">Spør coach</button>
-        <button type="button" class="btn btn-sm secondary" data-open-session="${escapeHtml(s.id)}">Logg</button>
+        <span class="btn btn-sm fake-btn">Åpne</span>
+        <button type="button" class="btn btn-sm secondary" data-open-log="${escapeHtml(s.id)}">Logg</button>
       </div>
     </article>`
+}
+
+function renderLibraryCard(item) {
+  const dates = item.dates || []
+  const next = item.next_date || dates[0] || '—'
+  const sid = item.sample_session_id || item.representative_id || ''
+  const preview = item.description_preview
+    ? `<p class="session-preview">${escapeHtml(item.description_preview)}</p>`
+    : ''
+  return `
+    <article class="library-card" data-open-detail="${escapeHtml(sid)}" role="button" tabindex="0">
+      <div class="library-card-top">
+        <p class="session-date">${escapeHtml(item.discipline_label || item.type || '')}${
+          item.occurrence_count > 1
+            ? ` · ${item.occurrence_count} datoer`
+            : next !== '—'
+              ? ` · neste ${escapeHtml(next)}`
+              : ''
+        }</p>
+        <h3>${escapeHtml(item.name || 'Økt')}</h3>
+        ${preview}
+      </div>
+      <div class="date-chip-row" aria-label="Datoer">${formatDateChips(dates)}</div>
+      <div class="session-actions">
+        <span class="btn btn-sm fake-btn">Detaljer</span>
+        <button type="button" class="btn btn-sm secondary" data-open-log="${escapeHtml(sid)}">Logg</button>
+      </div>
+    </article>`
+}
+
+function renderSessionProposalCard() {
+  const proposal = state.workoutProposal
+  const removal = state.workoutRemoval
+  const wPending = state.workoutSync.pending
+  if (wPending) {
+    const sample = (wPending.events || [])
+      .slice(0, 8)
+      .map(
+        (e) =>
+          `<li><code>${escapeHtml(e.start_date_local || e.day || '')}</code> · ${escapeHtml(e.name || e.external_id || '')}</li>`,
+      )
+      .join('')
+    const isDelete = (wPending.op || '') === 'delete'
+    return `
+      <div class="confirm-card" role="dialog" aria-label="Bekreft økt på Intervals">
+        <p><strong>${escapeHtml(wPending.message || 'Bekreft økt-sync')}</strong></p>
+        <p class="muted tight">${escapeHtml(wPending.op || 'workout_push')} · ${wPending.count} hendelse(r)</p>
+        <ul class="sync-sample">${sample}</ul>
+        <div class="sync-actions">
+          <button type="button" class="btn btn-primary" id="workout-confirm-yes" ${state.workoutSync.busy ? 'disabled' : ''}>${
+            isDelete ? 'Ja, slett på Intervals' : 'Ja, sync til Intervals'
+          }</button>
+          <button type="button" class="btn secondary" id="workout-confirm-no" ${state.workoutSync.busy ? 'disabled' : ''}>Avbryt</button>
+        </div>
+        ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
+      </div>`
+  }
+  if (removal) {
+    return `
+      <div class="confirm-card workout-proposal-card">
+        <p><strong>Foreslått fjerning</strong></p>
+        <div class="sync-actions">
+          <button type="button" class="btn btn-primary" id="workout-remove-preview-btn" ${state.workoutSync.busy || !state.intervals.connected ? 'disabled' : ''}>Forhåndsvis sletting</button>
+          <button type="button" class="btn secondary" id="workout-dismiss-btn">Avvis</button>
+        </div>
+      </div>`
+  }
+  if (proposal?.workouts?.length) {
+    const rows = proposal.workouts
+      .map(
+        (w) =>
+          `<li><strong>${escapeHtml(w.date || '')}</strong> · ${escapeHtml(w.name || '')} · ${escapeHtml(w.sport || '')}${
+            w.duration_minutes != null ? ` · ${escapeHtml(String(w.duration_minutes))} min` : ''
+          }</li>`,
+      )
+      .join('')
+    return `
+      <div class="confirm-card workout-proposal-card">
+        <p><strong>Foreslått endring til Intervals</strong></p>
+        <p class="muted tight">Ingenting er synct — forhåndsvis først.</p>
+        <ul class="sync-sample">${rows}</ul>
+        <div class="sync-actions">
+          <button type="button" class="btn btn-primary" id="workout-preview-btn" ${state.workoutSync.busy || !state.intervals.connected ? 'disabled' : ''}>Forhåndsvis sync</button>
+          <button type="button" class="btn secondary" id="workout-dismiss-btn">Avvis</button>
+        </div>
+        ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
+      </div>`
+  }
+  if (state.workoutSync.message) {
+    return `<p class="intervals-status is-ok">${escapeHtml(state.workoutSync.message)}</p>`
+  }
+  return ''
 }
 
 function renderSessionDetail() {
   const d = state.sessionDetail
   if (!d) return ''
   const s = d.session || {}
+  const fields = d.editable_fields || {}
   const statuses = [
     ['completed', 'Fullført'],
     ['skipped', 'Hoppet over'],
@@ -1451,49 +1567,171 @@ function renderSessionDetail() {
   const opts = statuses
     .map(
       ([v, lab]) =>
-        `<option value="${v}" ${s.completion?.status === v ? 'selected' : ''}>${lab}</option>`
+        `<option value="${v}" ${s.completion?.status === v ? 'selected' : ''}>${lab}</option>`,
     )
     .join('')
+  const steps = (d.steps || []).map((st) => `<li>${escapeHtml(st)}</li>`).join('')
+  const coachBody = d.coach_block?.body || d.description || ''
+  const occChips = formatDateChips(d.dates || [])
+  const chatBubbles = (state.sessionChat.messages || [])
+    .map((m) => `<div class="bubble ${m.role}">${escapeHtml(m.content)}</div>`)
+    .join('')
+  const editOpen = state.sessionEditOpen
+  const canEdit = Boolean(d.editable)
+  const sportOpts = [
+    ['bike', 'Sykkel'],
+    ['run', 'Løp'],
+    ['swim', 'Svøm'],
+    ['strength', 'Styrke'],
+    ['other', 'Annet'],
+  ]
+    .map(
+      ([v, lab]) =>
+        `<option value="${v}" ${(fields.sport || s.discipline || '') === v ? 'selected' : ''}>${lab}</option>`,
+    )
+    .join('')
+
   return `
-    <div class="session-detail section-block" id="session-detail">
+    <div class="session-detail-view" id="session-detail">
       <div class="section-head">
-        <h2>${escapeHtml(s.name || 'Økt')}</h2>
-        <button type="button" class="btn btn-sm secondary" id="close-session-detail">Lukk</button>
+        <button type="button" class="btn btn-sm secondary" id="close-session-detail">← Bibliotek</button>
+        <span class="badge ${s.completion ? 'badge-live' : 'badge-off'}">${
+          s.completion ? escapeHtml(statusLabel(s.completion.status)) : 'Ulågget'
+        }</span>
       </div>
-      <p class="muted tight">${escapeHtml(s.date || '')} · ${escapeHtml(s.discipline_label || '')}</p>
-      <form id="completion-form">
-        <div class="field">
-          <label for="completion_status">Status</label>
-          <select id="completion_status" name="status" required>${opts}</select>
+      <header class="detail-hero">
+        <p class="brand-mark">${escapeHtml(s.discipline_label || s.type || 'Økt')}</p>
+        <h2>${escapeHtml(s.name || 'Økt')}</h2>
+        <p class="muted tight">${escapeHtml(s.date || '—')}${
+          s.duration_hours != null ? ` · ${formatHours(s.duration_hours)} t` : ''
+        }${s.editable ? ' · coach-økt' : ''}</p>
+        <div class="date-chip-row detail-dates" aria-label="Planlagte datoer">${occChips}</div>
+      </header>
+
+      <section class="section-block coach-block">
+        <h3>Fra treneren</h3>
+        ${
+          steps
+            ? `<ol class="coach-steps">${steps}</ol>`
+            : coachBody
+              ? `<pre class="coach-desc">${escapeHtml(coachBody)}</pre>`
+              : `<p class="muted">Ingen steg lagret på denne økten ennå.</p>`
+        }
+        ${
+          steps && coachBody
+            ? `<details class="coach-raw"><summary>Full beskrivelse</summary><pre class="coach-desc">${escapeHtml(coachBody)}</pre></details>`
+            : ''
+        }
+      </section>
+
+      ${
+        canEdit
+          ? `<section class="section-block">
+        <div class="section-head">
+          <h3>Rediger økt</h3>
+          <button type="button" class="btn btn-sm secondary" id="toggle-session-edit">${editOpen ? 'Skjul' : 'Åpne felter'}</button>
         </div>
-        <div class="field">
-          <label for="completion_reason">Grunn (valgfri)</label>
-          <input id="completion_reason" name="reason" value="${escapeHtml(s.completion?.reason || '')}" placeholder="f.eks. for kort søvn" />
-        </div>
-        <div class="field">
-          <label for="completion_note">Notat</label>
-          <textarea id="completion_note" name="note" rows="2">${escapeHtml(s.completion?.note || '')}</textarea>
-        </div>
-        <div class="row-actions">
-          <button type="submit" class="btn btn-primary" ${state.busy ? 'disabled' : ''}>Lagre logg</button>
-          <button type="button" class="btn secondary" data-ask-coach="${escapeHtml(s.id)}">Spør coach om denne</button>
-        </div>
-      </form>
-      ${state.planError ? `<p class="error">${escapeHtml(state.planError)}</p>` : ''}
+        ${
+          editOpen
+            ? `<form id="session-edit-form" class="session-edit-form">
+          <div class="field">
+            <label for="edit_name">Tittel</label>
+            <input id="edit_name" name="name" required value="${escapeHtml(fields.name || '')}" />
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="edit_date">Dato</label>
+              <input id="edit_date" name="date" type="date" required value="${escapeHtml(fields.date || '')}" />
+            </div>
+            <div class="field">
+              <label for="edit_sport">Sport</label>
+              <select id="edit_sport" name="sport">${sportOpts}</select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="edit_duration">Varighet (min)</label>
+              <input id="edit_duration" name="duration_minutes" type="number" min="1" value="${
+                fields.duration_minutes != null ? escapeHtml(String(fields.duration_minutes)) : ''
+              }" />
+            </div>
+            <div class="field">
+              <label for="edit_start">Start</label>
+              <input id="edit_start" name="start_time" value="${escapeHtml(fields.start_time || '07:00')}" />
+            </div>
+          </div>
+          <div class="field">
+            <label for="edit_description">Beskrivelse / steg</label>
+            <textarea id="edit_description" name="description" rows="5">${escapeHtml(fields.description || '')}</textarea>
+          </div>
+          <input type="hidden" name="external_id" value="${escapeHtml(fields.external_id || '')}" />
+          <div class="row-actions">
+            <button type="submit" class="btn btn-primary" ${state.workoutSync.busy ? 'disabled' : ''}>Forhåndsvis endring</button>
+          </div>
+          <p class="muted tight">Skriver til Intervals først etter bekreftelse (samme flyt som chat).</p>
+        </form>`
+            : `<p class="muted tight">Endre tittel, dato, steg — eller spør coach under.</p>`
+        }
+      </section>`
+          : `<p class="muted tight">Aktiviteter fra Intervals er skrivebeskyttet her — logg status under.</p>`
+      }
+
+      ${renderSessionProposalCard()}
+
+      <section class="section-block session-chat-block">
+        <h3>Spør coach om denne</h3>
+        <p class="muted tight">Kontekst er denne økten. Coach foreslår endringer → forhåndsvis → bekreft.</p>
+        <div class="chat-log session-chat-log" id="session-chat-log">${
+          chatBubbles ||
+          `<p class="muted">F.eks. «kan vi kutte hovedsettet?» eller «gjør den mer spesifikk for Lofoten».</p>`
+        }</div>
+        <form class="chat-form" id="session-chat-form">
+          <input id="session-chat-input" autocomplete="off" placeholder="Spør om denne økten…" value="${escapeHtml(state.sessionChat.draft || '')}" ${state.sessionChat.busy ? 'disabled' : ''} />
+          <button class="btn btn-primary" type="submit" ${state.sessionChat.busy ? 'disabled' : ''}>Send</button>
+        </form>
+        ${state.sessionChat.error ? `<p class="error">${escapeHtml(state.sessionChat.error)}</p>` : ''}
+      </section>
+
+      <section class="section-block" id="session-log-block">
+        <h3>Logg fullføring</h3>
+        <form id="completion-form">
+          <div class="field">
+            <label for="completion_status">Status</label>
+            <select id="completion_status" name="status" required>${opts}</select>
+          </div>
+          <div class="field">
+            <label for="completion_reason">Grunn (valgfri)</label>
+            <input id="completion_reason" name="reason" value="${escapeHtml(s.completion?.reason || '')}" placeholder="f.eks. for kort søvn" />
+          </div>
+          <div class="field">
+            <label for="completion_note">Notat</label>
+            <textarea id="completion_note" name="note" rows="2">${escapeHtml(s.completion?.note || '')}</textarea>
+          </div>
+          <div class="row-actions">
+            <button type="submit" class="btn btn-primary" ${state.busy ? 'disabled' : ''}>Lagre logg</button>
+          </div>
+        </form>
+        ${state.planError ? `<p class="error">${escapeHtml(state.planError)}</p>` : ''}
+        <p class="muted tight">Lagres i appen — ikke i Intervals.</p>
+      </section>
     </div>`
 }
 
 function renderOkterTab() {
+  if (state.sessionDetail) {
+    return renderSessionDetail()
+  }
   const sess = state.sessions
   const linked = state.intervals.connected
+  const view = state.sessionsView || 'library'
   let body = ''
   if (!sess) {
     body = `<p class="muted">Laster økter…</p>`
   } else if (sess.source === 'none') {
-    body = `<p class="muted">Koble Intervals under Du for å se kommende og siste økter.</p>`
+    body = `<p class="muted">Koble Intervals under Du for å se bibliotek og kommende økter.</p>`
   } else if (sess.fetch_error) {
     body = `<p class="error">Kunne ikke hente økter: ${escapeHtml(sess.fetch_error_detail || '')}</p>`
-  } else {
+  } else if (view === 'chronological') {
     const today = (sess.today || []).map(renderSessionRow).join('')
     const upcoming = (sess.upcoming || []).map(renderSessionRow).join('')
     const recent = (sess.recent || []).map(renderSessionRow).join('')
@@ -1507,16 +1745,27 @@ function renderOkterTab() {
         <h2>Siste</h2>
         <div class="session-list">${recent || `<p class="muted">Ingen aktiviteter i vinduet.</p>`}</div>
       </section>`
+  } else {
+    const lib = (sess.library || []).map(renderLibraryCard).join('')
+    body = `
+      <section class="section-block">
+        <h2>Bibliotek</h2>
+        <p class="muted tight">Samme økt én gang — datoene den går på listes under.</p>
+        <div class="library-list">${lib || `<p class="muted">Ingen økter i vinduet.</p>`}</div>
+      </section>`
   }
   return `
     <div class="tab-hero">
       <p class="brand-mark">Økter</p>
-      <h2>Kalender &amp; logg</h2>
-      <p class="muted">Fra Intervals — spør coach eller logg fullført / hoppet over her (app-lagring).</p>
+      <h2>Bibliotek &amp; detalj</h2>
+      <p class="muted">Trykk en økt for steg, coach-chat og logg. Endringer til Intervals krever bekreftelse.</p>
+    </div>
+    <div class="view-toggle" role="tablist" aria-label="Visning">
+      <button type="button" class="chip ${view === 'library' ? 'active' : ''}" data-sessions-view="library">Bibliotek</button>
+      <button type="button" class="chip ${view === 'chronological' ? 'active' : ''}" data-sessions-view="chronological">Kommende</button>
     </div>
     <p class="compliance-banner muted tight">${escapeHtml(sess?.compliance_note || 'Compliance beregnes i appen, ikke i Intervals.')}</p>
     <p class="muted tight">${linked ? 'Intervals koblet.' : 'Ikke koblet ennå.'}</p>
-    ${renderSessionDetail()}
     ${body}
   `
 }
@@ -2196,6 +2445,10 @@ function bindApp() {
       toast(state.workoutSync.message)
       try {
         await refreshSessions()
+        const sid = state.sessionDetail?.session?.id
+        if (sid) {
+          state.sessionDetail = await api(`/v1/sessions/${encodeURIComponent(sid)}`)
+        }
       } catch {
         /* soft */
       }
@@ -2215,50 +2468,161 @@ function bindApp() {
         if (s.id === id || s.external_id === id) return s
       }
     }
+    for (const item of sess.library || []) {
+      for (const o of item.occurrences || []) {
+        if (o.id === id || o.external_id === id) return { ...item, ...o, name: item.name }
+      }
+    }
     return state.sessionDetail?.session?.id === id
       ? state.sessionDetail.session
       : null
   }
 
-  const askCoachAbout = async (sessionId) => {
+  const openSessionDetail = async (sessionId, { scrollLog = false } = {}) => {
+    if (!sessionId) return
     try {
       const data = await api(`/v1/sessions/${encodeURIComponent(sessionId)}`)
       state.sessionDetail = data
-      state.chatDraft = data.seed_prompt || ''
-      state.tab = 'coach'
-      toast('Spørsmål klart i Coach')
+      state.sessionEditOpen = false
+      state.sessionChat = {
+        messages: [],
+        draft: data.seed_prompt || '',
+        busy: false,
+        error: '',
+      }
+      state.planError = ''
+      state.tab = 'okter'
       render()
-      document.getElementById('chat-input')?.focus()
+      if (scrollLog) {
+        document.getElementById('session-log-block')?.scrollIntoView({ behavior: 'smooth' })
+      } else {
+        document.getElementById('session-detail')?.scrollIntoView({ behavior: 'smooth' })
+      }
     } catch (err) {
-      state.error = err.message || 'Kunne ikke åpne økt'
-      toast(state.error)
+      state.planError = err.message || 'Kunne ikke åpne økt'
+      toast(state.planError)
+      render()
     }
   }
 
-  document.querySelectorAll('[data-ask-coach]').forEach((btn) => {
+  document.querySelectorAll('[data-sessions-view]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      void askCoachAbout(btn.getAttribute('data-ask-coach'))
+      state.sessionsView = btn.getAttribute('data-sessions-view') || 'library'
+      render()
     })
   })
 
-  document.querySelectorAll('[data-open-session]').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      const id = btn.getAttribute('data-open-session')
-      try {
-        state.sessionDetail = await api(`/v1/sessions/${encodeURIComponent(id)}`)
-        state.planError = ''
-        render()
-        document.getElementById('session-detail')?.scrollIntoView({ behavior: 'smooth' })
-      } catch (err) {
-        state.planError = err.message || 'Kunne ikke åpne'
-        render()
+  document.querySelectorAll('[data-open-detail]').forEach((el) => {
+    const open = () => void openSessionDetail(el.getAttribute('data-open-detail'))
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('[data-open-log]')) return
+      open()
+    })
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        open()
       }
+    })
+  })
+
+  document.querySelectorAll('[data-open-log]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      void openSessionDetail(btn.getAttribute('data-open-log'), { scrollLog: true })
     })
   })
 
   document.getElementById('close-session-detail')?.addEventListener('click', () => {
     state.sessionDetail = null
+    state.sessionEditOpen = false
+    state.sessionChat = { messages: [], draft: '', busy: false, error: '' }
     render()
+  })
+
+  document.getElementById('toggle-session-edit')?.addEventListener('click', () => {
+    state.sessionEditOpen = !state.sessionEditOpen
+    render()
+  })
+
+  document.getElementById('session-edit-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const detail = state.sessionDetail?.session
+    if (!detail?.id || state.workoutSync.busy) return
+    const fd = new FormData(e.target)
+    const durationRaw = String(fd.get('duration_minutes') || '').trim()
+    const payload = {
+      name: String(fd.get('name') || '').trim(),
+      date: String(fd.get('date') || '').trim().slice(0, 10),
+      sport: String(fd.get('sport') || 'other'),
+      description: String(fd.get('description') || ''),
+      start_time: String(fd.get('start_time') || '07:00'),
+      external_id: String(fd.get('external_id') || '') || null,
+    }
+    if (durationRaw) payload.duration_minutes = Number(durationRaw)
+    state.workoutSync.busy = true
+    state.workoutSync.error = ''
+    render()
+    try {
+      const data = await api(
+        `/v1/sessions/${encodeURIComponent(detail.id)}/edit/preview`,
+        { method: 'POST', body: payload },
+      )
+      state.workoutSync.pending = data
+      state.workoutProposal = null
+      toast('Forhåndsvisning klar — bekreft for å skrive til Intervals')
+    } catch (err) {
+      state.workoutSync.error = err.message || 'Forhåndsvisning feilet'
+    } finally {
+      state.workoutSync.busy = false
+      render()
+    }
+  })
+
+  document.getElementById('session-chat-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const detail = state.sessionDetail?.session
+    const input = document.getElementById('session-chat-input')
+    const text = (input?.value || state.sessionChat.draft || '').trim()
+    if (!text || !detail?.id || state.sessionChat.busy) return
+    state.sessionChat.messages = [
+      ...state.sessionChat.messages,
+      { role: 'user', content: text },
+    ]
+    state.sessionChat.draft = ''
+    state.sessionChat.busy = true
+    state.sessionChat.error = ''
+    render()
+    try {
+      const data = await api('/v1/chat', {
+        method: 'POST',
+        body: { message: text, session_id: detail.id },
+      })
+      state.sessionChat.messages = [
+        ...state.sessionChat.messages,
+        { role: 'assistant', content: data.reply || '…' },
+      ]
+      // Also mirror into main coach history (API already persisted)
+      if (data.message) {
+        state.messages = [...state.messages, { role: 'user', content: text }, data.message]
+      }
+      if (data.workout_proposal?.workouts?.length) {
+        state.workoutProposal = data.workout_proposal
+        state.workoutRemoval = null
+      }
+      if (data.workout_removal) {
+        state.workoutRemoval = data.workout_removal
+        state.workoutProposal = null
+      }
+      toast(data.proposal_hint || 'Svar fra coach')
+    } catch (err) {
+      state.sessionChat.error = err.message || 'Samtale feilet'
+    } finally {
+      state.sessionChat.busy = false
+      render()
+      const log = document.getElementById('session-chat-log')
+      if (log) log.scrollTop = log.scrollHeight
+    }
   })
 
   document.getElementById('completion-form')?.addEventListener('submit', async (e) => {
@@ -2285,12 +2649,12 @@ function bindApp() {
       })
       toast('Øktlogg lagret (app — ikke Intervals)')
       await refreshSessions()
-      const updated = findSession(detail.id)
-      if (updated) {
-        state.sessionDetail = {
-          session: updated,
-          seed_prompt: state.sessionDetail?.seed_prompt,
-        }
+      try {
+        state.sessionDetail = await api(
+          `/v1/sessions/${encodeURIComponent(detail.id)}`,
+        )
+      } catch {
+        /* keep prior detail */
       }
       const me = await api('/v1/athlete/me')
       if (me.athlete) state.athlete = me.athlete

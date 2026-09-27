@@ -63,12 +63,14 @@ Regler:
 - Intervals eier øktdetaljer; du eier mål/avtaler/skade/ernæring/form-kontekst.
 - Hvis overblikk mangler ICU-data: si ærlig at belastning krever Intervals-kobling.
 - «Hva har jeg denne uka?» / kommende økter: bruk feltet sessions i snapshotet (upcoming/today/recent). Ikke finn opp økter.
+- Hvis feltet focused_session finnes i snapshotet: utøveren er i økt-detaljvisning. Svar konkret om DEN økten (beskrivelse/steg). Ikke bytt tema uten at de ber om det.
 - Når utøveren ber om å legge inn / endre en konkret økt på Intervals-kalenderen:
   1) Skriv kort råd på norsk.
   2) Avslutt med ÉN fenced code block merket workout_proposal (ikke vanlig json), med:
      {{"workouts":[{{"name":"...","date":"YYYY-MM-DD","sport":"bike|run|swim|strength|other","duration_minutes":60,"description":"...","start_time":"07:00"}}]}}
   3) Du synker IKKE selv — utøveren bekrefter i appen (forhåndsvis → sync).
-  4) Bruk workout_proposal KUN når de eksplisitt ber om kalenderøkt; ikke for vanlig råd.
+  4) Bruk workout_proposal KUN når de eksplisitt ber om kalenderøkt / endring; ikke for vanlig råd.
+  5) Ved endring av focused_session: behold dato med mindre de ber om å flytte; oppdater description med konkrete steg.
 - Når utøveren ber om å FJERNE coach-planlagte økter fra Intervals:
   1) Kort råd.
   2) Fenced block merket workout_removal:

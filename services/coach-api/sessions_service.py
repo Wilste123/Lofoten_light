@@ -1,18 +1,28 @@
 """List recent + upcoming sessions from Intervals (activities + events).
 
 Compliance / completion stays app-side — never written to Intervals.
+
+Library view: group distinct workouts (by coach external_id slug or
+title+sport) so the same template is not repeated once per calendar day.
 """
 
 from __future__ import annotations
 
+import re
 from datetime import date, datetime, timedelta
 from typing import Any
 
-from intervals_calendar import fetch_events
+from intervals_calendar import WORKOUT_EXTERNAL_PREFIX, fetch_events
 from progress_compliance import (
     DISCIPLINES,
     fetch_intervals_activities,
     map_activity_type,
+)
+
+# ll-coach-w-YYYYMMDD-slug-N → capture slug
+_COACH_W_RE = re.compile(
+    rf"^{re.escape(WORKOUT_EXTERNAL_PREFIX)}(\d{{8}})-([a-z0-9]+)-(\d+)$",
+    re.IGNORECASE,
 )
 
 
@@ -101,6 +111,10 @@ def normalize_activity(act: dict[str, Any]) -> dict[str, Any] | None:
         "type": act.get("type") or act.get("sport"),
         "duration_hours": _duration_hours(act),
         "category": None,
+        "description": (act.get("description") or "")[:8000] or None,
+        "description_preview": _preview_text(act.get("description") or "", 160),
+        "start_time": None,
+        "editable": False,
     }
 
 
@@ -129,9 +143,351 @@ def normalize_event(ev: dict[str, Any], *, today: date) -> dict[str, Any] | None
         "discipline": disc,
         "discipline_label": _disc_label(disc),
         "type": ev.get("type") or cat,
-        "duration_hours": None,
+        "duration_hours": _event_duration_hours(ev),
         "category": cat or None,
-        "description": (ev.get("description") or "")[:400] or None,
+        "description": (ev.get("description") or "")[:8000] or None,
+        "description_preview": _preview_text(ev.get("description") or "", 160),
+        "start_time": _event_start_time(ev),
+        "editable": _is_coach_editable(eid, cat),
+    }
+
+
+def _event_duration_hours(ev: dict[str, Any]) -> float | None:
+    for key in ("moving_time", "elapsed_time", "icu_moving_time", "duration"):
+        raw = ev.get(key)
+        if raw is None or raw == "":
+            continue
+        try:
+            v = float(raw)
+        except (TypeError, ValueError):
+            continue
+        if v < 15:
+            return round(v, 2)
+        return round(v / 3600.0, 2)
+    return None
+
+
+def _event_start_time(ev: dict[str, Any]) -> str | None:
+    raw = str(ev.get("start_date_local") or ev.get("start_date") or "")
+    if "T" in raw and len(raw) >= 16:
+        return raw[11:16]
+    return None
+
+
+def _is_coach_editable(external_id: str, category: str | None) -> bool:
+    eid = (external_id or "").strip()
+    cat = (category or "").upper()
+    if eid.startswith(WORKOUT_EXTERNAL_PREFIX):
+        return True
+    if eid.startswith("ll-coach-") and cat == "WORKOUT":
+        return True
+    return False
+
+
+def _preview_text(text: str, limit: int = 160) -> str | None:
+    cleaned = re.sub(r"\s+", " ", (text or "").strip())
+    if not cleaned:
+        return None
+    if len(cleaned) <= limit:
+        return cleaned
+    return cleaned[: limit - 1].rstrip() + "…"
+
+
+def parse_coach_steps(description: str | None) -> list[str]:
+    """Extract bullet / numbered steps from coach description («Fra treneren»)."""
+    if not description:
+        return []
+    steps: list[str] = []
+    for raw in description.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        # Skip markdown headers / coach banner
+        if line.startswith("#") or line.startswith("###"):
+            continue
+        if line.lower().startswith("plan b"):
+            continue
+        m = re.match(r"^(?:[-*•]|\d+[.)])\s+(.+)$", line)
+        if m:
+            step = m.group(1).strip()
+            if step and step not in steps:
+                steps.append(step)
+            continue
+        # Interval-style lines without bullets (Warmup / Main / Cooldown)
+        if re.match(
+            r"^(warmup|main|cooldown|nedjogg|oppvarming|hoveddel)\b",
+            line,
+            re.IGNORECASE,
+        ):
+            if line not in steps:
+                steps.append(line)
+    return steps[:40]
+
+
+def library_key_for(session: dict[str, Any]) -> str:
+    """Stable key for library grouping (template identity, not calendar day)."""
+    eid = str(session.get("external_id") or "").strip()
+    m = _COACH_W_RE.match(eid)
+    if m:
+        slug = m.group(2).lower()
+        disc = (session.get("discipline") or "").strip().lower()
+        return f"w:{slug}|{disc}"
+    name = re.sub(r"\s+", " ", (session.get("name") or "").strip().lower())
+    disc = (session.get("discipline") or "").strip().lower()
+    kind = (session.get("kind") or "").strip().lower()
+    if not name:
+        return f"id:{session.get('id') or eid or 'unknown'}"
+    return f"n:{name}|{disc}|{kind}"
+
+
+def _attach_library_meta(item: dict[str, Any]) -> dict[str, Any]:
+    out = dict(item)
+    out["library_key"] = library_key_for(out)
+    out["steps"] = parse_coach_steps(out.get("description"))
+    if out.get("description") and not out.get("description_preview"):
+        out["description_preview"] = _preview_text(out["description"], 160)
+    return out
+
+
+def group_library(
+    sessions: list[dict[str, Any]],
+    *,
+    today: date | None = None,
+) -> list[dict[str, Any]]:
+    """Collapse same template into one card with occurrence dates.
+
+    Prefer upcoming/today events; activities without a matching event still
+    appear as their own library rows when they are unique.
+    """
+    today = today or date.today()
+    today_s = today.isoformat()
+    buckets: dict[str, dict[str, Any]] = {}
+    order: list[str] = []
+
+    # Prefer planned events over activities for the same key+date
+    ranked = sorted(
+        sessions,
+        key=lambda s: (
+            0 if s.get("kind") == "event" else 1,
+            s.get("date") or "9999",
+            s.get("name") or "",
+        ),
+    )
+
+    for raw in ranked:
+        item = _attach_library_meta(raw)
+        key = item["library_key"]
+        d = item.get("date")
+        if key not in buckets:
+            buckets[key] = {
+                "library_key": key,
+                "name": item.get("name"),
+                "discipline": item.get("discipline"),
+                "discipline_label": item.get("discipline_label"),
+                "type": item.get("type"),
+                "category": item.get("category"),
+                "kind": item.get("kind"),
+                "description_preview": item.get("description_preview"),
+                "editable": bool(item.get("editable")),
+                "occurrence_count": 0,
+                "dates": [],
+                "occurrences": [],
+                "next_date": None,
+                "representative_id": item.get("id"),
+                "sample_session_id": item.get("id"),
+            }
+            order.append(key)
+        entry = buckets[key]
+        # Prefer richer description / coach name on the card
+        if item.get("description_preview") and (
+            not entry.get("description_preview")
+            or len(item.get("description_preview") or "")
+            > len(entry.get("description_preview") or "")
+        ):
+            entry["description_preview"] = item.get("description_preview")
+        if item.get("kind") == "event":
+            entry["kind"] = "event"
+            entry["editable"] = entry.get("editable") or bool(item.get("editable"))
+            entry["representative_id"] = item.get("id")
+            entry["sample_session_id"] = item.get("id")
+            if item.get("name"):
+                entry["name"] = item.get("name")
+            if item.get("discipline_label"):
+                entry["discipline_label"] = item.get("discipline_label")
+                entry["discipline"] = item.get("discipline")
+
+        # Dedupe same date (activity + event)
+        existing_dates = {o.get("date") for o in entry["occurrences"]}
+        if d and d in existing_dates:
+            # Enrich occurrence with event id if we only had activity
+            for occ in entry["occurrences"]:
+                if occ.get("date") == d and item.get("kind") == "event":
+                    occ["id"] = item.get("id")
+                    occ["external_id"] = item.get("external_id")
+                    occ["bucket"] = item.get("bucket")
+                    occ["completion"] = item.get("completion")
+                    occ["editable"] = bool(item.get("editable"))
+            continue
+
+        occ = {
+            "id": item.get("id"),
+            "external_id": item.get("external_id"),
+            "date": d,
+            "bucket": item.get("bucket"),
+            "kind": item.get("kind"),
+            "completion": item.get("completion"),
+            "editable": bool(item.get("editable")),
+        }
+        entry["occurrences"].append(occ)
+        if d:
+            entry["dates"].append(d)
+        entry["occurrence_count"] = len(entry["occurrences"])
+
+    library: list[dict[str, Any]] = []
+    for key in order:
+        entry = buckets[key]
+        entry["dates"] = sorted({d for d in entry["dates"] if d})
+        entry["occurrences"].sort(key=lambda o: o.get("date") or "")
+        future = [d for d in entry["dates"] if d and d >= today_s]
+        past = [d for d in entry["dates"] if d and d < today_s]
+        entry["next_date"] = future[0] if future else (past[-1] if past else None)
+        # Prefer opening the next upcoming occurrence
+        next_occ = None
+        for o in entry["occurrences"]:
+            if o.get("date") and o["date"] >= today_s:
+                next_occ = o
+                break
+        if next_occ:
+            entry["sample_session_id"] = next_occ.get("id")
+            entry["representative_id"] = next_occ.get("id")
+        library.append(entry)
+
+    # Sort: next upcoming first, then name
+    def _lib_sort(e: dict[str, Any]) -> tuple:
+        nd = e.get("next_date") or "9999-99-99"
+        upcoming = 0 if nd >= today_s else 1
+        return (upcoming, nd, (e.get("name") or "").lower())
+
+    library.sort(key=_lib_sort)
+    return library
+
+
+def flatten_sessions(bundle: dict[str, Any]) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for bucket in ("today", "upcoming", "recent"):
+        for s in bundle.get(bucket) or []:
+            out.append(s)
+    return out
+
+
+def enrich_sessions_bundle(bundle: dict[str, Any], *, today: date | None = None) -> dict[str, Any]:
+    """Attach library grouping to a list_sessions payload."""
+    today = today or date.today()
+    out = dict(bundle)
+    flat = [_attach_library_meta(s) for s in flatten_sessions(out)]
+    # Re-write buckets with library_key / steps
+    by_id = {s["id"]: s for s in flat if s.get("id")}
+    for bucket in ("today", "upcoming", "recent"):
+        out[bucket] = [by_id.get(s["id"], _attach_library_meta(s)) for s in (bundle.get(bucket) or [])]
+    out["library"] = group_library(flat, today=today)
+    out["view_modes"] = ["library", "chronological"]
+    out["default_view"] = "library"
+    return out
+
+
+def find_session_in_bundle(
+    bundle: dict[str, Any],
+    session_id: str,
+) -> dict[str, Any] | None:
+    sid = session_id.strip()
+    for s in flatten_sessions(bundle):
+        if s.get("id") == sid or s.get("external_id") == sid:
+            return _attach_library_meta(s)
+    return None
+
+
+def session_detail_payload(
+    bundle: dict[str, Any],
+    session: dict[str, Any],
+    *,
+    today: date | None = None,
+) -> dict[str, Any]:
+    """Structured detail for library → detail view."""
+    today = today or date.today()
+    item = _attach_library_meta(session)
+    key = item["library_key"]
+    library = group_library(flatten_sessions(bundle), today=today)
+    siblings = next((g for g in library if g.get("library_key") == key), None)
+    occurrences = (siblings or {}).get("occurrences") or [
+        {
+            "id": item.get("id"),
+            "external_id": item.get("external_id"),
+            "date": item.get("date"),
+            "bucket": item.get("bucket"),
+            "kind": item.get("kind"),
+            "completion": item.get("completion"),
+            "editable": bool(item.get("editable")),
+        }
+    ]
+    desc = item.get("description") or ""
+    steps = item.get("steps") or []
+    return {
+        "session": item,
+        "library_key": key,
+        "occurrences": occurrences,
+        "dates": [o.get("date") for o in occurrences if o.get("date")],
+        "description": desc or None,
+        "steps": steps,
+        "coach_block": {
+            "title": "Fra treneren",
+            "body": desc or None,
+            "steps": steps,
+        },
+        "status": (item.get("completion") or {}).get("status"),
+        "editable_fields": {
+            "name": item.get("name") or "",
+            "date": item.get("date"),
+            "sport": item.get("discipline") or "other",
+            "duration_minutes": (
+                int(round(float(item["duration_hours"]) * 60))
+                if item.get("duration_hours") is not None
+                else None
+            ),
+            "description": desc,
+            "start_time": item.get("start_time") or "07:00",
+            "external_id": item.get("external_id"),
+        },
+        "editable": bool(item.get("editable")),
+        "seed_prompt": seed_chat_prompt(item),
+        "compliance_note": bundle.get("compliance_note"),
+    }
+
+
+def session_focus_for_chat(session: dict[str, Any]) -> dict[str, Any]:
+    """Compact focused-session strip for knowledge-grounded chat about one økt."""
+    return {
+        "id": session.get("id"),
+        "external_id": session.get("external_id"),
+        "name": session.get("name"),
+        "date": session.get("date"),
+        "discipline": session.get("discipline_label") or session.get("discipline"),
+        "kind": session.get("kind"),
+        "bucket": session.get("bucket"),
+        "duration_hours": session.get("duration_hours"),
+        "category": session.get("category"),
+        "description": (session.get("description") or "")[:2000] or None,
+        "steps": (session.get("steps") or parse_coach_steps(session.get("description")))[
+            :20
+        ],
+        "completion": session.get("completion"),
+        "editable": bool(session.get("editable")),
+        "library_key": session.get("library_key") or library_key_for(session),
+        "note": (
+            "Utøveren ser på DENNE økten. Svar konkret om den. "
+            "Ved foreslått endring: bruk workout_proposal med oppdatert "
+            "name/date/sport/duration_minutes/description (samme dato med mindre "
+            "de ber om å flytte). Ingenting skrives til Intervals uten bekreftelse."
+        ),
     }
 
 
@@ -159,6 +515,9 @@ def list_sessions(
         "recent": [],
         "upcoming": [],
         "today": [],
+        "library": [],
+        "view_modes": ["library", "chronological"],
+        "default_view": "library",
         "compliance_note": (
             "Compliance beregnes i appen (aktiviteter vs sesongmål) "
             "— lagres ikke i Intervals."
@@ -230,7 +589,7 @@ def list_sessions(
         out["fetch_error_detail"] = "; ".join(errors)[:400]
     elif errors:
         out["fetch_error_detail"] = "; ".join(errors)[:400]
-    return out
+    return enrich_sessions_bundle(out, today=today)
 
 
 def _slim_session(item: dict[str, Any]) -> dict[str, Any]:
@@ -300,10 +659,15 @@ def seed_chat_prompt(session: dict[str, Any]) -> str:
     comp = session.get("completion") or {}
     status = comp.get("status")
     status_bit = f" Status logget: {status}." if status else ""
+    steps = session.get("steps") or parse_coach_steps(session.get("description"))
+    steps_bit = ""
+    if steps:
+        steps_bit = " Steg: " + "; ".join(steps[:5]) + "."
     return (
         f"Kan du se på økten «{name}» ({when}"
-        f"{f', {disc}' if disc else ''}{dur_bit})?{status_bit} "
-        f"Gi kort feedback og hva jeg bør tenke på neste gang."
+        f"{f', {disc}' if disc else ''}{dur_bit})?{status_bit}{steps_bit} "
+        f"Gi kort feedback, og foreslå konkrete endringer hvis jeg ber om det "
+        f"(da med workout_proposal til forhåndsvisning)."
     )
 
 

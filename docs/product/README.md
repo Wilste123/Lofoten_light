@@ -13,6 +13,7 @@
 | [gap-analysis.md](gap-analysis.md) | Eldre gap (pre-dashboard-plan); se 2026-09-27 for aktuell |
 | [progress-compliance.md](progress-compliance.md) | Volummål, formler, demo vs Intervals |
 | [dashboard-okter.md](dashboard-okter.md) | Dashboard, Økter, kropp-toggle, øktlogg |
+| [okter-library-detail.md](okter-library-detail.md) | Økter bibliotek + detalj + chat/redigering |
 | [periodization-overview.md](periodization-overview.md) | App vs Intervals; `plan_blocks` |
 | [mvp-scope.md](mvp-scope.md) | MVP-suksess: chat + Dashboard + Økter; non-goals |
 | [anti-patterns.md](anti-patterns.md) | Pondus, tool-loop, diagnose — hva vi unngår |

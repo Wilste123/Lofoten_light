@@ -101,8 +101,10 @@ from setup_plan import (
 )
 from sessions_service import (
     completion_note_line,
+    find_session_in_bundle,
     list_sessions,
-    seed_chat_prompt,
+    session_detail_payload,
+    session_focus_for_chat,
     sessions_snapshot_for_chat,
 )
 from wellness import resolve_wellness_bundle
@@ -314,6 +316,23 @@ class AthletePatch(BaseModel):
 
 class ChatIn(BaseModel):
     message: str = Field(min_length=1)
+    session_id: str | None = Field(
+        default=None,
+        description="Optional: focus chat on one Økter session (detail-view chat).",
+    )
+
+
+class SessionEditPreviewIn(BaseModel):
+    """Athlete-edited fields → Intervals workout preview (confirm required)."""
+
+    name: str = Field(min_length=1)
+    date: str = Field(min_length=10, max_length=10)
+    sport: str = "other"
+    duration_minutes: int | None = None
+    description: str = ""
+    start_time: str = "07:00"
+    # When set, reuse same external_id for upsert of that day
+    external_id: str | None = None
 
 
 class SessionCompletionIn(BaseModel):
@@ -1159,6 +1178,12 @@ def chat(
             "date": recent[0].get("date"),
             "kind": recent[0].get("kind"),
         }
+    focused = None
+    if body.session_id:
+        found = find_session_in_bundle(sessions_bundle, body.session_id)
+        if found:
+            focused = session_focus_for_chat(found)
+            overview["focused_session"] = focused
     system = build_system_prompt(
         athlete,
         config.KNOWLEDGE_DIR,
@@ -1187,6 +1212,13 @@ def chat(
         "sessions_in_context": True,
         "sessions_source": sessions_snap.get("source"),
     }
+    if focused:
+        out["focused_session_id"] = focused.get("id")
+        out["focused_session"] = {
+            "id": focused.get("id"),
+            "name": focused.get("name"),
+            "date": focused.get("date"),
+        }
     if proposal:
         out["workout_proposal"] = proposal
         out["confirm_required"] = True
@@ -1375,7 +1407,7 @@ def get_session_detail(
     session_id: str,
     x_athlete_id: str | None = Header(default=None),
 ) -> dict[str, Any]:
-    """Find one session in the list window + seed prompt for Coach chat."""
+    """Structured session detail for library → detail view (+ chat seed)."""
     aid = _require_athlete(x_athlete_id)
     with db_session(config.DATABASE_PATH) as conn:
         if not get_athlete(conn, aid):
@@ -1383,16 +1415,9 @@ def get_session_detail(
         secrets = get_athlete_secrets(conn, aid)
         comps = completions_by_external_id(conn, aid)
     payload = list_sessions(secrets, comps)
-    sid = session_id.strip()
-    found = None
-    for bucket in ("today", "upcoming", "recent"):
-        for s in payload.get(bucket) or []:
-            if s.get("id") == sid or s.get("external_id") == sid:
-                found = s
-                break
-        if found:
-            break
+    found = find_session_in_bundle(payload, session_id)
     if not found:
+        sid = session_id.strip()
         found = {
             "id": sid,
             "external_id": sid.split(":", 1)[-1] if ":" in sid else sid,
@@ -1401,11 +1426,64 @@ def get_session_detail(
             "date": None,
             "completion": comps.get(sid)
             or comps.get(sid.split(":", 1)[-1] if ":" in sid else sid),
+            "editable": False,
         }
+    detail = session_detail_payload(payload, found)
+    return detail
+
+
+@app.post("/v1/sessions/{session_id}/edit/preview")
+def session_edit_preview(
+    session_id: str,
+    body: SessionEditPreviewIn,
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Athlete (or coach-proposed) field edits → same ICU preview→confirm path."""
+    aid = _require_athlete(x_athlete_id)
+    _athlete, _key, icu = _require_intervals_secrets(aid)
+    workout: dict[str, Any] = {
+        "name": body.name.strip(),
+        "date": body.date.strip()[:10],
+        "sport": (body.sport or "other").strip().lower(),
+        "description": body.description or "",
+        "start_time": body.start_time or "07:00",
+    }
+    if body.duration_minutes is not None:
+        workout["duration_minutes"] = body.duration_minutes
+    events = build_workout_events([workout])
+    if not events:
+        raise HTTPException(400, "Ugyldig økt (trenger name + date YYYY-MM-DD)")
+    # Prefer upsert of the same coach external_id when editing an existing day
+    eid = (body.external_id or "").strip()
+    if eid.startswith("ll-coach-w-"):
+        events[0]["external_id"] = eid
+    payload = {
+        "op": "workout_push",
+        "events": events,
+        "workouts": [workout],
+        "intervals_athlete_id": icu,
+        "source_session_id": session_id.strip(),
+    }
+    summary = [public_event_preview(e) for e in events]
+    with db_session(config.DATABASE_PATH) as conn:
+        pending = insert_pending_action(conn, aid, "intervals_workout_push", payload)
     return {
-        "session": found,
-        "seed_prompt": seed_chat_prompt(found),
-        "compliance_note": payload.get("compliance_note"),
+        "pending_id": pending["id"],
+        "op": "workout_push",
+        "count": len(events),
+        "expires_at": pending.get("expires_at"),
+        "events": summary[:40],
+        "events_truncated": max(0, len(events) - 40),
+        "confirm_required": True,
+        "session_id": session_id.strip(),
+        "message": (
+            f"Bekreft for å oppdatere {len(events)} økt(er) på Intervals. "
+            "Ingenting skrives før du bekrefter."
+        ),
+        "write_gap": (
+            "Strukturerte ZWO/CSV-økter pushes fortsatt via CLI "
+            "(scripts/intervals_push_calendar.py), ikke via chat/redigering."
+        ),
     }
 
 

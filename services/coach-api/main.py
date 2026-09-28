@@ -22,6 +22,7 @@ from athlete_type import (
     normalize_athlete_type,
     propose_type_update,
 )
+from athlete_constraints import validate_workouts_against_constraints
 from chat_service import (
     build_system_prompt,
     call_llm,
@@ -1193,19 +1194,61 @@ def chat(
     sessions_bundle = list_sessions(secrets, comps, past_days=14, future_days=14)
     sessions_snap = sessions_snapshot_for_chat(sessions_bundle)
     overview["sessions"] = sessions_snap
+    # Wellness as signals for coach context (soft-fail, never blocks chat)
+    try:
+        wl = resolve_wellness_bundle(
+            secrets, days=7, include_body=False
+        )
+        overview["wellness_signals"] = wl.get("recovery_signals") or {
+            "available": False,
+            "as_signals_only": True,
+            "sleep": wl.get("sleep"),
+            "load": wl.get("load_wellness"),
+            "note": "Wellness = signaler, ikke fasit.",
+        }
+        if overview["wellness_signals"] and not overview["wellness_signals"].get("sleep_avg_hours"):
+            sleep = wl.get("sleep") or {}
+            overview["wellness_signals"] = {
+                **overview["wellness_signals"],
+                "sleep_avg_hours": sleep.get("avg_hours"),
+                "sleep_avg_score": sleep.get("avg_score"),
+                "ctl": (wl.get("load_wellness") or {}).get("ctl"),
+                "atl": (wl.get("load_wellness") or {}).get("atl"),
+                "readiness": (wl.get("load_wellness") or {}).get("readiness"),
+            }
+    except Exception:  # noqa: BLE001
+        overview["wellness_signals"] = {
+            "available": False,
+            "as_signals_only": True,
+            "note": "Wellness utilgjengelig denne turen.",
+        }
     recent = sessions_bundle.get("recent") or []
     today = sessions_bundle.get("today") or []
     if today:
+        # Prefer completed activity on today for last_session; never a NOTE
+        pick = next(
+            (
+                s
+                for s in today
+                if s.get("kind") == "activity" or s.get("training_status") == "completed"
+            ),
+            None,
+        ) or next(
+            (s for s in today if s.get("calendar_role") != "note"),
+            today[0],
+        )
         overview["last_session"] = {
-            "name": today[0].get("name"),
-            "date": today[0].get("date"),
-            "kind": today[0].get("kind"),
+            "name": pick.get("name"),
+            "date": pick.get("date"),
+            "kind": pick.get("kind"),
+            "training_status": pick.get("training_status"),
         }
     elif recent:
         overview["last_session"] = {
             "name": recent[0].get("name"),
             "date": recent[0].get("date"),
             "kind": recent[0].get("kind"),
+            "training_status": recent[0].get("training_status") or "completed",
         }
     focused = None
     if body.session_id:
@@ -1262,12 +1305,43 @@ def chat(
             "discipline": focused.get("discipline"),
         }
     if proposal:
-        out["workout_proposal"] = proposal
-        out["confirm_required"] = True
-        out["proposal_hint"] = (
-            "Treneren foreslo økt(er) på Intervals. "
-            "Trykk Forhåndsvis, deretter bekreft — ingenting synces stille."
+        planned_this_week = _count_planned_this_week(sessions_bundle)
+        gate = validate_workouts_against_constraints(
+            athlete,
+            proposal.get("workouts") or [],
+            existing_planned_this_week=planned_this_week,
         )
+        if gate["ok"]:
+            out["workout_proposal"] = proposal
+            out["confirm_required"] = True
+            out["proposal_hint"] = (
+                "Treneren foreslo økt(er) på Intervals. "
+                "Trykk Forhåndsvis, deretter bekreft — ingenting synces stille."
+            )
+        elif gate["accepted"]:
+            # Partial accept — only allowed sports/slots
+            out["workout_proposal"] = {"workouts": gate["accepted"]}
+            out["workout_proposal_rejected"] = gate["rejected"]
+            out["constraint_reasons"] = gate["reasons"]
+            out["confirm_required"] = True
+            out["proposal_hint"] = (
+                "Noen foreslåtte økter ble filtrert mot avtalen. "
+                + " ".join(gate["reasons"][:2])
+            )
+        else:
+            out["workout_proposal_blocked"] = True
+            out["workout_proposal_rejected"] = gate["rejected"]
+            out["constraint_reasons"] = gate["reasons"]
+            out["constraint_ask"] = gate.get("ask")
+            out["proposal_hint"] = (
+                gate.get("ask")
+                or "Forslaget bryter avtalte disipliner/økter-per-uke og ble ikke sendt til sync."
+            )
+            # Surface reasons in reply so athlete sees the refuse
+            if gate["reasons"] and reply:
+                extra = "\n\n⚠️ Avtale-sperre: " + " ".join(gate["reasons"][:3])
+                if extra.strip() not in reply:
+                    out["reply"] = reply + extra
     if removal:
         out["workout_removal"] = removal
         out["confirm_required"] = True
@@ -1489,7 +1563,7 @@ def session_edit_preview(
 ) -> dict[str, Any]:
     """Athlete (or coach-proposed) field edits → same ICU preview→confirm path."""
     aid = _require_athlete(x_athlete_id)
-    _athlete, _key, icu = _require_intervals_secrets(aid)
+    athlete, _key, icu = _require_intervals_secrets(aid)
     workout: dict[str, Any] = {
         "name": body.name.strip(),
         "date": body.date.strip()[:10],
@@ -1499,6 +1573,23 @@ def session_edit_preview(
     }
     if body.duration_minutes is not None:
         workout["duration_minutes"] = body.duration_minutes
+    # Editing an existing coach workout does not add a new session slot
+    gate = validate_workouts_against_constraints(
+        athlete,
+        [workout],
+        existing_planned_this_week=0,
+    )
+    if not gate["accepted"]:
+        raise HTTPException(
+            400,
+            gate.get("ask")
+            or (
+                " ".join(gate["reasons"][:3])
+                if gate["reasons"]
+                else "Avtale blokkerer øktendringen."
+            ),
+        )
+    workout = gate["accepted"][0]
     events = build_workout_events([workout])
     if not events:
         raise HTTPException(400, "Ugyldig økt (trenger name + date YYYY-MM-DD)")
@@ -1533,6 +1624,7 @@ def session_edit_preview(
             "Strukturerte ZWO/CSV-økter pushes fortsatt via CLI "
             "(scripts/intervals_push_calendar.py), ikke via chat/redigering."
         ),
+        "constraints_summary_nb": gate.get("constraints_summary_nb"),
     }
 
 
@@ -1827,17 +1919,34 @@ def calendar_confirm(
     try:
         if op in ("push", "workout_push"):
             events = payload.get("events") or []
+            expected = len(events)
             result = post_events_bulk(key, icu, events, upsert=True)
-            outcome = {"pushed": result.get("count", len(events)), "result": result}
+            pushed = int(result.get("count") or 0)
+            # Fail closed on empty/partial — do NOT mark pending confirmed
+            if expected > 0 and pushed < expected:
+                raise RuntimeError(
+                    f"Intervals synket bare {pushed}/{expected} hendelser. "
+                    "Pending beholdes — prøv bekreft igjen (upsert er trygg)."
+                )
+            outcome = {
+                "pushed": pushed,
+                "expected": expected,
+                "result": result,
+                "retry_safe": True,
+            }
         elif op == "delete":
             ids = payload.get("external_ids") or []
             result = delete_events_bulk(key, icu, ids)
             deleted = result.get("eventsDeleted", len(ids))
-            outcome = {"deleted": deleted, "result": result}
+            outcome = {"deleted": deleted, "result": result, "retry_safe": True}
         else:
             raise HTTPException(400, "Ugyldig pending op")
     except RuntimeError as exc:
-        raise HTTPException(502, str(exc)[:500]) from exc
+        # Leave pending as-is so client can retry confirm safely (upsert)
+        raise HTTPException(
+            502,
+            f"{str(exc)[:480]} Pending er ikke bekreftet — trygg å prøve igjen.",
+        ) from exc
 
     with db_session(config.DATABASE_PATH) as conn:
         mark_pending_action(conn, aid, body.pending_id, "confirmed")
@@ -1853,10 +1962,32 @@ def workouts_preview(
 
     Builds simple calendar WORKOUT rows (name/date/sport/duration/description).
     Does not attach ZWO files — that remains CLI ``intervals_push_calendar.py``.
+    Fail-closed against athlete constraints (disciplines / sessions_per_week / injury).
     """
     aid = _require_athlete(x_athlete_id)
-    _athlete, _key, icu = _require_intervals_secrets(aid)
-    events = build_workout_events(body.workouts)
+    athlete, _key, icu = _require_intervals_secrets(aid)
+    with db_session(config.DATABASE_PATH) as conn:
+        secrets = get_athlete_secrets(conn, aid)
+        comps = completions_by_external_id(conn, aid)
+    sessions_bundle = list_sessions(secrets, comps)
+    planned_n = _count_planned_this_week(sessions_bundle)
+    gate = validate_workouts_against_constraints(
+        athlete,
+        body.workouts,
+        existing_planned_this_week=planned_n,
+    )
+    if not gate["accepted"]:
+        raise HTTPException(
+            400,
+            gate.get("ask")
+            or (
+                " ".join(gate["reasons"][:3])
+                if gate["reasons"]
+                else "Avtale blokkerer øktene."
+            ),
+        )
+    workouts_ok = gate["accepted"]
+    events = build_workout_events(workouts_ok)
     if not events:
         raise HTTPException(
             400,
@@ -1865,13 +1996,15 @@ def workouts_preview(
     payload = {
         "op": "workout_push",
         "events": events,
-        "workouts": body.workouts,
+        "workouts": workouts_ok,
         "intervals_athlete_id": icu,
+        "constraint_filtered": not gate["ok"],
+        "constraint_reasons": gate["reasons"],
     }
     summary = [public_event_preview(e) for e in events]
     with db_session(config.DATABASE_PATH) as conn:
         pending = insert_pending_action(conn, aid, "intervals_workout_push", payload)
-    return {
+    out: dict[str, Any] = {
         "pending_id": pending["id"],
         "op": "workout_push",
         "count": len(events),
@@ -1887,7 +2020,12 @@ def workouts_preview(
             "Strukturerte ZWO/CSV-økter pushes fortsatt via CLI "
             "(scripts/intervals_push_calendar.py), ikke via chat."
         ),
+        "constraints_summary_nb": gate.get("constraints_summary_nb"),
     }
+    if gate["reasons"]:
+        out["constraint_reasons"] = gate["reasons"]
+        out["rejected"] = gate["rejected"]
+    return out
 
 
 @app.post("/v1/athlete/me/intervals/workouts/remove/preview")
@@ -2325,6 +2463,31 @@ def admin_seed_from_repo(
         seed_id=body.seed_id,
         dry_run=body.dry_run,
     )
+
+
+def _count_planned_this_week(sessions_bundle: dict[str, Any] | None) -> int:
+    """Count planned WORKOUT events in the current ISO week (for session caps)."""
+    if not sessions_bundle:
+        return 0
+    today = date.today()
+    iso = today.isocalendar()
+    n = 0
+    for bucket in ("planned", "upcoming", "today"):
+        for s in sessions_bundle.get(bucket) or []:
+            if s.get("calendar_role") == "note" or s.get("training_status") == "note":
+                continue
+            if s.get("kind") == "activity":
+                continue
+            d_raw = s.get("date")
+            if not d_raw:
+                continue
+            try:
+                d = date.fromisoformat(str(d_raw)[:10])
+            except ValueError:
+                continue
+            if d.isocalendar()[:2] == iso[:2]:
+                n += 1
+    return n
 
 
 def _overview_payload(

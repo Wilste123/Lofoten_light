@@ -107,6 +107,17 @@ Uten passord / OAuth. Se [returning-login.md](returning-login.md).
 
 Gate ≥ 5 sykkeløkter med watt. Se [form-estimates.md](form-estimates.md).
 
+## Trust priorities (comercial / Copilot 2026-09-28)
+
+Highest product stance — **no more agent autonomy**; protect preview→confirm:
+
+1. **Intervals trust** — completed volume/compliance = ICU **activities** only. NOTE ≠ trening. Planlagt WORKOUT uten aktivitet = ikke gjennomført. Sync-feil: ikke stille partial success; pending ubegrenset til OK (trygg retry).
+2. **Hard athlete constraints** — `allowed_disciplines` + `sessions_per_week` + injury/agreements enforce fail-closed on setup/plan sync/chat proposals/session edit. Commercial never invents tri weeks; William seed may use Lofoten packs.
+3. **Knowledge-applied coaching** — facts → observations → recommendations; wellness = signals.
+4. Coach Memory / reflection loops — later.
+
+See [progress-compliance.md](progress-compliance.md) «Sannhet» + «Sync-feil». Branch: `comercial` (PR #16).
+
 ## Faser (oppdatert)
 
 | Fase | Innhold |

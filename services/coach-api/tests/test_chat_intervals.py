@@ -200,11 +200,12 @@ def test_chat_returns_workout_proposal(client):
     c, _athletes, _db = client
     aid = _onboard(c)
     headers = {"X-Athlete-Id": aid}
+    # Commercial default = run+strength — propose run (not bike/swim)
     llm_reply = (
-        "Ok — rolig Z2 tirsdag.\n"
+        "Ok — rolig løpetur tirsdag.\n"
         "```workout_proposal\n"
-        '{"workouts":[{"name":"Z2","date":"2026-09-30","sport":"bike",'
-        '"duration_minutes":75,"description":"Z2","start_time":"07:00"}]}\n'
+        '{"workouts":[{"name":"Easy 40","date":"2026-09-30","sport":"run",'
+        '"duration_minutes":40,"description":"Z2","start_time":"07:00"}]}\n'
         "```"
     )
     with (
@@ -214,13 +215,50 @@ def test_chat_returns_workout_proposal(client):
         r = c.post(
             "/v1/chat",
             headers=headers,
-            json={"message": "Legg inn Z2 tirsdag på Intervals"},
+            json={"message": "Legg inn easy run tirsdag på Intervals"},
         )
     assert r.status_code == 200, r.text
     data = r.json()
     assert "workout_proposal" not in data["reply"]
-    assert data["workout_proposal"]["workouts"][0]["name"] == "Z2"
+    assert data["workout_proposal"]["workouts"][0]["name"] == "Easy 40"
     assert data["confirm_required"] is True
+
+
+def test_chat_blocks_disallowed_sport_proposal(client):
+    """Commercial run+strength athlete: swim proposal must not reach confirm."""
+    c, _athletes, _db = client
+    aid = _onboard(c)
+    headers = {"X-Athlete-Id": aid}
+    llm_reply = (
+        "Svøm?\n"
+        "```workout_proposal\n"
+        '{"workouts":[{"name":"Teknikk","date":"2026-09-30","sport":"swim",'
+        '"duration_minutes":45,"description":"Drill","start_time":"07:00"}]}\n'
+        "```"
+    )
+    with (
+        patch(
+            "main.list_sessions",
+            return_value={
+                "source": "none",
+                "recent": [],
+                "upcoming": [],
+                "today": [],
+                "window": None,
+            },
+        ),
+        patch("main.call_llm", return_value=llm_reply),
+    ):
+        r = c.post(
+            "/v1/chat",
+            headers=headers,
+            json={"message": "Legg inn svøm tirsdag"},
+        )
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert "workout_proposal" not in data
+    assert data.get("workout_proposal_blocked") is True
+    assert data.get("constraint_reasons")
 
 
 def test_workout_preview_confirm_flow(client):
@@ -241,10 +279,10 @@ def test_workout_preview_confirm_flow(client):
         json={
             "workouts": [
                 {
-                    "name": "Z2",
+                    "name": "Easy run",
                     "date": "2026-09-30",
-                    "sport": "bike",
-                    "duration_minutes": 60,
+                    "sport": "run",
+                    "duration_minutes": 40,
                     "description": "Rolig",
                     "start_time": "07:00",
                 }
@@ -274,3 +312,32 @@ def test_workout_preview_confirm_flow(client):
     events = args[0][2]
     assert events[0]["category"] == "WORKOUT"
     assert events[0]["external_id"].startswith("ll-coach-w-")
+
+
+def test_workout_preview_refuses_disallowed_sport(client):
+    c, _athletes, db = client
+    aid = _onboard(c)
+    headers = {"X-Athlete-Id": aid}
+    with db_session(db) as conn:
+        upsert_athlete_secrets(
+            conn,
+            aid,
+            intervals_api_key="test-key",
+            intervals_athlete_id="i999",
+        )
+    preview = c.post(
+        "/v1/athlete/me/intervals/workouts/preview",
+        headers=headers,
+        json={
+            "workouts": [
+                {
+                    "name": "Z2",
+                    "date": "2026-09-30",
+                    "sport": "bike",
+                    "duration_minutes": 60,
+                }
+            ]
+        },
+    )
+    assert preview.status_code == 400
+    assert "Avtale" in preview.text or "blokker" in preview.text.lower()

@@ -352,3 +352,130 @@ def constraints_summary_nb(constraints: dict[str, Any]) -> str:
     disc = " + ".join(labels) if labels else "alle disipliner (etter type)"
     n_bit = f"{n} økter/uke" if n else "ukemaler-økter"
     return f"{n_bit} · {disc} · max {constraints.get('max_workout_weeks', 2)} uker WORKOUT"
+
+
+def _injury_blocks_discipline(injury_notes: str, disc: str) -> bool:
+    """Heuristic: pause/ikke/unngå + discipline mention → refuse that sport."""
+    blob = (injury_notes or "").lower()
+    if not blob or not disc:
+        return False
+    labels = {
+        DISC_RUN: r"(løp|lop|running|run)",
+        DISC_BIKE: r"(sykkel|bike|cycling|ride)",
+        DISC_SWIM: r"(svøm|svom|swim)",
+        DISC_STRENGTH: r"(styrke|strength|vekt)",
+    }
+    pat = labels.get(disc)
+    if not pat:
+        return False
+    # "ikke løp", "pause sykkel", "unngå svøm", "ingen styrke"
+    return bool(
+        re.search(
+            rf"(ikke|ingen|unngå|unnga|pause|stopp|forbudt|avstår|avsta)."
+            rf"{{0,24}}{pat}|{pat}.{{0,24}}(ikke|pause|stoppet|skade)",
+            blob,
+        )
+    )
+
+
+def validate_workouts_against_constraints(
+    athlete: dict[str, Any] | None,
+    workouts: list[dict[str, Any]] | None,
+    *,
+    existing_planned_this_week: int | None = None,
+    draft: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Fail-closed gate for chat/setup/edit proposals.
+
+    Rejects disallowed disciplines and injury-blocked sports. Caps proposed
+    count against sessions_per_week when known (existing + new).
+    """
+    athlete = athlete or {}
+    workouts = [w for w in (workouts or []) if isinstance(w, dict)]
+    constraints = resolve_constraints(athlete, draft=draft)
+    allowed = list(constraints.get("allowed_disciplines") or [])
+    sessions_cap = constraints.get("sessions_per_week")
+    injury = str(
+        (draft or {}).get("injury_notes")
+        if draft and draft.get("injury_notes") is not None
+        else athlete.get("injury_notes")
+        or ""
+    )
+    agreements = athlete.get("agreements") or (draft or {}).get("agreements") or []
+
+    accepted: list[dict[str, Any]] = []
+    rejected: list[dict[str, Any]] = []
+    reasons: list[str] = []
+
+    for w in workouts:
+        sport_raw = str(w.get("sport") or w.get("type") or "").strip()
+        disc = sport_to_discipline(sport_raw)
+        # "other" / unknown with empty allowed list → allow (william / uncapped)
+        if allowed and disc and disc not in allowed:
+            rejected.append({**w, "reject_reason": "discipline_not_allowed"})
+            reasons.append(
+                f"«{w.get('name') or sport_raw}» ({LABELS_NO.get(disc, disc)}) "
+                f"er utenfor avtalte disipliner ({', '.join(LABELS_NO.get(d, d) for d in allowed)})."
+            )
+            continue
+        if allowed and not disc and sport_raw.lower() not in ("", "other"):
+            # Unmapped sport while athlete has a discipline filter → refuse
+            rejected.append({**w, "reject_reason": "discipline_unknown"})
+            reasons.append(
+                f"«{w.get('name') or sport_raw}» har ukjent sport «{sport_raw}» "
+                f"mens avtalen begrenser til {', '.join(LABELS_NO.get(d, d) for d in allowed)}."
+            )
+            continue
+        if disc and _injury_blocks_discipline(injury, disc):
+            rejected.append({**w, "reject_reason": "injury_block"})
+            reasons.append(
+                f"«{w.get('name') or sport_raw}» kolliderer med skadenotat "
+                f"({LABELS_NO.get(disc, disc)}). Spør utøveren / foreslå alternativ."
+            )
+            continue
+        accepted.append(w)
+
+    # Session-cap: existing planned this ISO week + accepted proposals
+    cap_hit = False
+    if sessions_cap is not None and accepted:
+        existing = int(existing_planned_this_week or 0)
+        room = max(0, int(sessions_cap) - existing)
+        if room <= 0:
+            for w in accepted:
+                rejected.append({**w, "reject_reason": "sessions_per_week_cap"})
+            reasons.append(
+                f"Avtalt {sessions_cap} økter/uke er allerede fylt "
+                f"({existing} planlagt). Foreslå flytting/erstatning, ikke flere økter."
+            )
+            accepted = []
+            cap_hit = True
+        elif len(accepted) > room:
+            keep, drop = accepted[:room], accepted[room:]
+            for w in drop:
+                rejected.append({**w, "reject_reason": "sessions_per_week_cap"})
+            reasons.append(
+                f"Avtalt {sessions_cap} økter/uke — plass til {room} nye "
+                f"(har {existing} planlagt). Overskytende avvist."
+            )
+            accepted = keep
+            cap_hit = True
+
+    ok = len(rejected) == 0 and len(accepted) == len(workouts)
+    ask = None
+    if not ok and not accepted and workouts:
+        ask = (
+            "Avtalen blokkerer forslaget. Bekreft endring av disipliner/økter-per-uke "
+            "via agreements_update, eller foreslå innenfor avtalen."
+        )
+    return {
+        "ok": ok,
+        "accepted": accepted,
+        "rejected": rejected,
+        "reasons": reasons,
+        "ask": ask,
+        "cap_hit": cap_hit,
+        "constraints": constraints,
+        "constraints_summary_nb": constraints_summary_nb(constraints),
+        "injury_notes": injury[:400] if injury else "",
+        "agreements": agreements[:12] if isinstance(agreements, list) else [],
+    }

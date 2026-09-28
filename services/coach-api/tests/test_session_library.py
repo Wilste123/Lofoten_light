@@ -398,8 +398,14 @@ def test_session_edit_preview_creates_pending(client):
     aid = _onboard(c)
     headers = {"X-Athlete-Id": aid}
 
-    # Store fake Intervals secrets
-    with patch("main._require_intervals_secrets", return_value=({}, "key", "i123")):
+    # Athlete with bike allowed (edit path must still honor constraints)
+    athlete = {
+        "id": aid,
+        "athlete_type": "cyclist",
+        "allowed_disciplines": ["bike", "strength", "run"],
+        "sessions_per_week": 5,
+    }
+    with patch("main._require_intervals_secrets", return_value=(athlete, "key", "i123")):
         r = c.post(
             "/v1/sessions/evt:z/edit/preview",
             headers=headers,

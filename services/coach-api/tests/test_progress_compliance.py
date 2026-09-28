@@ -182,7 +182,8 @@ def test_resolve_progress_fetch_error_zeros_not_demo_hours():
             athlete, secrets, today=date(2026, 9, 25), use_cache=False
         )
     assert payload["fetch_error"] is True
-    assert payload["source"] == "demo"
+    assert payload["source"] == "intervals"
+    assert payload.get("retryable") is True
     bike = next(d for d in payload["disciplines"] if d["id"] == "bike")
     assert bike["completed_hours"] == 0.0  # not fake 175
 

@@ -202,6 +202,50 @@ def load_summary_from_wellness(rows: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def recovery_signals_from_wellness(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Compact sleep / HRV / RHR / load for coach chat — signals, not truth."""
+    dated = [(d, r) for r in rows if (d := _row_date(r)) is not None]
+    dated.sort(key=lambda x: x[0])
+    sleep = analyze_sleep(rows)
+    load = load_summary_from_wellness(rows)
+    latest = dated[-1][1] if dated else {}
+    hrv_vals = _series(rows, "hrv") or _series(rows, "hrvSDNN") or _series(rows, "sdnn")
+    rhr_vals = _series(rows, "restingHR") or _series(rows, "restingHr") or _series(
+        rows, "restingHeartRate"
+    )
+    hrv_avg = round(mean(hrv_vals[-7:]), 1) if hrv_vals else None
+    rhr_avg = round(mean(rhr_vals[-7:]), 1) if rhr_vals else None
+    available = bool(
+        sleep.get("available")
+        or load.get("available")
+        or hrv_avg is not None
+        or rhr_avg is not None
+    )
+    return {
+        "available": available,
+        "as_signals_only": True,
+        "sleep_avg_hours": sleep.get("avg_hours"),
+        "sleep_avg_score": sleep.get("avg_score"),
+        "sleep_note": sleep.get("note"),
+        "hrv_avg_7d": hrv_avg,
+        "hrv_latest": _parse_float(latest.get("hrv") or latest.get("hrvSDNN") or latest.get("sdnn")),
+        "rhr_avg_7d": rhr_avg,
+        "rhr_latest": _parse_float(
+            latest.get("restingHR")
+            or latest.get("restingHr")
+            or latest.get("restingHeartRate")
+        ),
+        "ctl": load.get("ctl"),
+        "atl": load.get("atl"),
+        "readiness": load.get("readiness"),
+        "note": (
+            "Wellness = signaler (søvn/HRV/RHR/load), ikke absolutt sannhet."
+            if available
+            else "Ingen wellness-signaler i vinduet."
+        ),
+    }
+
+
 def load_series_from_wellness(
     rows: list[dict[str, Any]],
     *,
@@ -287,6 +331,11 @@ def resolve_wellness_bundle(
             "points": [],
             "note": "Koble Intervals for CTL/ATL-graf.",
         },
+        "recovery_signals": {
+            "available": False,
+            "as_signals_only": True,
+            "note": "Koble Intervals for søvn/HRV/RHR-signaler.",
+        },
     }
     if include_body:
         empty["body"] = {
@@ -340,6 +389,7 @@ def resolve_wellness_bundle(
         "sleep": analyze_sleep(rows),
         "load_wellness": load_summary_from_wellness(rows),
         "load_series": load_series_from_wellness(rows, start=win_start, end=win_end),
+        "recovery_signals": recovery_signals_from_wellness(rows),
     }
     if include_body:
         payload["body"] = analyze_body(rows)

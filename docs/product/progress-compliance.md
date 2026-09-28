@@ -45,7 +45,25 @@ Stub/demo-tall returneres med `source: "demo"` og UI-merke **Demo**. Tallene er 
 
 ### Credentials men fetch feilet
 
-`source: "demo"`, `fetch_error: true`, **completed = 0** (ikke fake demo-timer). UI: **Henting feilet**.
+`source: "intervals"`, `fetch_error: true`, `retryable: true`, **completed = 0** (ikke fake demo-timer). UI: **Henting feilet**. Trygg å prøve igjen (cache TTL ~2 min).
+
+## Sannhet: aktiviteter vs kalender
+
+| Kilde | Teller som gjennomført volum? |
+|-------|-------------------------------|
+| ICU **activities** | **Ja** — eneste kilde til completed hours / compliance |
+| Kalender **NOTE** (inkl. `ll-coach-…` grovplan) | **Nei** — plan-kontekst, ikke trening |
+| Kalender **WORKOUT** uten matching aktivitet | **Nei** — `planned` / `planned_not_done` |
+| App completion «completed» uten ICU-aktivitet | **Nei** for volum (app-logg kun) |
+| Ubekreftet chat-proposal | **Nei** |
+
+API (`GET /v1/sessions` + chat snapshot) skiller: `completed` / `gjennomfort` vs `planned` / `planlagt` vs `planned_not_done` / `ikke_gjennomfort` vs `notes` / `noter`.
+
+## Sync-feil / offline
+
+- Preview → confirm: pending markeres **ikke** `confirmed` ved HTTP-/partial-feil. Upsert → trygg retry.
+- Delvis fetch (activities OK, events feilet eller omvendt): `partial_fetch: true` + `fetch_error_detail` — ikke stille suksess.
+- Uten nett / timeout: completed = 0 + feilmerke; ikke demo-timer når credentials finnes.
 
 ## Formler
 
@@ -113,6 +131,6 @@ Implementasjon: `progress_compliance.on_pace_metrics` · vist under Compliance-f
 | Merke | Når |
 |-------|-----|
 | **Demo** | Ingen Intervals-nøkkel |
-| **Henting feilet** | Credentials finnes, men ICU-kall feilet → 0 t |
+| **Henting feilet** | Credentials finnes, men ICU-kall feilet → `source: intervals` + 0 t + `retryable` |
 | **Intervals** | Ekte summer fra aktiviteter |
 | **Estimat** | Data tynn (&lt; 3 økter i vinduet) — fortsatt reell sum, men usikker |

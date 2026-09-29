@@ -605,3 +605,115 @@ def test_chat_infers_week_plan_update_without_fence(client):
     assert prop.get("sessions")
     assert prop.get("inferred") is True
     assert data.get("confirm_required") is True
+
+
+def test_user_requests_intervals_plan_sync_intent():
+    from chat_service import (
+        user_requests_intervals_plan_sync,
+        user_requests_plan_adjust,
+        user_requests_session_change,
+    )
+
+    msg = "Legg inn resten av planen i intervals"
+    assert user_requests_intervals_plan_sync(msg) is True
+    assert user_requests_session_change(msg) is False
+    assert user_requests_plan_adjust(msg) is False
+    assert user_requests_intervals_plan_sync("synk planen til Intervals") is True
+    assert user_requests_intervals_plan_sync(
+        "Kan du legge inn en rolig løpetur i morgen?"
+    ) is False
+
+
+def test_chat_legg_inn_planen_i_intervals_syncs_stored_no_amnesia(client):
+    """Kent bug: existing plan + «legg inn i intervals» → sync preview, not new week."""
+    c, _athletes, db = client
+    setup = _confirm_setup(c, username="kent-sync", sessions=3)
+    aid = setup["athlete"]["id"]
+    planned_n = setup["planned_sessions_count"]
+    assert planned_n > ICU_SYNC_WEEKS
+
+    # Without Intervals: honest connect hint, no inventing
+    with patch("main.call_llm") as llm:
+        r = c.post(
+            "/v1/chat",
+            headers={"X-Athlete-Id": aid},
+            json={"message": "Legg inn resten av planen i intervals"},
+        )
+        llm.assert_not_called()
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert data.get("intervals_sync_intent") is True
+    assert data.get("planned_sessions_count") == planned_n
+    assert data.get("icu_sync_weeks") == ICU_SYNC_WEEKS
+    assert data.get("plan_proposal") in (None, {})
+    assert not (data.get("workout_proposal") or {}).get("workouts")
+    assert data.get("app_plan", {}).get("has_plan") is True
+    assert "ny plan" in data["reply"].lower() or "ikke koblet" in data["reply"].lower()
+    assert "økttyper" not in data["reply"].lower()
+    assert data.get("intervals_pending") is None
+    assert data.get("intervals_connect_hint")
+
+    # With Intervals: pending sync from stored planned_sessions
+    with db_session(db) as conn:
+        from db import upsert_athlete_secrets
+
+        upsert_athlete_secrets(
+            conn, aid, intervals_api_key="test-key", intervals_athlete_id="iKent"
+        )
+
+    with (
+        patch("main.call_llm") as llm,
+        patch(
+            "main._sync_bundle_preferring_stored",
+            return_value={
+                "events": [
+                    {
+                        "external_id": "ll-coach-w-1",
+                        "name": "LAGRET",
+                        "category": "WORKOUT",
+                    }
+                ],
+                "events_preview": [
+                    {
+                        "external_id": "ll-coach-w-1",
+                        "name": "LAGRET",
+                        "category": "WORKOUT",
+                        "preview_no": "LAGRET",
+                    }
+                ],
+                "workouts_preview": [{"name": "LAGRET", "category": "WORKOUT"}],
+                "notes_count": 1,
+                "workouts_count": 6,
+                "zwo_count": 0,
+                "count": 7,
+                "weeks": ICU_SYNC_WEEKS,
+                "builder": "test",
+                "knowledge_paths": [],
+                "from_stored_sessions": True,
+                "kind": "calendar_notes_and_stored_workouts",
+                "description_no": "fra planned_sessions",
+                "icu_sync_weeks": ICU_SYNC_WEEKS,
+            },
+        ),
+    ):
+        r2 = c.post(
+            "/v1/chat",
+            headers={"X-Athlete-Id": aid},
+            json={"message": "Legg inn resten av planen i intervals"},
+        )
+        llm.assert_not_called()
+    assert r2.status_code == 200, r2.text
+    body = r2.json()
+    assert body.get("intervals_sync_intent") is True
+    assert body.get("intervals_pending") is not None
+    pending = body["intervals_pending"]
+    assert pending.get("confirm_required") is True
+    assert pending.get("pending_id")
+    assert pending.get("from_stored_sessions") is True
+    assert pending.get("workouts_count") == 6
+    assert body.get("plan_proposal") in (None, {})
+    assert not (body.get("workout_proposal") or {}).get("workouts")
+    assert "nærvindu" in body["reply"].lower() or str(ICU_SYNC_WEEKS) in body["reply"]
+    # Snapshot must expose plan so model cannot claim amnesia
+    assert body["app_plan"]["planned_sessions_count"] == planned_n
+    assert "planned_sessions" in (body["app_plan"].get("note_nb") or "")

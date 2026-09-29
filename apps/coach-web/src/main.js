@@ -1084,6 +1084,18 @@ function applyChatResponse(data, { mirrorToMain = false, userText = '' } = {}) {
     if (planHasFull || planHasWeek) state.agreementsProposal = null
     if (data.plan_hint) toast(data.plan_hint)
   }
+  // Existing plan → Intervals near-window sync (no new week inventing)
+  if (data.intervals_pending) {
+    state.sync.pending = data.intervals_pending
+    state.sync.message = data.intervals_pending.message || data.sync_hint || ''
+    state.sync.error = data.intervals_prep_error || ''
+    state.workoutProposal = null
+    state.planAdjust = null
+    state.tab = 'plan'
+    if (data.sync_hint) toast(data.sync_hint)
+  } else if (data.intervals_sync_intent && data.intervals_connect_hint) {
+    toast(data.intervals_connect_hint)
+  }
   if (mirrorToMain && userText) {
     state.messages = [
       ...state.messages,

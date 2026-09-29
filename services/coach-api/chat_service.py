@@ -193,6 +193,14 @@ Regler:
 - Ernæring/IBS: les GI-feltene i profilen; bruk knowledge/ernaring; aldri diagnostiser.
 - Intervals-aktiviteter er fasit for *gjennomført*; app ``planned_sessions`` er fasit for *planlagt*.
   Synk nærvindu til Intervals etter bekreftelse — ikke anta at ICU er oppdatert før Sync.
+- Feltet ``app_plan`` i snapshotet er sannhetskilde for lagret plan (antall økter, frekvens, disipliner, sample).
+  Når ``app_plan.has_plan`` er true: du HAR laget/kjenner planen — ikke si «jeg har ikke spesifisert økttyper»
+  og ikke start ny intervjuerunde om hvilke økter som skal med.
+- Når utøveren ber om å legge inn / synke / pushe *planen* (eller «resten») til Intervals:
+  1) Bruk eksisterende planned_sessions — ikke bygg ny ukeplan og ikke spør om økttyper.
+  2) Forklar ærlig: app beholder full horisont; Intervals får kun nærvindu (icu_sync_weeks).
+  3) Hvis Intervals ikke er koblet: si det rett ut + Du → Intervals — fortsatt ingen ny plan.
+  4) Appen emitter Sync-forhåndsvisning (intervals_pending) — du synker ikke selv.
 - Chat og Plan-bygger deler samme modell: workout_proposal / plan_update → preview → confirm →
   lagre planned_sessions (+ plan_blocks). Ikke lag en parallell prosa-plan som ikke kan bekreftes.
 - Hvis overblikk mangler ICU-data: si ærlig at *gjennomført* belastning krever Intervals-kobling;
@@ -360,6 +368,25 @@ _PLAN_ADJUST_INTENT_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Sync existing app plan → Intervals (not invent a new week).
+_INTERVALS_PLAN_SYNC_INTENT_RE = re.compile(
+    r"(?:"
+    r"(?:legg\s+(?:inn|til|på)\s+(?:resten\s+av\s+)?(?:planen|øktene|uka)|"
+    r"synk(?:e|roniser)?\s+(?:resten\s+av\s+)?(?:planen|øktene)|"
+    r"push(?:e)?\s+(?:resten\s+av\s+)?(?:planen|øktene)|"
+    r"send\s+(?:resten\s+av\s+)?(?:planen|øktene))"
+    r".{0,40}?"
+    r"(?:intervals|icu)|"
+    r"(?:intervals|icu).{0,40}?"
+    r"(?:legg\s+(?:inn|til|på)|synk|push|send).{0,40}?"
+    r"(?:planen|øktene|resten)|"
+    r"sync\s+(?:the\s+)?plan\s+(?:to\s+)?intervals|"
+    r"push\s+(?:the\s+)?plan\s+to\s+intervals|"
+    r"put\s+(?:the\s+)?(?:rest\s+of\s+(?:the\s+)?)?plan\s+(?:on|into|in)\s+intervals"
+    r")",
+    re.IGNORECASE | re.DOTALL,
+)
+
 _SPORT_WORD_RE = re.compile(
     r"\b(svøm(?:me|ming|tur)?|swim|syk(?:kel|le|ling)?|bike|cycling|"
     r"løp(?:e|etur|ing)?|run(?:ning)?|jogge|styrke|strength|"
@@ -380,10 +407,24 @@ _LABELED_FIELD_RE = re.compile(
 )
 
 
+def user_requests_intervals_plan_sync(message: str) -> bool:
+    """True when athlete asks to push/sync the *existing* plan into Intervals.
+
+    Distinct from adding one new workout or rebuilding the plan.
+    """
+    text = (message or "").strip()
+    if not text:
+        return False
+    return bool(_INTERVALS_PLAN_SYNC_INTENT_RE.search(text))
+
+
 def user_requests_session_change(message: str) -> bool:
     """True when the athlete clearly asks to add/change a concrete session."""
     text = (message or "").strip()
     if not text:
+        return False
+    # «Legg inn resten av planen i intervals» is plan-sync, not a new session.
+    if user_requests_intervals_plan_sync(text):
         return False
     return bool(_SESSION_INTENT_RE.search(text))
 
@@ -393,7 +434,106 @@ def user_requests_plan_adjust(message: str) -> bool:
     text = (message or "").strip()
     if not text:
         return False
+    # Sync-to-Intervals is not a rebuild request.
+    if user_requests_intervals_plan_sync(text):
+        return False
     return bool(_PLAN_ADJUST_INTENT_RE.search(text))
+
+
+def plan_summary_for_chat(
+    athlete: dict[str, Any] | None,
+    *,
+    planned_sessions: list[dict[str, Any]] | None = None,
+    plan_blocks: list[dict[str, Any]] | None = None,
+    intervals_connected: bool = False,
+    icu_sync_weeks: int = 2,
+    max_sample: int = 8,
+) -> dict[str, Any]:
+    """Compact app-plan SoT for the LLM snapshot — prevents «jeg har ikke spesifisert…».
+
+    Full plan lives in ``planned_sessions``; Intervals only gets the near window.
+    """
+    rows = list(planned_sessions or [])
+    blocks = list(plan_blocks or [])
+    ath = athlete or {}
+    sess_pw = ath.get("sessions_per_week")
+    discs = ath.get("allowed_disciplines") or []
+    sample: list[dict[str, Any]] = []
+    for r in rows[: max(1, max_sample)]:
+        sample.append(
+            {
+                "date": (r.get("session_date") or r.get("date") or "")[:10],
+                "name": (r.get("name") or "")[:80],
+                "sport": (r.get("sport") or r.get("discipline") or "")[:40],
+                "duration_minutes": r.get("duration_minutes"),
+            }
+        )
+    block_titles = [
+        str(b.get("title") or b.get("theme") or "").strip()[:60]
+        for b in blocks[:6]
+        if str(b.get("title") or b.get("theme") or "").strip()
+    ]
+    n = len(rows)
+    has_plan = n > 0 or bool(blocks)
+    note = (
+        f"App-plan finnes: {n} planned_sessions"
+        + (f", {sess_pw} økter/uke" if sess_pw else "")
+        + (f", disipliner {', '.join(str(d) for d in discs[:6])}" if discs else "")
+        + f". Intervals WORKOUT-sync = kun første {icu_sync_weeks} uker; "
+        "resten av horisonten blir i appen. "
+        "Ikke spør om økttyper / ikke finn opp ny ukeplan når planned_sessions finnes."
+        if has_plan
+        else (
+            "Ingen lagret planned_sessions ennå — ikke synce Intervals før setup/confirm "
+            "eller plan er lagret. Ikke finn opp en parallell prosa-plan."
+        )
+    )
+    return {
+        "has_plan": has_plan,
+        "planned_sessions_count": n,
+        "plan_blocks_count": len(blocks),
+        "sessions_per_week": sess_pw,
+        "allowed_disciplines": list(discs) if isinstance(discs, list) else discs,
+        "goal_text": (ath.get("goal_text") or "")[:160] or None,
+        "goal_race_date": ath.get("goal_race_date"),
+        "block_titles": block_titles,
+        "sample_upcoming": sample,
+        "intervals_connected": bool(intervals_connected),
+        "icu_sync_weeks": int(icu_sync_weeks),
+        "note_nb": note,
+    }
+
+
+def intervals_plan_sync_reply_nb(
+    *,
+    planned_count: int,
+    icu_sync_weeks: int,
+    workouts_count: int | None = None,
+    intervals_connected: bool,
+    from_stored: bool = True,
+) -> str:
+    """Honest coach reply when athlete asks to put the existing plan on Intervals."""
+    if planned_count <= 0:
+        return (
+            "Jeg ser ingen lagret plan (planned_sessions) å synce ennå. "
+            "Fullfør setup → bekreft planen først — da får vi økter til måldato i appen. "
+            "Jeg finner ikke opp en ny ukeplan her."
+        )
+    if not intervals_connected:
+        return (
+            f"Planen ligger allerede her: {planned_count} økter til måldato. "
+            f"Intervals er ikke koblet — gå til Du → Intervals (athlete-ID + API-nøkkel), "
+            f"så synker vi nærvinduet (første {icu_sync_weeks} uker WORKOUT). "
+            "Resten av planen blir i appen. Jeg lager ikke en ny plan nå."
+        )
+    wc = workouts_count if workouts_count is not None else "nærvinduets"
+    src = "lagrede planned_sessions" if from_stored else "øktbibliotek"
+    return (
+        f"Planen er allerede satt ({planned_count} økter i appen). "
+        f"Jeg synker ikke hele horisonten til Intervals — bare nærvinduet "
+        f"({icu_sync_weeks} uker, {wc} WORKOUT fra {src}). "
+        "Bekreft Sync-forhåndsvisningen. Resten av planen blir i appen."
+    )
 
 
 def _sport_from_text(text: str) -> str:

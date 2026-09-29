@@ -609,6 +609,7 @@ def test_chat_infers_week_plan_update_without_fence(client):
 
 def test_user_requests_intervals_plan_sync_intent():
     from chat_service import (
+        user_confirms_intervals_plan_sync,
         user_requests_intervals_plan_sync,
         user_requests_plan_adjust,
         user_requests_session_change,
@@ -620,8 +621,21 @@ def test_user_requests_intervals_plan_sync_intent():
     assert user_requests_plan_adjust(msg) is False
     assert user_requests_intervals_plan_sync("synk planen til Intervals") is True
     assert user_requests_intervals_plan_sync(
+        "kan du pushe resten av planen til intervals?"
+    ) is True
+    assert user_requests_intervals_plan_sync("sync til intervals") is True
+    assert user_requests_intervals_plan_sync(
         "Kan du legge inn en rolig løpetur i morgen?"
     ) is False
+    offer = [
+        {
+            "role": "assistant",
+            "content": "Planen er allerede satt (96 økter). Bekreft Sync-forhåndsvisningen for nærvinduet.",
+        }
+    ]
+    assert user_confirms_intervals_plan_sync("sync", offer) is True
+    assert user_confirms_intervals_plan_sync("go", offer) is True
+    assert user_confirms_intervals_plan_sync("sync", []) is False
 
 
 def test_chat_legg_inn_planen_i_intervals_syncs_stored_no_amnesia(client):

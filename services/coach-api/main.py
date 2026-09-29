@@ -36,6 +36,7 @@ from chat_service import (
     intervals_plan_sync_reply_nb,
     knowledge_meta_for_chat,
     plan_summary_for_chat,
+    user_confirms_intervals_plan_sync,
     user_requests_intervals_plan_sync,
 )
 from db import (
@@ -1352,8 +1353,11 @@ def chat(
         intervals_connected=intervals_ok,
         icu_sync_weeks=ICU_SYNC_WEEKS,
     )
-    # Deterministic: «legg inn resten av planen i intervals» → sync existing SoT
-    if user_requests_intervals_plan_sync(body.message):
+    # Deterministic: push/sync plan → Intervals near window from stored SoT.
+    # Also catch Kent follow-ups («sync» / «go») after coach already offered Sync.
+    if user_requests_intervals_plan_sync(
+        body.message
+    ) or user_confirms_intervals_plan_sync(body.message, history):
         return _chat_intervals_plan_sync(
             aid=aid,
             athlete=athlete,
@@ -1697,8 +1701,10 @@ def _chat_intervals_plan_sync(
     prep_error = None
     workouts_count = None
     from_stored = False
+    blocks = list(plan_blocks or [])
 
-    if planned_n > 0 and intervals_ok and plan_blocks:
+    # Prefer stored planned_sessions; plan_blocks optional (notes only when present).
+    if planned_n > 0 and intervals_ok:
         key = ((secrets or {}).get("intervals_api_key") or "").strip()
         icu = ((secrets or {}).get("intervals_athlete_id") or "").strip()
         try:
@@ -1706,7 +1712,7 @@ def _chat_intervals_plan_sync(
                 bundle = _sync_bundle_preferring_stored(
                     conn,
                     aid,
-                    plan_blocks,
+                    blocks,
                     athlete,
                     allow_degraded=True,
                 )
@@ -1734,7 +1740,7 @@ def _chat_intervals_plan_sync(
                         "intervals_calendar_push",
                         {
                             "op": "push",
-                            "block_ids": [b["id"] for b in plan_blocks if b.get("id")],
+                            "block_ids": [b["id"] for b in blocks if b.get("id")],
                             "events": bundle["events"],
                             "intervals_athlete_id": icu,
                             "notes_count": bundle["notes_count"],
@@ -1768,8 +1774,16 @@ def _chat_intervals_plan_sync(
                         f"Full plan ({planned_n} økter) blir i appen."
                     ),
                 }
+            elif not key or not icu:
+                prep_error = (
+                    "Intervals-opplysninger mangler (athlete-ID / API-nøkkel). "
+                    "Gå til Du → Intervals."
+                )
             elif not bundle.get("events"):
-                prep_error = "Ingen hendelser å synce i nærvinduet."
+                prep_error = (
+                    bundle.get("error")
+                    or "Ingen hendelser å synce i nærvinduet fra lagrede økter."
+                )
         except Exception as exc:  # noqa: BLE001
             prep_error = format_exc_nb(exc)
 
@@ -1783,7 +1797,8 @@ def _chat_intervals_plan_sync(
     if prep_error and intervals_ok and planned_n > 0:
         reply = (
             f"{reply}\n\nKunne ikke bygge Sync-forhåndsvisning: {prep_error} "
-            "Prøv Plan → Sync til Intervals, eller si ifra."
+            "Prøv Plan → Sync til Intervals, eller si ifra. "
+            "Jeg finner ikke opp økter i JSON for å late som de er i Intervals."
         )
 
     with db_session(config.DATABASE_PATH) as conn:
@@ -1799,6 +1814,7 @@ def _chat_intervals_plan_sync(
         "intervals_sync_intent": True,
         "planned_sessions_count": planned_n,
         "icu_sync_weeks": ICU_SYNC_WEEKS,
+        # Hard rule: sync path never invents workout/plan fences for the LLM UI.
         "workout_proposal": None,
         "plan_proposal": None,
     }

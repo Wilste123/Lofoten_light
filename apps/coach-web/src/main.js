@@ -1084,17 +1084,21 @@ function applyChatResponse(data, { mirrorToMain = false, userText = '' } = {}) {
     if (planHasFull || planHasWeek) state.agreementsProposal = null
     if (data.plan_hint) toast(data.plan_hint)
   }
-  // Existing plan → Intervals near-window sync (no new week inventing)
+  // Existing plan → Intervals near-window sync (no new week inventing).
+  // Keep Coach tab when possible so the confirm card appears in chat.
   if (data.intervals_pending) {
     state.sync.pending = data.intervals_pending
     state.sync.message = data.intervals_pending.message || data.sync_hint || ''
     state.sync.error = data.intervals_prep_error || ''
     state.workoutProposal = null
     state.planAdjust = null
-    state.tab = 'plan'
+    if (state.tab !== 'coach' && state.tab !== 'plan') state.tab = 'plan'
     if (data.sync_hint) toast(data.sync_hint)
   } else if (data.intervals_sync_intent && data.intervals_connect_hint) {
     toast(data.intervals_connect_hint)
+  } else if (data.intervals_sync_intent && data.intervals_prep_error) {
+    state.sync.error = data.intervals_prep_error
+    toast(data.intervals_prep_error)
   }
   if (mirrorToMain && userText) {
     state.messages = [
@@ -1119,8 +1123,39 @@ function renderChat() {
   const typeProp = state.athleteTypeProposal
   const agrProp = state.agreementsProposal
   const wPending = state.workoutSync.pending
+  const syncPending = state.sync.pending
   let proposalCard = ''
-  if (wPending) {
+  if (syncPending?.pending_id) {
+    const sample = (syncPending.events || [])
+      .slice(0, 8)
+      .map((e) => {
+        const cat =
+          e.category === 'WORKOUT' ? 'Økt' : e.category === 'NOTE' ? 'Note' : e.category || ''
+        const line =
+          e.preview_no ||
+          `${(e.day || e.start_date_local || '').toString().slice(0, 10)} · ${e.name || ''}`
+        return `<li><span class="badge badge-off">${escapeHtml(cat)}</span> ${escapeHtml(line)}</li>`
+      })
+      .join('')
+    const wc = syncPending.workouts_count
+    const nc = syncPending.notes_count
+    const meta =
+      wc != null || nc != null
+        ? `${wc ?? 0} økter + ${nc ?? 0} noter · nærvindu ${syncPending.weeks ?? 2} uker`
+        : `${syncPending.count || 0} hendelser`
+    proposalCard = `
+      <div class="confirm-card" role="dialog" aria-label="Bekreft Intervals-sync">
+        <p><strong>${escapeHtml(syncPending.message || 'Bekreft Sync til Intervals')}</strong></p>
+        <p class="muted tight">${escapeHtml(meta)}</p>
+        <ul class="sync-sample">${sample}</ul>
+        ${syncPending.events_truncated ? `<p class="muted tight">+${syncPending.events_truncated} til</p>` : ''}
+        <div class="sync-actions">
+          <button type="button" class="btn btn-primary" id="sync-confirm-yes" ${state.sync.busy ? 'disabled' : ''}>Ja, sync</button>
+          <button type="button" class="btn secondary" id="sync-confirm-no" ${state.sync.busy ? 'disabled' : ''}>Avbryt</button>
+        </div>
+        ${state.sync.error ? `<p class="error">${escapeHtml(state.sync.error)}</p>` : ''}
+      </div>`
+  } else if (wPending) {
     const sample = (wPending.events?.length ? wPending.events : wPending.sessions || [])
       .slice(0, 8)
       .map(

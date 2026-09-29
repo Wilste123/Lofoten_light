@@ -201,6 +201,9 @@ Regler:
   2) Forklar ærlig: app beholder full horisont; Intervals får kun nærvindu (icu_sync_weeks).
   3) Hvis Intervals ikke er koblet: si det rett ut + Du → Intervals — fortsatt ingen ny plan.
   4) Appen emitter Sync-forhåndsvisning (intervals_pending) — du synker ikke selv.
+  5) ALDRI emit workout_proposal / plan_update / JSON-økter for sync-forespørsler.
+     Prosa + fenced workouts er IKKE «det er i Intervals». Kun preview→confirm synker.
+  6) ALDRI påstå at noe er synket/pushet til Intervals før utøveren har trykket Ja, sync.
 - Chat og Plan-bygger deler samme modell: workout_proposal / plan_update → preview → confirm →
   lagre planned_sessions (+ plan_blocks). Ikke lag en parallell prosa-plan som ikke kan bekreftes.
 - Hvis overblikk mangler ICU-data: si ærlig at *gjennomført* belastning krever Intervals-kobling;
@@ -382,9 +385,43 @@ _INTERVALS_PLAN_SYNC_INTENT_RE = re.compile(
     r"(?:planen|øktene|resten)|"
     r"sync\s+(?:the\s+)?plan\s+(?:to\s+)?intervals|"
     r"push\s+(?:the\s+)?plan\s+to\s+intervals|"
-    r"put\s+(?:the\s+)?(?:rest\s+of\s+(?:the\s+)?)?plan\s+(?:on|into|in)\s+intervals"
+    r"put\s+(?:the\s+)?(?:rest\s+of\s+(?:the\s+)?)?plan\s+(?:on|into|in)\s+intervals|"
+    # Short / English sync phrases (Kent: «sync til intervals»)
+    r"(?:kjør\s+)?(?:sync|synk)(?:\s+til)?\s+(?:intervals|icu)|"
+    r"(?:sync|synk)\s+(?:nå|planen|øktene|resten)|"
+    r"push\s+(?:til|to)\s+(?:intervals|icu)"
     r")",
     re.IGNORECASE | re.DOTALL,
+)
+
+# Follow-up after coach already offered Sync preview («sync», «go», «ja»).
+_SYNC_CONFIRM_FOLLOWUP_RE = re.compile(
+    r"^\s*(?:"
+    r"sync|synk|go|kjør|"
+    r"ja(?:\s*,?\s*(?:takk|sync|synk|gjør\s+det|push|bekreft))?|"
+    r"bekreft(?:\s+sync)?|"
+    r"gjør\s+det|"
+    r"push\s+det|"
+    r"ok(?:ay)?|"
+    r"yes|"
+    r"do\s+it"
+    r")\s*[!.?]*\s*$",
+    re.IGNORECASE,
+)
+
+_ASSISTANT_SYNC_OFFER_MARKERS = (
+    "nærvindu",
+    "sync-forhåndsvis",
+    "bekreft sync",
+    "synker ikke hele horisonten",
+    "planned_sessions",
+    "intervals er ikke koblet",
+    "første 2 uker",
+    "icu_sync",
+    "workouts fra lagrede",
+    "fra lagrede planned_sessions",
+    "synke nærvinduet",
+    "koble intervals",
 )
 
 _SPORT_WORD_RE = re.compile(
@@ -416,6 +453,40 @@ def user_requests_intervals_plan_sync(message: str) -> bool:
     if not text:
         return False
     return bool(_INTERVALS_PLAN_SYNC_INTENT_RE.search(text))
+
+
+def assistant_offered_intervals_sync(
+    recent_messages: list[dict[str, Any]] | None,
+) -> bool:
+    """True when a recent assistant turn already offered Intervals near-window sync."""
+    for msg in reversed(list(recent_messages or [])[-6:]):
+        if (msg.get("role") or "") != "assistant":
+            continue
+        text = (msg.get("content") or "").lower()
+        if any(marker in text for marker in _ASSISTANT_SYNC_OFFER_MARKERS):
+            return True
+        # Only inspect the latest assistant turn for confirm follow-ups.
+        return False
+    return False
+
+
+def user_confirms_intervals_plan_sync(
+    message: str,
+    recent_messages: list[dict[str, Any]] | None = None,
+) -> bool:
+    """True for short «sync»/«go»/«ja» after coach already offered Sync preview.
+
+    Kent regression: coach correctly described near-window, then «sync»/«go»
+    must reopen real ``intervals_pending`` — never invent workout JSON.
+    """
+    text = (message or "").strip()
+    if not text:
+        return False
+    if user_requests_intervals_plan_sync(text):
+        return True
+    if not _SYNC_CONFIRM_FOLLOWUP_RE.match(text):
+        return False
+    return assistant_offered_intervals_sync(recent_messages)
 
 
 def user_requests_session_change(message: str) -> bool:

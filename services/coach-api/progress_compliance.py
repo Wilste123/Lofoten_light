@@ -72,7 +72,11 @@ DEFAULT_TARGETS: dict[str, float] = {
 
 # Intervals list endpoint can truncate; page with limit + shrinking newest.
 _PAGE_LIMIT = 100
-_ACTIVITY_FIELDS = "id,type,sport,moving_time,elapsed_time,duration,start_date_local"
+# paired_event_id links completed activity → calendar event (Intervals truth)
+_ACTIVITY_FIELDS = (
+    "id,type,sport,name,moving_time,elapsed_time,duration,start_date_local,"
+    "paired_event_id"
+)
 _FETCH_TIMEOUT = 12
 _CACHE_TTL_SEC = 120
 

@@ -25,6 +25,167 @@ _COACH_W_RE = re.compile(
     re.IGNORECASE,
 )
 
+# ICU calendar categories that are not trainable planned workouts
+_CANCELLED_OR_OFF_CATEGORIES = frozenset(
+    {
+        "HOLIDAY",
+        "SICK_DAYS",
+        "TRIP",
+        "INJURED",
+        "SICK",
+        "VACATION",
+        "SEASON_START",
+        "TARGET",
+    }
+)
+
+# Activity → calendar event link fields (Intervals: paired_event_id is canonical)
+_ACTIVITY_EVENT_LINK_KEYS = (
+    "paired_event_id",
+    "workout_id",
+    "icu_workout_id",
+    "event_id",
+)
+
+
+def activity_paired_event_ids(act: dict[str, Any]) -> set[str]:
+    """ICU ids of calendar events linked to this activity (if any)."""
+    out: set[str] = set()
+    for key in _ACTIVITY_EVENT_LINK_KEYS:
+        raw = act.get(key)
+        if raw is None or raw == "":
+            continue
+        out.add(str(raw).strip())
+    return out
+
+
+def event_icu_id(ev: dict[str, Any]) -> str | None:
+    raw = ev.get("id")
+    if raw is None or raw == "":
+        return None
+    return str(raw).strip()
+
+
+def find_activity_match_for_event(
+    *,
+    event: dict[str, Any],
+    event_date: str | None,
+    event_discipline: str | None,
+    paired_to_activity: dict[str, str],
+    unused_by_date_disc: dict[str, list[str]],
+    unused_by_date: dict[str, list[str]],
+    used_activity_ids: set[str],
+) -> tuple[str | None, str]:
+    """Match one planned event to at most one unused ICU activity.
+
+    Priority: paired_event_id → same date+discipline → same date only.
+    Returns (activity_external_id, match_method).
+    """
+    ev_id = event_icu_id(event)
+    if ev_id:
+        aid = paired_to_activity.get(ev_id)
+        if aid and aid not in used_activity_ids:
+            return aid, "paired_event_id"
+    if event_date:
+        disc = event_discipline or ""
+        for aid in unused_by_date_disc.get(f"{event_date}|{disc}", []):
+            if aid not in used_activity_ids:
+                return aid, "date_discipline"
+        for aid in unused_by_date.get(event_date, []):
+            if aid not in used_activity_ids:
+                return aid, "date_only"
+    return None, ""
+
+
+def rolling_session_compliance(
+    *,
+    activities: list[dict[str, Any]],
+    events: list[dict[str, Any]],
+    today: date | None = None,
+    days: int = 28,
+) -> dict[str, Any]:
+    """sessions_done / sessions_planned for last N days.
+
+    - sessions_planned = calendar WORKOUT (not NOTE / cancelled categories)
+    - sessions_done = planned workouts matched to an ICU **activity**
+      (paired_event_id or date/discipline). Numerator never counts NOTES.
+    """
+    today = today or date.today()
+    start = today - timedelta(days=max(1, days) - 1)
+    start_s, end_s = start.isoformat(), today.isoformat()
+
+    # Index activities in window
+    paired_to_activity: dict[str, str] = {}
+    unused_by_date_disc: dict[str, list[str]] = {}
+    unused_by_date: dict[str, list[str]] = {}
+    activity_dates: dict[str, str | None] = {}
+    activity_count = 0
+    for act in activities:
+        aid = str(act.get("id") or "").strip()
+        if not aid:
+            continue
+        d = _activity_local_date(act)
+        if d is None or d < start or d > today:
+            continue
+        activity_count += 1
+        activity_dates[aid] = d.isoformat()
+        for peid in activity_paired_event_ids(act):
+            paired_to_activity.setdefault(peid, aid)
+        disc = map_activity_type(act.get("type") or act.get("sport")) or ""
+        ds = d.isoformat()
+        unused_by_date_disc.setdefault(f"{ds}|{disc}", []).append(aid)
+        unused_by_date.setdefault(ds, []).append(aid)
+
+    used: set[str] = set()
+    planned = 0
+    done = 0
+    cancelled = 0
+    match_methods: dict[str, int] = {}
+    for ev in events:
+        cat = (ev.get("category") or ev.get("type") or "").upper()
+        role = calendar_role_for_event(ev, category=cat)
+        d = _event_local_date(ev)
+        if d is None or d < start or d > today:
+            continue
+        if role == "cancelled":
+            cancelled += 1
+            continue
+        if role != "planned_workout":
+            continue
+        planned += 1
+        aid, method = find_activity_match_for_event(
+            event=ev,
+            event_date=d.isoformat(),
+            event_discipline=map_activity_type(ev.get("type") or ev.get("sport") or cat),
+            paired_to_activity=paired_to_activity,
+            unused_by_date_disc=unused_by_date_disc,
+            unused_by_date=unused_by_date,
+            used_activity_ids=used,
+        )
+        if aid:
+            used.add(aid)
+            done += 1
+            match_methods[method] = match_methods.get(method, 0) + 1
+
+    ratio = None
+    if planned > 0:
+        ratio = round(min(100.0, 100.0 * float(done) / float(planned)), 1)
+    return {
+        "window": {"start": start_s, "end": end_s},
+        "days": days,
+        "sessions_planned": planned,
+        "sessions_done": done,
+        "sessions_cancelled_or_off": cancelled,
+        "activity_count": activity_count,
+        "compliance_pct": ratio,
+        "formula": "sessions_done / sessions_planned (done = ICU activity match only)",
+        "match_methods": match_methods,
+        "note": (
+            "4-ukers økt-compliance: planlagte WORKOUT vs matching ICU-aktiviteter. "
+            "NOTE og avlyste kategorier teller ikke."
+        ),
+    }
+
 
 def _disc_label(disc_id: str | None) -> str:
     if not disc_id:
@@ -121,26 +282,32 @@ def normalize_activity(act: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def calendar_role_for_event(ev: dict[str, Any], *, category: str | None = None) -> str:
-    """Classify calendar events: note | planned_workout | other.
+    """Classify calendar events: note | planned_workout | cancelled | other.
 
     NOTES are never completed training. WORKOUT / Ride / Run / … are planned.
+    HOLIDAY / SICK_DAYS / TRIP / … are cancelled-or-off (not planned volume).
     """
     cat = (category or ev.get("category") or ev.get("type") or "").upper()
     eid = str(ev.get("external_id") or "").strip()
-    if cat == "NOTE":
+    if cat == "NOTE" or bool(ev.get("show_as_note")):
         return "note"
     # Meso grovplan notes use ll-coach-{block}-{day}; workouts use ll-coach-w-
     if eid.startswith("ll-coach-") and not eid.startswith(WORKOUT_EXTERNAL_PREFIX):
         return "note"
+    if cat in _CANCELLED_OR_OFF_CATEGORIES:
+        return "cancelled"
     if cat == "WORKOUT" or map_activity_type(ev.get("type") or ev.get("sport") or cat):
         return "planned_workout"
-    if cat in ("RACE", "HOLIDAY", "INJURED", "SICK", "VACATION"):
+    if cat in ("RACE",):
         return "other"
     return "other"
 
 
 def normalize_event(ev: dict[str, Any], *, today: date) -> dict[str, Any] | None:
-    eid = str(ev.get("id") or ev.get("external_id") or "").strip()
+    icu_id = event_icu_id(ev)
+    ext = str(ev.get("external_id") or "").strip()
+    # Prefer coach/Intervals external_id for stable upsert keys; keep ICU id for pairing
+    eid = ext or icu_id or ""
     if not eid:
         return None
     d = _event_local_date(ev)
@@ -156,6 +323,8 @@ def normalize_event(ev: dict[str, Any], *, today: date) -> dict[str, Any] | None
     # Default training_status for events — refined in list_sessions after activity match
     if role == "note":
         training_status = "note"
+    elif role == "cancelled":
+        training_status = "cancelled"
     elif role == "planned_workout":
         if d and d < today:
             training_status = "planned_not_done"
@@ -166,6 +335,7 @@ def normalize_event(ev: dict[str, Any], *, today: date) -> dict[str, Any] | None
     return {
         "id": f"evt:{eid}",
         "external_id": eid,
+        "icu_event_id": icu_id,
         "kind": "event",
         "bucket": bucket,
         "name": str(name),
@@ -533,6 +703,7 @@ def flatten_sessions(bundle: dict[str, Any]) -> list[dict[str, Any]]:
         "planned",
         "planned_not_done",
         "notes",
+        "cancelled",
     ):
         for s in bundle.get(bucket) or []:
             sid = str(s.get("id") or "")
@@ -559,15 +730,17 @@ def enrich_sessions_bundle(bundle: dict[str, Any], *, today: date | None = None)
         "planned",
         "planned_not_done",
         "notes",
+        "cancelled",
     ):
         out[bucket] = [
             by_id.get(s["id"], _attach_library_meta(s)) for s in (bundle.get(bucket) or [])
         ]
-    # Library: planned workouts + activities (exclude pure notes)
+    # Library: planned workouts + activities (exclude pure notes / cancelled-off)
     lib_src = [
         s
         for s in flat
-        if s.get("calendar_role") != "note" and s.get("training_status") != "note"
+        if s.get("calendar_role") not in ("note", "cancelled")
+        and s.get("training_status") not in ("note", "cancelled")
     ]
     out["library"] = group_library(lib_src, today=today)
     out["view_modes"] = ["library", "chronological"]
@@ -735,6 +908,7 @@ def list_sessions(
         "planned_not_done": [],
         "completed": [],
         "planned": [],
+        "cancelled": [],
         "library": [],
         "view_modes": ["library", "chronological"],
         "default_view": "library",
@@ -747,7 +921,9 @@ def list_sessions(
             "completed_source": "intervals_activities",
             "notes_never_completed": True,
             "planned_not_activity": True,
+            "match_priority": ["paired_event_id", "date_discipline", "date_only"],
         },
+        "rolling_compliance_4w": None,
     }
     if not key or not aid:
         return base
@@ -758,17 +934,34 @@ def list_sessions(
     notes: list[dict[str, Any]] = []
     planned_not_done: list[dict[str, Any]] = []
     planned_future: list[dict[str, Any]] = []
+    cancelled_items: list[dict[str, Any]] = []
     errors: list[str] = []
-    # date|discipline keys covered by activities (for planned_not_done match)
-    activity_keys: set[str] = set()
-    activity_dates: set[str] = set()
+
+    # Matching indexes (built from activities; consumed 1:1 per planned event)
+    paired_to_activity: dict[str, str] = {}
+    unused_by_date_disc: dict[str, list[str]] = {}
+    unused_by_date: dict[str, list[str]] = {}
+    activity_date_by_id: dict[str, str | None] = {}
+    used_activity_ids: set[str] = set()
+    raw_activities: list[dict[str, Any]] = []
+    raw_events: list[dict[str, Any]] = []
 
     try:
         activities = fetch_intervals_activities(key, aid, oldest, today.isoformat())
+        raw_activities = list(activities)
         for act in activities:
             item = normalize_activity(act)
             if not item:
                 continue
+            act_eid = item["external_id"]
+            activity_date_by_id[act_eid] = item.get("date")
+            for peid in activity_paired_event_ids(act):
+                paired_to_activity.setdefault(peid, act_eid)
+            d = item.get("date")
+            disc = item.get("discipline") or ""
+            if d:
+                unused_by_date_disc.setdefault(f"{d}|{disc}", []).append(act_eid)
+                unused_by_date.setdefault(d, []).append(act_eid)
             comp = comps.get(item["id"]) or comps.get(item["external_id"])
             pub = public_session(item, completion=comp)
             # App overlay: skipped etc. still originated as ICU activity
@@ -782,21 +975,16 @@ def list_sessions(
                 "cancelled",
             ):
                 pub["training_status"] = comp.get("status")
-            d = item.get("date")
             if d == today.isoformat():
                 today_items.append(pub)
             else:
                 completed_acts.append(pub)
-            if d:
-                activity_dates.add(d)
-                disc = item.get("discipline") or ""
-                activity_keys.add(f"{d}|{disc}")
-                activity_keys.add(f"{d}|")  # date-only fallback
     except Exception as exc:  # noqa: BLE001 — soft-fail
         errors.append(f"activities: {exc}")
 
     try:
         events = fetch_events(key, aid, oldest, newest)
+        raw_events = list(events)
         for ev in events:
             item = normalize_event(ev, today=today)
             if not item:
@@ -817,6 +1005,18 @@ def list_sessions(
                 notes.append(pub)
                 continue
 
+            if role == "cancelled":
+                pub["training_status"] = "cancelled"
+                # App overlay can refine
+                if comp and comp.get("status") in ("moved", "cancelled", "skipped"):
+                    pub["training_status"] = str(comp.get("status"))
+                cancelled_items.append(pub)
+                if item["bucket"] == "upcoming":
+                    upcoming.append(pub)
+                elif item["bucket"] == "today":
+                    today_items.append(pub)
+                continue
+
             # App completion overlay on planned events
             if comp and comp.get("status"):
                 st = str(comp.get("status"))
@@ -829,21 +1029,34 @@ def list_sessions(
                     pub["volume_counts"] = False
 
             if role == "planned_workout":
-                d = item.get("date")
-                disc = item.get("discipline") or ""
-                matched = bool(
-                    d
-                    and (
-                        f"{d}|{disc}" in activity_keys
-                        or f"{d}|" in activity_keys
-                        or d in activity_dates
-                    )
+                # Prefer ICU paired_event_id; fall back to date(+discipline), 1:1
+                matched_aid, match_method = find_activity_match_for_event(
+                    event=ev,
+                    event_date=item.get("date"),
+                    event_discipline=item.get("discipline"),
+                    paired_to_activity=paired_to_activity,
+                    unused_by_date_disc=unused_by_date_disc,
+                    unused_by_date=unused_by_date,
+                    used_activity_ids=used_activity_ids,
                 )
-                if matched and pub.get("training_status") in (
+                if matched_aid and pub.get("training_status") in (
                     "planned",
                     "planned_not_done",
                 ):
-                    pub["training_status"] = "matched_activity"
+                    used_activity_ids.add(matched_aid)
+                    pub["matched_activity_id"] = f"act:{matched_aid}"
+                    pub["match_method"] = match_method
+                    act_date = activity_date_by_id.get(matched_aid)
+                    if (
+                        act_date
+                        and item.get("date")
+                        and act_date != item.get("date")
+                    ):
+                        pub["training_status"] = "moved"
+                        pub["moved_from"] = item.get("date")
+                        pub["moved_to"] = act_date
+                    else:
+                        pub["training_status"] = "matched_activity"
                     # Do not duplicate into completed — activity already listed
                     continue
                 if pub.get("training_status") in (
@@ -877,7 +1090,7 @@ def list_sessions(
                     planned_not_done.append(pub)
                 continue
 
-            # other calendar categories (race, holiday, …) — not completed training
+            # other calendar categories (race, …) — not completed training
             if item["bucket"] == "upcoming":
                 upcoming.append(pub)
             elif item["bucket"] == "today":
@@ -894,6 +1107,7 @@ def list_sessions(
     notes.sort(key=_sort_key, reverse=True)
     planned_not_done.sort(key=_sort_key, reverse=True)
     planned_future.sort(key=_sort_key)
+    cancelled_items.sort(key=_sort_key, reverse=True)
 
     # recent/completed = ICU activities only (incl. today's activities for volume truth)
     today_completed = [
@@ -902,6 +1116,13 @@ def list_sessions(
     recent = list(completed_acts)
     all_completed = recent + today_completed
     all_completed.sort(key=_sort_key, reverse=True)
+
+    rolling = rolling_session_compliance(
+        activities=raw_activities,
+        events=raw_events,
+        today=today,
+        days=28,
+    )
 
     out = dict(base)
     out["source"] = "intervals"
@@ -912,6 +1133,8 @@ def list_sessions(
     out["notes"] = notes[:30]
     out["planned_not_done"] = planned_not_done[:30]
     out["planned"] = planned_future[:40]
+    out["cancelled"] = cancelled_items[:30]
+    out["rolling_compliance_4w"] = rolling
     if errors and not (recent or upcoming or today_items or notes or planned_not_done):
         out["fetch_error"] = True
         out["fetch_error_detail"] = "; ".join(errors)[:400]
@@ -940,6 +1163,8 @@ def _slim_session(item: dict[str, Any]) -> dict[str, Any]:
         out["calendar_role"] = item.get("calendar_role")
     if item.get("training_status"):
         out["training_status"] = item.get("training_status")
+    if item.get("match_method"):
+        out["match_method"] = item.get("match_method")
     comp = item.get("completion") or {}
     if comp.get("status"):
         out["completion_status"] = comp.get("status")
@@ -970,13 +1195,16 @@ def sessions_snapshot_for_chat(
             "gjennomfort": [],
             "ikke_gjennomfort": [],
             "noter": [],
+            "avlyst": [],
+            "rolling_compliance_4w": None,
             "note": "Ingen øktdata — Intervals ikke koblet eller tomt vindu.",
         }
     source = bundle.get("source") or "none"
     note = (
         "planlagt = kalender-WORKOUT (ikke volum); gjennomført = ICU-aktiviteter "
         "(eneste kilde til completed volum). NOTE ≠ trening. "
-        "ikke_gjennomfort = planlagt WORKOUT uten matching aktivitet."
+        "ikke_gjennomfort = planlagt WORKOUT uten matching aktivitet "
+        "(paired_event_id eller dato+disiplin)."
     )
     if bundle.get("fetch_error"):
         note = (
@@ -1009,6 +1237,7 @@ def sessions_snapshot_for_chat(
     ]
     missed = list(bundle.get("planned_not_done") or [])
     notes = list(bundle.get("notes") or [])
+    cancelled = list(bundle.get("cancelled") or [])
 
     return {
         "source": source,
@@ -1023,6 +1252,8 @@ def sessions_snapshot_for_chat(
         "gjennomfort": [_slim_session(s) for s in completed[:max_recent]],
         "ikke_gjennomfort": [_slim_session(s) for s in missed[:max_missed]],
         "noter": [_slim_session(s) for s in notes[:6]],
+        "avlyst": [_slim_session(s) for s in cancelled[:6]],
+        "rolling_compliance_4w": bundle.get("rolling_compliance_4w"),
         "partial_fetch": bool(bundle.get("partial_fetch")),
         "fetch_error": bool(bundle.get("fetch_error")),
         "note": note,

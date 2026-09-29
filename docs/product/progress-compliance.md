@@ -93,8 +93,36 @@ Implementasjon: `progress_compliance.on_pace_metrics` · vist under Compliance-f
 
 ### Senere
 
-- `sessions_done / sessions_planned` siste 4 uker (krever planlagte events fra Intervals).
+~~- `sessions_done / sessions_planned` siste 4 uker (krever planlagte events fra Intervals).~~
 
+### 4-ukers økt-compliance
+
+```
+sessions_planned = antall kalender-WORKOUT i [today−27 … today]
+                   (NOTE / HOLIDAY / SICK_DAYS / TRIP utelates)
+sessions_done    = planlagte WORKOUT med matching ICU-aktivitet
+                   (prioritet: paired_event_id → dato+disiplin → dato)
+compliance_pct   = min(100, 100 * sessions_done / sessions_planned)
+```
+
+API: `GET /v1/sessions` → `rolling_compliance_4w`; `GET /v1/dashboard` → `session_compliance_4w`.
+Matching: aktivitet.felt `paired_event_id` = event.`id` (Intervals).
+
+### Matching aktivitet ↔ planlagt økt
+
+| Prioritet | Metode | Merknad |
+|-----------|--------|---------|
+| 1 | `paired_event_id` | ICU-paring (kanonisk) |
+| 2 | samme dato + disiplin | 1:1 — én aktivitet matcher én WORKOUT |
+| 3 | samme dato | fallback |
+
+Avlyste ICU-kategorier (`HOLIDAY`, `SICK_DAYS`, `TRIP`, …) → `cancelled`, ikke `planned_not_done`.
+Flyttet: `paired_event_id` matcher aktivitet på annen dato → `training_status=moved`.
+
+### Sync etter confirm
+
+`POST …/calendar/confirm` tømmer progress/wellness/form-cache og re-henter sessions.
+Klient refresher Økter + Dashboard.
 ## API-felt (overview)
 
 ```json

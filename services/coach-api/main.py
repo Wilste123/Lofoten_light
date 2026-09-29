@@ -83,6 +83,7 @@ from period_training import (
 )
 from profile import write_profile
 from progress_compliance import (
+    clear_progress_cache,
     days_to_goal,
     pick_current_and_next,
     public_block,
@@ -110,7 +111,7 @@ from sessions_service import (
     session_focus_for_chat,
     sessions_snapshot_for_chat,
 )
-from wellness import resolve_wellness_bundle
+from wellness import clear_wellness_cache, resolve_wellness_bundle
 
 
 @asynccontextmanager
@@ -1449,6 +1450,14 @@ def dashboard(
         end=end,
     )
     progress = overview_data.get("progress") or {}
+    session_compliance_4w = None
+    try:
+        with db_session(config.DATABASE_PATH) as conn:
+            comps = completions_by_external_id(conn, aid)
+        sess_bundle = list_sessions(secrets, comps, past_days=28, future_days=1)
+        session_compliance_4w = sess_bundle.get("rolling_compliance_4w")
+    except Exception:  # noqa: BLE001 — soft-fail; season compliance still works
+        session_compliance_4w = None
     # Back-compat: hours/load mirror period training (no season targets mixed in)
     hours = {
         "disciplines": [
@@ -1494,6 +1503,7 @@ def dashboard(
         "compliance": progress,
         "compliance_app_computed": True,
         "compliance_written_to_intervals": False,
+        "session_compliance_4w": session_compliance_4w,
         "periodization": overview_data.get("periodization"),
         "form": {
             "ftp_tested": overview_data.get("ftp_tested"),
@@ -1960,7 +1970,37 @@ def calendar_confirm(
 
     with db_session(config.DATABASE_PATH) as conn:
         mark_pending_action(conn, aid, body.pending_id, "confirmed")
-    return {"ok": True, "op": op, "pending_id": body.pending_id, **outcome}
+    # Bust caches so next overview/sessions read sees fresh ICU state
+    clear_progress_cache()
+    clear_wellness_cache()
+    clear_form_caches()
+    # Soft re-fetch sessions for client trust (soft-fail — confirm already succeeded)
+    sessions_bundle: dict[str, Any] | None = None
+    try:
+        with db_session(config.DATABASE_PATH) as conn:
+            comps = completions_by_external_id(conn, aid)
+        sessions_bundle = list_sessions(
+            {"intervals_api_key": key, "intervals_athlete_id": icu},
+            comps,
+            past_days=14,
+            future_days=14,
+        )
+    except Exception:  # noqa: BLE001
+        sessions_bundle = None
+    out: dict[str, Any] = {
+        "ok": True,
+        "op": op,
+        "pending_id": body.pending_id,
+        "caches_cleared": True,
+        "sessions_refetched": sessions_bundle is not None,
+        **outcome,
+    }
+    if sessions_bundle is not None:
+        out["rolling_compliance_4w"] = sessions_bundle.get("rolling_compliance_4w")
+        out["sessions_window"] = sessions_bundle.get("window")
+        out["planned_count"] = len(sessions_bundle.get("planned") or [])
+        out["completed_count"] = len(sessions_bundle.get("completed") or [])
+    return out
 
 
 @app.post("/v1/athlete/me/intervals/workouts/preview")

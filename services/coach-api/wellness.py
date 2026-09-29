@@ -202,6 +202,45 @@ def load_summary_from_wellness(rows: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+# Device/export variance — try in order; first series with values wins.
+_HRV_FIELDS = (
+    "hrv",
+    "hrvSDNN",
+    "hrvRmssd",
+    "hrvRMSSD",
+    "rmssd",
+    "sdnn",
+    "HRV",
+    "average_hrv",
+    "avgHRV",
+)
+_RHR_FIELDS = (
+    "restingHR",
+    "restingHr",
+    "restingHeartRate",
+    "resting_hr",
+    "rhr",
+    "RHR",
+)
+
+
+def _first_series(rows: list[dict[str, Any]], fields: tuple[str, ...]) -> tuple[list[float], str | None]:
+    """Pick first wellness field that yields numeric values."""
+    for field in fields:
+        vals = _series(rows, field)
+        if vals:
+            return vals, field
+    return [], None
+
+
+def _pick_latest_float(row: dict[str, Any], fields: tuple[str, ...]) -> tuple[float | None, str | None]:
+    for field in fields:
+        v = _parse_float(row.get(field))
+        if v is not None:
+            return v, field
+    return None, None
+
+
 def recovery_signals_from_wellness(rows: list[dict[str, Any]]) -> dict[str, Any]:
     """Compact sleep / HRV / RHR / load for coach chat — signals, not truth."""
     dated = [(d, r) for r in rows if (d := _row_date(r)) is not None]
@@ -209,10 +248,10 @@ def recovery_signals_from_wellness(rows: list[dict[str, Any]]) -> dict[str, Any]
     sleep = analyze_sleep(rows)
     load = load_summary_from_wellness(rows)
     latest = dated[-1][1] if dated else {}
-    hrv_vals = _series(rows, "hrv") or _series(rows, "hrvSDNN") or _series(rows, "sdnn")
-    rhr_vals = _series(rows, "restingHR") or _series(rows, "restingHr") or _series(
-        rows, "restingHeartRate"
-    )
+    hrv_vals, hrv_field = _first_series(rows, _HRV_FIELDS)
+    rhr_vals, rhr_field = _first_series(rows, _RHR_FIELDS)
+    hrv_latest, hrv_latest_field = _pick_latest_float(latest, _HRV_FIELDS)
+    rhr_latest, rhr_latest_field = _pick_latest_float(latest, _RHR_FIELDS)
     hrv_avg = round(mean(hrv_vals[-7:]), 1) if hrv_vals else None
     rhr_avg = round(mean(rhr_vals[-7:]), 1) if rhr_vals else None
     available = bool(
@@ -228,13 +267,11 @@ def recovery_signals_from_wellness(rows: list[dict[str, Any]]) -> dict[str, Any]
         "sleep_avg_score": sleep.get("avg_score"),
         "sleep_note": sleep.get("note"),
         "hrv_avg_7d": hrv_avg,
-        "hrv_latest": _parse_float(latest.get("hrv") or latest.get("hrvSDNN") or latest.get("sdnn")),
+        "hrv_latest": hrv_latest,
+        "hrv_field": hrv_field or hrv_latest_field,
         "rhr_avg_7d": rhr_avg,
-        "rhr_latest": _parse_float(
-            latest.get("restingHR")
-            or latest.get("restingHr")
-            or latest.get("restingHeartRate")
-        ),
+        "rhr_latest": rhr_latest,
+        "rhr_field": rhr_field or rhr_latest_field,
         "ctl": load.get("ctl"),
         "atl": load.get("atl"),
         "readiness": load.get("readiness"),

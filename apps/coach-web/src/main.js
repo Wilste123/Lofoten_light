@@ -1567,6 +1567,13 @@ function renderDashboard() {
   }
   const progressForSection = { progress: dash.compliance || {} }
   const sleepLabel = periodLabelFromDash(dash)
+  const sc4 = dash.session_compliance_4w
+  const sc4Html =
+    sc4 && sc4.sessions_planned != null
+      ? `<p class="muted tight">4-ukers økt-compliance: <strong>${sc4.sessions_done ?? 0} / ${sc4.sessions_planned}</strong> planlagte WORKOUT matchet til ICU-aktiviteter${
+          sc4.compliance_pct != null ? ` (${sc4.compliance_pct} %)` : ''
+        }. NOTE teller ikke.</p>`
+      : ''
   return `
     <div class="tab-hero">
       <p class="brand-mark">Dashboard</p>
@@ -1582,6 +1589,7 @@ function renderDashboard() {
       Beregnes i appen (aktiviteter vs sesongmål) og <em>skrives ikke</em> til Intervals.
     </p>
     ${renderProgressSection(progressForSection)}
+    ${sc4Html}
     ${renderFormCard({ ...(dash.form || {}), ...o })}
     ${renderPlanStrip(o)}
   `
@@ -1589,14 +1597,39 @@ function renderDashboard() {
 
 function statusLabel(status) {
   const map = {
-    completed: 'Fullført',
+    completed: 'Gjennomført',
+    matched_activity: 'Gjennomført (matchet)',
+    planned: 'Planlagt',
+    planned_not_done: 'Ikke gjennomført',
+    note: 'Note (ikke trening)',
     skipped: 'Hoppet over',
     injured: 'Skade',
     tired: 'For sliten',
     sick: 'Syk',
+    moved: 'Flyttet',
+    cancelled: 'Avlyst',
+    app_logged_completed: 'Logget (uten ICU-aktivitet)',
     other: 'Annet',
   }
   return map[status] || status || ''
+}
+
+function trainingStatusBadge(s) {
+  const st = s.training_status || s.completion?.status || null
+  if (!st) {
+    if (s.kind === 'activity') {
+      return `<span class="badge badge-live">Gjennomført</span>`
+    }
+    if (s.kind === 'event' && s.calendar_role === 'note') {
+      return `<span class="badge badge-off">Note</span>`
+    }
+    if (s.kind === 'event') {
+      return `<span class="badge badge-off">Planlagt</span>`
+    }
+    return `<span class="badge badge-off">Ulågget</span>`
+  }
+  const live = ['completed', 'matched_activity'].includes(st)
+  return `<span class="badge ${live ? 'badge-live' : 'badge-off'}">${escapeHtml(statusLabel(st))}</span>`
 }
 
 function formatDateChips(dates, { max = 6 } = {}) {
@@ -1611,16 +1644,21 @@ function formatDateChips(dates, { max = 6 } = {}) {
 }
 
 function renderSessionRow(s) {
-  const comp = s.completion
-  const statusBit = comp
-    ? `<span class="badge badge-live">${escapeHtml(statusLabel(comp.status))}</span>`
-    : `<span class="badge badge-off">Ulågget</span>`
+  const statusBit = trainingStatusBadge(s)
   const dur =
     s.duration_hours != null ? ` · ${formatHours(s.duration_hours)} t` : ''
+  const kindBit =
+    s.kind === 'activity'
+      ? ' · aktivitet'
+      : s.calendar_role === 'note'
+        ? ' · note'
+        : s.kind === 'event'
+          ? ' · planlagt'
+          : ''
   return `
     <article class="session-row" data-open-detail="${escapeHtml(s.id)}" role="button" tabindex="0">
       <div class="session-main">
-        <p class="session-date">${escapeHtml(s.date || '—')} · ${escapeHtml(s.discipline_label || s.type || '')}${escapeHtml(dur)}</p>
+        <p class="session-date">${escapeHtml(s.date || '—')} · ${escapeHtml(s.discipline_label || s.type || '')}${escapeHtml(dur)}${escapeHtml(kindBit)}</p>
         <h3>${escapeHtml(s.name || 'Økt')}</h3>
         ${statusBit}
       </div>
@@ -1749,8 +1787,10 @@ function renderSessionDetail() {
   const s = d.session || {}
   const fields = d.editable_fields || {}
   const statuses = [
-    ['completed', 'Fullført'],
+    ['completed', 'Gjennomført'],
     ['skipped', 'Hoppet over'],
+    ['moved', 'Flyttet'],
+    ['cancelled', 'Avlyst'],
     ['injured', 'Skade'],
     ['tired', 'For sliten'],
     ['sick', 'Syk'],
@@ -1798,8 +1838,14 @@ function renderSessionDetail() {
     <div class="session-detail-view has-sticky-chat" id="session-detail">
       <div class="section-head">
         <button type="button" class="btn btn-sm secondary" id="close-session-detail">← Bibliotek</button>
-        <span class="badge ${s.completion ? 'badge-live' : 'badge-off'}">${
-          s.completion ? escapeHtml(statusLabel(s.completion.status)) : 'Ulågget'
+        <span class="badge ${s.completion || ['completed', 'matched_activity'].includes(s.training_status) ? 'badge-live' : 'badge-off'}">${
+          s.training_status
+            ? escapeHtml(statusLabel(s.training_status))
+            : s.completion
+              ? escapeHtml(statusLabel(s.completion.status))
+              : s.kind === 'activity'
+                ? 'Gjennomført'
+                : 'Planlagt'
         }</span>
       </div>
       <header class="detail-hero">
@@ -1961,16 +2007,22 @@ function renderOkterTab() {
     const today = (sess.today || []).map(renderSessionRow).join('')
     const upcoming = (sess.upcoming || []).map(renderSessionRow).join('')
     const recent = (sess.recent || []).map(renderSessionRow).join('')
+    const missed = (sess.planned_not_done || []).map(renderSessionRow).join('')
     body = `
       ${today ? `<section class="section-block"><h2>I dag</h2><div class="session-list">${today}</div></section>` : ''}
       <section class="section-block">
-        <h2>Kommende</h2>
+        <h2>Kommende (planlagt)</h2>
         <div class="session-list">${upcoming || `<p class="muted">Ingen planlagte økter i vinduet.</p>`}</div>
       </section>
       <section class="section-block">
-        <h2>Siste</h2>
+        <h2>Gjennomført (ICU-aktiviteter)</h2>
         <div class="session-list">${recent || `<p class="muted">Ingen aktiviteter i vinduet.</p>`}</div>
-      </section>`
+      </section>
+      ${
+        missed
+          ? `<section class="section-block"><h2>Ikke gjennomført</h2><p class="muted tight">Planlagt WORKOUT uten matching aktivitet.</p><div class="session-list">${missed}</div></section>`
+          : ''
+      }`
   } else {
     const lib = (sess.library || []).map(renderLibraryCard).join('')
     body = `
@@ -1991,6 +2043,15 @@ function renderOkterTab() {
       <button type="button" class="chip ${view === 'chronological' ? 'active' : ''}" data-sessions-view="chronological">Kommende</button>
     </div>
     <p class="compliance-banner muted tight">${escapeHtml(sess?.compliance_note || 'Compliance beregnes i appen, ikke i Intervals.')}</p>
+    ${
+      sess?.rolling_compliance_4w?.sessions_planned != null
+        ? `<p class="muted tight">4 uker: ${sess.rolling_compliance_4w.sessions_done ?? 0} / ${sess.rolling_compliance_4w.sessions_planned} planlagte økter matchet til ICU-aktiviteter${
+            sess.rolling_compliance_4w.compliance_pct != null
+              ? ` (${sess.rolling_compliance_4w.compliance_pct} %)`
+              : ''
+          }.</p>`
+        : ''
+    }
     <p class="muted tight">${linked ? 'Intervals koblet.' : 'Ikke koblet ennå.'}</p>
     ${body}
   `
@@ -2699,6 +2760,7 @@ function bindApp() {
       toast(state.workoutSync.message)
       try {
         await refreshSessions()
+        await refreshDashboard()
         const sid = state.sessionDetail?.session?.id
         if (sid) {
           state.sessionDetail = await api(`/v1/sessions/${encodeURIComponent(sid)}`)
@@ -3328,6 +3390,11 @@ function bindApp() {
         })
       } catch {
         /* status best-effort */
+      }
+      try {
+        await Promise.all([refreshSessions(), refreshDashboard(), refreshOverview()])
+      } catch {
+        /* soft — caches cleared server-side */
       }
     } catch (err) {
       state.sync.error = err.message || 'Bekreftelse feilet'

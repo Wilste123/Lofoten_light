@@ -64,6 +64,12 @@ LABELS_NO: dict[str, str] = {
     DISC_STRENGTH: "styrke",
 }
 
+# Intervals WORKOUT push window (near-term only — not the app plan horizon).
+MAX_WORKOUT_WEEKS = 2
+ICU_SYNC_WEEKS = MAX_WORKOUT_WEEKS
+# App-owned planned_sessions: season_start → goal_race (capped for safety).
+MAX_PLAN_HORIZON_WEEKS = 78
+
 # Sensible default sessions/week when not stated (None = no hard cap / use template)
 DEFAULT_SESSIONS: dict[str, int | None] = {
     TYPE_HALF_MARATHON: 4,
@@ -91,7 +97,6 @@ DEFAULT_DISCIPLINES: dict[str, list[str]] = {
 
 MIN_SESSIONS = 2
 MAX_SESSIONS = 8
-MAX_WORKOUT_WEEKS = 2
 
 
 def sport_to_discipline(sport: str | None) -> str | None:
@@ -351,7 +356,8 @@ def constraints_summary_nb(constraints: dict[str, Any]) -> str:
     n = constraints.get("sessions_per_week")
     disc = " + ".join(labels) if labels else "alle disipliner (etter type)"
     n_bit = f"{n} økter/uke" if n else "ukemaler-økter"
-    return f"{n_bit} · {disc} · max {constraints.get('max_workout_weeks', 2)} uker WORKOUT"
+    sync_w = constraints.get("max_workout_weeks", ICU_SYNC_WEEKS)
+    return f"{n_bit} · {disc} · Intervals-sync {sync_w} uker WORKOUT"
 
 
 def _injury_blocks_discipline(injury_notes: str, disc: str) -> bool:

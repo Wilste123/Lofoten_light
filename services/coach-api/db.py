@@ -93,6 +93,26 @@ CREATE TABLE IF NOT EXISTS plan_blocks (
   updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS planned_sessions (
+  id TEXT PRIMARY KEY,
+  athlete_id TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+  session_date TEXT NOT NULL,
+  sport TEXT NOT NULL DEFAULT 'other',
+  name TEXT NOT NULL DEFAULT '',
+  description TEXT DEFAULT '',
+  duration_minutes INTEGER,
+  start_time TEXT DEFAULT '07:00',
+  planned_path TEXT DEFAULT '',
+  phase TEXT DEFAULT '',
+  block_id TEXT,
+  external_id TEXT,
+  source TEXT NOT NULL DEFAULT 'plan',
+  status TEXT NOT NULL DEFAULT 'planned',
+  sort_order INTEGER DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS athlete_secrets (
   athlete_id TEXT PRIMARY KEY REFERENCES athletes(id) ON DELETE CASCADE,
   intervals_api_key TEXT,
@@ -152,6 +172,8 @@ CREATE TABLE IF NOT EXISTS pending_actions (
 
 CREATE INDEX IF NOT EXISTS idx_messages_athlete ON messages(athlete_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_plan_blocks_athlete ON plan_blocks(athlete_id, start_date);
+CREATE INDEX IF NOT EXISTS idx_planned_sessions_athlete
+  ON planned_sessions(athlete_id, session_date);
 CREATE INDEX IF NOT EXISTS idx_pending_actions_athlete ON pending_actions(athlete_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_session_completions_athlete
   ON session_completions(athlete_id, session_date);
@@ -834,6 +856,128 @@ def replace_plan_blocks(
             "sort_order": int(raw.get("sort_order") if raw.get("sort_order") is not None else i),
         }
         out.append(insert_plan_block(conn, athlete_id, data))
+    return out
+
+
+def list_planned_sessions(
+    conn: sqlite3.Connection,
+    athlete_id: str,
+    *,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    limit: int | None = None,
+) -> list[dict[str, Any]]:
+    """First-class planned workouts (app plan model — not markdown)."""
+    sql = """
+        SELECT * FROM planned_sessions
+        WHERE athlete_id = ?
+    """
+    params: list[Any] = [athlete_id]
+    if start_date:
+        sql += " AND session_date >= ?"
+        params.append(start_date[:10])
+    if end_date:
+        sql += " AND session_date <= ?"
+        params.append(end_date[:10])
+    sql += " ORDER BY session_date ASC, sort_order ASC, created_at ASC"
+    if limit is not None:
+        sql += " LIMIT ?"
+        params.append(int(limit))
+    cur = conn.execute(sql, params)
+    return [dict(r) for r in cur.fetchall()]
+
+
+def count_planned_sessions(conn: sqlite3.Connection, athlete_id: str) -> int:
+    cur = conn.execute(
+        "SELECT COUNT(*) AS n FROM planned_sessions WHERE athlete_id = ?",
+        (athlete_id,),
+    )
+    row = cur.fetchone()
+    return int(row["n"] if row else 0)
+
+
+def delete_all_planned_sessions(conn: sqlite3.Connection, athlete_id: str) -> int:
+    cur = conn.execute(
+        "DELETE FROM planned_sessions WHERE athlete_id = ?",
+        (athlete_id,),
+    )
+    return cur.rowcount
+
+
+def replace_planned_sessions(
+    conn: sqlite3.Connection,
+    athlete_id: str,
+    sessions: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Replace full app plan horizon (setup / plan adjust confirm)."""
+    delete_all_planned_sessions(conn, athlete_id)
+    now = utc_now()
+    out: list[dict[str, Any]] = []
+    for i, raw in enumerate(sessions):
+        day = str(raw.get("session_date") or raw.get("date") or "").strip()[:10]
+        if not day:
+            continue
+        sid = raw.get("id") or new_id()
+        name = str(raw.get("name") or raw.get("title") or "Økt").strip()[:200]
+        sport = str(raw.get("sport") or "other").strip().lower()[:40] or "other"
+        try:
+            dur = raw.get("duration_minutes")
+            dur_i = int(float(dur)) if dur is not None and str(dur).strip() else None
+        except (TypeError, ValueError):
+            dur_i = None
+        start_time = str(raw.get("start_time") or "07:00").strip()[:5] or "07:00"
+        external = str(raw.get("external_id") or "").strip()[:120] or None
+        conn.execute(
+            """
+            INSERT INTO planned_sessions (
+              id, athlete_id, session_date, sport, name, description,
+              duration_minutes, start_time, planned_path, phase, block_id,
+              external_id, source, status, sort_order, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                sid,
+                athlete_id,
+                day,
+                sport,
+                name,
+                str(raw.get("description") or "").strip()[:4000],
+                dur_i,
+                start_time,
+                str(raw.get("planned_path") or raw.get("planned") or "").strip()[:400],
+                str(raw.get("phase") or "").strip()[:40],
+                raw.get("block_id"),
+                external,
+                str(raw.get("source") or "plan").strip()[:40] or "plan",
+                str(raw.get("status") or "planned").strip()[:40] or "planned",
+                int(raw.get("sort_order") if raw.get("sort_order") is not None else i),
+                now,
+                now,
+            ),
+        )
+        out.append(
+            {
+                "id": sid,
+                "athlete_id": athlete_id,
+                "session_date": day,
+                "sport": sport,
+                "name": name,
+                "description": str(raw.get("description") or "").strip()[:4000],
+                "duration_minutes": dur_i,
+                "start_time": start_time,
+                "planned_path": str(raw.get("planned_path") or raw.get("planned") or ""),
+                "phase": str(raw.get("phase") or ""),
+                "block_id": raw.get("block_id"),
+                "external_id": external,
+                "source": str(raw.get("source") or "plan"),
+                "status": str(raw.get("status") or "planned"),
+                "sort_order": int(
+                    raw.get("sort_order") if raw.get("sort_order") is not None else i
+                ),
+                "created_at": now,
+                "updated_at": now,
+            }
+        )
     return out
 
 

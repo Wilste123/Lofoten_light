@@ -70,6 +70,10 @@ _AGREEMENTS_UPDATE_RE = re.compile(
     r"```(?:json\s+)?agreements_update\s*\n(.*?)```",
     re.DOTALL | re.IGNORECASE,
 )
+_PLAN_UPDATE_RE = re.compile(
+    r"```(?:json\s+)?plan_update\s*\n(.*?)```",
+    re.DOTALL | re.IGNORECASE,
+)
 
 
 def _athlete_knowledge_draft(athlete: dict[str, Any]) -> dict[str, Any]:
@@ -193,7 +197,8 @@ Regler:
   NOTE og planlagt WORKOUT uten aktivitet er IKKE gjennomført trening. Si det rett ut.
 - Respekter allowed_disciplines + sessions_per_week + skadenotat. Foreslå ikke svøm/sykkel/tri-uke
   når avtalen er løp+styrke. Ved brudd: nekt eller spør om å endre avtalen (agreements_update) — ikke synce stille.
-- wellness_signals (søvn/HRV/RHR/load) er signaler, ikke fasit.
+- wellness_signals (søvn/HRV/RHR/load) er signaler, ikke fasit — bruk dem til *forslag*
+  om å lette/flytte økter, aldri til stille omskrivning av hele planen.
 {focused_bullets}- Når utøveren ber om å legge inn / endre en konkret økt på Intervals-kalenderen:
   1) Skriv kort råd på norsk — forankret i knowledge; avvis usikre endringer.
   2) Avslutt med ÉN fenced code block merket workout_proposal (ikke vanlig json), med:
@@ -217,7 +222,13 @@ Regler:
   2) Fenced block merket agreements_update:
      {{"sessions_per_week":4,"goal_race_date":"YYYY-MM-DD","goal_text":"…","allowed_disciplines":["run","strength"],"agreements":["4 økter/uke","…"],"reason":"…"}}
   3) Kun felt som faktisk er avtalt; null/utelat resten. Utøveren bekrefter før lagring.
-- Du kan foreslå planblokker/makro i tekst; grovplan-noter synces under Plan-fanen (ikke via workout_proposal).
+- Når utøveren ber om å justere / bygge om grovplanen (eller etter agreements_update som krever ny periodisering):
+  1) Kort råd — ta hensyn til wellness_signals hvis tilgjengelig (forslag, ikke fasit).
+  2) Fenced block merket plan_update:
+     {{"reason":"…","rebuild":true,"ease_load":false,"note":"…"}}
+  3) rebuild=true → appen viser forhåndsvisning av meso-blokker + økter til måldato;
+     utøveren bekrefter → lagre lokalt → Sync til Intervals (kun nærvindu). Ingen autonom omskrivning.
+- Du kan foreslå planblokker/makro i tekst; konkrete planendringer går via plan_update (ikke bare råd).
 
 ## Profil
 {profile_md}
@@ -298,6 +309,7 @@ def extract_workout_proposal(reply: str) -> tuple[str, dict[str, Any] | None]:
     display = _WORKOUT_REMOVAL_RE.sub("", display)
     display = _TYPE_UPDATE_RE.sub("", display)
     display = _AGREEMENTS_UPDATE_RE.sub("", display)
+    display = _PLAN_UPDATE_RE.sub("", display)
     return display.strip() or "Her er forslaget — bekreft i appen før det synces til Intervals.", {
         "workouts": cleaned
     }
@@ -315,6 +327,7 @@ def extract_workout_removal(reply: str) -> tuple[str, dict[str, Any] | None]:
     display = _WORKOUT_PROPOSAL_RE.sub("", display)
     display = _TYPE_UPDATE_RE.sub("", display)
     display = _AGREEMENTS_UPDATE_RE.sub("", display)
+    display = _PLAN_UPDATE_RE.sub("", display)
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:
@@ -350,6 +363,7 @@ def extract_type_update_proposal(reply: str) -> tuple[str, dict[str, Any] | None
     display = _WORKOUT_PROPOSAL_RE.sub("", display)
     display = _WORKOUT_REMOVAL_RE.sub("", display)
     display = _AGREEMENTS_UPDATE_RE.sub("", display)
+    display = _PLAN_UPDATE_RE.sub("", display)
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:
@@ -382,6 +396,7 @@ def extract_agreements_update(reply: str) -> tuple[str, dict[str, Any] | None]:
     display = _WORKOUT_PROPOSAL_RE.sub("", display)
     display = _WORKOUT_REMOVAL_RE.sub("", display)
     display = _TYPE_UPDATE_RE.sub("", display)
+    display = _PLAN_UPDATE_RE.sub("", display)
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:
@@ -439,8 +454,47 @@ def extract_agreements_update(reply: str) -> tuple[str, dict[str, Any] | None]:
         "Oppdater treningsavtaler: " + (", ".join(summary_bits) if summary_bits else "ny avtale")
         + "?"
     )
+    patch["rebuild_plan_preview"] = True
     return display.strip() or patch["message"], patch
 
+
+def extract_plan_update(reply: str) -> tuple[str, dict[str, Any] | None]:
+    """Strip plan_update fence → coach proposal to rebuild local plan (confirm first)."""
+    if not reply:
+        return "", None
+    match = _PLAN_UPDATE_RE.search(reply)
+    if not match:
+        return reply.strip(), None
+    raw = (match.group(1) or "").strip()
+    display = (_PLAN_UPDATE_RE.sub("", reply)).strip()
+    display = _WORKOUT_PROPOSAL_RE.sub("", display)
+    display = _WORKOUT_REMOVAL_RE.sub("", display)
+    display = _TYPE_UPDATE_RE.sub("", display)
+    display = _AGREEMENTS_UPDATE_RE.sub("", display)
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return display or reply.strip(), None
+    if not isinstance(data, dict):
+        return display or reply.strip(), None
+    reason = str(data.get("reason") or data.get("note") or "").strip()[:400]
+    rebuild = data.get("rebuild")
+    if rebuild is None:
+        rebuild = True
+    ease = bool(data.get("ease_load") or data.get("ease"))
+    prop: dict[str, Any] = {
+        "op": "plan_update",
+        "confirm_required": True,
+        "rebuild": bool(rebuild),
+        "ease_load": ease,
+        "reason": reason,
+        "message": reason
+        or (
+            "Foreslått planjustering — forhåndsvis meso-blokker og økter til måldato, "
+            "deretter bekreft. Intervals skrives først etter Sync."
+        ),
+    }
+    return display.strip() or prop["message"], prop
 
 def call_llm(
     *,

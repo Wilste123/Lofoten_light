@@ -1045,6 +1045,11 @@ function applyChatResponse(data, { mirrorToMain = false, userText = '' } = {}) {
     state.agreementsProposal = data.agreements_proposal
     if (data.agreements_hint) toast(data.agreements_hint)
   }
+  if (data.plan_proposal?.plan_blocks?.length) {
+    state.planAdjust = data.plan_proposal
+    state.agreementsProposal = null
+    if (data.plan_hint) toast(data.plan_hint)
+  }
   if (mirrorToMain && userText) {
     state.messages = [
       ...state.messages,
@@ -1154,7 +1159,13 @@ function renderChat() {
       ''
     const horizon =
       pa.workout_horizon_note_nb ||
-      'Intervals WORKOUT: kun første 2 uker. Grovplan-noter kan dekke sesong.'
+      pa.horizon_note_nb ||
+      'App-plan til måldato; Intervals WORKOUT kun nærvindu.'
+    const readiness = pa.readiness_hints || {}
+    const readyNote =
+      pa.readiness_note_nb ||
+      readiness.summary_nb ||
+      ''
     const rows = (pa.plan_blocks || [])
       .slice(0, 8)
       .map(
@@ -1166,17 +1177,21 @@ function renderChat() {
       .slice(0, 8)
       .map((e) => `<li>${escapeHtml(e.preview_no || e.name || '')}</li>`)
       .join('')
+    const sessN = pa.planned_sessions_count
+    const hzW = pa.plan_horizon_weeks
     proposalCard = `
       <div class="confirm-card workout-proposal-card" aria-label="Justert grovplan">
-        <p><strong>Foreslått planjustering (fra Du-profil)</strong></p>
-        <p class="muted tight">${escapeHtml(pa.confirm_hint || 'Bekreft for å lagre meso-blokker lokalt — ikke auto-sync til Intervals.')}</p>
+        <p><strong>Foreslått planjustering</strong></p>
+        <p class="muted tight">${escapeHtml(pa.confirm_hint || 'Bekreft for å lagre meso-blokker + økter til måldato lokalt — ikke auto-sync til Intervals.')}</p>
         <p class="muted tight">${escapeHtml(csum)}</p>
         <p class="muted tight">${escapeHtml(horizon)}</p>
-        ${sync.workouts_count != null ? `<p class="muted tight">${escapeHtml(String(sync.workouts_count))} WORKOUT-økter i forhåndsvisning (2 uker × økter/uke).</p>` : ''}
+        ${sessN != null ? `<p class="muted tight">${escapeHtml(String(sessN))} økter i app-plan${hzW != null ? ` (~${escapeHtml(String(hzW))} uker)` : ''}.</p>` : ''}
+        ${readyNote ? `<p class="muted tight">Readiness: ${escapeHtml(readyNote)}</p>` : ''}
+        ${sync.workouts_count != null ? `<p class="muted tight">${escapeHtml(String(sync.workouts_count))} WORKOUT i Intervals-nærvindu (${escapeHtml(String(pa.icu_sync_weeks || sync.weeks || 2))} uker).</p>` : ''}
         <ul class="sync-sample">${rows}</ul>
-        ${wprev ? `<p class="plan-kicker">Første 2 uker (WORKOUT)</p><ul class="sync-sample">${wprev}</ul>` : ''}
+        ${wprev ? `<p class="plan-kicker">Intervals nærvindu (WORKOUT)</p><ul class="sync-sample">${wprev}</ul>` : ''}
         <div class="sync-actions">
-          <button type="button" class="btn btn-primary" id="plan-adjust-confirm-btn" ${state.busy ? 'disabled' : ''}>Bekreft ny grovplan</button>
+          <button type="button" class="btn btn-primary" id="plan-adjust-confirm-btn" ${state.busy ? 'disabled' : ''}>Bekreft ny plan</button>
           <button type="button" class="btn secondary" id="plan-adjust-dismiss-btn">Avvis</button>
         </div>
         ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
@@ -2594,10 +2609,19 @@ function bindApp() {
       const data = await api('/v1/athlete/me', { method: 'PATCH', body: patch })
       state.athlete = data.athlete
       state.agreementsProposal = null
-      state.workoutSync.message = 'Treningsavtaler oppdatert'
+      state.workoutSync.message = 'Treningsavtaler oppdatert — bygger planforslag…'
+      toast(state.workoutSync.message)
+      // Agile path: agreements → plan preview (Utøver → AI → Forslag → Preview)
+      const prev = await api('/v1/athlete/me/plan/adjust/preview', {
+        method: 'POST',
+        body: { enrich_with_llm: false },
+      })
+      state.planAdjust = prev
+      state.workoutSync.message =
+        prev.confirm_hint || 'Forhåndsvis ny plan — bekreft for å lagre.'
       toast(state.workoutSync.message)
     } catch (err) {
-      state.workoutSync.error = err.message || 'Kunne ikke lagre avtaler'
+      state.workoutSync.error = err.message || 'Kunne ikke lagre avtaler / planforslag'
     } finally {
       state.busy = false
       render()
@@ -2617,23 +2641,25 @@ function bindApp() {
     state.workoutSync.error = ''
     render()
     try {
+      const prepareSync = Boolean(state.intervals?.connected)
       const data = await api('/v1/athlete/me/plan/adjust/confirm', {
         method: 'POST',
         body: {
           plan_blocks: pa.plan_blocks,
           athlete_patch: pa.athlete_patch || {},
-          prepare_intervals_sync: false,
+          prepare_intervals_sync: prepareSync,
         },
       })
       state.athlete = data.athlete
       state.planAdjust = null
-      state.workoutSync.message = data.message || 'Grovplan oppdatert'
+      state.workoutSync.message = data.message || 'Plan oppdatert'
       toast(state.workoutSync.message)
       await refreshPlanBlocks()
       await refreshOverview()
       if (data.intervals_pending) {
         state.tab = 'plan'
         state.sync.pending = data.intervals_pending
+        state.sync.message = data.intervals_pending.message || 'Bekreft Sync til Intervals'
       }
     } catch (err) {
       state.workoutSync.error = err.message || 'Kunne ikke bekrefte planjustering'
@@ -2662,6 +2688,19 @@ function bindApp() {
       state.athleteTypeProposal = null
       state.workoutSync.message = data.message || 'Hovedprofil oppdatert'
       toast(state.workoutSync.message)
+      if (data.plan_preview?.plan_blocks?.length) {
+        // Same confirm path as plan_update / Du adjust
+        const prev = await api('/v1/athlete/me/plan/adjust/preview', {
+          method: 'POST',
+          body: { enrich_with_llm: false },
+        })
+        state.planAdjust = prev
+      } else if (data.plan_preview?.plan_blocks) {
+        state.planAdjust = {
+          ...data.plan_preview,
+          confirm_hint: data.plan_preview.confirm_hint,
+        }
+      }
     } catch (err) {
       state.workoutSync.error = err.message || 'Kunne ikke oppdatere type'
     } finally {

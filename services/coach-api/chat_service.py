@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import date
 from typing import Any
 
 from pathlib import Path
@@ -199,14 +200,15 @@ Regler:
   når avtalen er løp+styrke. Ved brudd: nekt eller spør om å endre avtalen (agreements_update) — ikke synce stille.
 - wellness_signals (søvn/HRV/RHR/load) er signaler, ikke fasit — bruk dem til *forslag*
   om å lette/flytte økter, aldri til stille omskrivning av hele planen.
-{focused_bullets}- Når utøveren ber om å legge inn / endre en konkret økt på Intervals-kalenderen:
+{focused_bullets}- Når utøveren ber om å legge inn / endre / planlegge en konkret økt (app-plan eller Intervals):
   1) Skriv kort råd på norsk — forankret i knowledge; avvis usikre endringer.
-  2) Avslutt med ÉN fenced code block merket workout_proposal (ikke vanlig json), med:
+  2) Avslutt ALLTID med ÉN fenced code block merket workout_proposal (ikke vanlig json), med:
      {{"workouts":[{{"name":"...","date":"YYYY-MM-DD","sport":"bike|run|swim|strength|other","duration_minutes":60,"description":"...","start_time":"07:00"}}]}}
-  3) Du synker IKKE selv — utøveren bekrefter i appen (forhåndsvis → sync).
-  4) Bruk workout_proposal KUN når de eksplisitt ber om kalenderøkt / endring; ikke for vanlig råd.
-  5) Ved endring av focused_session: behold dato med mindre de ber om å flytte; oppdater description med konkrete steg.
-  6) Kun sports innenfor allowed_disciplines; hold deg innenfor sessions_per_week.
+  3) Uten denne fencen lagres INGENTING. Prosa alene (selv med dato/varighet) er ikke nok.
+  4) Du synker IKKE selv — utøveren bekrefter i appen (forhåndsvis → lagre i plan → Sync Intervals).
+  5) Bruk workout_proposal KUN når de eksplisitt ber om økt/kalenderendring; ikke for vanlig råd.
+  6) Ved endring av focused_session: behold dato med mindre de ber om å flytte; oppdater description med konkrete steg.
+  7) Kun sports innenfor allowed_disciplines; hold deg innenfor sessions_per_week.
 - Når utøveren ber om å FJERNE coach-planlagte økter fra Intervals:
   1) Kort råd.
   2) Fenced block merket workout_removal:
@@ -263,24 +265,7 @@ def knowledge_meta_for_chat(
     )
 
 
-def extract_workout_proposal(reply: str) -> tuple[str, dict[str, Any] | None]:
-    """Strip optional workout_proposal fence; return (display_text, proposal|None)."""
-    if not reply:
-        return "", None
-    match = _WORKOUT_PROPOSAL_RE.search(reply)
-    if not match:
-        return reply.strip(), None
-    raw = (match.group(1) or "").strip()
-    display = (_WORKOUT_PROPOSAL_RE.sub("", reply)).strip()
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError:
-        return reply.strip(), None
-    if not isinstance(data, dict):
-        return reply.strip(), None
-    workouts = data.get("workouts")
-    if not isinstance(workouts, list) or not workouts:
-        return display or reply.strip(), None
+def _clean_workout_dicts(workouts: list[Any]) -> list[dict[str, Any]]:
     cleaned: list[dict[str, Any]] = []
     for w in workouts:
         if not isinstance(w, dict):
@@ -306,6 +291,28 @@ def extract_workout_proposal(reply: str) -> tuple[str, dict[str, Any] | None]:
                 "start_time": start[:5],
             }
         )
+    return cleaned
+
+
+def extract_workout_proposal(reply: str) -> tuple[str, dict[str, Any] | None]:
+    """Strip optional workout_proposal fence; return (display_text, proposal|None)."""
+    if not reply:
+        return "", None
+    match = _WORKOUT_PROPOSAL_RE.search(reply)
+    if not match:
+        return reply.strip(), None
+    raw = (match.group(1) or "").strip()
+    display = (_WORKOUT_PROPOSAL_RE.sub("", reply)).strip()
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return reply.strip(), None
+    if not isinstance(data, dict):
+        return reply.strip(), None
+    workouts = data.get("workouts")
+    if not isinstance(workouts, list) or not workouts:
+        return display or reply.strip(), None
+    cleaned = _clean_workout_dicts(workouts)
     if not cleaned:
         return display or reply.strip(), None
     # Strip other fences from display too
@@ -313,8 +320,242 @@ def extract_workout_proposal(reply: str) -> tuple[str, dict[str, Any] | None]:
     display = _TYPE_UPDATE_RE.sub("", display)
     display = _AGREEMENTS_UPDATE_RE.sub("", display)
     display = _PLAN_UPDATE_RE.sub("", display)
-    return display.strip() or "Her er forslaget — bekreft i appen før det synces til Intervals.", {
-        "workouts": cleaned
+    return display.strip() or (
+        "Her er forslaget — bekreft i appen for å lagre i planen "
+        "(deretter Sync til Intervals)."
+    ), {"workouts": cleaned}
+
+
+_SESSION_INTENT_RE = re.compile(
+    r"(?:"
+    r"legg\s+(?:inn|til|på)|"
+    r"planlegg|book(?:e)?|"
+    r"opprett|"
+    r"lag\s+(?:en\s+)?økt|"
+    r"sett\s+inn|"
+    r"putt\s+på|"
+    r"kan\s+du\s+legge|"
+    r"add\s+(?:a\s+)?(?:workout|session)|"
+    r"schedule|"
+    r"create\s+(?:a\s+)?workout"
+    r")",
+    re.IGNORECASE,
+)
+
+_PLAN_ADJUST_INTENT_RE = re.compile(
+    r"(?:"
+    r"lett(?:e)?\s+(?:denne\s+)?uka|"
+    r"lette\s+uka|"
+    r"ease\s+(?:the\s+)?week|"
+    r"juster\s+(?:planen|uka|grovplanen)|"
+    r"bygg\s+om\s+(?:planen|uka|grovplanen)|"
+    r"endre\s+(?:planen|grovplanen)|"
+    r"ny\s+(?:ukeplan|grovplan)|"
+    r"rebuild\s+(?:plan|week)"
+    r")",
+    re.IGNORECASE,
+)
+
+_SPORT_WORD_RE = re.compile(
+    r"\b(svøm(?:me|ming|tur)?|swim|syk(?:kel|le|ling)?|bike|cycling|"
+    r"løp(?:e|etur|ing)?|run(?:ning)?|jogge|styrke|strength|"
+    r"yoga|ski|row|roing)\b",
+    re.IGNORECASE,
+)
+
+_DURATION_RE = re.compile(
+    r"(\d{1,3})\s*(?:min(?:utt(?:er)?)?|m\b)",
+    re.IGNORECASE,
+)
+
+_ISO_DATE_RE = re.compile(r"\b(20\d{2}-\d{2}-\d{2})\b")
+
+_LABELED_FIELD_RE = re.compile(
+    r"\*\*\s*(?:Økt|Navn|Dato|Varighet|Sport|Disiplin|Beskrivelse)\s*:?\s*\*\*\s*:?\s*([^\n*]+)",
+    re.IGNORECASE,
+)
+
+
+def user_requests_session_change(message: str) -> bool:
+    """True when the athlete clearly asks to add/change a concrete session."""
+    text = (message or "").strip()
+    if not text:
+        return False
+    return bool(_SESSION_INTENT_RE.search(text))
+
+
+def user_requests_plan_adjust(message: str) -> bool:
+    """True when the athlete asks to ease/rebuild plan or week."""
+    text = (message or "").strip()
+    if not text:
+        return False
+    return bool(_PLAN_ADJUST_INTENT_RE.search(text))
+
+
+def _sport_from_text(text: str) -> str:
+    raw = (text or "").lower()
+    if re.search(r"\b(svøm|swim)\b", raw):
+        return "swim"
+    if re.search(r"\b(syk|bike|cycling)\b", raw):
+        return "bike"
+    if re.search(r"\b(styrke|strength)\b", raw):
+        return "strength"
+    if re.search(r"\b(løp|run|jogge)\b", raw):
+        return "run"
+    if re.search(r"\b(ski)\b", raw):
+        return "other"
+    return "run"
+
+
+def _relative_date_from_text(text: str, *, today: date) -> date | None:
+    raw = (text or "").lower()
+    if re.search(r"\bi\s+morgen\b|\btomorrow\b", raw):
+        return today.fromordinal(today.toordinal() + 1)
+    if re.search(r"\bi\s+dag\b|\btoday\b", raw):
+        return today
+    weekdays = {
+        "mandag": 0,
+        "tirsdag": 1,
+        "onsdag": 2,
+        "torsdag": 3,
+        "fredag": 4,
+        "lørdag": 5,
+        "søndag": 6,
+        "monday": 0,
+        "tuesday": 1,
+        "wednesday": 2,
+        "thursday": 3,
+        "friday": 4,
+        "saturday": 5,
+        "sunday": 6,
+    }
+    for name, target in weekdays.items():
+        if re.search(rf"\b{name}\b", raw):
+            delta = (target - today.weekday()) % 7
+            if delta == 0:
+                delta = 7
+            return today.fromordinal(today.toordinal() + delta)
+    return None
+
+
+def infer_workout_proposal_fallback(
+    user_message: str,
+    reply: str,
+    *,
+    today: date | None = None,
+) -> dict[str, Any] | None:
+    """Recover a workout_proposal when the LLM forgot the fence.
+
+    Only runs when the user clearly asked to add/change a session. Parses
+    ISO dates / labeled fields from the assistant reply, then falls back to
+    duration/sport/relative day in the user message.
+    """
+    if not user_requests_session_change(user_message):
+        return None
+    day0 = today or date.today()
+    blob = f"{reply or ''}\n{user_message or ''}"
+
+    date_s = None
+    m_iso = _ISO_DATE_RE.search(reply or "") or _ISO_DATE_RE.search(user_message or "")
+    if m_iso:
+        date_s = m_iso.group(1)
+    if not date_s:
+        rel = _relative_date_from_text(user_message, today=day0) or _relative_date_from_text(
+            reply or "", today=day0
+        )
+        if rel:
+            date_s = rel.isoformat()
+    if not date_s:
+        return None
+
+    dur_i = None
+    m_dur = _DURATION_RE.search(reply or "") or _DURATION_RE.search(user_message or "")
+    if m_dur:
+        try:
+            dur_i = int(m_dur.group(1))
+        except ValueError:
+            dur_i = None
+
+    sport = _sport_from_text(blob)
+    name = None
+    labeled: dict[str, str] = {}
+    for lab in _LABELED_FIELD_RE.finditer(reply or ""):
+        # Recover which label from the match span
+        chunk = lab.group(0).lower()
+        val = lab.group(1).strip()
+        if "økt" in chunk or "navn" in chunk:
+            labeled["name"] = val
+        elif "dato" in chunk:
+            labeled["date"] = val
+        elif "varighet" in chunk:
+            labeled["duration"] = val
+        elif "beskrivelse" in chunk:
+            labeled["description"] = val
+        elif "sport" in chunk or "disiplin" in chunk:
+            labeled["sport"] = val
+    if labeled.get("name"):
+        name = labeled["name"][:120]
+    if labeled.get("date") and _ISO_DATE_RE.search(labeled["date"]):
+        date_s = _ISO_DATE_RE.search(labeled["date"]).group(1)
+    if labeled.get("duration") and dur_i is None:
+        m_lab_dur = _DURATION_RE.search(labeled["duration"])
+        if m_lab_dur:
+            try:
+                dur_i = int(m_lab_dur.group(1))
+            except ValueError:
+                pass
+    if labeled.get("sport"):
+        sport = _sport_from_text(labeled["sport"]) or sport
+    if not name:
+        sport_m = _SPORT_WORD_RE.search(user_message or "") or _SPORT_WORD_RE.search(
+            reply or ""
+        )
+        label = sport_m.group(1) if sport_m else sport
+        name = f"{label} {dur_i}min" if dur_i else f"{label} økt"
+        name = name[:120]
+
+    description = (labeled.get("description") or "").strip()[:2000]
+    if not description:
+        description = (user_message or "").strip()[:500]
+
+    cleaned = _clean_workout_dicts(
+        [
+            {
+                "name": name,
+                "date": date_s,
+                "sport": sport,
+                "duration_minutes": dur_i,
+                "description": description,
+                "start_time": "07:00",
+            }
+        ]
+    )
+    if not cleaned:
+        return None
+    return {"workouts": cleaned, "inferred": True}
+
+
+def infer_plan_update_fallback(user_message: str) -> dict[str, Any] | None:
+    """Recover plan_update when athlete asks to ease/rebuild and LLM skips fence."""
+    if not user_requests_plan_adjust(user_message):
+        return None
+    text = (user_message or "").lower()
+    week = bool(
+        re.search(r"\buke\b|\bweek\b|denne\s+uka|lette?\s+uka", text)
+    ) and not bool(re.search(r"hele\s+planen|full\s+plan|sesong", text))
+    ease = bool(re.search(r"lett|ease|letter|recover|hvile", text))
+    return {
+        "reason": "Utleidet fra chat-forespørsel (LLM manglet plan_update-fence).",
+        "rebuild": True,
+        "ease_load": ease,
+        "scope": "week" if week else "full",
+        "week_start": "this_week",
+        "inferred": True,
+        "message": (
+            "Foreslått ukejustering — bekreft forhåndsvisning."
+            if week
+            else "Foreslått planjustering — bekreft forhåndsvisning."
+        ),
     }
 
 

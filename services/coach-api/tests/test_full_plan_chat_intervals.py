@@ -560,3 +560,48 @@ def test_chat_week_plan_update_builds_week_proposal(client):
     assert prop.get("week_start")
     assert prop.get("confirm_required") is True
     assert not prop.get("plan_blocks")
+
+
+def test_chat_infers_week_plan_update_without_fence(client):
+    c, _athletes, _db = client
+    setup = _confirm_setup(c, username="chat-week-inf")
+    aid = setup["athlete"]["id"]
+    llm_reply = "Ja — vi letter bare denne uka uten å røre resten av horisonten."
+    with (
+        patch(
+            "main.list_sessions",
+            return_value={
+                "source": "none",
+                "recent": [],
+                "upcoming": [],
+                "today": [],
+                "window": None,
+            },
+        ),
+        patch("main.call_llm", return_value=llm_reply),
+        patch(
+            "main.resolve_wellness_bundle",
+            return_value={
+                "recovery_signals": {
+                    "available": True,
+                    "sleep_avg_hours": 5.5,
+                    "readiness": 3,
+                    "as_signals_only": True,
+                },
+                "sleep": {"available": True, "avg_hours": 5.5},
+                "load_wellness": {"available": True, "readiness": 3},
+            },
+        ),
+    ):
+        r = c.post(
+            "/v1/chat",
+            headers={"X-Athlete-Id": aid},
+            json={"message": "Kan du lette denne uka?"},
+        )
+    assert r.status_code == 200, r.text
+    data = r.json()
+    prop = data.get("plan_proposal") or {}
+    assert prop.get("scope") == "week"
+    assert prop.get("sessions")
+    assert prop.get("inferred") is True
+    assert data.get("confirm_required") is True

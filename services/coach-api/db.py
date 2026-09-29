@@ -923,6 +923,27 @@ def delete_planned_sessions_range(
     return cur.rowcount
 
 
+def delete_planned_sessions_by_external_ids(
+    conn: sqlite3.Connection,
+    athlete_id: str,
+    external_ids: list[str],
+) -> int:
+    """Remove planned rows matching external_id (chat upsert / replace)."""
+    ids = [str(x).strip() for x in external_ids if str(x).strip()]
+    if not ids:
+        return 0
+    placeholders = ",".join("?" for _ in ids)
+    cur = conn.execute(
+        f"""
+        DELETE FROM planned_sessions
+        WHERE athlete_id = ?
+          AND external_id IN ({placeholders})
+        """,
+        [athlete_id, *ids],
+    )
+    return cur.rowcount
+
+
 def insert_planned_session_rows(
     conn: sqlite3.Connection,
     athlete_id: str,

@@ -150,19 +150,23 @@ def write_profile(athletes_dir: Path, athlete: dict[str, Any]) -> Path:
 
 
 def load_profile_md(
-    athletes_dir: Path, athlete: dict[str, Any], *, max_chars: int = 14000
+    athletes_dir: Path | None, athlete: dict[str, Any], *, max_chars: int = 14000
 ) -> str:
-    """Prefer on-disk profile.md (seed/onboarding); fall back to render from SQLite.
+    """Prefer on-disk profile.md for THIS athlete only; else render from SQLite.
 
-    Chat/overview context must include agreements and injury notes from the file
-    when present (e.g. after seed_from_repo).
+    Isolation rules:
+    - Only read ``{athletes_dir}/{athlete.id}/profile.md`` — never ``docs/athlete/``,
+      never another athlete's folder, never a cwd/global fallback.
+    - Missing/empty id → render from the athlete dict (may be incomplete); do not
+      substitute seeded William / Lofoten goals.
     """
-    athlete_id = athlete.get("id") or ""
-    path = athletes_dir / athlete_id / "profile.md" if athlete_id else None
-    if path and path.is_file():
-        text = path.read_text(encoding="utf-8").strip()
-        if text:
-            if len(text) > max_chars:
-                return text[: max_chars - 20] + "\n\n[…trimmet…]"
-            return text
+    athlete_id = str(athlete.get("id") or "").strip()
+    if athletes_dir is not None and athlete_id:
+        path = Path(athletes_dir) / athlete_id / "profile.md"
+        if path.is_file():
+            text = path.read_text(encoding="utf-8").strip()
+            if text:
+                if len(text) > max_chars:
+                    return text[: max_chars - 20] + "\n\n[…trimmet…]"
+                return text
     return render_profile_md(athlete)

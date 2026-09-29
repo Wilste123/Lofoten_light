@@ -123,9 +123,103 @@ function clearAthleteId() {
   localStorage.removeItem(STORAGE_KEY)
 }
 
+/** Wipe all client session state so account switches cannot leak athlete facts. */
+function clearSessionLocal() {
+  clearAthleteId()
+  state.athlete = null
+  state.messages = []
+  state.overview = null
+  state.dashboard = null
+  state.sessions = null
+  state.sessionDetail = null
+  state.sessionChat = { messages: [], draft: '', busy: false, error: '' }
+  state.sessionEditOpen = true
+  state.planBlocks = []
+  state.workoutProposal = null
+  state.workoutRemoval = null
+  state.athleteTypeProposal = null
+  state.agreementsProposal = null
+  state.planAdjust = null
+  state.profileSavedForCoach = false
+  state.chatDraft = ''
+  state.sync = {
+    status: null,
+    statusError: '',
+    busy: false,
+    pending: null,
+    message: '',
+    error: '',
+  }
+  state.workoutSync = {
+    pending: null,
+    busy: false,
+    message: '',
+    error: '',
+  }
+  state.intervals = {
+    connected: false,
+    intervals_athlete_id: '',
+    api_key_hint: null,
+    form_athlete_id: '',
+    form_api_key: '',
+  }
+  state.setup = {
+    mode: 'new',
+    step: 'account',
+    draft: emptySetupDraft({ accent_color: ACCENTS[0] }),
+    messages: [],
+    chatDraft: '',
+    readyForPlan: false,
+    preview: null,
+    prepareIntervals: false,
+  }
+  state.login = {
+    username: '',
+    athlete_id: '',
+    invite_token: '',
+  }
+  state.resetConfirm = 0
+  state.resetDeleteIcu = false
+  state.error = ''
+  state.intervalsError = ''
+  state.planError = ''
+  state.intervalsStatus = ''
+  state.busy = false
+  state.intervalsBusy = false
+}
+
+/** Fresh commercial onboarding — never reuse previous localStorage athlete id. */
+function startNewUserSetup() {
+  clearSessionLocal()
+  state.setup = {
+    mode: 'new',
+    step: 'account',
+    draft: emptySetupDraft({ accent_color: ACCENTS[0] }),
+    messages: [],
+    chatDraft: '',
+    readyForPlan: false,
+    preview: null,
+    prepareIntervals: false,
+  }
+  state.gate = 'onboarding'
+  state.error = ''
+  setAccent(ACCENTS[0])
+  render()
+}
+
+function logoutLocal() {
+  clearSessionLocal()
+  state.gate = 'entry'
+  toast('Logget ut')
+  render()
+}
+
 async function api(path, { method = 'GET', body, athleteId, timeoutMs } = {}) {
   const headers = { 'Content-Type': 'application/json' }
-  const id = athleteId ?? getAthleteId()
+  // undefined → session localStorage; null/'' → omit header (new-user setup must
+  // NEVER reuse a previous account's id via ?? nullish coalesce).
+  const id =
+    athleteId === undefined ? getAthleteId() : athleteId || null
   if (id) headers['X-Athlete-Id'] = id
   const ctrl = typeof timeoutMs === 'number' ? new AbortController() : null
   const timer =
@@ -191,6 +285,26 @@ function escapeHtml(s) {
 }
 
 async function enterApp(athlete, { welcome } = {}) {
+  const prevId = state.athlete?.id || getAthleteId()
+  const switched = Boolean(prevId && prevId !== athlete.id)
+  if (switched) {
+    // Drop prior account's in-memory UI — server data is scoped by header id
+    state.messages = []
+    state.overview = null
+    state.dashboard = null
+    state.sessions = null
+    state.sessionDetail = null
+    state.sessionChat = { messages: [], draft: '', busy: false, error: '' }
+    state.planBlocks = []
+    state.workoutProposal = null
+    state.workoutRemoval = null
+    state.athleteTypeProposal = null
+    state.agreementsProposal = null
+    state.planAdjust = null
+    state.sync.pending = null
+    state.workoutSync = { pending: null, busy: false, message: '', error: '' }
+    state.chatDraft = ''
+  }
   state.athlete = athlete
   state.gate = null
   state.error = ''
@@ -199,6 +313,8 @@ async function enterApp(athlete, { welcome } = {}) {
   setAthleteId(athlete.id)
   if (welcome) {
     state.messages = [{ role: 'assistant', content: welcome }]
+  } else if (switched) {
+    state.messages = []
   }
   await Promise.all([
     refreshOverview(),
@@ -461,19 +577,7 @@ function renderEntry() {
 
 function bindEntry() {
   document.getElementById('gate-new')?.addEventListener('click', () => {
-    state.setup = {
-      mode: 'new',
-      step: 'account',
-      draft: emptySetupDraft({ accent_color: ACCENTS[0] }),
-      messages: [],
-      chatDraft: '',
-      readyForPlan: false,
-      preview: null,
-      prepareIntervals: false,
-    }
-    state.gate = 'onboarding'
-    state.error = ''
-    render()
+    startNewUserSetup()
   })
   document.getElementById('gate-returning')?.addEventListener('click', () => {
     state.gate = 'login'
@@ -540,19 +644,7 @@ function bindLogin() {
     render()
   })
   document.getElementById('login-to-onboard')?.addEventListener('click', () => {
-    state.setup = {
-      mode: 'new',
-      step: 'account',
-      draft: emptySetupDraft({ accent_color: ACCENTS[0] }),
-      messages: [],
-      chatDraft: '',
-      readyForPlan: false,
-      preview: null,
-      prepareIntervals: false,
-    }
-    state.gate = 'onboarding'
-    state.error = ''
-    render()
+    startNewUserSetup()
   })
   document.getElementById('use-seed-william')?.addEventListener('click', () => {
     void runSeedWilliamLogin()
@@ -657,26 +749,6 @@ function startRestartSetup() {
   state.resetConfirm = 0
   state.error = ''
   state.tab = 'coach'
-  render()
-}
-
-function logoutLocal() {
-  clearAthleteId()
-  state.athlete = null
-  state.messages = []
-  state.overview = null
-  state.dashboard = null
-  state.sessions = null
-  state.sessionDetail = null
-  state.sessionChat = { messages: [], draft: '', busy: false, error: '' }
-  state.sessionEditOpen = false
-  state.planBlocks = []
-  state.workoutProposal = null
-  state.sync.pending = null
-  state.gate = 'entry'
-  state.resetConfirm = 0
-  state.error = ''
-  toast('Logget ut')
   render()
 }
 

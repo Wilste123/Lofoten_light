@@ -639,9 +639,19 @@ def setup_confirm(
 
     Never writes to Intervals here. If prepare_intervals_sync + credentials:
     creates a pending calendar push (same confirm gate as Plan-fanen).
+
+    Isolation: only ``body.athlete_id`` selects an existing row (restart setup).
+    ``X-Athlete-Id`` alone must NOT update another profile — leftover client
+    localStorage previously caused new-user confirm to overwrite William/seed.
     """
     draft = body.model_dump()
-    existing_id = (body.athlete_id or x_athlete_id or "").strip() or None
+    existing_id = (body.athlete_id or "").strip() or None
+    header_id = (x_athlete_id or "").strip() or None
+    if existing_id and header_id and header_id != existing_id:
+        raise HTTPException(
+            403,
+            "X-Athlete-Id stemmer ikke med athlete_id — kan ikke bekrefte for en annen utøver.",
+        )
 
     # Prefer client-reviewed blocks; else rebuild deterministically.
     blocks = list(body.plan_blocks or [])

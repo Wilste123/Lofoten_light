@@ -128,7 +128,9 @@ def build_system_prompt(
     hint = PERSONALITY_HINTS.get(personality, PERSONALITY_HINTS["direkte"])
     coach = athlete.get("coach_display_name") or "Trener"
     name = athlete.get("display_name") or "utøveren"
-    profile_md = load_profile_md(athletes_dir or Path("."), athlete)
+    # Never Path(".") — that can pick up another athlete's on-disk profile by accident.
+    # Incomplete athletes get SQLite/render only; no seeded William / docs/athlete fallback.
+    profile_md = load_profile_md(athletes_dir, athlete)
     # Prefer explicit focused_session; else peek overview stub
     focused = focused_session
     if focused is None and isinstance(overview_stub, dict):

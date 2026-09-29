@@ -904,6 +904,118 @@ def delete_all_planned_sessions(conn: sqlite3.Connection, athlete_id: str) -> in
     return cur.rowcount
 
 
+def delete_planned_sessions_range(
+    conn: sqlite3.Connection,
+    athlete_id: str,
+    start_date: str,
+    end_date: str,
+) -> int:
+    """Delete planned sessions in [start_date, end_date] (inclusive)."""
+    cur = conn.execute(
+        """
+        DELETE FROM planned_sessions
+        WHERE athlete_id = ?
+          AND session_date >= ?
+          AND session_date <= ?
+        """,
+        (athlete_id, start_date[:10], end_date[:10]),
+    )
+    return cur.rowcount
+
+
+def insert_planned_session_rows(
+    conn: sqlite3.Connection,
+    athlete_id: str,
+    sessions: list[dict[str, Any]],
+    *,
+    sort_offset: int = 0,
+) -> list[dict[str, Any]]:
+    """Insert planned_session rows without wiping the rest of the horizon."""
+    now = utc_now()
+    out: list[dict[str, Any]] = []
+    for i, raw in enumerate(sessions):
+        day = str(raw.get("session_date") or raw.get("date") or "").strip()[:10]
+        if not day:
+            continue
+        sid = raw.get("id") or new_id()
+        name = str(raw.get("name") or raw.get("title") or "Økt").strip()[:200]
+        sport = str(raw.get("sport") or "other").strip().lower()[:40] or "other"
+        try:
+            dur = raw.get("duration_minutes")
+            dur_i = int(float(dur)) if dur is not None and str(dur).strip() else None
+        except (TypeError, ValueError):
+            dur_i = None
+        start_time = str(raw.get("start_time") or "07:00").strip()[:5] or "07:00"
+        external = str(raw.get("external_id") or "").strip()[:120] or None
+        sort_i = int(
+            raw.get("sort_order")
+            if raw.get("sort_order") is not None
+            else sort_offset + i
+        )
+        conn.execute(
+            """
+            INSERT INTO planned_sessions (
+              id, athlete_id, session_date, sport, name, description,
+              duration_minutes, start_time, planned_path, phase, block_id,
+              external_id, source, status, sort_order, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                sid,
+                athlete_id,
+                day,
+                sport,
+                name,
+                str(raw.get("description") or "").strip()[:4000],
+                dur_i,
+                start_time,
+                str(raw.get("planned_path") or raw.get("planned") or "").strip()[:400],
+                str(raw.get("phase") or "").strip()[:40],
+                raw.get("block_id"),
+                external,
+                str(raw.get("source") or "plan").strip()[:40] or "plan",
+                str(raw.get("status") or "planned").strip()[:40] or "planned",
+                sort_i,
+                now,
+                now,
+            ),
+        )
+        out.append(
+            {
+                "id": sid,
+                "athlete_id": athlete_id,
+                "session_date": day,
+                "sport": sport,
+                "name": name,
+                "description": str(raw.get("description") or "").strip()[:4000],
+                "duration_minutes": dur_i,
+                "start_time": start_time,
+                "planned_path": str(raw.get("planned_path") or raw.get("planned") or ""),
+                "phase": str(raw.get("phase") or ""),
+                "block_id": raw.get("block_id"),
+                "external_id": external,
+                "source": str(raw.get("source") or "plan"),
+                "status": str(raw.get("status") or "planned"),
+                "sort_order": sort_i,
+                "created_at": now,
+                "updated_at": now,
+            }
+        )
+    return out
+
+
+def replace_planned_sessions_range(
+    conn: sqlite3.Connection,
+    athlete_id: str,
+    start_date: str,
+    end_date: str,
+    sessions: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Surgical week (or range) replace — leaves the rest of the horizon intact."""
+    delete_planned_sessions_range(conn, athlete_id, start_date, end_date)
+    return insert_planned_session_rows(conn, athlete_id, sessions)
+
+
 def replace_planned_sessions(
     conn: sqlite3.Connection,
     athlete_id: str,

@@ -225,9 +225,12 @@ Regler:
 - Når utøveren ber om å justere / bygge om grovplanen (eller etter agreements_update som krever ny periodisering):
   1) Kort råd — ta hensyn til wellness_signals hvis tilgjengelig (forslag, ikke fasit).
   2) Fenced block merket plan_update:
-     {{"reason":"…","rebuild":true,"ease_load":false,"note":"…"}}
-  3) rebuild=true → appen viser forhåndsvisning av meso-blokker + økter til måldato;
-     utøveren bekrefter → lagre lokalt → Sync til Intervals (kun nærvindu). Ingen autonom omskrivning.
+     {{"reason":"…","rebuild":true,"ease_load":false,"scope":"full","note":"…"}}
+  3) rebuild=true + scope=full (default) → forhåndsvisning av meso + økter til måldato.
+  4) Når utøveren ber om å lette / bygge om *kun denne uka*:
+     {{"reason":"…","rebuild":true,"ease_load":true,"scope":"week","week_start":"this_week"}}
+     → appen erstatter kun én uke i planned_sessions (resten beholdes).
+  5) Utøveren bekrefter → lagre lokalt → Sync til Intervals (kun nærvindu). Ingen autonom omskrivning.
 - Du kan foreslå planblokker/makro i tekst; konkrete planendringer går via plan_update (ikke bare råd).
 
 ## Profil
@@ -482,18 +485,31 @@ def extract_plan_update(reply: str) -> tuple[str, dict[str, Any] | None]:
     if rebuild is None:
         rebuild = True
     ease = bool(data.get("ease_load") or data.get("ease"))
+    scope_raw = str(data.get("scope") or "full").strip().lower()
+    scope = "week" if scope_raw in ("week", "this_week", "uke") else "full"
+    week_start = data.get("week_start")
+    if scope == "week" and not week_start:
+        week_start = "this_week"
     prop: dict[str, Any] = {
         "op": "plan_update",
         "confirm_required": True,
         "rebuild": bool(rebuild),
         "ease_load": ease,
+        "scope": scope,
         "reason": reason,
         "message": reason
         or (
-            "Foreslått planjustering — forhåndsvis meso-blokker og økter til måldato, "
-            "deretter bekreft. Intervals skrives først etter Sync."
+            "Foreslått ukejustering — forhåndsvis én uke, deretter bekreft. "
+            "Resten av planen beholdes."
+            if scope == "week"
+            else (
+                "Foreslått planjustering — forhåndsvis meso-blokker og økter til måldato, "
+                "deretter bekreft. Intervals skrives først etter Sync."
+            )
         ),
     }
+    if scope == "week":
+        prop["week_start"] = str(week_start or "this_week")[:10]
     return display.strip() or prop["message"], prop
 
 def call_llm(

@@ -60,6 +60,7 @@ from db import (
     recent_messages,
     replace_plan_blocks,
     replace_planned_sessions,
+    replace_planned_sessions_range,
     secrets_public_view,
     update_athlete,
     update_plan_block,
@@ -96,6 +97,7 @@ from progress_compliance import (
 )
 from plan_workouts import (
     build_plan_sync_bundle,
+    build_week_adjust_sessions,
     events_preview_for_plan_sync,
     format_exc_nb,
     persistable_plan_payload,
@@ -280,6 +282,23 @@ class PlanAdjustConfirmIn(BaseModel):
     prepare_intervals_sync: bool = False
 
 
+class WeekAdjustPreviewIn(BaseModel):
+    """Surgical one-week rebuild — preview only, rest of horizon untouched."""
+
+    week_start: str | None = None  # YYYY-MM-DD or "this_week"
+    ease_load: bool = False
+
+
+class WeekAdjustConfirmIn(BaseModel):
+    """Confirm surgical week replace in planned_sessions."""
+
+    week_start: str
+    week_end: str
+    sessions: list[dict[str, Any]] = Field(default_factory=list)
+    ease_load: bool = False
+    prepare_intervals_sync: bool = False
+
+
 def _persist_plan_horizon_sessions(
     conn: Any,
     athlete_id: str,
@@ -299,6 +318,26 @@ def _persist_plan_horizon_sessions(
         "horizon_note_nb": payload.get("horizon_note_nb"),
         "goal_race_date": payload.get("goal_race_date") or athlete.get("goal_race_date"),
     }
+
+
+def _sync_bundle_preferring_stored(
+    conn: Any,
+    athlete_id: str,
+    blocks: list[dict[str, Any]],
+    athlete: dict[str, Any],
+    *,
+    allow_degraded: bool = False,
+    include_notes: bool = True,
+) -> dict[str, Any]:
+    """Near-window ICU bundle: prefer athlete's stored planned_sessions when present."""
+    stored = list_planned_sessions(conn, athlete_id)
+    return build_plan_sync_bundle(
+        blocks,
+        athlete=athlete,
+        include_notes=include_notes,
+        allow_degraded=allow_degraded,
+        planned_sessions=stored if stored else None,
+    )
 
 
 class WorkoutRemovePreviewIn(BaseModel):
@@ -895,10 +934,11 @@ def setup_confirm(
             icu = ((secrets or {}).get("intervals_athlete_id") or "").strip()
             if key and icu and saved_blocks:
                 try:
-                    bundle = build_plan_sync_bundle(
+                    bundle = _sync_bundle_preferring_stored(
+                        conn,
+                        aid,
                         saved_blocks,
-                        athlete=athlete,
-                        include_notes=True,
+                        athlete,
                         allow_degraded=True,
                     )
                 except Exception as exc:
@@ -926,6 +966,9 @@ def setup_confirm(
                             "weeks": bundle["weeks"],
                             "builder": bundle["builder"],
                             "knowledge_paths": bundle["knowledge_paths"],
+                            "from_stored_sessions": bundle.get(
+                                "from_stored_sessions", False
+                            ),
                         }
                         pending = insert_pending_action(
                             conn, aid, "intervals_calendar_push", payload
@@ -1441,64 +1484,99 @@ def chat(
     if plan_prop and plan_prop.get("rebuild"):
         # Build plan adjust preview immediately so UI can show Forslag → Preview
         try:
-            draft = _athlete_draft_for_plan(athlete)
-            if plan_prop.get("ease_load"):
-                note = (draft.get("fitness_notes") or "").strip()
-                ease_bit = "Lett uke foreslått (readiness/søvn)."
-                draft["fitness_notes"] = f"{note} {ease_bit}".strip()[:500]
-            plan_preview = build_setup_preview(
-                draft,
-                knowledge_dir=config.KNOWLEDGE_DIR,
-                api_key="",
-                enrich=False,
-            )
-            sync_athlete = {
-                **athlete,
-                **(plan_preview.get("athlete_patch") or {}),
-                "id": aid,
-            }
-            for key in (
-                "sessions_per_week",
-                "allowed_disciplines",
-                "goal_race_date",
-                "season_start_date",
-                "goal_text",
-            ):
-                val = athlete.get(key)
-                if val not in (None, "", []):
-                    sync_athlete[key] = val
-            sync_prev = events_preview_for_plan_sync(
-                plan_preview["plan_blocks"],
-                signals=plan_preview.get("signals") or {},
-                athlete=sync_athlete,
-            )
-            hz = persistable_plan_payload(
-                plan_preview["plan_blocks"], athlete=sync_athlete
-            )
             readiness = readiness_adjustment_hints(
                 overview.get("wellness_signals")
             )
-            out["plan_proposal"] = {
-                **plan_prop,
-                "plan_blocks": plan_preview["plan_blocks"],
-                "athlete_patch": plan_preview.get("athlete_patch") or {},
-                "intervals_sync": sync_prev,
-                "planned_sessions_count": hz.get("count"),
-                "plan_horizon_weeks": hz.get("weeks"),
-                "icu_sync_weeks": hz.get("icu_sync_weeks"),
-                "horizon_note_nb": hz.get("horizon_note_nb"),
-                "readiness_hints": readiness,
-                "constraints_summary_nb": sync_prev.get("constraints_summary_nb")
-                or plan_preview.get("constraints_summary_nb"),
-                "workout_horizon_note_nb": (
-                    f"App-plan: {hz.get('count')} økter / {hz.get('weeks')} uker til måldato. "
-                    f"Intervals WORKOUT-sync: første {hz.get('icu_sync_weeks')} uker."
-                ),
-                "confirm_hint": (
-                    "Forhåndsvisning klar. Bekreft for å lagre meso-blokker + "
-                    "økter til måldato lokalt. Intervals først etter Sync."
-                ),
-            }
+            if (plan_prop.get("scope") or "full") == "week":
+                with db_session(config.DATABASE_PATH) as conn:
+                    blocks = list_plan_blocks(conn, aid)
+                    existing_n = count_planned_sessions(conn, aid)
+                if not blocks:
+                    raise ValueError("Ingen planblokker — kjør full plan først")
+                week_built = build_week_adjust_sessions(
+                    blocks,
+                    athlete=athlete,
+                    week_start=plan_prop.get("week_start") or "this_week",
+                    ease_load=bool(plan_prop.get("ease_load")),
+                )
+                out["plan_proposal"] = {
+                    **plan_prop,
+                    "scope": "week",
+                    "week_start": week_built["week_start"],
+                    "week_end": week_built["week_end"],
+                    "sessions": week_built["sessions"],
+                    "count": week_built["count"],
+                    "planned_sessions_count": existing_n,
+                    "unchanged_note_nb": (
+                        f"Resten av horisonten (~{max(0, existing_n - week_built['count'])} "
+                        "økter utenfor uka) beholdes."
+                    ),
+                    "horizon_note_nb": week_built["horizon_note_nb"],
+                    "readiness_hints": readiness,
+                    "icu_sync_weeks": week_built.get("icu_sync_weeks"),
+                    "confirm_hint": (
+                        f"Bekreft for å erstatte kun uka {week_built['week_start']}–"
+                        f"{week_built['week_end']} ({week_built['count']} økter). "
+                        "Ingen full horisont-wipe. Intervals først etter Sync."
+                    ),
+                }
+            else:
+                draft = _athlete_draft_for_plan(athlete)
+                if plan_prop.get("ease_load"):
+                    note = (draft.get("fitness_notes") or "").strip()
+                    ease_bit = "Lett uke foreslått (readiness/søvn)."
+                    draft["fitness_notes"] = f"{note} {ease_bit}".strip()[:500]
+                plan_preview = build_setup_preview(
+                    draft,
+                    knowledge_dir=config.KNOWLEDGE_DIR,
+                    api_key="",
+                    enrich=False,
+                )
+                sync_athlete = {
+                    **athlete,
+                    **(plan_preview.get("athlete_patch") or {}),
+                    "id": aid,
+                }
+                for key in (
+                    "sessions_per_week",
+                    "allowed_disciplines",
+                    "goal_race_date",
+                    "season_start_date",
+                    "goal_text",
+                ):
+                    val = athlete.get(key)
+                    if val not in (None, "", []):
+                        sync_athlete[key] = val
+                sync_prev = events_preview_for_plan_sync(
+                    plan_preview["plan_blocks"],
+                    signals=plan_preview.get("signals") or {},
+                    athlete=sync_athlete,
+                )
+                hz = persistable_plan_payload(
+                    plan_preview["plan_blocks"], athlete=sync_athlete
+                )
+                out["plan_proposal"] = {
+                    **plan_prop,
+                    "scope": "full",
+                    "plan_blocks": plan_preview["plan_blocks"],
+                    "athlete_patch": plan_preview.get("athlete_patch") or {},
+                    "intervals_sync": sync_prev,
+                    "planned_sessions_count": hz.get("count"),
+                    "plan_horizon_weeks": hz.get("weeks"),
+                    "icu_sync_weeks": hz.get("icu_sync_weeks"),
+                    "horizon_note_nb": hz.get("horizon_note_nb"),
+                    "readiness_hints": readiness,
+                    "constraints_summary_nb": sync_prev.get("constraints_summary_nb")
+                    or plan_preview.get("constraints_summary_nb"),
+                    "workout_horizon_note_nb": (
+                        f"App-plan: {hz.get('count')} økter / {hz.get('weeks')} uker til måldato. "
+                        f"Intervals WORKOUT-sync: første {hz.get('icu_sync_weeks')} uker."
+                    ),
+                    "confirm_hint": (
+                        "Forhåndsvisning klar. Bekreft for å lagre meso-blokker + "
+                        "økter til måldato lokalt. Intervals først etter Sync."
+                    ),
+                }
             out["confirm_required"] = True
             out["plan_hint"] = (
                 plan_prop.get("message")
@@ -1931,6 +2009,9 @@ def calendar_preview(
     _athlete, key, icu = _require_intervals_secrets(aid)
     with db_session(config.DATABASE_PATH) as conn:
         blocks = list_plan_blocks(conn, aid)
+        stored_for_push = (
+            list_planned_sessions(conn, aid) if op == "push" else []
+        )
     selected = select_blocks(
         blocks, block_ids=body.block_ids, start=body.start, end=body.end
     )
@@ -1940,7 +2021,10 @@ def calendar_preview(
     if op == "push":
         try:
             bundle = build_plan_sync_bundle(
-                selected, athlete=_athlete, include_notes=True
+                selected,
+                athlete=_athlete,
+                include_notes=True,
+                planned_sessions=stored_for_push if stored_for_push else None,
             )
         except (ImportError, OSError, ValueError, KeyError, TypeError) as exc:
             raise HTTPException(
@@ -1961,6 +2045,7 @@ def calendar_preview(
             "weeks": bundle["weeks"],
             "builder": bundle["builder"],
             "knowledge_paths": bundle["knowledge_paths"],
+            "from_stored_sessions": bundle.get("from_stored_sessions", False),
         }
         summary = bundle["events_preview"]
         count = bundle["count"]
@@ -2017,14 +2102,20 @@ def calendar_preview(
         out["zwo_count"] = payload.get("zwo_count", 0)
         out["builder"] = payload.get("builder")
         out["knowledge_paths"] = payload.get("knowledge_paths") or []
+        out["from_stored_sessions"] = payload.get("from_stored_sessions", False)
         out["workouts_preview"] = [
             e for e in summary if e.get("category") == "WORKOUT"
         ][:40]
+        src = (
+            "lagrede økter (planned_sessions)"
+            if out["from_stored_sessions"]
+            else "øktbibliotek"
+        )
         out["message"] = (
-            f"Bekreft for å synce {out['workouts_count']} økter "
+            f"Bekreft for å synce {out['workouts_count']} økter fra {src} "
             f"(første {out['weeks']} uke(r), {out['zwo_count']} med ZWO) + "
             f"{out['notes_count']} grovplan-noter til Intervals. "
-            "Bygget med samme økt-bygger som CLI. Upsert ll-coach-… / ll-coach-w-…."
+            "Upsert ll-coach-… / ll-coach-w-…."
         )
     else:
         out["message"] = (
@@ -2560,10 +2651,11 @@ def plan_adjust_confirm(
             icu = ((secrets or {}).get("intervals_athlete_id") or "").strip()
             if key and icu and saved_blocks:
                 try:
-                    bundle = build_plan_sync_bundle(
+                    bundle = _sync_bundle_preferring_stored(
+                        conn,
+                        aid,
                         saved_blocks,
-                        athlete=athlete,
-                        include_notes=True,
+                        athlete,
                         allow_degraded=True,
                     )
                 except Exception as exc:
@@ -2588,6 +2680,9 @@ def plan_adjust_confirm(
                             "weeks": bundle["weeks"],
                             "builder": bundle["builder"],
                             "knowledge_paths": bundle["knowledge_paths"],
+                            "from_stored_sessions": bundle.get(
+                                "from_stored_sessions", False
+                            ),
                         },
                     )
                     intervals_pending = {
@@ -2597,9 +2692,13 @@ def plan_adjust_confirm(
                         "notes_count": bundle["notes_count"],
                         "workouts_count": bundle["workouts_count"],
                         "confirm_required": True,
+                        "from_stored_sessions": bundle.get(
+                            "from_stored_sessions", False
+                        ),
                         "message": (
                             "Plan justert lokalt (full horisont). "
-                            "Bekreft Sync for nærvindu til Intervals."
+                            "Bekreft Sync for nærvindu til Intervals "
+                            "(fra lagrede planned_sessions)."
                         ),
                     }
     path = write_profile(config.ATHLETES_DATA_DIR, athlete)
@@ -2649,6 +2748,154 @@ def get_planned_sessions(
         "plan_horizon_weeks": plan_horizon_weeks(blocks, athlete=athlete),
         "goal_race_date": athlete.get("goal_race_date"),
         "icu_sync_weeks": 2,
+    }
+
+
+@app.post("/v1/athlete/me/plan/week-adjust/preview")
+def plan_week_adjust_preview(
+    body: WeekAdjustPreviewIn,
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Preview surgical rebuild of one week — does not write DB or ICU."""
+    aid = _require_athlete(x_athlete_id)
+    with db_session(config.DATABASE_PATH) as conn:
+        athlete = get_athlete(conn, aid)
+        blocks = list_plan_blocks(conn, aid)
+        if not athlete:
+            raise HTTPException(404, "Utøver ikke funnet")
+        if not blocks:
+            raise HTTPException(400, "Ingen planblokker — kjør full plan først")
+        existing = list_planned_sessions(conn, aid)
+        secrets = get_athlete_secrets(conn, aid)
+    built = build_week_adjust_sessions(
+        blocks,
+        athlete=athlete,
+        week_start=body.week_start,
+        ease_load=body.ease_load,
+    )
+    start_s = built["week_start"]
+    end_s = built["week_end"]
+    outside = [
+        s
+        for s in existing
+        if not (start_s <= str(s.get("session_date") or "")[:10] <= end_s)
+    ]
+    readiness: dict[str, Any]
+    try:
+        wl = resolve_wellness_bundle(secrets, days=7, include_body=False)
+        recovery = wl.get("recovery_signals") or {"available": False}
+        readiness = readiness_adjustment_hints(recovery)
+    except Exception:  # noqa: BLE001
+        readiness = readiness_adjustment_hints({"available": False})
+    return {
+        "scope": "week",
+        "week_start": start_s,
+        "week_end": end_s,
+        "ease_load": bool(body.ease_load),
+        "sessions": built["sessions"],
+        "count": built["count"],
+        "unchanged_sessions_count": len(outside),
+        "horizon_note_nb": built["horizon_note_nb"],
+        "readiness_hints": readiness,
+        "confirm_required": True,
+        "confirm_hint": (
+            f"Bekreft for å erstatte kun uka {start_s}–{end_s} "
+            f"({built['count']} økter). Resten av planen ({len(outside)} økter) "
+            "beholdes. Intervals uendret til Sync."
+        ),
+    }
+
+
+@app.post("/v1/athlete/me/plan/week-adjust/confirm")
+def plan_week_adjust_confirm(
+    body: WeekAdjustConfirmIn,
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Replace one week of planned_sessions. Optional near-window ICU pending."""
+    aid = _require_athlete(x_athlete_id)
+    start_s = (body.week_start or "")[:10]
+    end_s = (body.week_end or "")[:10]
+    if not start_s or not end_s:
+        raise HTTPException(422, "week_start og week_end kreves")
+    sessions = list(body.sessions or [])
+    if not sessions:
+        raise HTTPException(422, "sessions mangler — kjør forhåndsvis først")
+    intervals_pending = None
+    intervals_prep_error = None
+    with db_session(config.DATABASE_PATH) as conn:
+        athlete = get_athlete(conn, aid)
+        if not athlete:
+            raise HTTPException(404, "Utøver ikke funnet")
+        blocks = list_plan_blocks(conn, aid)
+        saved = replace_planned_sessions_range(
+            conn, aid, start_s, end_s, sessions
+        )
+        total = count_planned_sessions(conn, aid)
+        if body.prepare_intervals_sync:
+            secrets = get_athlete_secrets(conn, aid)
+            key = ((secrets or {}).get("intervals_api_key") or "").strip()
+            icu = ((secrets or {}).get("intervals_athlete_id") or "").strip()
+            if key and icu and blocks:
+                try:
+                    bundle = _sync_bundle_preferring_stored(
+                        conn, aid, blocks, athlete, allow_degraded=True
+                    )
+                except Exception as exc:
+                    intervals_prep_error = (
+                        f"Uke lagret lokalt, men Intervals-forberedelse feilet: "
+                        f"{format_exc_nb(exc)}"
+                    )
+                    bundle = None
+                if bundle is not None and bundle.get("events"):
+                    pending = insert_pending_action(
+                        conn,
+                        aid,
+                        "intervals_calendar_push",
+                        {
+                            "op": "push",
+                            "block_ids": [b["id"] for b in blocks],
+                            "events": bundle["events"],
+                            "intervals_athlete_id": icu,
+                            "notes_count": bundle["notes_count"],
+                            "workouts_count": bundle["workouts_count"],
+                            "zwo_count": bundle["zwo_count"],
+                            "weeks": bundle["weeks"],
+                            "builder": bundle["builder"],
+                            "knowledge_paths": bundle["knowledge_paths"],
+                            "from_stored_sessions": True,
+                            "week_adjust": {
+                                "week_start": start_s,
+                                "week_end": end_s,
+                            },
+                        },
+                    )
+                    intervals_pending = {
+                        "pending_id": pending["id"],
+                        "op": "push",
+                        "count": bundle["count"],
+                        "workouts_count": bundle["workouts_count"],
+                        "confirm_required": True,
+                        "from_stored_sessions": True,
+                        "message": (
+                            f"Uke {start_s}–{end_s} lagret. "
+                            "Bekreft Sync for nærvindu til Intervals."
+                        ),
+                    }
+    return {
+        "scope": "week",
+        "week_start": start_s,
+        "week_end": end_s,
+        "sessions": saved,
+        "replaced_count": len(saved),
+        "planned_sessions_count": total,
+        "ease_load": bool(body.ease_load),
+        "intervals_pending": intervals_pending,
+        "intervals_prep_error": intervals_prep_error,
+        "written_to_intervals": False,
+        "message": (
+            f"Uke {start_s}–{end_s}: {len(saved)} økter lagret. "
+            f"Full horisont nå {total} økter. Intervals uendret til Sync."
+        ),
     }
 
 

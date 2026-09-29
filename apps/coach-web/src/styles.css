@@ -721,6 +721,38 @@ button.linkish:hover {
   border-top: 1px dashed var(--line);
 }
 
+.horizon-scroll {
+  max-height: 22rem;
+  overflow-y: auto;
+  margin-top: 0.55rem;
+  padding-right: 0.35rem;
+  border-top: 1px solid var(--line);
+}
+
+.horizon-week {
+  padding: 0.65rem 0 0.35rem;
+  border-bottom: 1px dashed color-mix(in srgb, var(--line) 80%, transparent);
+}
+
+.horizon-week:last-child {
+  border-bottom: none;
+}
+
+.horizon-session-list {
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  font-size: 0.88rem;
+}
+
+.horizon-session-list .dim {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .row-actions {
   display: flex;
   flex-wrap: wrap;

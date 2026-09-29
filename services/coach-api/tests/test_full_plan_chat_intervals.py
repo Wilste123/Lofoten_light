@@ -382,3 +382,181 @@ def test_confirm_with_intervals_pending_uses_near_window(client):
     assert body["planned_sessions_count"] > 8
     assert body["intervals_pending"] is not None
     assert body["intervals_pending"]["confirm_required"] is True
+
+
+def test_planned_sessions_api_lists_horizon(client):
+    c, _athletes, _db = client
+    setup = _confirm_setup(c, username="hz-list")
+    aid = setup["athlete"]["id"]
+    r = c.get("/v1/athlete/me/planned-sessions", headers={"X-Athlete-Id": aid})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["total"] == body["count"]
+    assert body["count"] > 8
+    assert body["sessions"][0]["session_date"]
+    assert body["plan_horizon_weeks"] > ICU_SYNC_WEEKS
+
+
+def test_sync_bundle_prefers_stored_planned_sessions(client):
+    c, _athletes, db = client
+    setup = _confirm_setup(c, username="stored-sync")
+    aid = setup["athlete"]["id"]
+    with db_session(db) as conn:
+        from db import list_plan_blocks, list_planned_sessions, upsert_athlete_secrets
+
+        blocks = list_plan_blocks(conn, aid)
+        stored = list_planned_sessions(conn, aid)
+        athlete = get_athlete(conn, aid)
+        upsert_athlete_secrets(
+            conn, aid, intervals_api_key="test-key", intervals_athlete_id="i999"
+        )
+    assert stored
+    # Mutate a stored name so regenerated library would not match
+    stored[0]["name"] = "LAGRET-TEST-ØKT"
+    with db_session(db) as conn:
+        from db import replace_planned_sessions
+
+        replace_planned_sessions(conn, aid, stored)
+        stored2 = list_planned_sessions(conn, aid)
+
+    bundle = build_plan_sync_bundle(
+        blocks,
+        athlete=athlete,
+        weeks=ICU_SYNC_WEEKS,
+        include_notes=False,
+        planned_sessions=stored2,
+        allow_degraded=True,
+    )
+    assert bundle.get("from_stored_sessions") is True
+    assert bundle["kind"] == "calendar_notes_and_stored_workouts"
+    names = [e.get("name") for e in (bundle.get("workout_events") or [])]
+    assert "LAGRET-TEST-ØKT" in names
+    assert bundle["weeks"] == ICU_SYNC_WEEKS
+
+
+def test_week_adjust_preview_confirm_keeps_rest_of_horizon(client):
+    c, _athletes, db = client
+    setup = _confirm_setup(c, username="week-adj")
+    aid = setup["athlete"]["id"]
+    with db_session(db) as conn:
+        before = count_planned_sessions(conn, aid)
+        before_sessions = list_planned_sessions(conn, aid)
+    assert before > 8
+
+    prev = c.post(
+        "/v1/athlete/me/plan/week-adjust/preview",
+        headers={"X-Athlete-Id": aid},
+        json={"week_start": "this_week", "ease_load": True},
+    )
+    assert prev.status_code == 200, prev.text
+    body = prev.json()
+    assert body["scope"] == "week"
+    assert body["ease_load"] is True
+    assert body["confirm_required"] is True
+    assert body["count"] >= 1
+    assert body["unchanged_sessions_count"] < before
+
+    conf = c.post(
+        "/v1/athlete/me/plan/week-adjust/confirm",
+        headers={"X-Athlete-Id": aid},
+        json={
+            "week_start": body["week_start"],
+            "week_end": body["week_end"],
+            "sessions": body["sessions"],
+            "ease_load": True,
+            "prepare_intervals_sync": False,
+        },
+    )
+    assert conf.status_code == 200, conf.text
+    done = conf.json()
+    assert done["written_to_intervals"] is False
+    assert done["scope"] == "week"
+    assert done["replaced_count"] == body["count"]
+
+    with db_session(db) as conn:
+        after = count_planned_sessions(conn, aid)
+        after_sessions = list_planned_sessions(conn, aid)
+    # Horizon roughly preserved (not wiped to ICU-only window)
+    assert after >= before // 2
+    assert after > ICU_SYNC_WEEKS * 2
+    # Sessions outside the adjusted week still present
+    week_start = body["week_start"]
+    week_end = body["week_end"]
+    outside_before = [
+        s["session_date"]
+        for s in before_sessions
+        if not (week_start <= s["session_date"] <= week_end)
+    ]
+    outside_after = [
+        s["session_date"]
+        for s in after_sessions
+        if not (week_start <= s["session_date"] <= week_end)
+    ]
+    assert set(outside_before) == set(outside_after)
+
+
+def test_extract_plan_update_week_scope():
+    reply = (
+        "Lett uke denne uka.\n"
+        "```plan_update\n"
+        '{"reason":"dårlig søvn","rebuild":true,"ease_load":true,'
+        '"scope":"week","week_start":"this_week"}\n'
+        "```"
+    )
+    display, prop = extract_plan_update(reply)
+    assert "plan_update" not in display
+    assert prop["scope"] == "week"
+    assert prop["ease_load"] is True
+    assert prop["week_start"] == "this_week"
+
+
+def test_chat_week_plan_update_builds_week_proposal(client):
+    c, _athletes, _db = client
+    setup = _confirm_setup(c, username="chat-week")
+    aid = setup["athlete"]["id"]
+    llm_reply = (
+        "Vi letter bare denne uka.\n"
+        "```plan_update\n"
+        '{"reason":"readiness lav","rebuild":true,"ease_load":true,'
+        '"scope":"week","week_start":"this_week"}\n'
+        "```"
+    )
+    with (
+        patch(
+            "main.list_sessions",
+            return_value={
+                "source": "none",
+                "recent": [],
+                "upcoming": [],
+                "today": [],
+                "window": None,
+            },
+        ),
+        patch("main.call_llm", return_value=llm_reply),
+        patch(
+            "main.resolve_wellness_bundle",
+            return_value={
+                "recovery_signals": {
+                    "available": True,
+                    "sleep_avg_hours": 5.5,
+                    "readiness": 3,
+                    "as_signals_only": True,
+                },
+                "sleep": {"available": True, "avg_hours": 5.5},
+                "load_wellness": {"available": True, "readiness": 3},
+            },
+        ),
+    ):
+        r = c.post(
+            "/v1/chat",
+            headers={"X-Athlete-Id": aid},
+            json={"message": "Kan du lette denne uka?"},
+        )
+    assert r.status_code == 200, r.text
+    data = r.json()
+    prop = data.get("plan_proposal") or {}
+    assert prop.get("scope") == "week"
+    assert prop.get("sessions")
+    assert prop.get("week_start")
+    assert prop.get("confirm_required") is True
+    assert not prop.get("plan_blocks")

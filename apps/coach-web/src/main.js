@@ -57,6 +57,14 @@ const state = {
   sessionEditOpen: true,
   chatDraft: '',
   planBlocks: [],
+  /** Full app plan horizon (planned_sessions) — Plan tab */
+  plannedSessions: {
+    sessions: [],
+    total: 0,
+    plan_horizon_weeks: null,
+    goal_race_date: null,
+    error: '',
+  },
   intervals: {
     connected: false,
     intervals_athlete_id: '',
@@ -320,6 +328,7 @@ async function enterApp(athlete, { welcome } = {}) {
     refreshOverview(),
     refreshIntervals(),
     refreshPlanBlocks(),
+    refreshPlannedSessions(),
     refreshDashboard(),
     refreshSessions(),
   ])
@@ -478,6 +487,27 @@ async function refreshPlanBlocks() {
     state.planBlocks = data.blocks || []
   } catch {
     state.planBlocks = []
+  }
+}
+
+async function refreshPlannedSessions() {
+  try {
+    const data = await api('/v1/athlete/me/planned-sessions')
+    state.plannedSessions = {
+      sessions: data.sessions || [],
+      total: data.total ?? (data.sessions || []).length,
+      plan_horizon_weeks: data.plan_horizon_weeks ?? null,
+      goal_race_date: data.goal_race_date || null,
+      error: '',
+    }
+  } catch (err) {
+    state.plannedSessions = {
+      sessions: [],
+      total: 0,
+      plan_horizon_weeks: null,
+      goal_race_date: null,
+      error: err.message || 'Kunne ikke hente planlagte økter',
+    }
   }
 }
 
@@ -1150,8 +1180,12 @@ function renderChat() {
         </div>
         ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
       </div>`
-  } else if (state.planAdjust?.plan_blocks?.length) {
+  } else if (
+    state.planAdjust?.plan_blocks?.length ||
+    (state.planAdjust?.scope === 'week' && state.planAdjust?.sessions)
+  ) {
     const pa = state.planAdjust
+    const isWeek = pa.scope === 'week'
     const sync = pa.intervals_sync || {}
     const csum =
       pa.constraints_summary_nb ||
@@ -1160,38 +1194,52 @@ function renderChat() {
     const horizon =
       pa.workout_horizon_note_nb ||
       pa.horizon_note_nb ||
-      'App-plan til måldato; Intervals WORKOUT kun nærvindu.'
+      (isWeek
+        ? 'Kirurgisk ukejustering — resten av planen beholdes.'
+        : 'App-plan til måldato; Intervals WORKOUT kun nærvindu.')
     const readiness = pa.readiness_hints || {}
     const readyNote =
       pa.readiness_note_nb ||
       readiness.summary_nb ||
       ''
-    const rows = (pa.plan_blocks || [])
-      .slice(0, 8)
-      .map(
-        (b) =>
-          `<li><strong>${escapeHtml(b.title || '')}</strong> · ${escapeHtml(b.start_date || '')}–${escapeHtml(b.end_date || '')} · ${escapeHtml(b.theme || '')}</li>`,
-      )
-      .join('')
+    const rows = isWeek
+      ? (pa.sessions || [])
+          .slice(0, 12)
+          .map(
+            (s) =>
+              `<li><strong>${escapeHtml(s.session_date || '')}</strong> · ${escapeHtml(s.name || '')} · ${escapeHtml(s.sport || '')}${
+                s.duration_minutes != null ? ` · ${escapeHtml(String(s.duration_minutes))} min` : ''
+              }</li>`,
+          )
+          .join('')
+      : (pa.plan_blocks || [])
+          .slice(0, 8)
+          .map(
+            (b) =>
+              `<li><strong>${escapeHtml(b.title || '')}</strong> · ${escapeHtml(b.start_date || '')}–${escapeHtml(b.end_date || '')} · ${escapeHtml(b.theme || '')}</li>`,
+          )
+          .join('')
     const wprev = (sync.workouts_preview || [])
       .slice(0, 8)
       .map((e) => `<li>${escapeHtml(e.preview_no || e.name || '')}</li>`)
       .join('')
-    const sessN = pa.planned_sessions_count
+    const sessN = isWeek ? pa.count : pa.planned_sessions_count
     const hzW = pa.plan_horizon_weeks
     proposalCard = `
       <div class="confirm-card workout-proposal-card" aria-label="Justert grovplan">
-        <p><strong>Foreslått planjustering</strong></p>
-        <p class="muted tight">${escapeHtml(pa.confirm_hint || 'Bekreft for å lagre meso-blokker + økter til måldato lokalt — ikke auto-sync til Intervals.')}</p>
-        <p class="muted tight">${escapeHtml(csum)}</p>
+        <p><strong>${isWeek ? 'Foreslått ukejustering' : 'Foreslått planjustering'}</strong></p>
+        <p class="muted tight">${escapeHtml(pa.confirm_hint || (isWeek ? 'Bekreft for å erstatte kun denne uka.' : 'Bekreft for å lagre meso-blokker + økter til måldato lokalt — ikke auto-sync til Intervals.'))}</p>
+        ${csum ? `<p class="muted tight">${escapeHtml(csum)}</p>` : ''}
         <p class="muted tight">${escapeHtml(horizon)}</p>
-        ${sessN != null ? `<p class="muted tight">${escapeHtml(String(sessN))} økter i app-plan${hzW != null ? ` (~${escapeHtml(String(hzW))} uker)` : ''}.</p>` : ''}
+        ${isWeek && pa.week_start ? `<p class="muted tight">${escapeHtml(pa.week_start)}–${escapeHtml(pa.week_end || '')}${pa.ease_load ? ' · lett uke' : ''}.</p>` : ''}
+        ${sessN != null ? `<p class="muted tight">${escapeHtml(String(sessN))} økter${isWeek ? ' i uka' : ` i app-plan${hzW != null ? ` (~${escapeHtml(String(hzW))} uker)` : ''}`}</p>` : ''}
+        ${pa.unchanged_note_nb ? `<p class="muted tight">${escapeHtml(pa.unchanged_note_nb)}</p>` : ''}
         ${readyNote ? `<p class="muted tight">Readiness: ${escapeHtml(readyNote)}</p>` : ''}
-        ${sync.workouts_count != null ? `<p class="muted tight">${escapeHtml(String(sync.workouts_count))} WORKOUT i Intervals-nærvindu (${escapeHtml(String(pa.icu_sync_weeks || sync.weeks || 2))} uker).</p>` : ''}
+        ${!isWeek && sync.workouts_count != null ? `<p class="muted tight">${escapeHtml(String(sync.workouts_count))} WORKOUT i Intervals-nærvindu (${escapeHtml(String(pa.icu_sync_weeks || sync.weeks || 2))} uker).</p>` : ''}
         <ul class="sync-sample">${rows}</ul>
         ${wprev ? `<p class="plan-kicker">Intervals nærvindu (WORKOUT)</p><ul class="sync-sample">${wprev}</ul>` : ''}
         <div class="sync-actions">
-          <button type="button" class="btn btn-primary" id="plan-adjust-confirm-btn" ${state.busy ? 'disabled' : ''}>Bekreft ny plan</button>
+          <button type="button" class="btn btn-primary" id="plan-adjust-confirm-btn" ${state.busy ? 'disabled' : ''}>${isWeek ? 'Bekreft uke' : 'Bekreft ny plan'}</button>
           <button type="button" class="btn secondary" id="plan-adjust-dismiss-btn">Avvis</button>
         </div>
         ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
@@ -2123,7 +2171,7 @@ function renderSyncPanel() {
         <h2>Sync til Intervals</h2>
         <span class="badge ${linked ? 'badge-live' : 'badge-off'}">${linked ? 'Koblet' : 'Ikke koblet'}</span>
       </div>
-      <p class="muted tight">Pusher <strong>bibliotek-økter</strong> for første <strong>2 uker</strong> — antall ≈ avtalt økter/uke × 2 (samme builder som CLI: ZWO/planned → <code>ll-coach-w-…</code>). Grovplan-noter (<code>ll-coach-…</code>) kan dekke hele sesongen til måldato. Forhåndsvis → Ja/Avbryt. Upsert — sletter ikke andre kalenderhendelser.</p>
+      <p class="muted tight">Pusher <strong>lagrede økter</strong> (planned_sessions) for første <strong>2 uker</strong> når de finnes — ellers bibliotek. Antall ≈ avtalt økter/uke × 2. Grovplan-noter kan dekke sesongen. Forhåndsvis → Ja/Avbryt. Upsert — sletter ikke andre kalenderhendelser.</p>
       <div class="sync-actions">
         <button type="button" class="btn btn-primary" id="sync-push" ${!linked || state.sync.busy ? 'disabled' : ''}>Sync til Intervals</button>
         <button type="button" class="btn secondary" id="sync-refresh" ${!linked || state.sync.busy ? 'disabled' : ''}>Oppdater status</button>
@@ -2152,12 +2200,71 @@ function renderPlanTab() {
     <div class="tab-hero">
       <p class="brand-mark">Grovplan</p>
       <h2>Plan &amp; Intervals</h2>
-      <p class="muted">Makro/meso her — dagsøkter under Økter / Intervals.</p>
+      <p class="muted">Makro/meso, økter til måldato, deretter Sync nærvindu.</p>
     </div>
     ${renderPlanStrip(o)}
     ${renderPlanBlocksEditor()}
+    ${renderPlannedHorizon()}
     ${renderSyncPanel()}
   `
+}
+
+function renderPlannedHorizon() {
+  const ps = state.plannedSessions || {}
+  const sessions = ps.sessions || []
+  const total = ps.total ?? sessions.length
+  const byWeek = new Map()
+  for (const s of sessions) {
+    const day = String(s.session_date || '').slice(0, 10)
+    if (!day) continue
+    const d = new Date(`${day}T12:00:00`)
+    if (Number.isNaN(d.getTime())) continue
+    const mon = new Date(d)
+    mon.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+    const key = mon.toISOString().slice(0, 10)
+    if (!byWeek.has(key)) byWeek.set(key, [])
+    byWeek.get(key).push(s)
+  }
+  const weekKeys = [...byWeek.keys()].sort()
+  const weekBlocks = weekKeys
+    .map((wk) => {
+      const rows = byWeek
+        .get(wk)
+        .map(
+          (s) =>
+            `<li><span class="dim">${escapeHtml(String(s.session_date || '').slice(0, 10))}</span> · ${escapeHtml(s.name || 'Økt')} · ${escapeHtml(s.sport || '')}${
+              s.duration_minutes != null ? ` · ${escapeHtml(String(s.duration_minutes))} min` : ''
+            }</li>`,
+        )
+        .join('')
+      const end = new Date(`${wk}T12:00:00`)
+      end.setDate(end.getDate() + 6)
+      const endStr = end.toISOString().slice(0, 10)
+      return `
+        <div class="horizon-week">
+          <p class="plan-kicker">Uke ${escapeHtml(wk)} – ${escapeHtml(endStr)}</p>
+          <ul class="horizon-session-list">${rows}</ul>
+        </div>`
+    })
+    .join('')
+  const metaBits = []
+  if (total) metaBits.push(`${total} økter`)
+  if (ps.plan_horizon_weeks) metaBits.push(`~${ps.plan_horizon_weeks} uker`)
+  if (ps.goal_race_date) metaBits.push(`til ${ps.goal_race_date}`)
+  return `
+    <div class="section-block">
+      <div class="section-head">
+        <h2>Økter til måldato</h2>
+      </div>
+      <p class="muted tight">App-plan (SQLite) — hele horisonten. Intervals får kun nærvindu ved Sync.</p>
+      ${metaBits.length ? `<p class="muted tight">${escapeHtml(metaBits.join(' · '))}</p>` : ''}
+      ${ps.error ? `<p class="error">${escapeHtml(ps.error)}</p>` : ''}
+      ${
+        weekBlocks
+          ? `<div class="horizon-scroll" tabindex="0" aria-label="Planlagte økter">${weekBlocks}</div>`
+          : `<p class="muted">Ingen lagrede økter ennå — bekreft setup eller planjustering først.</p>`
+      }
+    </div>`
 }
 
 function renderPlanBlocksEditor() {
@@ -2636,25 +2743,43 @@ function bindApp() {
 
   document.getElementById('plan-adjust-confirm-btn')?.addEventListener('click', async () => {
     const pa = state.planAdjust
-    if (!pa?.plan_blocks?.length) return
+    if (!pa) return
+    const isWeek = pa.scope === 'week'
+    if (!isWeek && !pa.plan_blocks?.length) return
+    if (isWeek && !pa.sessions?.length) return
     state.busy = true
     state.workoutSync.error = ''
     render()
     try {
       const prepareSync = Boolean(state.intervals?.connected)
-      const data = await api('/v1/athlete/me/plan/adjust/confirm', {
-        method: 'POST',
-        body: {
-          plan_blocks: pa.plan_blocks,
-          athlete_patch: pa.athlete_patch || {},
-          prepare_intervals_sync: prepareSync,
-        },
-      })
-      state.athlete = data.athlete
+      let data
+      if (isWeek) {
+        data = await api('/v1/athlete/me/plan/week-adjust/confirm', {
+          method: 'POST',
+          body: {
+            week_start: pa.week_start,
+            week_end: pa.week_end,
+            sessions: pa.sessions,
+            ease_load: Boolean(pa.ease_load),
+            prepare_intervals_sync: prepareSync,
+          },
+        })
+      } else {
+        data = await api('/v1/athlete/me/plan/adjust/confirm', {
+          method: 'POST',
+          body: {
+            plan_blocks: pa.plan_blocks,
+            athlete_patch: pa.athlete_patch || {},
+            prepare_intervals_sync: prepareSync,
+          },
+        })
+      }
+      if (data.athlete) state.athlete = data.athlete
       state.planAdjust = null
-      state.workoutSync.message = data.message || 'Plan oppdatert'
+      state.workoutSync.message = data.message || (isWeek ? 'Uke oppdatert' : 'Plan oppdatert')
       toast(state.workoutSync.message)
       await refreshPlanBlocks()
+      await refreshPlannedSessions()
       await refreshOverview()
       if (data.intervals_pending) {
         state.tab = 'plan'

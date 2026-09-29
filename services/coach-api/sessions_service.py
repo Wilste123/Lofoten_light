@@ -872,6 +872,201 @@ def session_focus_for_chat(session: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def planned_session_to_public(
+    row: dict[str, Any],
+    *,
+    today: date,
+    window_start: date,
+    window_end: date,
+    completion: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    """Map one SQLite ``planned_sessions`` row → Økter public session shape."""
+    day_s = str(row.get("session_date") or "")[:10]
+    if not day_s:
+        return None
+    try:
+        d = date.fromisoformat(day_s)
+    except ValueError:
+        return None
+    if d < window_start or d > window_end:
+        return None
+    name = str(row.get("name") or "Økt").strip() or "Økt"
+    sport = str(row.get("sport") or "other").strip().lower() or "other"
+    disc = map_activity_type(sport)
+    eid = str(row.get("external_id") or "").strip()
+    if not eid:
+        # Stable local id when chat/setup omitted external_id
+        slug = re.sub(r"[^a-z0-9]+", "", name.lower())[:24] or "okt"
+        eid = f"{WORKOUT_EXTERNAL_PREFIX}{d.strftime('%Y%m%d')}-{slug}-ps"
+    start_time = str(row.get("start_time") or "07:00")[:5] or "07:00"
+    dur_m = row.get("duration_minutes")
+    try:
+        dur_h = round(float(dur_m) / 60.0, 2) if dur_m is not None else None
+    except (TypeError, ValueError):
+        dur_h = None
+    desc = str(row.get("description") or "")[:8000] or None
+    if d < today:
+        bucket = "recent"
+        training_status = "planned_not_done"
+    elif d == today:
+        bucket = "today"
+        training_status = "planned"
+    else:
+        bucket = "upcoming"
+        training_status = "planned"
+    item = {
+        "id": f"evt:{eid}",
+        "external_id": eid,
+        "icu_event_id": None,
+        "kind": "event",
+        "bucket": bucket,
+        "name": name[:200],
+        "date": day_s,
+        "start_date_local": f"{day_s}T{start_time}:00",
+        "discipline": disc,
+        "discipline_label": _disc_label(disc),
+        "type": sport.title() if sport else "Other",
+        "duration_hours": dur_h,
+        "duration_minutes": int(dur_m) if dur_m is not None else None,
+        "category": "WORKOUT",
+        "calendar_role": "planned_workout",
+        "training_status": training_status,
+        "description": desc,
+        "description_preview": _preview_text(desc or "", 160),
+        "start_time": start_time,
+        "editable": eid.startswith(WORKOUT_EXTERNAL_PREFIX) or eid.startswith("ll-coach-"),
+        "source": "planned_sessions",
+        "app_planned": True,
+        "planned_path": row.get("planned_path") or row.get("description") or None,
+        "phase": row.get("phase") or None,
+    }
+    if completion:
+        item["completion"] = completion
+        st = str(completion.get("status") or "")
+        if st in ("skipped", "injured", "sick", "tired", "other", "moved", "cancelled"):
+            item["training_status"] = st
+        elif st == "completed":
+            # App overlay only — never invent ICU volume
+            item["training_status"] = "app_logged_completed"
+            item["volume_counts"] = False
+    return item
+
+
+def merge_planned_sessions(
+    bundle: dict[str, Any],
+    planned_rows: list[dict[str, Any]] | None,
+    *,
+    today: date | None = None,
+    completions: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Merge app SoT ``planned_sessions`` into Økter list (Plan + Økter same model).
+
+    - Upcoming/today/library show stored plan even without Intervals sync.
+    - Dedupes by ``external_id`` against ICU calendar events already present.
+    - Never adds to ``completed`` / invents compliance (ICU activities remain truth).
+    """
+    today = today or date.today()
+    rows = list(planned_rows or [])
+    if not rows:
+        out = dict(bundle)
+        out.setdefault("app_planned_merged", 0)
+        return out
+
+    win = bundle.get("window") or {}
+    try:
+        window_start = date.fromisoformat(str(win.get("start") or today.isoformat())[:10])
+    except ValueError:
+        window_start = today - timedelta(days=14)
+    try:
+        window_end = date.fromisoformat(str(win.get("end") or today.isoformat())[:10])
+    except ValueError:
+        window_end = today + timedelta(days=14)
+
+    existing_ext: set[str] = set()
+    for bucket in (
+        "today",
+        "upcoming",
+        "planned",
+        "planned_not_done",
+        "recent",
+        "completed",
+        "cancelled",
+        "notes",
+    ):
+        for s in bundle.get(bucket) or []:
+            eid = str(s.get("external_id") or "").strip()
+            if eid:
+                existing_ext.add(eid)
+
+    comps = completions or {}
+    added_upcoming: list[dict[str, Any]] = []
+    added_today: list[dict[str, Any]] = []
+    added_missed: list[dict[str, Any]] = []
+    for row in rows:
+        eid = str(row.get("external_id") or "").strip()
+        if eid and eid in existing_ext:
+            continue
+        comp = None
+        if eid:
+            comp = comps.get(f"evt:{eid}") or comps.get(eid)
+        pub = planned_session_to_public(
+            row,
+            today=today,
+            window_start=window_start,
+            window_end=window_end,
+            completion=comp,
+        )
+        if not pub:
+            continue
+        existing_ext.add(pub["external_id"])
+        st = pub.get("training_status")
+        if pub["bucket"] == "today":
+            added_today.append(pub)
+        elif pub["bucket"] == "upcoming":
+            added_upcoming.append(pub)
+        elif st == "planned_not_done":
+            added_missed.append(pub)
+
+    out = dict(bundle)
+    if added_upcoming or added_today or added_missed:
+        src = out.get("source") or "none"
+        if src == "none":
+            out["source"] = "planned_sessions"
+        elif src == "intervals":
+            out["source"] = "intervals+planned_sessions"
+        out["upcoming"] = sorted(
+            list(out.get("upcoming") or []) + added_upcoming,
+            key=lambda s: (s.get("date") or "", s.get("start_date_local") or ""),
+        )[:40]
+        out["today"] = sorted(
+            list(out.get("today") or []) + added_today,
+            key=lambda s: (s.get("date") or "", s.get("start_date_local") or ""),
+        )[:20]
+        out["planned"] = sorted(
+            list(out.get("planned") or []) + added_upcoming + added_today,
+            key=lambda s: (s.get("date") or "", s.get("start_date_local") or ""),
+        )[:40]
+        out["planned_not_done"] = sorted(
+            list(out.get("planned_not_done") or []) + added_missed,
+            key=lambda s: (s.get("date") or "", s.get("start_date_local") or ""),
+            reverse=True,
+        )[:30]
+        note = out.get("compliance_note") or ""
+        if "planned_sessions" not in note:
+            out["compliance_note"] = (
+                (note + " " if note else "")
+                + "Planlagte økter inkluderer app-plan (planned_sessions); "
+                "gjennomført = fortsatt kun ICU-aktiviteter."
+            ).strip()
+    out["app_planned_merged"] = len(added_upcoming) + len(added_today) + len(added_missed)
+    out["truth"] = {
+        **(out.get("truth") or {}),
+        "planned_source": "planned_sessions_and_or_intervals",
+        "completed_source": "intervals_activities",
+    }
+    return enrich_sessions_bundle(out, today=today)
+
+
 def list_sessions(
     secrets: dict[str, Any] | None,
     completions: dict[str, dict[str, Any]] | None = None,
@@ -887,6 +1082,7 @@ def list_sessions(
     - Calendar NOTES never count as completed (kept under ``notes``).
     - Past WORKOUTs without a matching activity = ``planned_not_done``.
     - App completion status (skipped/moved/…) overlays events when present.
+    - Callers should ``merge_planned_sessions`` so Økter shows app plan without ICU.
     """
     today = today or date.today()
     oldest = (today - timedelta(days=past_days)).isoformat()
@@ -912,6 +1108,7 @@ def list_sessions(
         "library": [],
         "view_modes": ["library", "chronological"],
         "default_view": "library",
+        "app_planned_merged": 0,
         "compliance_note": (
             "Gjennomført volum = Intervals-aktiviteter (ikke kalender-NOTE, "
             "ikke planlagt WORKOUT uten aktivitet). Compliance beregnes i appen "
@@ -926,7 +1123,7 @@ def list_sessions(
         "rolling_compliance_4w": None,
     }
     if not key or not aid:
-        return base
+        return enrich_sessions_bundle(base, today=today)
 
     completed_acts: list[dict[str, Any]] = []
     upcoming: list[dict[str, Any]] = []

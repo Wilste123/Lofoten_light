@@ -121,6 +121,7 @@ from sessions_service import (
     completion_note_line,
     find_session_in_bundle,
     list_sessions,
+    merge_planned_sessions,
     session_detail_payload,
     session_focus_for_chat,
     sessions_snapshot_for_chat,
@@ -152,6 +153,34 @@ def _require_athlete(athlete_id: str | None) -> str:
     if not athlete_id:
         raise HTTPException(401, "Mangler X-Athlete-Id")
     return athlete_id
+
+
+def _sessions_bundle_for_athlete(
+    conn,
+    aid: str,
+    *,
+    secrets: dict[str, Any] | None = None,
+    comps: dict[str, dict[str, Any]] | None = None,
+    past_days: int = 14,
+    future_days: int = 14,
+    today: date | None = None,
+) -> dict[str, Any]:
+    """ICU list + app ``planned_sessions`` → one Økter/Plan model (no invented compliance)."""
+    if secrets is None:
+        secrets = get_athlete_secrets(conn, aid)
+    if comps is None:
+        comps = completions_by_external_id(conn, aid)
+    planned = list_planned_sessions(conn, aid)
+    bundle = list_sessions(
+        secrets,
+        comps,
+        past_days=past_days,
+        future_days=future_days,
+        today=today,
+    )
+    return merge_planned_sessions(
+        bundle, planned, today=today, completions=comps
+    )
 
 
 class BootstrapIn(BaseModel):
@@ -1302,9 +1331,11 @@ def chat(
         history = recent_messages(conn, aid, limit=12)
         secrets = get_athlete_secrets(conn, aid)
         comps = completions_by_external_id(conn, aid)
+        # App planned_sessions + Intervals (completed = ICU activities only)
+        sessions_bundle = _sessions_bundle_for_athlete(
+            conn, aid, secrets=secrets, comps=comps, past_days=14, future_days=14
+        )
     overview = _overview_payload(athlete, secrets)
-    # Deterministic Intervals sessions for "hva har jeg denne uka?"
-    sessions_bundle = list_sessions(secrets, comps, past_days=14, future_days=14)
     sessions_snap = sessions_snapshot_for_chat(sessions_bundle)
     overview["sessions"] = sessions_snap
     # Wellness as signals for coach context (soft-fail, never blocks chat)
@@ -1764,14 +1795,12 @@ def get_recent_completions(
 
 @app.get("/v1/sessions")
 def get_sessions(x_athlete_id: str | None = Header(default=None)) -> dict[str, Any]:
-    """Recent + upcoming Intervals sessions; soft-fail without credentials."""
+    """Recent + upcoming: app planned_sessions + Intervals; soft-fail without ICU."""
     aid = _require_athlete(x_athlete_id)
     with db_session(config.DATABASE_PATH) as conn:
         if not get_athlete(conn, aid):
             raise HTTPException(404, "Utøver ikke funnet")
-        secrets = get_athlete_secrets(conn, aid)
-        comps = completions_by_external_id(conn, aid)
-    return list_sessions(secrets, comps)
+        return _sessions_bundle_for_athlete(conn, aid)
 
 
 @app.get("/v1/sessions/{session_id}")
@@ -1786,7 +1815,9 @@ def get_session_detail(
             raise HTTPException(404, "Utøver ikke funnet")
         secrets = get_athlete_secrets(conn, aid)
         comps = completions_by_external_id(conn, aid)
-    payload = list_sessions(secrets, comps)
+        payload = _sessions_bundle_for_athlete(
+            conn, aid, secrets=secrets, comps=comps
+        )
     found = find_session_in_bundle(payload, session_id)
     if not found:
         sid = session_id.strip()
@@ -2256,18 +2287,17 @@ def calendar_confirm(
     clear_form_caches()
     # Soft re-fetch sessions for client trust (soft-fail — confirm already succeeded)
     sessions_bundle: dict[str, Any] | None = None
-    if key and icu:
-        try:
-            with db_session(config.DATABASE_PATH) as conn:
-                comps = completions_by_external_id(conn, aid)
-            sessions_bundle = list_sessions(
-                {"intervals_api_key": key, "intervals_athlete_id": icu},
-                comps,
+    try:
+        with db_session(config.DATABASE_PATH) as conn:
+            sessions_bundle = _sessions_bundle_for_athlete(
+                conn,
+                aid,
+                secrets=secrets,
                 past_days=14,
                 future_days=14,
             )
-        except Exception:  # noqa: BLE001
-            sessions_bundle = None
+    except Exception:  # noqa: BLE001
+        sessions_bundle = None
     out: dict[str, Any] = {
         "ok": True,
         "op": op,
@@ -2281,6 +2311,7 @@ def calendar_confirm(
         out["sessions_window"] = sessions_bundle.get("window")
         out["planned_count"] = len(sessions_bundle.get("planned") or [])
         out["completed_count"] = len(sessions_bundle.get("completed") or [])
+        out["app_planned_merged"] = sessions_bundle.get("app_planned_merged")
     return out
 
 
@@ -2301,6 +2332,9 @@ def workouts_preview(
         athlete = get_athlete(conn, aid)
         secrets = get_athlete_secrets(conn, aid)
         comps = completions_by_external_id(conn, aid)
+        sessions_bundle = _sessions_bundle_for_athlete(
+            conn, aid, secrets=secrets, comps=comps
+        )
     if not athlete:
         raise HTTPException(404, "Utøver ikke funnet")
     key = ((secrets or {}).get("intervals_api_key") or "").strip()
@@ -2308,13 +2342,6 @@ def workouts_preview(
     intervals_ok = bool(key and icu)
     want_icu = bool(body.prepare_intervals_sync) and intervals_ok
 
-    sessions_bundle = list_sessions(secrets, comps) if intervals_ok else {
-        "source": "none",
-        "recent": [],
-        "upcoming": [],
-        "today": [],
-        "window": None,
-    }
     planned_n = _count_planned_this_week(sessions_bundle)
     gate = validate_workouts_against_constraints(
         athlete,

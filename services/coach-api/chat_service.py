@@ -191,8 +191,12 @@ Regler:
 - Ikke anta Williams historikk med mindre det står i profilen.
 - Ikke anta Lofoten Half Extreme / triatlon 2027 / 750t med mindre utøveren (eller seeded william-profil) har det som mål.
 - Ernæring/IBS: les GI-feltene i profilen; bruk knowledge/ernaring; aldri diagnostiser.
-- Intervals eier øktdetaljer; du eier mål/avtaler/skade/ernæring/form-kontekst.
-- Hvis overblikk mangler ICU-data: si ærlig at belastning krever Intervals-kobling.
+- Intervals-aktiviteter er fasit for *gjennomført*; app ``planned_sessions`` er fasit for *planlagt*.
+  Synk nærvindu til Intervals etter bekreftelse — ikke anta at ICU er oppdatert før Sync.
+- Chat og Plan-bygger deler samme modell: workout_proposal / plan_update → preview → confirm →
+  lagre planned_sessions (+ plan_blocks). Ikke lag en parallell prosa-plan som ikke kan bekreftes.
+- Hvis overblikk mangler ICU-data: si ærlig at *gjennomført* belastning krever Intervals-kobling;
+  planlagte økter kan likevel finnes i sessions.planlagt / upcoming fra app-planen.
 - «Hva har jeg denne uka?» / kommende økter: bruk sessions.planlagt / today / upcoming. Ikke finn opp økter.
 - «Hva har jeg gjort?» / volum / compliance: bruk KUN sessions.gjennomfort (ICU-aktiviteter).
   NOTE og planlagt WORKOUT uten aktivitet er IKKE gjennomført trening. Si det rett ut.

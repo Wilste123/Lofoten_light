@@ -1,29 +1,20 @@
-name: Løp 5x2 min bakke (re-etablering)
+name: Løpeintervaller 5×2 min
 sport: run
 intervals_target: HR
 ---
-William, uke 1-kvalitet — kort og kontrollert. Ikke elghufs-race. Puls i drag: ca. 155–163 (mellom Z3 og terskel), RPE 7 maks. Gå ned bakken mellom drag.
+William, 45 min totalt. Uke 1-kvalitet — utfordrende men kontrollert (~85–90 % av det du *kunne* gitt på 2 min, ikke all-out). Teknikk og pust. Bakke er ok hvis du har; flat grus går også.
 
-Stopp hele økta hvis legg/Akilles/endret løpsteknikk. Plan B: 4x2 eller 3x2.
+Oppvarming: 5 min lett jogg, deretter 5 min med dynamisk mobilitet (høye kneløft, bakspark, hofte) — rolig jogg/gå mellom.
 
-Styrke ST01 flyttes til lør morgen (25 min, 2 sett) før sykkel recovery — ikke hopp over.
+Etter 5×2: 5 min lett jogg, deretter 5 min statisk tøy (hamstring, quad, legg). Stopp hvis rygg/isjas eller legg endrer teknikk. Plan B: 4×2. ST01 lørdag morgen som planlagt.
 
 ---intervals---
-- Warmup 15m 81-89% LTHR
+- Warmup 5m 81-89% LTHR
 
-- 2m 95-100% LTHR
-- 3m 75-80% LTHR
+- 5m 81-89% LTHR
 
-- 2m 95-100% LTHR
-- 3m 75-80% LTHR
+Main Set 5x
+- 2m 94-99% LTHR
+- 1m 81-89% LTHR
 
-- 2m 95-100% LTHR
-- 3m 75-80% LTHR
-
-- 2m 95-100% LTHR
-- 3m 75-80% LTHR
-
-- 2m 95-100% LTHR
-- 3m 75-80% LTHR
-
-- Cooldown 10m 75-80% LTHR
+- Cooldown 10m 75-85% LTHR

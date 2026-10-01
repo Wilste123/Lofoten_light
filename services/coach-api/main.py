@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from pathlib import Path
-from datetime import date
+from datetime import date, timedelta
 import logging
 import os
 import re
@@ -66,6 +66,7 @@ from db import (
     delete_all_planned_sessions,
     delete_plan_block,
     delete_planned_sessions_by_external_ids,
+    delete_planned_sessions_by_ids,
     get_active_plan_window,
     get_athlete,
     get_athlete_by_username,
@@ -489,9 +490,13 @@ def _sync_bundle_preferring_stored(
     athlete: dict[str, Any],
     *,
     allow_degraded: bool = False,
-    include_notes: bool = True,
+    include_notes: bool = False,
 ) -> dict[str, Any]:
-    """Near-window ICU bundle: prefer athlete's stored planned_sessions when present."""
+    """Near-window ICU bundle: prefer athlete's stored planned_sessions when present.
+
+    Grovplan NOTES are off by default for chat/near-window Sync — opt in via
+    ``include_notes=True``.
+    """
     stored = list_planned_sessions(conn, athlete_id)
     return build_plan_sync_bundle(
         blocks,
@@ -630,6 +635,8 @@ class CalendarSyncPreviewIn(BaseModel):
     block_ids: list[str] | None = None
     start: str | None = None
     end: str | None = None
+    # Chat/near-window Sync: grov NOTES off by default (opt-in).
+    include_notes: bool = False
 
 
 class CalendarConfirmIn(BaseModel):
@@ -640,11 +647,13 @@ class WorkoutPreviewIn(BaseModel):
     """Preview chat workouts → planned_sessions (+ optional Intervals).
 
     Confirm persists app SoT; Intervals write only when secrets exist and
-    ``prepare_intervals_sync`` is true.
+    ``prepare_intervals_sync`` is true. When weekly cap is full, pass
+    ``replace_session_ids`` to swap existing planned rows (not a dead-end).
     """
 
     workouts: list[dict[str, Any]] = Field(min_length=1)
     prepare_intervals_sync: bool = True
+    replace_session_ids: list[str] = Field(default_factory=list)
 
 
 @app.get("/health")
@@ -1204,9 +1213,13 @@ def setup_confirm(
                             "message": (
                                 f"Bekreft for å synce {bundle['workouts_count']} økter "
                                 f"(første {bundle['weeks']} uke(r), "
-                                f"{bundle['zwo_count']} med ZWO) + "
-                                f"{bundle['notes_count']} grovplan-noter til Intervals. "
-                                "Avbryt = plan beholdes kun i appen."
+                                f"{bundle['zwo_count']} med ZWO)"
+                                + (
+                                    f" + {bundle['notes_count']} grovplan-noter"
+                                    if int(bundle.get("notes_count") or 0) > 0
+                                    else " (uten grovplan-noter)"
+                                )
+                                + " til Intervals. Avbryt = plan beholdes kun i appen."
                             ),
                         }
 
@@ -1690,7 +1703,8 @@ def chat(
             "discipline": focused.get("discipline"),
         }
     if proposal:
-        planned_this_week = _count_planned_this_week(sessions_bundle)
+        with db_session(config.get_db()) as conn:
+            planned_this_week = _count_planned_this_week_db(conn, aid)
         gate = validate_workouts_against_constraints(
             athlete,
             proposal.get("workouts") or [],
@@ -1715,6 +1729,10 @@ def chat(
             out["proposal_hint"] = (
                 "Noen foreslåtte økter ble filtrert mot avtalen. "
                 + " ".join(gate["reasons"][:2])
+            )
+        elif gate.get("cap_hit"):
+            _attach_cap_replace_offer(
+                out, aid=aid, proposal=proposal, gate=gate, reply=reply
             )
         else:
             out["workout_proposal_blocked"] = True
@@ -1880,6 +1898,8 @@ def chat(
     has_card = bool(
         (out.get("workout_proposal") or {}).get("workouts")
         or out.get("plan_proposal")
+        or out.get("plan_roll")
+        or out.get("workout_replace_proposal")
         or out.get("workout_removal")
         or out.get("agreements_proposal")
         or out.get("athlete_type_proposal")
@@ -1893,10 +1913,12 @@ def chat(
                 body.message, raw_reply, today=date.today()
             )
             if proposal:
+                with db_session(config.get_db()) as conn:
+                    planned_n = _count_planned_this_week_db(conn, aid)
                 gate = validate_workouts_against_constraints(
                     athlete,
                     proposal.get("workouts") or [],
-                    existing_planned_this_week=_count_planned_this_week(sessions_bundle),
+                    existing_planned_this_week=planned_n,
                 )
                 if gate["ok"] or gate.get("accepted"):
                     accepted = (
@@ -1912,6 +1934,18 @@ def chat(
                         "Trykk Forhåndsvis → bekreft for å lagre i planen."
                     )
                     has_card = True
+                elif gate.get("cap_hit"):
+                    _attach_cap_replace_offer(
+                        out,
+                        aid=aid,
+                        proposal=proposal,
+                        gate=gate,
+                        reply=out.get("reply"),
+                    )
+                    has_card = bool(
+                        (out.get("workout_proposal") or {}).get("workouts")
+                        or out.get("workout_replace_proposal")
+                    )
         if write_kind == "plan" and not out.get("plan_proposal"):
             plan_prop = infer_plan_update_fallback(body.message)
             if plan_prop:
@@ -2142,7 +2176,8 @@ def _chat_reopen_pending_write(
         "plan_proposal": None,
     }
     if proposal and proposal.get("workouts"):
-        planned_this_week = _count_planned_this_week(sessions_bundle)
+        with db_session(config.get_db()) as conn:
+            planned_this_week = _count_planned_this_week_db(conn, aid)
         gate = validate_workouts_against_constraints(
             athlete,
             proposal.get("workouts") or [],
@@ -2160,6 +2195,10 @@ def _chat_reopen_pending_write(
             out["confirm_required"] = True
             out["proposal_inferred"] = True
             out["constraint_reasons"] = gate.get("reasons")
+        elif gate.get("cap_hit"):
+            _attach_cap_replace_offer(
+                out, aid=aid, proposal=proposal, gate=gate, reply=reply
+            )
         else:
             out["reply"] = sanitize_unconfirmed_write_claims(
                 reply, has_confirm_card=False
@@ -2210,7 +2249,9 @@ def _chat_reopen_pending_write(
         )
     # Final sanitize — never claim success from this path
     has_card = bool(
-        (out.get("workout_proposal") or {}).get("workouts") or out.get("plan_proposal")
+        (out.get("workout_proposal") or {}).get("workouts")
+        or out.get("plan_proposal")
+        or out.get("workout_replace_proposal")
     )
     out["reply"] = sanitize_unconfirmed_write_claims(
         out.get("reply") or "", has_confirm_card=has_card
@@ -2305,9 +2346,13 @@ def _chat_intervals_plan_sync(
                     "message": (
                         f"Bekreft Sync: {bundle.get('workouts_count', 0)} økter "
                         f"fra lagrede planned_sessions (første "
-                        f"{bundle.get('weeks', ICU_SYNC_WEEKS)} uker) + "
-                        f"{bundle.get('notes_count', 0)} noter til Intervals. "
-                        f"Full plan ({planned_n} økter) blir i appen."
+                        f"{bundle.get('weeks', ICU_SYNC_WEEKS)} uker)"
+                        + (
+                            f" + {bundle.get('notes_count', 0)} grovplan-noter"
+                            if int(bundle.get("notes_count") or 0) > 0
+                            else " (uten grovplan-noter)"
+                        )
+                        + f" til Intervals. Full plan ({planned_n} økter) blir i appen."
                     ),
                 }
             elif not key or not icu:
@@ -2961,7 +3006,7 @@ def calendar_preview(
             bundle = build_plan_sync_bundle(
                 selected,
                 athlete=_athlete,
-                include_notes=True,
+                include_notes=bool(body.include_notes),
                 planned_sessions=stored_for_push if stored_for_push else None,
             )
         except (ImportError, OSError, ValueError, KeyError, TypeError) as exc:
@@ -3049,10 +3094,15 @@ def calendar_preview(
             if out["from_stored_sessions"]
             else "øktbibliotek"
         )
+        notes_bit = (
+            f" + {out['notes_count']} grovplan-noter"
+            if int(out["notes_count"] or 0) > 0
+            else " (uten grovplan-noter)"
+        )
         out["message"] = (
             f"Bekreft for å synce {out['workouts_count']} økter fra {src} "
-            f"(første {out['weeks']} uke(r), {out['zwo_count']} med ZWO) + "
-            f"{out['notes_count']} grovplan-noter til Intervals. "
+            f"(første {out['weeks']} uke(r), {out['zwo_count']} med ZWO)"
+            f"{notes_bit} til Intervals. "
             "Upsert ll-coach-… / ll-coach-w-…."
         )
     else:
@@ -3109,6 +3159,13 @@ def calendar_confirm(
                 rows = payload.get("planned_sessions") or []
                 if rows:
                     with db_session(config.get_db()) as conn:
+                        replace_ids = [
+                            str(x).strip()
+                            for x in (payload.get("replace_session_ids") or [])
+                            if str(x).strip()
+                        ]
+                        if replace_ids:
+                            delete_planned_sessions_by_ids(conn, aid, replace_ids)
                         ext_ids = [
                             str(r.get("external_id") or "").strip()
                             for r in rows
@@ -3226,13 +3283,39 @@ def workouts_preview(
     intervals_ok = bool(key and icu)
     want_icu = bool(body.prepare_intervals_sync) and intervals_ok
 
-    planned_n = _count_planned_this_week(sessions_bundle)
+    replace_ids = [
+        str(x).strip() for x in (body.replace_session_ids or []) if str(x).strip()
+    ]
+    with db_session(config.get_db()) as conn:
+        planned_n = _count_planned_this_week_db(conn, aid)
+    effective_existing = max(0, planned_n - len(replace_ids))
     gate = validate_workouts_against_constraints(
         athlete,
         body.workouts,
-        existing_planned_this_week=planned_n,
+        existing_planned_this_week=effective_existing,
     )
     if not gate["accepted"]:
+        # Cap-hit without replace → structured replace candidates (not bare 400 text).
+        if gate.get("cap_hit") and not replace_ids:
+            with db_session(config.get_db()) as conn:
+                candidates = _replace_candidates_for_workouts(
+                    conn, aid, body.workouts
+                )
+            raise HTTPException(
+                400,
+                detail={
+                    "message": gate.get("ask")
+                    or (
+                        " ".join(gate["reasons"][:3])
+                        if gate["reasons"]
+                        else "Avtale blokkerer øktene."
+                    ),
+                    "cap_hit": True,
+                    "replace_required": True,
+                    "replace_candidates": candidates,
+                    "reasons": gate.get("reasons") or [],
+                },
+            )
         raise HTTPException(
             400,
             gate.get("ask")
@@ -3282,6 +3365,7 @@ def workouts_preview(
         "constraint_filtered": not gate["ok"],
         "constraint_reasons": gate["reasons"],
         "prepare_intervals_sync": want_icu,
+        "replace_session_ids": replace_ids,
     }
     summary = [public_event_preview(e) for e in (events if want_icu else events)]
     # Always show proposed sessions in preview (app plan), even without ICU
@@ -3300,6 +3384,11 @@ def workouts_preview(
     msg_bits = [
         f"Bekreft for å lagre {len(planned_rows)} økt(er) i app-planen",
     ]
+    if replace_ids:
+        msg_bits.insert(
+            0,
+            f"Erstatter {len(replace_ids)} eksisterende økt(er)",
+        )
     if want_icu:
         msg_bits.append(
             f"og synce {len(events)} til Intervals-kalenderen (beskrivelse, ingen ZWO)"
@@ -3319,6 +3408,7 @@ def workouts_preview(
         "confirm_required": True,
         "message": ". ".join(msg_bits) + ".",
         "persist_planned_sessions": True,
+        "replace_session_ids": replace_ids,
         "write_gap": (
             None
             if want_icu
@@ -4127,12 +4217,146 @@ def admin_seed_from_repo(
     )
 
 
+def _iso_week_bounds(today: date | None = None) -> tuple[date, date]:
+    """Monday–Sunday of the ISO week containing ``today``."""
+    day0 = today or date.today()
+    start = day0 - timedelta(days=day0.weekday())
+    end = start + timedelta(days=6)
+    return start, end
+
+
+def _count_planned_this_week_db(
+    conn: Any,
+    athlete_id: str,
+    *,
+    today: date | None = None,
+) -> int:
+    """Count planned_sessions rows in the current ISO week (authoritative)."""
+    start, end = _iso_week_bounds(today)
+    rows = list_planned_sessions(
+        conn,
+        athlete_id,
+        start_date=start.isoformat(),
+        end_date=end.isoformat(),
+    )
+    return len(rows)
+
+
+def _replace_candidates_for_workouts(
+    conn: Any,
+    athlete_id: str,
+    workouts: list[dict[str, Any]] | None,
+    *,
+    today: date | None = None,
+) -> list[dict[str, Any]]:
+    """Existing planned rows this ISO week — same-date first for replace offer."""
+    start, end = _iso_week_bounds(today)
+    rows = list_planned_sessions(
+        conn,
+        athlete_id,
+        start_date=start.isoformat(),
+        end_date=end.isoformat(),
+    )
+    proposed_dates = {
+        str(w.get("date") or w.get("session_date") or "")[:10]
+        for w in (workouts or [])
+        if isinstance(w, dict)
+    }
+    proposed_dates.discard("")
+    scored: list[tuple[int, str, dict[str, Any]]] = []
+    for r in rows:
+        day = str(r.get("session_date") or "")[:10]
+        score = 0 if day in proposed_dates else 1
+        scored.append((score, day, r))
+    scored.sort(key=lambda x: (x[0], x[1]))
+    return [
+        {
+            "id": r.get("id"),
+            "session_date": r.get("session_date"),
+            "name": r.get("name"),
+            "sport": r.get("sport"),
+            "duration_minutes": r.get("duration_minutes"),
+            "same_date": str(r.get("session_date") or "")[:10] in proposed_dates,
+        }
+        for _, _, r in scored
+        if r.get("id")
+    ]
+
+
+def _attach_cap_replace_offer(
+    out: dict[str, Any],
+    *,
+    aid: str,
+    proposal: dict[str, Any],
+    gate: dict[str, Any],
+    reply: str | None = None,
+) -> dict[str, Any]:
+    """When weekly cap blocks add — offer replace candidates instead of dead-end."""
+    workouts = list(proposal.get("workouts") or [])
+    with db_session(config.get_db()) as conn:
+        candidates = _replace_candidates_for_workouts(conn, aid, workouts)
+    # Prefer auto-select same-date candidates (1:1 with proposed count)
+    auto_ids = [
+        c["id"]
+        for c in candidates
+        if c.get("same_date")
+    ][: max(1, len(workouts))]
+    if not auto_ids and candidates:
+        auto_ids = [candidates[0]["id"]]
+    out["workout_proposal"] = {
+        **proposal,
+        "workouts": workouts,
+        "replace_required": True,
+        "replace_candidates": candidates,
+        "replace_session_ids": auto_ids,
+    }
+    out["workout_replace_proposal"] = {
+        "workouts": workouts,
+        "replace_candidates": candidates,
+        "replace_session_ids": auto_ids,
+        "cap_hit": True,
+        "reasons": gate.get("reasons") or [],
+        "ask": gate.get("ask"),
+        "confirm_required": True,
+        "message": (
+            "Avtalt økter/uke er fylt. Velg eksisterende økt(er) å erstatte "
+            "— deretter forhåndsvis → bekreft. Ingen stille lagring."
+        ),
+    }
+    out["workout_proposal_blocked"] = False
+    out["confirm_required"] = True
+    out["constraint_reasons"] = gate.get("reasons")
+    out["constraint_ask"] = gate.get("ask")
+    out["proposal_hint"] = out["workout_replace_proposal"]["message"]
+    if candidates:
+        extra = (
+            "\n\n⚠️ Avtale-sperre (full uke): tilbyr erstatning av eksisterende økt(er) "
+            "på de datoene — velg i kortet, deretter forhåndsvis → bekreft."
+        )
+        base = (out.get("reply") or reply or "").rstrip()
+        if "erstatning" not in base.lower():
+            out["reply"] = (base + extra).strip()
+    else:
+        out["workout_proposal_blocked"] = True
+        out["workout_proposal"] = None
+        out["proposal_hint"] = (
+            gate.get("ask")
+            or "Avtalt økter/uke er fylt og det finnes ingen økter å erstatte denne uka."
+        )
+    return out
+
+
 def _count_planned_this_week(sessions_bundle: dict[str, Any] | None) -> int:
-    """Count planned WORKOUT events in the current ISO week (for session caps)."""
+    """Count planned WORKOUT events in the current ISO week (for session caps).
+
+    Dedupes across planned/upcoming/today buckets (they overlap after merge).
+    Prefer ``_count_planned_this_week_db`` when a DB connection is available.
+    """
     if not sessions_bundle:
         return 0
     today = date.today()
     iso = today.isocalendar()
+    seen: set[str] = set()
     n = 0
     for bucket in ("planned", "upcoming", "today"):
         for s in sessions_bundle.get(bucket) or []:
@@ -4147,8 +4371,18 @@ def _count_planned_this_week(sessions_bundle: dict[str, Any] | None) -> int:
                 d = date.fromisoformat(str(d_raw)[:10])
             except ValueError:
                 continue
-            if d.isocalendar()[:2] == iso[:2]:
-                n += 1
+            if d.isocalendar()[:2] != iso[:2]:
+                continue
+            key = (
+                str(s.get("planned_row_id") or "").strip()
+                or str(s.get("external_id") or "").strip()
+                or str(s.get("id") or "").strip()
+                or f"{d.isoformat()}:{s.get('name') or ''}"
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            n += 1
     return n
 
 

@@ -90,6 +90,8 @@ const state = {
   agreementsProposal: null,
   /** Du → plan adjust preview (local blocks; Intervals only after Sync confirm) */
   planAdjust: null,
+  /** Selected ids when weekly cap requires replace */
+  replaceSessionIds: [],
   profileSavedForCoach: false,
   workoutSync: {
     pending: null,
@@ -267,7 +269,9 @@ async function api(path, { method = 'GET', body, athleteId, timeoutMs } = {}) {
           : typeof detail === 'object' && detail && detail.message
             ? String(detail.message)
             : data.message || data.error || `Feil ${res.status}`
-    throw new Error(msg)
+    const err = new Error(msg)
+    err.detail = typeof detail === 'object' && detail && !Array.isArray(detail) ? detail : data
+    throw err
   }
   return data
 }
@@ -1082,7 +1086,26 @@ function applyChatResponse(data, { mirrorToMain = false, userText = '' } = {}) {
   if (data.workout_proposal?.workouts?.length) {
     state.workoutProposal = data.workout_proposal
     state.workoutRemoval = null
+    if (data.workout_proposal.replace_required) {
+      state.replaceSessionIds = [
+        ...(data.workout_proposal.replace_session_ids ||
+          data.workout_replace_proposal?.replace_session_ids ||
+          []),
+      ]
+    }
     if (data.proposal_hint) toast(data.proposal_hint)
+  }
+  if (data.workout_replace_proposal?.workouts?.length && !data.workout_proposal?.workouts?.length) {
+    state.workoutProposal = {
+      workouts: data.workout_replace_proposal.workouts,
+      replace_required: true,
+      replace_candidates: data.workout_replace_proposal.replace_candidates || [],
+      replace_session_ids: data.workout_replace_proposal.replace_session_ids || [],
+    }
+    state.replaceSessionIds = [...(data.workout_replace_proposal.replace_session_ids || [])]
+    if (data.proposal_hint || data.workout_replace_proposal.message) {
+      toast(data.proposal_hint || data.workout_replace_proposal.message)
+    }
   }
   if (data.workout_removal) {
     state.workoutRemoval = data.workout_removal
@@ -1096,13 +1119,16 @@ function applyChatResponse(data, { mirrorToMain = false, userText = '' } = {}) {
     state.agreementsProposal = data.agreements_proposal
     if (data.agreements_hint) toast(data.agreements_hint)
   }
-  const planProp = data.plan_proposal
+  const planProp = data.plan_roll || data.plan_proposal
   const planHasFull = Boolean(planProp?.plan_blocks?.length)
   const planHasWeek = planProp?.scope === 'week' && Array.isArray(planProp?.sessions)
+  const planHasRoll =
+    (planProp?.op === 'plan_roll' || planProp?.scope === 'detalj') &&
+    Array.isArray(planProp?.sessions)
   const planHasError = Boolean(planProp?.error)
-  if (planHasFull || planHasWeek || planHasError) {
+  if (planHasFull || planHasWeek || planHasRoll || planHasError) {
     state.planAdjust = planProp
-    if (planHasFull || planHasWeek) state.agreementsProposal = null
+    if (planHasFull || planHasWeek || planHasRoll) state.agreementsProposal = null
     if (data.plan_hint) toast(data.plan_hint)
   }
   // Existing plan → Intervals near-window sync (no new week inventing).
@@ -1124,7 +1150,13 @@ function applyChatResponse(data, { mirrorToMain = false, userText = '' } = {}) {
   // Never toast «done» from prose-only writes — card or honest block only.
   if (data.write_blocked_no_card) {
     toast('Ingenting lagret — mangler bekreftelseskort')
-  } else if (data.pending_write_reopen && !data.workout_proposal?.workouts?.length && !planHasWeek && !planHasFull) {
+  } else if (
+    data.pending_write_reopen &&
+    !data.workout_proposal?.workouts?.length &&
+    !planHasWeek &&
+    !planHasFull &&
+    !planHasRoll
+  ) {
     toast('Ingenting oppdatert — bekreft via kortet eller gjenta forespørselen')
   }
   if (mirrorToMain && userText) {
@@ -1167,8 +1199,10 @@ function renderChat() {
     const wc = syncPending.workouts_count
     const nc = syncPending.notes_count
     const meta =
-      wc != null || nc != null
-        ? `${wc ?? 0} økter + ${nc ?? 0} noter · nærvindu ${syncPending.weeks ?? 2} uker`
+      wc != null
+        ? Number(nc) > 0
+          ? `${wc} økter + ${nc} noter · nærvindu ${syncPending.weeks ?? 2} uker`
+          : `${wc} økter fra planned_sessions · nærvindu ${syncPending.weeks ?? 2} uker (uten grovplan-noter)`
         : `${syncPending.count || 0} hendelser`
     proposalCard = `
       <div class="confirm-card" role="dialog" aria-label="Bekreft Intervals-sync">
@@ -1264,10 +1298,13 @@ function renderChat() {
       </div>`
   } else if (
     state.planAdjust?.plan_blocks?.length ||
-    (state.planAdjust?.scope === 'week' && state.planAdjust?.sessions)
+    (state.planAdjust?.scope === 'week' && state.planAdjust?.sessions) ||
+    ((state.planAdjust?.op === 'plan_roll' || state.planAdjust?.scope === 'detalj') &&
+      state.planAdjust?.sessions)
   ) {
     const pa = state.planAdjust
     const isWeek = pa.scope === 'week'
+    const isRoll = pa.op === 'plan_roll' || pa.scope === 'detalj'
     const sync = pa.intervals_sync || {}
     const csum =
       pa.constraints_summary_nb ||
@@ -1278,13 +1315,15 @@ function renderChat() {
       pa.horizon_note_nb ||
       (isWeek
         ? 'Kirurgisk ukejustering — resten av planen beholdes.'
-        : 'App-plan til måldato; Intervals WORKOUT kun nærvindu.')
-    const readiness = pa.readiness_hints || {}
+        : isRoll
+          ? 'Neste detaljvindu — grovplan beholdes. Intervals først etter Sync.'
+          : 'App-plan til måldato; Intervals WORKOUT kun nærvindu.')
+    const readiness = pa.readiness_hints || pa.readiness || {}
     const readyNote =
       pa.readiness_note_nb ||
       readiness.summary_nb ||
       ''
-    const rows = isWeek
+    const rows = isWeek || isRoll
       ? (pa.sessions || [])
           .slice(0, 12)
           .map(
@@ -1305,23 +1344,30 @@ function renderChat() {
       .slice(0, 8)
       .map((e) => `<li>${escapeHtml(e.preview_no || e.name || '')}</li>`)
       .join('')
-    const sessN = isWeek ? pa.count : pa.planned_sessions_count
+    const sessN = isWeek || isRoll ? pa.count || pa.planned_sessions_count : pa.planned_sessions_count
     const hzW = pa.plan_horizon_weeks
+    const title = isWeek
+      ? 'Foreslått ukejustering'
+      : isRoll
+        ? 'Rull videre — neste detaljplan'
+        : 'Foreslått planjustering'
+    const confirmLabel = isWeek ? 'Bekreft uke' : isRoll ? 'Bekreft neste detalj' : 'Bekreft ny plan'
     proposalCard = `
-      <div class="confirm-card workout-proposal-card" aria-label="Justert grovplan">
-        <p><strong>${isWeek ? 'Foreslått ukejustering' : 'Foreslått planjustering'}</strong></p>
-        <p class="muted tight">${escapeHtml(pa.confirm_hint || (isWeek ? 'Bekreft for å erstatte kun denne uka.' : 'Bekreft for å lagre meso-blokker + økter til måldato lokalt — ikke auto-sync til Intervals.'))}</p>
+      <div class="confirm-card workout-proposal-card" aria-label="${escapeHtml(title)}">
+        <p><strong>${escapeHtml(title)}</strong></p>
+        <p class="muted tight">${escapeHtml(pa.confirm_hint || pa.message || (isWeek ? 'Bekreft for å erstatte kun denne uka.' : 'Bekreft for å lagre meso-blokker + økter til måldato lokalt — ikke auto-sync til Intervals.'))}</p>
         ${csum ? `<p class="muted tight">${escapeHtml(csum)}</p>` : ''}
         <p class="muted tight">${escapeHtml(horizon)}</p>
         ${isWeek && pa.week_start ? `<p class="muted tight">${escapeHtml(pa.week_start)}–${escapeHtml(pa.week_end || '')}${pa.ease_load ? ' · lett uke' : ''}.</p>` : ''}
-        ${sessN != null ? `<p class="muted tight">${escapeHtml(String(sessN))} økter${isWeek ? ' i uka' : ` i app-plan${hzW != null ? ` (~${escapeHtml(String(hzW))} uker)` : ''}`}</p>` : ''}
+        ${isRoll && pa.detalj_start ? `<p class="muted tight">${escapeHtml(pa.detalj_start)}–${escapeHtml(pa.detalj_end || '')} (~${escapeHtml(String(pa.detalj_weeks || 4))} uker).</p>` : ''}
+        ${sessN != null ? `<p class="muted tight">${escapeHtml(String(sessN))} økter${isWeek ? ' i uka' : isRoll ? ' i neste detalj' : ` i app-plan${hzW != null ? ` (~${escapeHtml(String(hzW))} uker)` : ''}`}</p>` : ''}
         ${pa.unchanged_note_nb ? `<p class="muted tight">${escapeHtml(pa.unchanged_note_nb)}</p>` : ''}
         ${readyNote ? `<p class="muted tight">Readiness: ${escapeHtml(readyNote)}</p>` : ''}
-        ${!isWeek && sync.workouts_count != null ? `<p class="muted tight">${escapeHtml(String(sync.workouts_count))} WORKOUT i Intervals-nærvindu (${escapeHtml(String(pa.icu_sync_weeks || sync.weeks || 2))} uker).</p>` : ''}
+        ${!isWeek && !isRoll && sync.workouts_count != null ? `<p class="muted tight">${escapeHtml(String(sync.workouts_count))} WORKOUT i Intervals-nærvindu (${escapeHtml(String(pa.icu_sync_weeks || sync.weeks || 2))} uker).</p>` : ''}
         <ul class="sync-sample">${rows}</ul>
         ${wprev ? `<p class="plan-kicker">Intervals nærvindu (WORKOUT)</p><ul class="sync-sample">${wprev}</ul>` : ''}
         <div class="sync-actions">
-          <button type="button" class="btn btn-primary" id="plan-adjust-confirm-btn" ${state.busy ? 'disabled' : ''}>${isWeek ? 'Bekreft uke' : 'Bekreft ny plan'}</button>
+          <button type="button" class="btn btn-primary" id="plan-adjust-confirm-btn" ${state.busy ? 'disabled' : ''}>${escapeHtml(confirmLabel)}</button>
           <button type="button" class="btn secondary" id="plan-adjust-dismiss-btn">Avvis</button>
         </div>
         ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
@@ -1335,15 +1381,29 @@ function renderChat() {
           }</li>`,
       )
       .join('')
+    const replaceNeeded = Boolean(proposal.replace_required)
+    const candidates = proposal.replace_candidates || []
+    const selected = new Set(state.replaceSessionIds || proposal.replace_session_ids || [])
+    const replaceList = replaceNeeded
+      ? `<p class="muted tight"><strong>Uka er full</strong> — velg økt(er) å erstatte (samme dato prioriteres):</p>
+        <ul class="sync-sample replace-candidates">${candidates
+          .map((c) => {
+            const id = String(c.id || '')
+            const checked = selected.has(id) ? 'checked' : ''
+            return `<li><label class="replace-pick"><input type="checkbox" class="replace-session-cb" value="${escapeHtml(id)}" ${checked}/> <strong>${escapeHtml(c.session_date || '')}</strong> · ${escapeHtml(c.name || '')}${c.same_date ? ' · samme dato' : ''}</label></li>`
+          })
+          .join('') || '<li class="muted">Ingen kandidater denne uka</li>'}</ul>`
+      : ''
     proposalCard = `
       <div class="confirm-card workout-proposal-card" aria-label="Foreslått økt">
-        <p><strong>Foreslått økt til planen</strong></p>
+        <p><strong>${replaceNeeded ? 'Erstatt økt i planen' : 'Foreslått økt til planen'}</strong></p>
         <p class="muted tight">Ingenting er lagret ennå — forhåndsvis, deretter bekreft. Lagrer i app-planen${
           state.intervals.connected ? '; synces til Intervals hvis du bekrefter sync.' : ' (koble Intervals under Du for Sync).'
         }</p>
+        ${replaceList}
         <ul class="sync-sample">${rows}</ul>
         <div class="sync-actions">
-          <button type="button" class="btn btn-primary" id="workout-preview-btn" ${state.workoutSync.busy ? 'disabled' : ''}>Forhåndsvis lagring</button>
+          <button type="button" class="btn btn-primary" id="workout-preview-btn" ${state.workoutSync.busy || (replaceNeeded && !(state.replaceSessionIds || []).length) ? 'disabled' : ''}>${replaceNeeded ? 'Forhåndsvis erstatning' : 'Forhåndsvis lagring'}</button>
           <button type="button" class="btn secondary" id="workout-dismiss-btn" ${state.workoutSync.busy ? 'disabled' : ''}>Avvis</button>
         </div>
         ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
@@ -2091,7 +2151,23 @@ function renderSessionDetail() {
 
       ${
         canEdit
-          ? `<section class="section-block">
+          ? `<section class="section-block builder-panel" id="oktbygger-section" aria-label="Øktbygger">
+        <div class="section-head">
+          <h3>Øktbygger</h3>
+          <button type="button" class="btn btn-sm secondary" id="builder-add-step">+ Steg</button>
+        </div>
+        <p class="muted tight">Steg med type, varighet og intensitet (steps_json). Lagre i plan først — Sync til Intervals er valgfritt.</p>
+        <div id="builder-steps" class="builder-steps">${builderRows || ''}</div>
+        <div class="builder-live" aria-live="polite">
+          <h4 class="tight">Forhåndsvis struktur</h4>
+          ${builderPreview}
+        </div>
+        <div class="row-actions">
+          <button type="button" class="btn btn-primary" id="builder-save-plan" ${state.workoutSync.busy ? 'disabled' : ''}>Lagre i plan</button>
+        </div>
+        <p class="muted tight">Human Coach: lagring i DB først. Intervals skrives først etter Sync-bekreftelse.</p>
+      </section>
+      <section class="section-block">
         <div class="section-head">
           <h3>Rediger økt</h3>
           <button type="button" class="btn btn-sm secondary" id="toggle-session-edit">${editOpen ? 'Skjul' : 'Åpne felter'}</button>
@@ -2125,33 +2201,21 @@ function renderSessionDetail() {
               <input id="edit_start" name="start_time" value="${escapeHtml(fields.start_time || '07:00')}" />
             </div>
           </div>
-          <div class="structure-edit builder-panel">
-            <div class="section-head">
-              <h4 class="tight">Øktbygger</h4>
-              <button type="button" class="btn btn-sm secondary" id="builder-add-step">+ Steg</button>
+          <details class="coach-raw">
+            <summary>Klassisk tekststeg (valgfritt)</summary>
+            <div class="field">
+              <label for="edit_warmup">Oppvarming</label>
+              <textarea id="edit_warmup" name="warmup" rows="2">${escapeHtml(fields.warmup || '')}</textarea>
             </div>
-            <p class="muted tight">Steg med type, varighet og intensitet. Lagre i plan først — Sync til Intervals er valgfritt.</p>
-            <div id="builder-steps" class="builder-steps">${builderRows || ''}</div>
-            <div class="builder-live" aria-live="polite">
-              <h4 class="tight">Forhåndsvis struktur</h4>
-              ${builderPreview}
+            <div class="field">
+              <label for="edit_main">Hoveddel</label>
+              <textarea id="edit_main" name="main" rows="3">${escapeHtml(fields.main || '')}</textarea>
             </div>
-            <details class="coach-raw">
-              <summary>Klassisk tekststeg (valgfritt)</summary>
-              <div class="field">
-                <label for="edit_warmup">Oppvarming</label>
-                <textarea id="edit_warmup" name="warmup" rows="2">${escapeHtml(fields.warmup || '')}</textarea>
-              </div>
-              <div class="field">
-                <label for="edit_main">Hoveddel</label>
-                <textarea id="edit_main" name="main" rows="3">${escapeHtml(fields.main || '')}</textarea>
-              </div>
-              <div class="field">
-                <label for="edit_cooldown">Nedkjøling</label>
-                <textarea id="edit_cooldown" name="cooldown" rows="2">${escapeHtml(fields.cooldown || '')}</textarea>
-              </div>
-            </details>
-          </div>
+            <div class="field">
+              <label for="edit_cooldown">Nedkjøling</label>
+              <textarea id="edit_cooldown" name="cooldown" rows="2">${escapeHtml(fields.cooldown || '')}</textarea>
+            </div>
+          </details>
           <details class="coach-raw">
             <summary>Rå beskrivelse (valgfri overstyring)</summary>
             <div class="field">
@@ -2161,12 +2225,11 @@ function renderSessionDetail() {
           </details>
           <input type="hidden" name="external_id" value="${escapeHtml(fields.external_id || '')}" />
           <div class="row-actions">
-            <button type="button" class="btn btn-primary" id="builder-save-plan" ${state.workoutSync.busy ? 'disabled' : ''}>Lagre i plan</button>
             <button type="submit" class="btn secondary" ${state.workoutSync.busy ? 'disabled' : ''}>Forhåndsvis Intervals</button>
           </div>
-          <p class="muted tight">Human Coach: lagring i DB først. Intervals skrives først etter Sync-bekreftelse.</p>
+          <p class="muted tight">Intervals-forhåndsvisning krever tilkobling under Du.</p>
         </form>`
-            : `<p class="muted tight">Endre tittel, dato, steg — eller spør coach under.</p>`
+            : `<p class="muted tight">Endre tittel, dato, sport — eller bruk Øktbygger over.</p>`
         }
       </section>`
           : `<p class="muted tight">Aktiviteter fra Intervals er skrivebeskyttet her — logg status under.</p>`
@@ -2266,7 +2329,7 @@ function renderOkterTab() {
     <div class="tab-hero">
       <p class="brand-mark">Økter</p>
       <h2>Bibliotek &amp; detalj</h2>
-      <p class="muted">Trykk en økt for steg, coach-chat og logg. Endringer til Intervals krever bekreftelse.</p>
+      <p class="muted">Trykk en økt for Øktbygger, steg, coach-chat og logg. Endringer til Intervals krever bekreftelse.</p>
     </div>
     <div class="view-toggle" role="tablist" aria-label="Visning">
       <button type="button" class="chip ${view === 'library' ? 'active' : ''}" data-sessions-view="library">Bibliotek</button>
@@ -2310,8 +2373,10 @@ function renderSyncPanel() {
     const nc = pending.notes_count
     const zc = pending.zwo_count
     const meta =
-      wc != null || nc != null
-        ? `${wc ?? 0} økter${zc != null ? ` (${zc} ZWO)` : ''} + ${nc ?? 0} noter`
+      wc != null
+        ? Number(nc) > 0
+          ? `${wc} økter${zc != null ? ` (${zc} ZWO)` : ''} + ${nc} noter`
+          : `${wc} økter${zc != null ? ` (${zc} ZWO)` : ''} fra planned_sessions (uten grovplan-noter)`
         : `${pending.count} hendelser`
     confirmHtml = `
       <div class="confirm-card" role="dialog" aria-label="Bekreft Intervals-sync">
@@ -2845,6 +2910,7 @@ function bindApp() {
   document.getElementById('workout-dismiss-btn')?.addEventListener('click', () => {
     state.workoutProposal = null
     state.workoutRemoval = null
+    state.replaceSessionIds = []
     state.workoutSync.pending = null
     state.workoutSync.message = 'Forslag avvist'
     state.workoutSync.error = ''
@@ -2912,15 +2978,27 @@ function bindApp() {
     const pa = state.planAdjust
     if (!pa) return
     const isWeek = pa.scope === 'week'
-    if (!isWeek && !pa.plan_blocks?.length) return
-    if (isWeek && !pa.sessions?.length) return
+    const isRoll = pa.op === 'plan_roll' || pa.scope === 'detalj'
+    if (!isWeek && !isRoll && !pa.plan_blocks?.length) return
+    if ((isWeek || isRoll) && !pa.sessions?.length) return
     state.busy = true
     state.workoutSync.error = ''
     render()
     try {
       const prepareSync = Boolean(state.intervals?.connected)
       let data
-      if (isWeek) {
+      if (isRoll) {
+        data = await api('/v1/athlete/me/plan/roll/confirm', {
+          method: 'POST',
+          body: {
+            detalj_start: pa.detalj_start,
+            detalj_end: pa.detalj_end,
+            sessions: pa.sessions,
+            readiness: pa.readiness || {},
+            prepare_intervals_sync: prepareSync,
+          },
+        })
+      } else if (isWeek) {
         data = await api('/v1/athlete/me/plan/week-adjust/confirm', {
           method: 'POST',
           body: {
@@ -2943,7 +3021,9 @@ function bindApp() {
       }
       if (data.athlete) state.athlete = data.athlete
       state.planAdjust = null
-      state.workoutSync.message = data.message || (isWeek ? 'Uke oppdatert' : 'Plan oppdatert')
+      state.workoutSync.message =
+        data.message ||
+        (isRoll ? 'Neste detalj lagret' : isWeek ? 'Uke oppdatert' : 'Plan oppdatert')
       toast(state.workoutSync.message)
       await refreshPlanBlocks()
       await refreshPlannedSessions()
@@ -3033,9 +3113,25 @@ function bindApp() {
     }
   })
 
+  document.querySelectorAll('.replace-session-cb').forEach((el) => {
+    el.addEventListener('change', () => {
+      state.replaceSessionIds = [...document.querySelectorAll('.replace-session-cb:checked')].map(
+        (cb) => cb.value,
+      )
+      render()
+    })
+  })
+
   document.getElementById('workout-preview-btn')?.addEventListener('click', async () => {
     const workouts = state.workoutProposal?.workouts
     if (!workouts?.length || state.workoutSync.busy) return
+    const replaceNeeded = Boolean(state.workoutProposal?.replace_required)
+    const replaceIds = state.replaceSessionIds || state.workoutProposal?.replace_session_ids || []
+    if (replaceNeeded && !replaceIds.length) {
+      state.workoutSync.error = 'Velg minst én økt å erstatte'
+      render()
+      return
+    }
     state.workoutSync.busy = true
     state.workoutSync.error = ''
     state.workoutSync.message = 'Lager forhåndsvisning…'
@@ -3046,6 +3142,7 @@ function bindApp() {
         body: {
           workouts,
           prepare_intervals_sync: Boolean(state.intervals?.connected),
+          replace_session_ids: replaceIds,
         },
       })
       state.workoutSync.pending = data
@@ -3053,6 +3150,21 @@ function bindApp() {
     } catch (err) {
       state.workoutSync.error = err.message || 'Forhåndsvisning feilet'
       state.workoutSync.message = ''
+      // Cap-hit without replace may return structured detail — surface candidates
+      const detail = err.detail || err.body || null
+      if (detail?.replace_candidates?.length) {
+        state.workoutProposal = {
+          ...(state.workoutProposal || {}),
+          workouts: state.workoutProposal?.workouts || workouts,
+          replace_required: true,
+          replace_candidates: detail.replace_candidates,
+          replace_session_ids: detail.replace_candidates
+            .filter((c) => c.same_date)
+            .map((c) => c.id)
+            .slice(0, workouts.length),
+        }
+        state.replaceSessionIds = [...(state.workoutProposal.replace_session_ids || [])]
+      }
     } finally {
       state.workoutSync.busy = false
       render()
@@ -3133,7 +3245,22 @@ function bindApp() {
       const data = await api(`/v1/sessions/${encodeURIComponent(sessionId)}`)
       state.sessionDetail = data
       state.sessionEditOpen = Boolean(data.editable) || Boolean(data.session?.app_planned)
-      state.builderSteps = (data.builder_steps || data.editable_fields?.builder_steps || []).map((s, i) => ({ ...s, sort_order: i }))
+      let steps = (data.builder_steps || data.editable_fields?.builder_steps || []).map((s, i) => ({
+        ...s,
+        sort_order: i,
+      }))
+      // Seed a minimal Øktbygger so the panel is never empty for editable sessions
+      if (
+        (data.editable || data.session?.app_planned) &&
+        (!steps || !steps.length)
+      ) {
+        steps = [
+          { type: 'warmup', duration_minutes: 10, intensity: 'Z1–Z2', note: '', sort_order: 0 },
+          { type: 'work', duration_minutes: 30, intensity: 'Z2', note: '', sort_order: 1 },
+          { type: 'cooldown', duration_minutes: 5, intensity: 'lett', note: '', sort_order: 2 },
+        ]
+      }
+      state.builderSteps = steps
       state.sessionChat = {
         messages: [],
         draft: '',
@@ -3745,7 +3872,7 @@ function bindApp() {
     try {
       const data = await api('/v1/athlete/me/intervals/calendar/preview', {
         method: 'POST',
-        body: { op },
+        body: { op, include_notes: false },
         timeoutMs: 20000,
       })
       state.sync.pending = data

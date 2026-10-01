@@ -471,10 +471,17 @@ def validate_workouts_against_constraints(
     ok = len(rejected) == 0 and len(accepted) == len(workouts)
     ask = None
     if not ok and not accepted and workouts:
-        ask = (
-            "Avtalen blokkerer forslaget. Bekreft endring av disipliner/økter-per-uke "
-            "via agreements_update, eller foreslå innenfor avtalen."
-        )
+        if cap_hit:
+            ask = (
+                "Avtalt antall økter/uke er fylt. Tilby erstatning av eksisterende "
+                "økt(er) på de datoene (replace), eller endre økter-per-uke via "
+                "agreements_update — ikke dead-end."
+            )
+        else:
+            ask = (
+                "Avtalen blokkerer forslaget. Bekreft endring av disipliner/økter-per-uke "
+                "via agreements_update, eller foreslå innenfor avtalen."
+            )
     return {
         "ok": ok,
         "accepted": accepted,

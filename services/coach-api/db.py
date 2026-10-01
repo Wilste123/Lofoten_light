@@ -205,6 +205,17 @@ CREATE TABLE IF NOT EXISTS pending_actions (
   confirmed_at TEXT
 );
 
+-- Ticker stub (coach-ticker.md) — unread strip next slice; never auto-apply plans.
+CREATE TABLE IF NOT EXISTS athlete_events (
+  id TEXT PRIMARY KEY,
+  athlete_id TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,
+  title TEXT NOT NULL DEFAULT '',
+  payload_json TEXT NOT NULL DEFAULT '{}',
+  read_at TEXT,
+  created_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_messages_athlete ON messages(athlete_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_plan_blocks_athlete ON plan_blocks(athlete_id, start_date);
 CREATE INDEX IF NOT EXISTS idx_plan_windows_athlete ON plan_windows(athlete_id, start_date);
@@ -213,6 +224,8 @@ CREATE INDEX IF NOT EXISTS idx_planned_sessions_athlete
 CREATE INDEX IF NOT EXISTS idx_pending_actions_athlete ON pending_actions(athlete_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_session_completions_athlete
   ON session_completions(athlete_id, session_date);
+CREATE INDEX IF NOT EXISTS idx_athlete_events_athlete
+  ON athlete_events(athlete_id, created_at);
 """
 
 
@@ -1066,6 +1079,27 @@ def delete_planned_sessions_by_external_ids(
         DELETE FROM planned_sessions
         WHERE athlete_id = ?
           AND external_id IN ({placeholders})
+        """,
+        [athlete_id, *ids],
+    )
+    return cur.rowcount
+
+
+def delete_planned_sessions_by_ids(
+    conn: Connection,
+    athlete_id: str,
+    session_ids: list[str],
+) -> int:
+    """Remove planned rows by primary key (cap-replace / chat swap)."""
+    ids = [str(x).strip() for x in session_ids if str(x).strip()]
+    if not ids:
+        return 0
+    placeholders = ",".join("?" for _ in ids)
+    cur = conn.execute(
+        f"""
+        DELETE FROM planned_sessions
+        WHERE athlete_id = ?
+          AND id IN ({placeholders})
         """,
         [athlete_id, *ids],
     )

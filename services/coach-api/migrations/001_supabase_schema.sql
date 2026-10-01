@@ -185,6 +185,17 @@ CREATE TABLE IF NOT EXISTS pending_actions (
   confirmed_at TEXT
 );
 
+-- Ticker stub (coach-ticker.md) — unread strip next slice; never auto-apply plans.
+CREATE TABLE IF NOT EXISTS athlete_events (
+  id TEXT PRIMARY KEY,
+  athlete_id TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,
+  title TEXT NOT NULL DEFAULT '',
+  payload_json TEXT NOT NULL DEFAULT '{}',
+  read_at TEXT,
+  created_at TEXT NOT NULL
+);
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_athletes_username ON athletes(username);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_athletes_auth_user_id ON athletes(auth_user_id);
 CREATE INDEX IF NOT EXISTS idx_messages_athlete ON messages(athlete_id, created_at);
@@ -193,6 +204,7 @@ CREATE INDEX IF NOT EXISTS idx_plan_windows_athlete ON plan_windows(athlete_id, 
 CREATE INDEX IF NOT EXISTS idx_planned_sessions_athlete ON planned_sessions(athlete_id, session_date);
 CREATE INDEX IF NOT EXISTS idx_pending_actions_athlete ON pending_actions(athlete_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_session_completions_athlete ON session_completions(athlete_id, session_date);
+CREATE INDEX IF NOT EXISTS idx_athlete_events_athlete ON athlete_events(athlete_id, created_at);
 
 -- ---------------------------------------------------------------------------
 -- RLS (athlete isolation). coach-api uses DATABASE_URL / service_role (bypasses RLS).

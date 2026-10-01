@@ -415,15 +415,19 @@ _INTERVALS_PLAN_SYNC_INTENT_RE = re.compile(
 )
 
 # Follow-up after coach already offered Sync / write preview («sync», «go», «ja», «ok»).
+# Also: «det ser bra ut», «ok sync», «lagre» — live transcript confirm phrases.
 _SYNC_CONFIRM_FOLLOWUP_RE = re.compile(
     r"^\s*(?:"
     r"sync|synk|go|kjør|"
-    r"ja(?:\s*,?\s*(?:takk|sync|synk|gjør\s+det|push|bekreft|oppdater))?|"
+    r"ok(?:ay)?\s*(?:sync|synk|go)?|"
+    r"ja(?:\s*,?\s*(?:takk|sync|synk|gjør\s+det|push|bekreft|oppdater|lagre))?|"
     r"bekreft(?:\s+sync)?|"
     r"gjør\s+det|"
     r"push\s+det|"
     r"oppdater(?:\s+det)?|"
-    r"ok(?:ay)?|"
+    r"lagre(?:\s+det)?|"
+    r"(?:det\s+)?ser\s+(?:bra|fint|godt)\s+ut|"
+    r"ser\s+(?:bra|fint|godt)\s+ut|"
     r"yes|"
     r"do\s+it"
     r")\s*[!.?]*\s*$",

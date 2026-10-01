@@ -1669,3 +1669,32 @@ button.linkish:hover {
   border-color: color-mix(in srgb, #c45c26 55%, transparent);
   color: #e8a07a;
 }
+
+
+/* Visual øktbygger */
+.builder-panel { margin-top: 0.75rem; }
+.builder-steps { display: flex; flex-direction: column; gap: 0.4rem; margin: 0.5rem 0; }
+.builder-step {
+  display: grid;
+  grid-template-columns: 7rem 4.5rem 1fr 1.2fr auto;
+  gap: 0.35rem;
+  align-items: center;
+}
+.builder-step input, .builder-step select {
+  width: 100%;
+  font-size: 0.9rem;
+}
+.builder-live { margin-top: 0.65rem; padding-top: 0.5rem; border-top: 1px solid var(--border, #ddd); }
+.builder-preview { margin: 0.25rem 0; padding-left: 1.1rem; }
+.chart-bar.is-planned { opacity: 0.55; background: repeating-linear-gradient(
+  -45deg, var(--accent), var(--accent) 4px, transparent 4px, transparent 8px
+); }
+.chart-bar.is-executed { background: var(--accent); }
+.chart-kind { margin: 0 0 0.25rem; }
+
+@media (max-width: 640px) {
+  .builder-step {
+    grid-template-columns: 1fr 1fr;
+  }
+  .builder-step .builder-note { grid-column: 1 / -1; }
+}

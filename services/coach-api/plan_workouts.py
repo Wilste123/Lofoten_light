@@ -537,18 +537,12 @@ def persistable_plan_payload(
     signals: dict[str, bool] | None = None,
     today: date | None = None,
 ) -> dict[str, Any]:
-    """Used by setup/adjust confirm: meso blocks already given; build sessions."""
-    built = build_planned_session_dicts(
+    """Setup/adjust confirm: grovplan blocks + detaljplan (~DETAIL_WEEKS) sessions."""
+    from two_tier_plan import build_two_tier_plan_payload
+
+    return build_two_tier_plan_payload(
         blocks, athlete=athlete, signals=signals, today=today
     )
-    return {
-        **built,
-        "horizon_note_nb": (
-            f"App-plan: {built['count']} økter over {built['weeks']} uker "
-            f"(til måldato {built.get('goal_race_date') or '—'}). "
-            f"Intervals WORKOUT-sync: første {ICU_SYNC_WEEKS} uker etter Sync-bekreftelse."
-        ),
-    }
 
 # Session row: weekday 0=Mon … 6=Sun, then CSV fields for build_workout_event
 # Optional trailing purpose_nb used for coach rationale (not pushed to ICU CSV).

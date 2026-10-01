@@ -542,6 +542,128 @@ def structure_to_description(structure: dict[str, Any] | None) -> str:
     return "\n".join(lines).strip()
 
 
+# Visual øktbygger step types (first-class JSON on planned_sessions.steps_json)
+BUILDER_STEP_TYPES = ("warmup", "work", "recover", "cooldown")
+BUILDER_STEP_LABELS = {
+    "warmup": "Oppvarming",
+    "work": "Arbeid",
+    "recover": "Pause / restit",
+    "cooldown": "Nedkjøling",
+}
+
+
+def normalize_builder_steps(raw: list[Any] | None) -> list[dict[str, Any]]:
+    """Validate/normalize visual builder steps."""
+    out: list[dict[str, Any]] = []
+    for i, item in enumerate(raw or []):
+        if not isinstance(item, dict):
+            continue
+        stype = str(item.get("type") or "work").strip().lower()
+        if stype in ("main", "hoveddel", "interval", "intervals"):
+            stype = "work"
+        if stype in ("rest", "pause", "recovery"):
+            stype = "recover"
+        if stype not in BUILDER_STEP_TYPES:
+            stype = "work"
+        try:
+            dur = item.get("duration_minutes")
+            dur_i = int(float(dur)) if dur is not None and str(dur).strip() != "" else None
+        except (TypeError, ValueError):
+            dur_i = None
+        intensity = str(
+            item.get("intensity") or item.get("zone") or item.get("rpe") or ""
+        ).strip()[:80]
+        note = str(item.get("note") or item.get("text") or item.get("label") or "").strip()[
+            :200
+        ]
+        dist = str(item.get("distance") or "").strip()[:40]
+        out.append(
+            {
+                "id": str(item.get("id") or f"s{i+1}"),
+                "type": stype,
+                "duration_minutes": dur_i,
+                "distance": dist or None,
+                "intensity": intensity or None,
+                "note": note or None,
+                "sort_order": int(item.get("sort_order") if item.get("sort_order") is not None else i),
+            }
+        )
+    out.sort(key=lambda x: x.get("sort_order") or 0)
+    for i, s in enumerate(out):
+        s["sort_order"] = i
+    return out
+
+
+def builder_steps_to_description(steps: list[dict[str, Any]] | None) -> str:
+    """Serialize builder steps → text description (Intervals / legacy)."""
+    norm = normalize_builder_steps(steps)
+    if not norm:
+        return ""
+    by_type: dict[str, list[str]] = {t: [] for t in BUILDER_STEP_TYPES}
+    for s in norm:
+        bits = []
+        if s.get("duration_minutes"):
+            bits.append(f"{s['duration_minutes']} min")
+        if s.get("distance"):
+            bits.append(str(s["distance"]))
+        if s.get("intensity"):
+            bits.append(str(s["intensity"]))
+        if s.get("note"):
+            bits.append(str(s["note"]))
+        line = " · ".join(bits) if bits else BUILDER_STEP_LABELS.get(s["type"], s["type"])
+        by_type.setdefault(s["type"], []).append(line)
+    lines: list[str] = []
+    for t in BUILDER_STEP_TYPES:
+        items = by_type.get(t) or []
+        if not items:
+            continue
+        lines.append(f"{BUILDER_STEP_LABELS[t]}:")
+        for it in items:
+            lines.append(f"- {it}")
+        lines.append("")
+    return "\n".join(lines).strip()
+
+
+def builder_steps_from_structure(structure: dict[str, Any] | None) -> list[dict[str, Any]]:
+    """Best-effort migrate legacy phase structure → builder steps."""
+    if not structure:
+        return []
+    map_phase = {
+        "warmup": "warmup",
+        "main": "work",
+        "cooldown": "cooldown",
+        "other": "work",
+    }
+    raw: list[dict[str, Any]] = []
+    i = 0
+    for phase in structure.get("phases") or []:
+        pid = map_phase.get(str(phase.get("id") or ""), "work")
+        for item in phase.get("items") or []:
+            text = str(item).strip()
+            if not text:
+                continue
+            # Try pull leading minutes
+            m = re.match(r"^(\d+)\s*(?:min|m)\b", text, re.I)
+            dur = int(m.group(1)) if m else None
+            raw.append(
+                {
+                    "id": f"mig{i}",
+                    "type": pid,
+                    "duration_minutes": dur,
+                    "note": text,
+                    "sort_order": i,
+                }
+            )
+            i += 1
+    return normalize_builder_steps(raw)
+
+
+def total_builder_duration(steps: list[dict[str, Any]] | None) -> int | None:
+    norm = normalize_builder_steps(steps)
+    total = sum(int(s["duration_minutes"]) for s in norm if s.get("duration_minutes"))
+    return total or None
+
+
 def library_key_for(session: dict[str, Any]) -> str:
     """Stable key for library grouping (template identity, not calendar day)."""
     eid = str(session.get("external_id") or "").strip()
@@ -785,6 +907,9 @@ def session_detail_payload(
     desc = item.get("description") or ""
     structure = item.get("structure") or parse_session_structure(desc)
     steps = item.get("steps") or structure.get("flat_steps") or []
+    builder_steps = item.get("builder_steps")
+    if not builder_steps:
+        builder_steps = builder_steps_from_structure(structure)
     return {
         "session": item,
         "library_key": key,
@@ -793,6 +918,9 @@ def session_detail_payload(
         "description": desc or None,
         "steps": steps,
         "structure": structure,
+        "builder_steps": builder_steps,
+        "builder_step_types": list(BUILDER_STEP_TYPES),
+        "builder_step_labels": dict(BUILDER_STEP_LABELS),
         "coach_block": {
             "title": "Fra treneren",
             "body": desc or None,
@@ -807,9 +935,10 @@ def session_detail_payload(
             "duration_minutes": (
                 int(round(float(item["duration_hours"]) * 60))
                 if item.get("duration_hours") is not None
-                else None
+                else item.get("duration_minutes")
             ),
             "description": desc,
+            "builder_steps": builder_steps,
             "warmup": "\n".join(
                 (next((p for p in structure.get("phases") or [] if p.get("id") == "warmup"), {})).get(
                     "items"
@@ -934,9 +1063,14 @@ def planned_session_to_public(
         "description": desc,
         "description_preview": _preview_text(desc or "", 160),
         "start_time": start_time,
-        "editable": eid.startswith(WORKOUT_EXTERNAL_PREFIX) or eid.startswith("ll-coach-"),
+        "editable": True,  # app planned_sessions — visual builder SoT
         "source": "planned_sessions",
         "app_planned": True,
+        "planned_row_id": row.get("id"),
+        "plan_tier": row.get("plan_tier") or "detalj",
+        "builder_steps": row.get("steps")
+        if isinstance(row.get("steps"), list)
+        else None,
         "planned_path": row.get("planned_path") or row.get("description") or None,
         "phase": row.get("phase") or None,
     }

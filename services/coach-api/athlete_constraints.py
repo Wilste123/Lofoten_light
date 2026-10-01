@@ -67,8 +67,10 @@ LABELS_NO: dict[str, str] = {
 # Intervals WORKOUT push window (near-term only — not the app plan horizon).
 MAX_WORKOUT_WEEKS = 2
 ICU_SYNC_WEEKS = MAX_WORKOUT_WEEKS
-# App-owned planned_sessions: season_start → goal_race (capped for safety).
+# Grovplan span (meso blocks) season_start → goal_race (capped for safety).
 MAX_PLAN_HORIZON_WEEKS = 78
+# Detaljplan: concrete planned_sessions (~1 month rolling). Not full year.
+DETALJ_PLAN_WEEKS = 4
 
 # Sensible default sessions/week when not stated (None = no hard cap / use template)
 DEFAULT_SESSIONS: dict[str, int | None] = {

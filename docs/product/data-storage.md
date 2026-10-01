@@ -2,25 +2,29 @@
 
 ## Kort svar
 
-**SQLite + Fly volume** (eller lokal fil) er eneste datastore i MVP.  
-**Ikke Supabase** før eksplisitte scale-triggere.
+**Branch `supabase`:** Postgres via `DATABASE_URL` / Supabase when set; otherwise SQLite + Fly volume.  
+Two-tier SoT: **grovplan** (`plan_blocks`) + **detaljplan** (`plan_windows` + `planned_sessions`).  
+Full recipe: [supabase.md](supabase.md). William opened an explicit Supabase try (2026-10-01).
 
 ## Hva lagres hvor
 
 | Data | Hvor i MVP | Hvorfor |
 |------|------------|---------|
-| `athlete_context` (navn, trener, farge, mål, avtaler, skade, **ernæring/GI**, test-FTP, vekt/alder, **sesongmål**, **`show_body_metrics`**) | SQLite | Appens SoT — ikke Intervals |
-| `plan_blocks` (grovplan / bulk) | SQLite | Makro/meso — se [periodization-overview.md](periodization-overview.md) |
-| `session_completions` (øktlogg status/grunn) | SQLite | App-only — se [dashboard-okter.md](dashboard-okter.md) |
+| `athlete_context` (navn, trener, farge, mål, avtaler, skade, **ernæring/GI**, test-FTP, vekt/alder, **sesongmål**, **`show_body_metrics`**) | DB `athletes` | Appens SoT — ikke Intervals |
+| **Grovplan** (`plan_blocks`, `layer=grov`) | DB | Makro/meso → mål; hours band + session-type mix |
+| **Detaljplan** (`plan_windows` + `planned_sessions`) | DB | ~4 uker konkrete økter; ICU sync near window |
+| Visual builder steps (`steps_json`) | DB `planned_sessions` | Warmup/work/recover/cooldown |
+| Roll-forward timestamps | `athletes.detalj_roll_*` | Cooldown for neste detaljvindu |
+| `session_completions` (øktlogg status/grunn) | DB | App-only — se [dashboard-okter.md](dashboard-okter.md) |
 | Profilfil markdown | `data/athletes/{id}/profile.md` | Cursor-coach + LLM leser person, ikke bare William |
-| Chat-historikk (siste N turner) | SQLite | Kort minne for én LLM-tur |
-| Intervals API-nøkkel + athlete-id | SQLite (`athlete_secrets`) via **Du**-fane / `PUT /v1/athlete/me/intervals` | Kun server; aldri `localStorage` eller `.env` for web |
-| `OPENAI_API_KEY` | `services/coach-api/.env` | Server-wide chat — ikke per utøver |
-| Form-estimater | SQLite (felter på athlete) | Resultat av `form_estimates` |
-| Aktivitets-cache (90 d power) | SQLite eller fil under `data/athletes/{id}/` | Unngå full ICU-refetch |
+| Chat-historikk (siste N turner) | DB `messages` | Kort minne for én LLM-tur |
+| Intervals API-nøkkel + athlete-id | DB `athlete_secrets` via **Du**-fane / `PUT /v1/athlete/me/intervals` | Kun server; aldri `localStorage` eller `.env` for web |
+| `OPENAI_API_KEY` | `services/coach-api/.env` / Fly secrets | Server-wide chat — ikke per utøver |
+| Form-estimater | DB (felter på athlete) | Resultat av `form_estimates` |
+| Charts gjennomført / CTL/ATL | Intervals activities / wellness | Real data only |
+| Charts planlagt volum | DB `planned_sessions` | Labeled *planlagt* |
 | Kunnskap / ukeplaner | Git (`knowledge/`, `plans/`) | Uendret |
-| Økter / kalenderdetaljer | Intervals.icu | Uendret |
-| `training_pairs` + `coordinated_sessions` | SQLite | Fase 3 — schema klar, tom i fase 1–2 |
+| `training_pairs` + `coordinated_sessions` | DB | Fase 3 — schema klar, tom i fase 1–2 |
 
 Klient: kun `athlete_id` (+ evt. invite-token) i `localStorage`.
 

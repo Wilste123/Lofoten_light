@@ -1,17 +1,29 @@
-"""SQLite schema and helpers for coach-api."""
+"""Coach-api schema and helpers — SQLite (local/tests) or Postgres/Supabase.
+
+Schema is 1:1 across backends. Prefer ``DATABASE_URL`` / ``SUPABASE_DB_URL``;
+otherwise ``DATABASE_PATH`` (SQLite volume). See ``docs/product/supabase.md``.
+"""
 
 from __future__ import annotations
 
 import hashlib
 import json
 import re
-import sqlite3
 import unicodedata
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
+
+from db_backend import (
+    Connection,
+    DbTarget,
+    PgConnection,
+    connect as backend_connect,
+    is_postgres_url,
+    table_columns,
+)
 
 # Lowercase slug: letters/digits, optional hyphens, 2–32 chars.
 USERNAME_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$")
@@ -60,6 +72,7 @@ CREATE TABLE IF NOT EXISTS athletes (
   allowed_disciplines TEXT DEFAULT '',
   sessions_per_week INTEGER,
   fitness_notes TEXT DEFAULT '',
+  auth_user_id TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -88,7 +101,25 @@ CREATE TABLE IF NOT EXISTS plan_blocks (
   start_date TEXT,
   end_date TEXT,
   weekly_hours REAL,
+  hours_min REAL,
+  hours_max REAL,
+  session_types_json TEXT DEFAULT '{}',
+  layer TEXT DEFAULT 'grov',
   sort_order INTEGER DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS plan_windows (
+  id TEXT PRIMARY KEY,
+  athlete_id TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL DEFAULT 'detalj',
+  start_date TEXT NOT NULL,
+  end_date TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'active',
+  source TEXT NOT NULL DEFAULT 'setup',
+  readiness_json TEXT DEFAULT '{}',
+  block_id TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -105,9 +136,13 @@ CREATE TABLE IF NOT EXISTS planned_sessions (
   planned_path TEXT DEFAULT '',
   phase TEXT DEFAULT '',
   block_id TEXT,
+  window_id TEXT,
   external_id TEXT,
   source TEXT NOT NULL DEFAULT 'plan',
   status TEXT NOT NULL DEFAULT 'planned',
+  plan_tier TEXT NOT NULL DEFAULT 'detalj',
+  session_type TEXT DEFAULT '',
+  steps_json TEXT DEFAULT '[]',
   sort_order INTEGER DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -172,6 +207,7 @@ CREATE TABLE IF NOT EXISTS pending_actions (
 
 CREATE INDEX IF NOT EXISTS idx_messages_athlete ON messages(athlete_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_plan_blocks_athlete ON plan_blocks(athlete_id, start_date);
+CREATE INDEX IF NOT EXISTS idx_plan_windows_athlete ON plan_windows(athlete_id, start_date);
 CREATE INDEX IF NOT EXISTS idx_planned_sessions_athlete
   ON planned_sessions(athlete_id, session_date);
 CREATE INDEX IF NOT EXISTS idx_pending_actions_athlete ON pending_actions(athlete_id, created_at);
@@ -220,12 +256,8 @@ def validate_username(username: str) -> str | None:
     return None
 
 
-def connect(db_path: Path) -> sqlite3.Connection:
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(db_path), check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
+def connect(db_path: DbTarget) -> Connection:
+    return backend_connect(db_path)
 
 
 _EXTRA_COLUMNS = [
@@ -252,6 +284,23 @@ _EXTRA_COLUMNS = [
     ("allowed_disciplines", "TEXT DEFAULT ''"),
     ("sessions_per_week", "INTEGER"),
     ("fitness_notes", "TEXT DEFAULT ''"),
+    ("auth_user_id", "TEXT"),
+    ("detalj_roll_offered_at", "TEXT"),
+    ("detalj_roll_confirmed_at", "TEXT"),
+]
+
+_PLAN_BLOCK_EXTRA_COLUMNS = [
+    ("hours_min", "REAL"),
+    ("hours_max", "REAL"),
+    ("session_types_json", "TEXT DEFAULT '{}'"),
+    ("layer", "TEXT DEFAULT 'grov'"),
+]
+
+_PLANNED_SESSION_EXTRA_COLUMNS = [
+    ("window_id", "TEXT"),
+    ("plan_tier", "TEXT DEFAULT 'detalj'"),
+    ("session_type", "TEXT DEFAULT ''"),
+    ("steps_json", "TEXT DEFAULT '[]'"),
 ]
 
 # Seeded returning athletes — always treated as setup-done; re-seed must not wipe them.
@@ -260,7 +309,7 @@ SEED_PROTECTED_USERNAMES = frozenset({"william"})
 
 
 def _username_taken(
-    conn: sqlite3.Connection, username: str, *, exclude_id: str | None = None
+    conn: Connection, username: str, *, exclude_id: str | None = None
 ) -> bool:
     if exclude_id:
         cur = conn.execute(
@@ -276,7 +325,7 @@ def _username_taken(
 
 
 def allocate_username(
-    conn: sqlite3.Connection,
+    conn: Connection,
     preferred: str,
     *,
     exclude_id: str | None = None,
@@ -295,7 +344,7 @@ def allocate_username(
     return candidate
 
 
-def _backfill_usernames(conn: sqlite3.Connection) -> None:
+def _backfill_usernames(conn: Connection) -> None:
     rows = conn.execute(
         "SELECT id, display_name, username FROM athletes"
     ).fetchall()
@@ -313,7 +362,7 @@ def _backfill_usernames(conn: sqlite3.Connection) -> None:
         )
 
 
-def _backfill_setup_completed(conn: sqlite3.Connection, *, column_just_added: bool) -> None:
+def _backfill_setup_completed(conn: Connection, *, column_just_added: bool) -> None:
     """Mark seeded / pre-existing athletes as setup-done.
 
     When the column is first added, every existing row would otherwise default to 0
@@ -333,21 +382,45 @@ def _backfill_setup_completed(conn: sqlite3.Connection, *, column_just_added: bo
     )
 
 
-def init_db(db_path: Path) -> None:
+def init_db(db_path: DbTarget) -> None:
     with connect(db_path) as conn:
+        # Postgres: enable extensions used by optional RLS helpers (safe if missing).
+        if isinstance(conn, PgConnection):
+            try:
+                conn.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto")
+            except Exception:
+                conn.rollback()
+                # reconnect path: extension may require superuser; schema still works
+                pass
         conn.executescript(SCHEMA)
-        existing = {
-            r[1]
-            for r in conn.execute("PRAGMA table_info(athletes)").fetchall()
-        }
+        existing = table_columns(conn, "athletes")
         setup_col_added = False
         for name, decl in _EXTRA_COLUMNS:
             if name not in existing:
                 conn.execute(f"ALTER TABLE athletes ADD COLUMN {name} {decl}")
                 if name == "setup_completed":
                     setup_col_added = True
+        block_cols = table_columns(conn, "plan_blocks")
+        for name, decl in _PLAN_BLOCK_EXTRA_COLUMNS:
+            if name not in block_cols:
+                conn.execute(f"ALTER TABLE plan_blocks ADD COLUMN {name} {decl}")
+        sess_cols = table_columns(conn, "planned_sessions")
+        for name, decl in _PLANNED_SESSION_EXTRA_COLUMNS:
+            if name not in sess_cols:
+                conn.execute(f"ALTER TABLE planned_sessions ADD COLUMN {name} {decl}")
         conn.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_athletes_username ON athletes(username)"
+        )
+        try:
+            conn.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_athletes_auth_user_id "
+                "ON athletes(auth_user_id)"
+            )
+        except Exception:
+            pass
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_plan_windows_athlete "
+            "ON plan_windows(athlete_id, start_date)"
         )
         _backfill_usernames(conn)
         _backfill_setup_completed(conn, column_just_added=setup_col_added)
@@ -355,7 +428,7 @@ def init_db(db_path: Path) -> None:
 
 
 @contextmanager
-def db_session(db_path: Path) -> Iterator[sqlite3.Connection]:
+def db_session(db_path: DbTarget) -> Iterator[Connection]:
     conn = connect(db_path)
     try:
         yield conn
@@ -367,7 +440,7 @@ def db_session(db_path: Path) -> Iterator[sqlite3.Connection]:
         conn.close()
 
 
-def row_to_athlete(row: sqlite3.Row | None) -> dict[str, Any] | None:
+def row_to_athlete(row: Any | None) -> dict[str, Any] | None:
     if row is None:
         return None
     d = dict(row)
@@ -418,13 +491,13 @@ def athlete_needs_setup(athlete: dict[str, Any] | None) -> bool:
     return not bool(athlete.get("setup_completed"))
 
 
-def get_athlete(conn: sqlite3.Connection, athlete_id: str) -> dict[str, Any] | None:
+def get_athlete(conn: Connection, athlete_id: str) -> dict[str, Any] | None:
     cur = conn.execute("SELECT * FROM athletes WHERE id = ?", (athlete_id,))
     return row_to_athlete(cur.fetchone())
 
 
 def get_athlete_by_username(
-    conn: sqlite3.Connection, username: str
+    conn: Connection, username: str
 ) -> dict[str, Any] | None:
     uname = normalize_username(username)
     if not uname:
@@ -434,12 +507,12 @@ def get_athlete_by_username(
 
 
 def username_available(
-    conn: sqlite3.Connection, username: str, *, exclude_id: str | None = None
+    conn: Connection, username: str, *, exclude_id: str | None = None
 ) -> bool:
     return not _username_taken(conn, normalize_username(username), exclude_id=exclude_id)
 
 
-def insert_athlete(conn: sqlite3.Connection, data: dict[str, Any]) -> dict[str, Any]:
+def insert_athlete(conn: Connection, data: dict[str, Any]) -> dict[str, Any]:
     now = utc_now()
     athlete_id = data.get("id") or new_id()
     agreements = data.get("agreements") or []
@@ -507,7 +580,7 @@ def insert_athlete(conn: sqlite3.Connection, data: dict[str, Any]) -> dict[str, 
 
 
 def update_athlete(
-    conn: sqlite3.Connection, athlete_id: str, patch: dict[str, Any]
+    conn: Connection, athlete_id: str, patch: dict[str, Any]
 ) -> dict[str, Any] | None:
     existing = get_athlete(conn, athlete_id)
     if not existing:
@@ -551,6 +624,9 @@ def update_athlete(
         "athlete_type_notes",
         "sessions_per_week",
         "fitness_notes",
+        "auth_user_id",
+        "detalj_roll_offered_at",
+        "detalj_roll_confirmed_at",
     }
     fields: list[str] = []
     values: list[Any] = []
@@ -604,7 +680,7 @@ def update_athlete(
 
 
 def add_message(
-    conn: sqlite3.Connection, athlete_id: str, role: str, content: str
+    conn: Connection, athlete_id: str, role: str, content: str
 ) -> dict[str, Any]:
     mid = new_id()
     now = utc_now()
@@ -616,7 +692,7 @@ def add_message(
 
 
 def recent_messages(
-    conn: sqlite3.Connection, athlete_id: str, limit: int = 12
+    conn: Connection, athlete_id: str, limit: int = 12
 ) -> list[dict[str, Any]]:
     cur = conn.execute(
         """
@@ -633,7 +709,7 @@ def recent_messages(
 
 
 def get_athlete_secrets(
-    conn: sqlite3.Connection, athlete_id: str
+    conn: Connection, athlete_id: str
 ) -> dict[str, Any] | None:
     cur = conn.execute(
         """
@@ -647,7 +723,7 @@ def get_athlete_secrets(
 
 
 def upsert_athlete_secrets(
-    conn: sqlite3.Connection,
+    conn: Connection,
     athlete_id: str,
     *,
     intervals_api_key: str | None = None,
@@ -719,14 +795,26 @@ def secrets_public_view(row: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
-def _row_to_block(row: sqlite3.Row | None) -> dict[str, Any] | None:
+def _row_to_block(row: Any | None) -> dict[str, Any] | None:
     if row is None:
         return None
-    return dict(row)
+    d = dict(row)
+    raw = d.get("session_types_json") or "{}"
+    if isinstance(raw, str):
+        try:
+            d["session_types"] = json.loads(raw) if raw.strip() else {}
+        except json.JSONDecodeError:
+            d["session_types"] = {}
+    elif isinstance(raw, dict):
+        d["session_types"] = raw
+    else:
+        d["session_types"] = {}
+    d.setdefault("layer", d.get("layer") or "grov")
+    return d
 
 
 def list_plan_blocks(
-    conn: sqlite3.Connection, athlete_id: str
+    conn: Connection, athlete_id: str
 ) -> list[dict[str, Any]]:
     cur = conn.execute(
         """
@@ -740,11 +828,11 @@ def list_plan_blocks(
         """,
         (athlete_id,),
     )
-    return [dict(r) for r in cur.fetchall()]
+    return [_row_to_block(r) for r in cur.fetchall()]  # type: ignore[misc]
 
 
 def get_plan_block(
-    conn: sqlite3.Connection, athlete_id: str, block_id: str
+    conn: Connection, athlete_id: str, block_id: str
 ) -> dict[str, Any] | None:
     cur = conn.execute(
         "SELECT * FROM plan_blocks WHERE id = ? AND athlete_id = ?",
@@ -754,16 +842,24 @@ def get_plan_block(
 
 
 def insert_plan_block(
-    conn: sqlite3.Connection, athlete_id: str, data: dict[str, Any]
+    conn: Connection, athlete_id: str, data: dict[str, Any]
 ) -> dict[str, Any]:
     now = utc_now()
     block_id = data.get("id") or new_id()
+    session_types = data.get("session_types")
+    if session_types is None and data.get("session_types_json"):
+        session_types = data.get("session_types_json")
+    if isinstance(session_types, (dict, list)):
+        st_json = json.dumps(session_types, ensure_ascii=False)
+    else:
+        st_json = str(session_types or "{}")
     conn.execute(
         """
         INSERT INTO plan_blocks (
           id, athlete_id, title, theme, start_date, end_date,
-          weekly_hours, sort_order, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          weekly_hours, hours_min, hours_max, session_types_json, layer,
+          sort_order, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             block_id,
@@ -773,6 +869,10 @@ def insert_plan_block(
             data.get("start_date") or None,
             data.get("end_date") or None,
             data.get("weekly_hours"),
+            data.get("hours_min"),
+            data.get("hours_max"),
+            st_json,
+            str(data.get("layer") or "grov"),
             int(data.get("sort_order") or 0),
             now,
             now,
@@ -782,7 +882,7 @@ def insert_plan_block(
 
 
 def update_plan_block(
-    conn: sqlite3.Connection,
+    conn: Connection,
     athlete_id: str,
     block_id: str,
     patch: dict[str, Any],
@@ -796,11 +896,26 @@ def update_plan_block(
         "start_date",
         "end_date",
         "weekly_hours",
+        "hours_min",
+        "hours_max",
+        "layer",
         "sort_order",
     }
     fields: list[str] = []
     values: list[Any] = []
     for key, val in patch.items():
+        if key == "session_types":
+            fields.append("session_types_json = ?")
+            values.append(
+                json.dumps(val, ensure_ascii=False)
+                if isinstance(val, (dict, list))
+                else (val if val is not None else "{}")
+            )
+            continue
+        if key == "session_types_json":
+            fields.append("session_types_json = ?")
+            values.append(val if val is not None else "{}")
+            continue
         if key not in allowed:
             continue
         if key == "sort_order" and val is not None:
@@ -820,7 +935,7 @@ def update_plan_block(
 
 
 def delete_plan_block(
-    conn: sqlite3.Connection, athlete_id: str, block_id: str
+    conn: Connection, athlete_id: str, block_id: str
 ) -> bool:
     cur = conn.execute(
         "DELETE FROM plan_blocks WHERE id = ? AND athlete_id = ?",
@@ -829,7 +944,7 @@ def delete_plan_block(
     return cur.rowcount > 0
 
 
-def delete_all_plan_blocks(conn: sqlite3.Connection, athlete_id: str) -> int:
+def delete_all_plan_blocks(conn: Connection, athlete_id: str) -> int:
     cur = conn.execute(
         "DELETE FROM plan_blocks WHERE athlete_id = ?",
         (athlete_id,),
@@ -838,7 +953,7 @@ def delete_all_plan_blocks(conn: sqlite3.Connection, athlete_id: str) -> int:
 
 
 def replace_plan_blocks(
-    conn: sqlite3.Connection,
+    conn: Connection,
     athlete_id: str,
     blocks: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
@@ -853,6 +968,10 @@ def replace_plan_blocks(
             "start_date": raw.get("start_date"),
             "end_date": raw.get("end_date"),
             "weekly_hours": raw.get("weekly_hours"),
+            "hours_min": raw.get("hours_min"),
+            "hours_max": raw.get("hours_max"),
+            "session_types": raw.get("session_types") or raw.get("session_types_json"),
+            "layer": raw.get("layer") or "grov",
             "sort_order": int(raw.get("sort_order") if raw.get("sort_order") is not None else i),
         }
         out.append(insert_plan_block(conn, athlete_id, data))
@@ -860,7 +979,7 @@ def replace_plan_blocks(
 
 
 def list_planned_sessions(
-    conn: sqlite3.Connection,
+    conn: Connection,
     athlete_id: str,
     *,
     start_date: str | None = None,
@@ -884,10 +1003,19 @@ def list_planned_sessions(
         sql += " LIMIT ?"
         params.append(int(limit))
     cur = conn.execute(sql, params)
-    return [dict(r) for r in cur.fetchall()]
+    out = []
+    for r in cur.fetchall():
+        d = dict(r)
+        raw_steps = d.get("steps_json") or "[]"
+        try:
+            d["steps"] = json.loads(raw_steps) if isinstance(raw_steps, str) else (raw_steps or [])
+        except json.JSONDecodeError:
+            d["steps"] = []
+        out.append(d)
+    return out
 
 
-def count_planned_sessions(conn: sqlite3.Connection, athlete_id: str) -> int:
+def count_planned_sessions(conn: Connection, athlete_id: str) -> int:
     cur = conn.execute(
         "SELECT COUNT(*) AS n FROM planned_sessions WHERE athlete_id = ?",
         (athlete_id,),
@@ -896,7 +1024,7 @@ def count_planned_sessions(conn: sqlite3.Connection, athlete_id: str) -> int:
     return int(row["n"] if row else 0)
 
 
-def delete_all_planned_sessions(conn: sqlite3.Connection, athlete_id: str) -> int:
+def delete_all_planned_sessions(conn: Connection, athlete_id: str) -> int:
     cur = conn.execute(
         "DELETE FROM planned_sessions WHERE athlete_id = ?",
         (athlete_id,),
@@ -905,7 +1033,7 @@ def delete_all_planned_sessions(conn: sqlite3.Connection, athlete_id: str) -> in
 
 
 def delete_planned_sessions_range(
-    conn: sqlite3.Connection,
+    conn: Connection,
     athlete_id: str,
     start_date: str,
     end_date: str,
@@ -924,7 +1052,7 @@ def delete_planned_sessions_range(
 
 
 def delete_planned_sessions_by_external_ids(
-    conn: sqlite3.Connection,
+    conn: Connection,
     athlete_id: str,
     external_ids: list[str],
 ) -> int:
@@ -945,7 +1073,7 @@ def delete_planned_sessions_by_external_ids(
 
 
 def insert_planned_session_rows(
-    conn: sqlite3.Connection,
+    conn: Connection,
     athlete_id: str,
     sessions: list[dict[str, Any]],
     *,
@@ -973,13 +1101,24 @@ def insert_planned_session_rows(
             if raw.get("sort_order") is not None
             else sort_offset + i
         )
+        window_id = raw.get("window_id")
+        plan_tier = str(raw.get("plan_tier") or "detalj").strip()[:40] or "detalj"
+        session_type = str(raw.get("session_type") or "").strip()[:40]
+        steps = raw.get("steps") if raw.get("steps") is not None else raw.get("steps_json")
+        if isinstance(steps, (list, dict)):
+            steps_json = json.dumps(steps, ensure_ascii=False)
+        elif steps is None:
+            steps_json = "[]"
+        else:
+            steps_json = str(steps) or "[]"
         conn.execute(
             """
             INSERT INTO planned_sessions (
               id, athlete_id, session_date, sport, name, description,
               duration_minutes, start_time, planned_path, phase, block_id,
-              external_id, source, status, sort_order, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              window_id, external_id, source, status, plan_tier, session_type,
+              steps_json, sort_order, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 sid,
@@ -993,9 +1132,13 @@ def insert_planned_session_rows(
                 str(raw.get("planned_path") or raw.get("planned") or "").strip()[:400],
                 str(raw.get("phase") or "").strip()[:40],
                 raw.get("block_id"),
+                window_id,
                 external,
                 str(raw.get("source") or "plan").strip()[:40] or "plan",
                 str(raw.get("status") or "planned").strip()[:40] or "planned",
+                plan_tier,
+                session_type,
+                steps_json,
                 sort_i,
                 now,
                 now,
@@ -1014,9 +1157,14 @@ def insert_planned_session_rows(
                 "planned_path": str(raw.get("planned_path") or raw.get("planned") or ""),
                 "phase": str(raw.get("phase") or ""),
                 "block_id": raw.get("block_id"),
+                "window_id": window_id,
                 "external_id": external,
                 "source": str(raw.get("source") or "plan"),
                 "status": str(raw.get("status") or "planned"),
+                "plan_tier": plan_tier,
+                "session_type": session_type,
+                "steps_json": steps_json,
+                "steps": json.loads(steps_json) if steps_json.startswith("[") else [],
                 "sort_order": sort_i,
                 "created_at": now,
                 "updated_at": now,
@@ -1026,7 +1174,7 @@ def insert_planned_session_rows(
 
 
 def replace_planned_sessions_range(
-    conn: sqlite3.Connection,
+    conn: Connection,
     athlete_id: str,
     start_date: str,
     end_date: str,
@@ -1038,83 +1186,239 @@ def replace_planned_sessions_range(
 
 
 def replace_planned_sessions(
-    conn: sqlite3.Connection,
+    conn: Connection,
     athlete_id: str,
     sessions: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Replace full app plan horizon (setup / plan adjust confirm)."""
+    """Replace detaljplan sessions (setup / roll confirm — not silent year rewrite)."""
     delete_all_planned_sessions(conn, athlete_id)
+    return insert_planned_session_rows(conn, athlete_id, sessions)
+
+
+def get_active_plan_window(
+    conn: Connection, athlete_id: str, *, kind: str = "detalj"
+) -> dict[str, Any] | None:
+    cur = conn.execute(
+        """
+        SELECT * FROM plan_windows
+        WHERE athlete_id = ? AND kind = ? AND status = 'active'
+        ORDER BY end_date DESC, created_at DESC
+        LIMIT 1
+        """,
+        (athlete_id, kind),
+    )
+    row = cur.fetchone()
+    if not row:
+        return None
+    d = dict(row)
+    try:
+        d["readiness"] = json.loads(d.get("readiness_json") or "{}")
+    except json.JSONDecodeError:
+        d["readiness"] = {}
+    return d
+
+
+def deactivate_plan_windows(
+    conn: Connection, athlete_id: str, *, kind: str = "detalj"
+) -> int:
+    cur = conn.execute(
+        """
+        UPDATE plan_windows
+        SET status = 'superseded', updated_at = ?
+        WHERE athlete_id = ? AND kind = ? AND status = 'active'
+        """,
+        (utc_now(), athlete_id, kind),
+    )
+    return cur.rowcount
+
+
+def insert_plan_window(
+    conn: Connection,
+    athlete_id: str,
+    data: dict[str, Any],
+) -> dict[str, Any]:
     now = utc_now()
-    out: list[dict[str, Any]] = []
-    for i, raw in enumerate(sessions):
-        day = str(raw.get("session_date") or raw.get("date") or "").strip()[:10]
-        if not day:
-            continue
-        sid = raw.get("id") or new_id()
-        name = str(raw.get("name") or raw.get("title") or "Økt").strip()[:200]
-        sport = str(raw.get("sport") or "other").strip().lower()[:40] or "other"
-        try:
-            dur = raw.get("duration_minutes")
-            dur_i = int(float(dur)) if dur is not None and str(dur).strip() else None
-        except (TypeError, ValueError):
-            dur_i = None
-        start_time = str(raw.get("start_time") or "07:00").strip()[:5] or "07:00"
-        external = str(raw.get("external_id") or "").strip()[:120] or None
-        conn.execute(
-            """
-            INSERT INTO planned_sessions (
-              id, athlete_id, session_date, sport, name, description,
-              duration_minutes, start_time, planned_path, phase, block_id,
-              external_id, source, status, sort_order, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                sid,
-                athlete_id,
-                day,
-                sport,
-                name,
-                str(raw.get("description") or "").strip()[:4000],
-                dur_i,
-                start_time,
-                str(raw.get("planned_path") or raw.get("planned") or "").strip()[:400],
-                str(raw.get("phase") or "").strip()[:40],
-                raw.get("block_id"),
-                external,
-                str(raw.get("source") or "plan").strip()[:40] or "plan",
-                str(raw.get("status") or "planned").strip()[:40] or "planned",
-                int(raw.get("sort_order") if raw.get("sort_order") is not None else i),
-                now,
-                now,
-            ),
-        )
-        out.append(
-            {
-                "id": sid,
-                "athlete_id": athlete_id,
-                "session_date": day,
-                "sport": sport,
-                "name": name,
-                "description": str(raw.get("description") or "").strip()[:4000],
-                "duration_minutes": dur_i,
-                "start_time": start_time,
-                "planned_path": str(raw.get("planned_path") or raw.get("planned") or ""),
-                "phase": str(raw.get("phase") or ""),
-                "block_id": raw.get("block_id"),
-                "external_id": external,
-                "source": str(raw.get("source") or "plan"),
-                "status": str(raw.get("status") or "planned"),
-                "sort_order": int(
-                    raw.get("sort_order") if raw.get("sort_order") is not None else i
-                ),
-                "created_at": now,
-                "updated_at": now,
-            }
-        )
-    return out
+    wid = data.get("id") or new_id()
+    readiness = data.get("readiness") or data.get("readiness_json") or {}
+    if isinstance(readiness, (dict, list)):
+        r_json = json.dumps(readiness, ensure_ascii=False)
+    else:
+        r_json = str(readiness or "{}")
+    conn.execute(
+        """
+        INSERT INTO plan_windows (
+          id, athlete_id, kind, start_date, end_date, status, source,
+          readiness_json, block_id, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            wid,
+            athlete_id,
+            str(data.get("kind") or "detalj"),
+            str(data["start_date"])[:10],
+            str(data["end_date"])[:10],
+            str(data.get("status") or "active"),
+            str(data.get("source") or "setup"),
+            r_json,
+            data.get("block_id"),
+            now,
+            now,
+        ),
+    )
+    return get_active_plan_window(conn, athlete_id) or {
+        "id": wid,
+        "athlete_id": athlete_id,
+        "kind": data.get("kind") or "detalj",
+        "start_date": str(data["start_date"])[:10],
+        "end_date": str(data["end_date"])[:10],
+        "status": data.get("status") or "active",
+        "source": data.get("source") or "setup",
+        "readiness": readiness if isinstance(readiness, dict) else {},
+        "block_id": data.get("block_id"),
+        "created_at": now,
+        "updated_at": now,
+    }
 
 
-def clear_messages(conn: sqlite3.Connection, athlete_id: str) -> int:
+def replace_detalj_window(
+    conn: Connection,
+    athlete_id: str,
+    *,
+    start_date: str,
+    end_date: str,
+    sessions: list[dict[str, Any]],
+    source: str = "setup",
+    readiness: dict[str, Any] | None = None,
+    block_id: str | None = None,
+) -> dict[str, Any]:
+    """Supersede active detalj window, insert new window + sessions."""
+    deactivate_plan_windows(conn, athlete_id, kind="detalj")
+    window = insert_plan_window(
+        conn,
+        athlete_id,
+        {
+            "kind": "detalj",
+            "start_date": start_date,
+            "end_date": end_date,
+            "status": "active",
+            "source": source,
+            "readiness": readiness or {},
+            "block_id": block_id,
+        },
+    )
+    wid = window.get("id")
+    stamped = []
+    for s in sessions:
+        row = dict(s)
+        row["window_id"] = wid
+        row["plan_tier"] = row.get("plan_tier") or "detalj"
+        stamped.append(row)
+    delete_all_planned_sessions(conn, athlete_id)
+    saved = insert_planned_session_rows(conn, athlete_id, stamped)
+    return {"window": window, "sessions": saved, "count": len(saved)}
+
+
+def mark_detalj_roll_offered(conn: Connection, athlete_id: str) -> None:
+    conn.execute(
+        "UPDATE athletes SET detalj_roll_offered_at = ?, updated_at = ? WHERE id = ?",
+        (utc_now(), utc_now(), athlete_id),
+    )
+
+
+def mark_detalj_roll_confirmed(conn: Connection, athlete_id: str) -> None:
+    now = utc_now()
+    conn.execute(
+        """
+        UPDATE athletes
+        SET detalj_roll_confirmed_at = ?, detalj_roll_offered_at = ?, updated_at = ?
+        WHERE id = ?
+        """,
+        (now, now, now, athlete_id),
+    )
+
+
+def get_planned_session(
+    conn: Connection, athlete_id: str, session_id: str
+) -> dict[str, Any] | None:
+    """Lookup by row id or external_id (evt:… stripped)."""
+    sid = (session_id or "").strip()
+    if sid.startswith("evt:"):
+        sid = sid[4:]
+    cur = conn.execute(
+        """
+        SELECT * FROM planned_sessions
+        WHERE athlete_id = ? AND (id = ? OR external_id = ?)
+        LIMIT 1
+        """,
+        (athlete_id, session_id.strip(), sid),
+    )
+    row = cur.fetchone()
+    if not row:
+        return None
+    d = dict(row)
+    raw_steps = d.get("steps_json") or "[]"
+    try:
+        d["steps"] = json.loads(raw_steps) if isinstance(raw_steps, str) else (raw_steps or [])
+    except json.JSONDecodeError:
+        d["steps"] = []
+    return d
+
+
+def update_planned_session_builder(
+    conn: Connection,
+    athlete_id: str,
+    session_id: str,
+    patch: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Persist visual builder fields onto a planned_sessions row (app SoT)."""
+    existing = get_planned_session(conn, athlete_id, session_id)
+    if not existing:
+        return None
+    fields: list[str] = []
+    values: list[Any] = []
+    mapping = {
+        "name": "name",
+        "session_date": "session_date",
+        "sport": "sport",
+        "description": "description",
+        "duration_minutes": "duration_minutes",
+        "start_time": "start_time",
+        "session_type": "session_type",
+    }
+    for key, col in mapping.items():
+        if key in patch and patch[key] is not None:
+            fields.append(f"{col} = ?")
+            val = patch[key]
+            if key == "session_date":
+                val = str(val)[:10]
+            elif key == "duration_minutes":
+                val = int(val)
+            elif key == "start_time":
+                val = str(val)[:5]
+            values.append(val)
+    if "steps" in patch:
+        steps = patch["steps"] or []
+        fields.append("steps_json = ?")
+        values.append(json.dumps(steps, ensure_ascii=False))
+        # Keep description in sync for Intervals/text consumers unless explicit override
+        if "description" not in patch:
+            from sessions_service import builder_steps_to_description
+
+            fields.append("description = ?")
+            values.append(builder_steps_to_description(steps)[:4000])
+    if not fields:
+        return existing
+    fields.append("updated_at = ?")
+    values.append(utc_now())
+    values.extend([existing["id"], athlete_id])
+    conn.execute(
+        f"UPDATE planned_sessions SET {', '.join(fields)} WHERE id = ? AND athlete_id = ?",
+        values,
+    )
+    return get_planned_session(conn, athlete_id, existing["id"])
+
+
+def clear_messages(conn: Connection, athlete_id: str) -> int:
     cur = conn.execute(
         "DELETE FROM messages WHERE athlete_id = ?",
         (athlete_id,),
@@ -1127,7 +1431,7 @@ def hash_invite_token(token: str) -> str:
 
 
 def insert_invite(
-    conn: sqlite3.Connection,
+    conn: Connection,
     token: str,
     *,
     created_by: str | None = None,
@@ -1155,7 +1459,7 @@ def insert_invite(
     }
 
 
-def invite_token_valid(conn: sqlite3.Connection, token: str) -> bool:
+def invite_token_valid(conn: Connection, token: str) -> bool:
     """True if a matching invite exists and is not expired."""
     raw = (token or "").strip()
     if not raw:
@@ -1182,7 +1486,7 @@ def invite_token_valid(conn: sqlite3.Connection, token: str) -> bool:
 
 
 def insert_pending_action(
-    conn: sqlite3.Connection,
+    conn: Connection,
     athlete_id: str,
     kind: str,
     payload: dict[str, Any],
@@ -1208,7 +1512,7 @@ def insert_pending_action(
 
 
 def get_pending_action(
-    conn: sqlite3.Connection, athlete_id: str, action_id: str
+    conn: Connection, athlete_id: str, action_id: str
 ) -> dict[str, Any] | None:
     cur = conn.execute(
         "SELECT * FROM pending_actions WHERE id = ? AND athlete_id = ?",
@@ -1226,7 +1530,7 @@ def get_pending_action(
 
 
 def mark_pending_action(
-    conn: sqlite3.Connection,
+    conn: Connection,
     athlete_id: str,
     action_id: str,
     status: str,
@@ -1249,14 +1553,14 @@ COMPLETION_STATUSES = frozenset(
 )
 
 
-def _row_to_completion(row: sqlite3.Row | None) -> dict[str, Any] | None:
+def _row_to_completion(row: Any | None) -> dict[str, Any] | None:
     if row is None:
         return None
     return dict(row)
 
 
 def list_session_completions(
-    conn: sqlite3.Connection, athlete_id: str, *, limit: int = 100
+    conn: Connection, athlete_id: str, *, limit: int = 100
 ) -> list[dict[str, Any]]:
     cur = conn.execute(
         """
@@ -1271,7 +1575,7 @@ def list_session_completions(
 
 
 def get_session_completion(
-    conn: sqlite3.Connection, athlete_id: str, external_session_id: str
+    conn: Connection, athlete_id: str, external_session_id: str
 ) -> dict[str, Any] | None:
     cur = conn.execute(
         """
@@ -1284,7 +1588,7 @@ def get_session_completion(
 
 
 def upsert_session_completion(
-    conn: sqlite3.Connection, athlete_id: str, data: dict[str, Any]
+    conn: Connection, athlete_id: str, data: dict[str, Any]
 ) -> dict[str, Any]:
     """Insert or update a completion log for an Intervals session id."""
     now = utc_now()
@@ -1357,7 +1661,7 @@ def upsert_session_completion(
 
 
 def completions_by_external_id(
-    conn: sqlite3.Connection, athlete_id: str
+    conn: Connection, athlete_id: str
 ) -> dict[str, dict[str, Any]]:
     rows = list_session_completions(conn, athlete_id, limit=500)
     return {r["external_session_id"]: r for r in rows if r.get("external_session_id")}

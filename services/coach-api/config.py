@@ -1,4 +1,4 @@
-"""Coach API — FastAPI + SQLite for Lofoten coach web MVP."""
+"""Coach API — FastAPI + SQLite/Postgres for Lofoten coach web MVP."""
 
 from __future__ import annotations
 
@@ -20,6 +20,33 @@ load_dotenv(_API_DIR / ".env")
 DATABASE_PATH = Path(
     os.environ.get("DATABASE_PATH", str(REPO_ROOT / "data" / "coach.db"))
 )
+# Postgres / Supabase — when set, wins over DATABASE_PATH.
+# Accept DATABASE_URL, SUPABASE_DB_URL, or SUPABASE_DATABASE_URL.
+DATABASE_URL = (
+    os.environ.get("DATABASE_URL")
+    or os.environ.get("SUPABASE_DB_URL")
+    or os.environ.get("SUPABASE_DATABASE_URL")
+    or ""
+).strip()
+# Optional Supabase project metadata (not required for API DB access).
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip()
+SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "").strip()
+SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+
+
+def get_db() -> Path | str:
+    """Active DB target: Postgres URL if set, else SQLite path."""
+    if DATABASE_URL:
+        return DATABASE_URL
+    return DATABASE_PATH
+
+
+def db_backend_name() -> str:
+    if DATABASE_URL:
+        return "postgres"
+    return "sqlite"
+
+
 ATHLETES_DATA_DIR = Path(
     os.environ.get(
         "ATHLETES_DATA_DIR", str(REPO_ROOT / "data" / "athletes")

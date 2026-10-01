@@ -53,6 +53,8 @@ const state = {
     busy: false,
     error: '',
   },
+  /** Visual øktbygger steps (warmup/work/recover/cooldown) */
+  builderSteps: [],
   /** Edit form open by default for coach-editable sessions */
   sessionEditOpen: true,
   chatDraft: '',
@@ -1633,6 +1635,7 @@ function renderLoadCard(dash) {
   const hours = dash.hours || training
   const charts = training.charts || {}
   const volume = charts.volume || { bars: [], bucket: 'day' }
+  const volumePlanned = charts.volume_planned || null
   const discBars =
     charts.by_discipline ||
     (training.disciplines || hours.disciplines || []).map((d) => ({
@@ -1641,6 +1644,7 @@ function renderLoadCard(dash) {
       hours: d.hours != null ? d.hours : d.completed_hours,
     }))
   const loadSeries = load.series || {}
+  const truthNote = charts.truth?.note_nb || load.note || training.note || ''
   const badge =
     training.source === 'intervals' || hours.source === 'intervals'
       ? `<span class="badge badge-live">Intervals</span>`
@@ -1656,25 +1660,34 @@ function renderLoadCard(dash) {
   const actCount = training.activity_count ?? hours.activity_count
   const label = periodLabelFromDash(dash)
   const volTitle = volumeBucketTitle(volume.bucket)
+  const plannedBlock =
+    volumePlanned && (volumePlanned.bars || []).some((b) => Number(b.hours) > 0)
+      ? `<section class="section-block chart-block" data-testid="chart-volume-planned" aria-label="Planlagt volum">
+      <div class="section-head"><h2>Planlagt volum (fremover)</h2></div>
+      ${renderVolumeBars({ ...volumePlanned, series_kind: 'planned' })}
+    </section>`
+      : ''
   return `
     <section class="section-block" data-testid="period-training">
       <div class="section-head"><h2>Trening (${escapeHtml(label)})</h2>${badge}</div>
-      <div class="stat-row"><span>Totalt</span><span>${total != null ? `${formatHours(total)} t` : '—'}${actCount != null ? ` · ${actCount} økter` : ''}</span></div>
+      <div class="stat-row"><span>Totalt gjennomført</span><span>${total != null ? `${formatHours(total)} t` : '—'}${actCount != null ? ` · ${actCount} økter` : ''}</span></div>
       <div class="stat-row"><span>CTL</span><span>${wl.ctl != null ? wl.ctl : '—'}</span></div>
       <div class="stat-row"><span>ATL</span><span>${wl.atl != null ? wl.atl : '—'}</span></div>
       <div class="stat-row"><span>Readiness</span><span>${wl.readiness != null ? wl.readiness : '—'}</span></div>
-      <p class="muted tight">${escapeHtml(load.note || training.note || '')}</p>
+      <p class="muted tight">${escapeHtml(truthNote)}</p>
     </section>
     <section class="section-block chart-block" data-testid="chart-volume" aria-label="${escapeHtml(volTitle)}">
-      <div class="section-head"><h2>${escapeHtml(volTitle)}</h2></div>
-      ${renderVolumeBars(volume)}
+      <div class="section-head"><h2>${escapeHtml(volTitle)} — gjennomført</h2></div>
+      ${renderVolumeBars({ ...volume, series_kind: 'executed' })}
     </section>
+    ${plannedBlock}
     <section class="section-block chart-block" data-testid="chart-discipline" aria-label="Timer per disiplin">
-      <div class="section-head"><h2>Per disiplin</h2></div>
+      <div class="section-head"><h2>Per disiplin (gjennomført)</h2></div>
       ${renderDisciplineBars(discBars)}
     </section>
     <section class="section-block chart-block" data-testid="chart-load" aria-label="Belastning CTL ATL">
       <div class="section-head"><h2>Belastning (CTL / ATL)</h2></div>
+      <p class="muted tight">Kun Intervals wellness — ingen inventerte fremtidstall.</p>
       ${renderLoadLines(loadSeries)}
     </section>`
 }
@@ -1928,14 +1941,18 @@ function renderSessionDetail() {
     )
     .join('')
   const structureHtml = renderSessionStructure(d.structure || d.coach_block?.structure, d.steps)
+  const builderSteps = state.builderSteps || d.builder_steps || fields.builder_steps || []
+  if (!state.builderSteps && builderSteps.length) {
+    state.builderSteps = builderSteps.map((s, i) => ({ ...s, sort_order: i }))
+  }
   const coachBody = d.coach_block?.body || d.description || ''
   const occChips = formatDateChips(d.dates || [])
   const chatBubbles = renderChatBubbles(
     state.sessionChat.messages,
-    `<p class="muted">F.eks. «kan vi kutte hovedsettet?» eller «gjør den mer spesifikk for Lofoten».</p>`,
+    `<p class="muted">F.eks. «kan vi kutte hovedsettet?» eller «legg til 3×8 min Z3».</p>`,
   )
   const editOpen = state.sessionEditOpen
-  const canEdit = Boolean(d.editable)
+  const canEdit = Boolean(d.editable) || Boolean(s.app_planned)
   const sportOpts = [
     ['bike', 'Sykkel'],
     ['run', 'Løp'],
@@ -1958,6 +1975,61 @@ function renderSessionDetail() {
         `<button type="button" class="chip session-chat-chip" data-session-chip="${escapeHtml(msg)}">${escapeHtml(lab)}</button>`,
     )
     .join('')
+
+  const stepTypeOpts = (selected) =>
+    [
+      ['warmup', 'Oppvarming'],
+      ['work', 'Arbeid'],
+      ['recover', 'Pause'],
+      ['cooldown', 'Nedkjøling'],
+    ]
+      .map(
+        ([v, lab]) =>
+          `<option value="${v}" ${selected === v ? 'selected' : ''}>${lab}</option>`,
+      )
+      .join('')
+
+  const liveSteps = state.builderSteps || []
+  const liveTotal = liveSteps.reduce(
+    (acc, st) => acc + (Number(st.duration_minutes) || 0),
+    0,
+  )
+  const builderRows = liveSteps
+    .map((st, i) => {
+      return `
+      <div class="builder-step" data-step-index="${i}">
+        <select class="builder-type" data-field="type" aria-label="Stegtype">${stepTypeOpts(st.type || 'work')}</select>
+        <input class="builder-dur" data-field="duration_minutes" type="number" min="0" placeholder="min" value="${
+          st.duration_minutes != null ? escapeHtml(String(st.duration_minutes)) : ''
+        }" aria-label="Varighet minutter" />
+        <input class="builder-intensity" data-field="intensity" placeholder="RPE/sone" value="${escapeHtml(
+          st.intensity || '',
+        )}" aria-label="Intensitet" />
+        <input class="builder-note" data-field="note" placeholder="Notat" value="${escapeHtml(
+          st.note || '',
+        )}" aria-label="Notat" />
+        <button type="button" class="btn btn-sm secondary builder-remove" data-remove-step="${i}" aria-label="Fjern steg">×</button>
+      </div>`
+    })
+    .join('')
+
+  const builderPreview = liveSteps.length
+    ? `<ol class="builder-preview">${liveSteps
+        .map((st) => {
+          const lab =
+            { warmup: 'WU', work: 'Work', recover: 'Rec', cooldown: 'CD' }[st.type] ||
+            st.type
+          const bits = [
+            lab,
+            st.duration_minutes != null ? `${st.duration_minutes} min` : null,
+            st.intensity || null,
+            st.note || null,
+          ].filter(Boolean)
+          return `<li>${escapeHtml(bits.join(' · '))}</li>`
+        })
+        .join('')}</ol>
+      <p class="muted tight">Sum: <strong>${liveTotal}</strong> min</p>`
+    : `<p class="muted tight">Ingen steg ennå — legg til warmup/work/recover/cooldown.</p>`
 
   return `
     <div class="session-detail-view has-sticky-chat" id="session-detail">
@@ -2034,19 +2106,32 @@ function renderSessionDetail() {
               <input id="edit_start" name="start_time" value="${escapeHtml(fields.start_time || '07:00')}" />
             </div>
           </div>
-          <div class="structure-edit">
-            <div class="field">
-              <label for="edit_warmup">Oppvarming (én linje per steg)</label>
-              <textarea id="edit_warmup" name="warmup" rows="2" placeholder="Warmup 10m Z2">${escapeHtml(fields.warmup || '')}</textarea>
+          <div class="structure-edit builder-panel">
+            <div class="section-head">
+              <h4 class="tight">Øktbygger</h4>
+              <button type="button" class="btn btn-sm secondary" id="builder-add-step">+ Steg</button>
             </div>
-            <div class="field">
-              <label for="edit_main">Hoveddel / intervaller</label>
-              <textarea id="edit_main" name="main" rows="4" placeholder="5x 3 min Z4 / 2 min soft">${escapeHtml(fields.main || '')}</textarea>
+            <p class="muted tight">Steg med type, varighet og intensitet. Lagre i plan først — Sync til Intervals er valgfritt.</p>
+            <div id="builder-steps" class="builder-steps">${builderRows || ''}</div>
+            <div class="builder-live" aria-live="polite">
+              <h4 class="tight">Forhåndsvis struktur</h4>
+              ${builderPreview}
             </div>
-            <div class="field">
-              <label for="edit_cooldown">Nedkjøling</label>
-              <textarea id="edit_cooldown" name="cooldown" rows="2" placeholder="Cooldown 10m">${escapeHtml(fields.cooldown || '')}</textarea>
-            </div>
+            <details class="coach-raw">
+              <summary>Klassisk tekststeg (valgfritt)</summary>
+              <div class="field">
+                <label for="edit_warmup">Oppvarming</label>
+                <textarea id="edit_warmup" name="warmup" rows="2">${escapeHtml(fields.warmup || '')}</textarea>
+              </div>
+              <div class="field">
+                <label for="edit_main">Hoveddel</label>
+                <textarea id="edit_main" name="main" rows="3">${escapeHtml(fields.main || '')}</textarea>
+              </div>
+              <div class="field">
+                <label for="edit_cooldown">Nedkjøling</label>
+                <textarea id="edit_cooldown" name="cooldown" rows="2">${escapeHtml(fields.cooldown || '')}</textarea>
+              </div>
+            </details>
           </div>
           <details class="coach-raw">
             <summary>Rå beskrivelse (valgfri overstyring)</summary>
@@ -2057,9 +2142,10 @@ function renderSessionDetail() {
           </details>
           <input type="hidden" name="external_id" value="${escapeHtml(fields.external_id || '')}" />
           <div class="row-actions">
-            <button type="submit" class="btn btn-primary" ${state.workoutSync.busy ? 'disabled' : ''}>Forhåndsvis endring</button>
+            <button type="button" class="btn btn-primary" id="builder-save-plan" ${state.workoutSync.busy ? 'disabled' : ''}>Lagre i plan</button>
+            <button type="submit" class="btn secondary" ${state.workoutSync.busy ? 'disabled' : ''}>Forhåndsvis Intervals</button>
           </div>
-          <p class="muted tight">Skriver til Intervals først etter bekreftelse (samme flyt som chat).</p>
+          <p class="muted tight">Human Coach: lagring i DB først. Intervals skrives først etter Sync-bekreftelse.</p>
         </form>`
             : `<p class="muted tight">Endre tittel, dato, steg — eller spør coach under.</p>`
         }
@@ -3027,7 +3113,8 @@ function bindApp() {
     try {
       const data = await api(`/v1/sessions/${encodeURIComponent(sessionId)}`)
       state.sessionDetail = data
-      state.sessionEditOpen = Boolean(data.editable)
+      state.sessionEditOpen = Boolean(data.editable) || Boolean(data.session?.app_planned)
+      state.builderSteps = (data.builder_steps || data.editable_fields?.builder_steps || []).map((s, i) => ({ ...s, sort_order: i }))
       state.sessionChat = {
         messages: [],
         draft: '',
@@ -3090,6 +3177,93 @@ function bindApp() {
     render()
   })
 
+  function readBuilderStepsFromDom() {
+    const rows = [...document.querySelectorAll('.builder-step')]
+    return rows.map((row, i) => ({
+      id: `s${i + 1}`,
+      type: row.querySelector('[data-field="type"]')?.value || 'work',
+      duration_minutes: (() => {
+        const v = row.querySelector('[data-field="duration_minutes"]')?.value
+        return v ? Number(v) : null
+      })(),
+      intensity: row.querySelector('[data-field="intensity"]')?.value || null,
+      note: row.querySelector('[data-field="note"]')?.value || null,
+      sort_order: i,
+    }))
+  }
+
+  document.getElementById('builder-add-step')?.addEventListener('click', () => {
+    state.builderSteps = [
+      ...(state.builderSteps || []),
+      {
+        id: `s${Date.now()}`,
+        type: 'work',
+        duration_minutes: 10,
+        intensity: '',
+        note: '',
+        sort_order: (state.builderSteps || []).length,
+      },
+    ]
+    render()
+  })
+  document.querySelectorAll('[data-remove-step]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const i = Number(btn.getAttribute('data-remove-step'))
+      state.builderSteps = (state.builderSteps || []).filter((_, idx) => idx !== i)
+      render()
+    })
+  })
+  document.querySelectorAll('.builder-step [data-field]').forEach((el) => {
+    el.addEventListener('change', () => {
+      state.builderSteps = readBuilderStepsFromDom()
+      render()
+    })
+  })
+  document.getElementById('builder-save-plan')?.addEventListener('click', async () => {
+    const detail = state.sessionDetail?.session
+    if (!detail?.id || state.workoutSync.busy) return
+    const form = document.getElementById('session-edit-form')
+    if (!form) return
+    const fd = new FormData(form)
+    const steps = readBuilderStepsFromDom()
+    if (!steps.length) {
+      toast('Legg til minst ett steg før lagring')
+      return
+    }
+    const durationRaw = String(fd.get('duration_minutes') || '').trim()
+    const payload = {
+      name: String(fd.get('name') || '').trim(),
+      date: String(fd.get('date') || '').trim().slice(0, 10),
+      sport: String(fd.get('sport') || 'other'),
+      start_time: String(fd.get('start_time') || '07:00'),
+      external_id: String(fd.get('external_id') || '') || null,
+      steps,
+      prepare_intervals_sync: false,
+    }
+    if (durationRaw) payload.duration_minutes = Number(durationRaw)
+    state.workoutSync.busy = true
+    state.workoutSync.error = ''
+    render()
+    try {
+      const data = await api(`/v1/sessions/${encodeURIComponent(detail.id)}/builder/confirm`, {
+        method: 'POST',
+        body: payload,
+      })
+      toast(data.message || 'Lagret i planen')
+      if (data.intervals_pending) {
+        state.workoutSync.pending = data.intervals_pending
+      }
+      state.sessionDetail = await api(`/v1/sessions/${encodeURIComponent(detail.id)}`)
+      state.builderSteps = data.builder_steps || state.builderSteps
+    } catch (err) {
+      state.workoutSync.error = err.message || 'Lagring feilet'
+      toast(state.workoutSync.error)
+    } finally {
+      state.workoutSync.busy = false
+      render()
+    }
+  })
+
   document.getElementById('session-edit-form')?.addEventListener('submit', async (e) => {
     e.preventDefault()
     const detail = state.sessionDetail?.session
@@ -3123,6 +3297,9 @@ function bindApp() {
         description = `${head}\n\n---\n\n${description}`
       }
     }
+    const steps = (typeof readBuilderStepsFromDom === 'function')
+      ? readBuilderStepsFromDom()
+      : (state.builderSteps || [])
     const payload = {
       name: String(fd.get('name') || '').trim(),
       date: String(fd.get('date') || '').trim().slice(0, 10),
@@ -3130,6 +3307,7 @@ function bindApp() {
       description,
       start_time: String(fd.get('start_time') || '07:00'),
       external_id: String(fd.get('external_id') || '') || null,
+      steps,
     }
     if (durationRaw) payload.duration_minutes = Number(durationRaw)
     state.workoutSync.busy = true

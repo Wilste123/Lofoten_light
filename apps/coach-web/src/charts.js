@@ -30,13 +30,19 @@ export function volumeBucketTitle(bucket) {
 
 /**
  * Vertical bar chart for period volume (day / week / month / year bars).
- * @param {{ bars: Array<{label:string,hours:number}>, bucket?: string }} volume
+ * @param {{ bars: Array<{label:string,hours:number}>, bucket?: string, series_kind?: string, label_nb?: string }} volume
  */
 export function renderVolumeBars(volume) {
   const bars = volume?.bars || []
   const grain = VOLUME_BUCKET_NB[volume?.bucket] || 'dag'
+  const kind = volume?.series_kind || 'executed'
+  const kindClass = kind === 'planned' ? 'is-planned' : 'is-executed'
+  const kindNote =
+    kind === 'planned'
+      ? '<p class="muted tight chart-kind">Planlagt (planned_sessions) — ikke gjennomført.</p>'
+      : '<p class="muted tight chart-kind">Gjennomført (ICU-aktiviteter).</p>'
   if (!bars.length) {
-    return `<p class="muted tight chart-empty">Ingen volumdata for perioden.</p>`
+    return `${kindNote}<p class="muted tight chart-empty">Ingen volumdata for perioden.</p>`
   }
   const max = Math.max(...bars.map((b) => Number(b.hours) || 0), 0.01)
   const n = bars.length
@@ -50,14 +56,15 @@ export function renderVolumeBars(volume) {
       return `
         <div class="chart-bar-col" title="${esc(title)}">
           <div class="chart-bar-track">
-            <div class="chart-bar" style="height:${pct.toFixed(1)}%"></div>
+            <div class="chart-bar ${kindClass}" style="height:${pct.toFixed(1)}%"></div>
           </div>
           <span class="chart-bar-label ${showLabel ? '' : 'is-hidden'}">${esc(b.label)}</span>
         </div>`
     })
     .join('')
   return `
-    <div class="chart chart-volume" role="img" aria-label="Volum per ${grain}">
+    ${kindNote}
+    <div class="chart chart-volume ${kindClass}" role="img" aria-label="Volum per ${grain} (${kind === 'planned' ? 'planlagt' : 'gjennomført'})">
       <div class="chart-bars">${cols}</div>
     </div>`
 }

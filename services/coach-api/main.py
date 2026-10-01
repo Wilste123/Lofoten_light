@@ -5,15 +5,25 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from pathlib import Path
 from datetime import date
+import logging
+import os
 import re
 from typing import Any
 
-from fastapi import FastAPI, Header, HTTPException, Query
+from fastapi import FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 import config
+
+logger = logging.getLogger("coach-api")
+
+# Set during lifespan when DATABASE_URL/init_db fails — HTTP still serves
+# static + /health so the UI is not wedged behind an infinite spinner.
+_DB_BOOT_ERROR: str | None = None
+
 from athlete_type import (
     SPORT_FOR_TYPE,
     append_type_history,
@@ -156,7 +166,33 @@ from wellness import clear_wellness_cache, resolve_wellness_bundle
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    init_db(config.get_db())
+    """Init DB with fail-fast timeouts; never hang forever on bad DATABASE_URL.
+
+    On Postgres failure we still yield so ``/health`` + static UI answer and the
+    browser can show an error instead of spinning until Fly edge times out.
+    Set ``DB_STRICT_BOOT=1`` to exit the process instead (crash-loop / louder Fly).
+    """
+    global _DB_BOOT_ERROR
+    _DB_BOOT_ERROR = None
+    target = config.get_db()
+    try:
+        init_db(target)
+        logger.info("db boot ok backend=%s", config.db_backend_name())
+    except Exception as exc:
+        msg = str(exc)
+        _DB_BOOT_ERROR = msg
+        logger.exception(
+            "db boot FAILED backend=%s — serving degraded (static+/health). %s",
+            config.db_backend_name(),
+            msg,
+        )
+        strict = (os.environ.get("DB_STRICT_BOOT") or "").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+        if strict:
+            raise SystemExit(f"DB_STRICT_BOOT: {msg}") from exc
     config.ATHLETES_DATA_DIR.mkdir(parents=True, exist_ok=True)
     yield
 
@@ -172,6 +208,25 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def _reject_when_db_down(request: Request, call_next):
+    """Fail-fast 503 on /v1/* when boot-time Postgres init failed."""
+    if _DB_BOOT_ERROR and request.url.path.startswith("/v1/"):
+        return JSONResponse(
+            status_code=503,
+            content={
+                "detail": (
+                    "Database utilgjengelig etter boot. Sjekk DATABASE_URL "
+                    "(sslmode=require for Supabase Session/direct), kjør "
+                    "migrations/001_supabase_schema.sql, deretter "
+                    f"fly logs -a lofoten-coach. ({_DB_BOOT_ERROR[:240]})"
+                ),
+                "db_ok": False,
+            },
+        )
+    return await call_next(request)
 
 
 def _require_athlete(athlete_id: str | None) -> str:
@@ -593,13 +648,25 @@ class WorkoutPreviewIn(BaseModel):
 
 
 @app.get("/health")
-def health() -> dict[str, Any]:
-    return {
-        "status": "ok",
+def health() -> JSONResponse:
+    """Liveness: always answers quickly (even when DB boot failed).
+
+    Fly http_service.checks hit this path — must not block on Postgres.
+    ``db_ok`` / ``db_error`` tell operators why /v1 is 503.
+    """
+    db_ok = _DB_BOOT_ERROR is None
+    body: dict[str, Any] = {
+        "status": "ok" if db_ok else "degraded",
+        "db_ok": db_ok,
         "db_backend": config.db_backend_name(),
         "tier_model": "grov+detalj",
         "detail_weeks": DETAIL_WEEKS,
     }
+    if _DB_BOOT_ERROR:
+        body["db_error"] = _DB_BOOT_ERROR[:500]
+    # 200 so Fly keeps the machine up and static UI can show the error;
+    # operators still see status=degraded / db_ok=false.
+    return JSONResponse(status_code=200, content=body)
 
 
 @app.post("/v1/session/bootstrap")

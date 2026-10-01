@@ -29,12 +29,13 @@ Endpoints: `GET /v1/athlete/me/plan/roll/check`, `POST /v1/athlete/me/plan/roll/
 ## What William creates in Supabase dashboard
 
 1. New project (region close to Fly `ams` if possible).
-2. **Project Settings → Database → Connection string** (URI). Prefer **Session mode** pooler or direct `postgresql://…` for the API (long-lived FastAPI process).
-3. Paste into Fly / local env as `DATABASE_URL` (or `SUPABASE_DB_URL`).
-4. Optional: **Settings → API** → copy `SUPABASE_URL`, `anon` key, `service_role` key (API uses Postgres URL primarily; keys reserved for future Auth / client).
-5. Run SQL: `services/coach-api/migrations/001_supabase_schema.sql` in SQL editor (schema + RLS).  
+2. **Project Settings → Database → Connection string** (URI). Prefer **Session mode** pooler (`:5432`) or direct `db.[REF].supabase.co:5432` for the API (long-lived FastAPI process). Avoid Transaction pooler `:6543` unless you know you need it.
+3. Append **`?sslmode=require`** if the dashboard URI omits it (coach-api also auto-adds `sslmode=require` + `connect_timeout=10` for Supabase hosts — see below).
+4. Paste into Fly / local env as `DATABASE_URL` (or `SUPABASE_DB_URL`).
+5. Optional: **Settings → API** → copy `SUPABASE_URL`, `anon` key, `service_role` key (API uses Postgres URL primarily; keys reserved for future Auth / client).
+6. Run SQL: `services/coach-api/migrations/001_supabase_schema.sql` in SQL editor (schema + RLS).  
    Alternatively boot API once with `DATABASE_URL` set — `init_db()` creates tables (RLS still needs the SQL file).
-6. Map Auth users later via `athletes.auth_user_id` (UUID text). Until then API continues `X-Athlete-Id` + service connection (bypasses RLS).
+7. Map Auth users later via `athletes.auth_user_id` (UUID text). Until then API continues `X-Athlete-Id` + service connection (bypasses RLS).
 
 ## Env vars
 
@@ -46,15 +47,37 @@ Endpoints: `GET /v1/athlete/me/plan/roll/check`, `POST /v1/athlete/me/plan/roll/
 | `SUPABASE_ANON_KEY` | optional | Future client Auth |
 | `SUPABASE_SERVICE_ROLE_KEY` | optional | Future admin / bypass patterns |
 | `DATABASE_PATH` | SQLite fallback | Used when no DATABASE_URL |
+| `PGCONNECT_TIMEOUT` | optional | Seconds (default **10**) — fail-fast connect |
+| `DB_STRICT_BOOT` | optional | `1` = exit process if DB init fails (default: degraded mode) |
 
 Never invent secrets — leave empty until William pastes real values.
+
+### sslmode + stuck loading (Fly)
+
+Bad/missing TLS or an unreachable pooler used to **wedge** `lifespan → init_db → psycopg.connect` with **no timeout**, so uvicorn never answered — TLS at the Fly edge worked, but `/health`, `/`, and `/v1/*` timed out with 0 bytes (browser “infinite loading”).
+
+coach-api now:
+
+1. Auto-adds `sslmode=require` for Supabase / non-localhost URLs when missing.
+2. Sets `connect_timeout` (default 10s, override `PGCONNECT_TIMEOUT`).
+3. On boot failure: serves `/health` (`status=degraded`, `db_ok=false`) + static UI; `/v1/*` returns **503** with a clear message (no hang).
+4. Web bootstrap uses a default fetch timeout and shows login/error instead of a blank `#app`.
+
+**Example URI:**
+
+```text
+postgresql://postgres.[REF]:[PASSWORD]@aws-0-….pooler.supabase.com:5432/postgres?sslmode=require
+```
 
 ### Fly
 
 ```bash
-fly secrets set DATABASE_URL='postgresql://…' --app lofoten-coach
+fly secrets set DATABASE_URL='postgresql://…?sslmode=require' --app lofoten-coach
 # After cutover, SQLite volume is unused for plan rows (profile.md still on /data/athletes).
 fly deploy --app lofoten-coach
+fly logs -a lofoten-coach   # look for "db boot FAILED" / sslmode hints
+curl -sS https://lofoten-coach.fly.dev/health
+# expect db_ok:true — or db_ok:false + db_error (not a hang)
 ```
 
 `fly.toml` still mounts `/data` for `ATHLETES_DATA_DIR` (profile.md). Volume is not required for plan DB once on Supabase.

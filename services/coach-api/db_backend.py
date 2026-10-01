@@ -7,14 +7,20 @@ stays schema-shaped 1:1 across backends. Prefer ``DATABASE_URL`` /
 
 from __future__ import annotations
 
+import os
 import re
 import sqlite3
 from pathlib import Path
 from typing import Any, Iterable, Iterator, Sequence
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 DbTarget = Path | str
 
 _PG_URL_PREFIXES = ("postgres://", "postgresql://", "postgresql+psycopg://")
+
+# Fail-fast defaults — never hang forever on bad DATABASE_URL / pooler / SSL.
+DEFAULT_PG_CONNECT_TIMEOUT_S = 10
+_SUPABASE_HOST_MARKERS = ("supabase.co", "supabase.com", "pooler.supabase")
 
 
 def is_postgres_url(target: DbTarget | None) -> bool:
@@ -24,14 +30,46 @@ def is_postgres_url(target: DbTarget | None) -> bool:
     return s.startswith(_PG_URL_PREFIXES)
 
 
+def _pg_connect_timeout_s() -> int:
+    raw = (os.environ.get("PGCONNECT_TIMEOUT") or "").strip()
+    if raw.isdigit():
+        return max(1, int(raw))
+    return DEFAULT_PG_CONNECT_TIMEOUT_S
+
+
+def _host_looks_like_supabase(host: str) -> bool:
+    h = (host or "").lower()
+    return any(m in h for m in _SUPABASE_HOST_MARKERS)
+
+
 def normalize_pg_url(url: str) -> str:
-    """psycopg accepts postgres://; strip SQLAlchemy-style +psycopg driver."""
+    """Normalize scheme + ensure sslmode/connect_timeout for Supabase/pooler.
+
+    Supabase (direct + pooler) requires TLS. Without ``sslmode=require`` (or
+    ``connect_timeout``), ``psycopg.connect`` can hang until the process is
+    killed — which wedges Fly lifespan so even ``/health`` never answers.
+    """
     u = url.strip()
     if u.startswith("postgresql+psycopg://"):
-        return "postgresql://" + u[len("postgresql+psycopg://") :]
-    if u.startswith("postgres://"):
-        return "postgresql://" + u[len("postgres://") :]
-    return u
+        u = "postgresql://" + u[len("postgresql+psycopg://") :]
+    elif u.startswith("postgres://"):
+        u = "postgresql://" + u[len("postgres://") :]
+
+    parsed = urlparse(u)
+    # Preserve blank password / unusual userinfo; only touch query params.
+    q = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    host = parsed.hostname or ""
+
+    sslmode = (q.get("sslmode") or "").strip().lower()
+    if not sslmode:
+        # Local docker/dev Postgres usually has no TLS; remote/Supabase needs it.
+        if _host_looks_like_supabase(host) or host not in ("", "localhost", "127.0.0.1", "::1"):
+            q["sslmode"] = "require"
+
+    if "connect_timeout" not in q:
+        q["connect_timeout"] = str(_pg_connect_timeout_s())
+
+    return urlunparse(parsed._replace(query=urlencode(q)))
 
 
 def _qmark_to_percent(sql: str) -> str:
@@ -194,7 +232,21 @@ def connect(target: DbTarget) -> Connection:
                 "DATABASE_URL/Supabase Postgres krever psycopg. "
                 "pip install 'psycopg[binary]>=3.1'"
             ) from exc
-        raw = psycopg.connect(normalize_pg_url(str(target)), row_factory=dict_row)
+        timeout_s = _pg_connect_timeout_s()
+        try:
+            raw = psycopg.connect(
+                normalize_pg_url(str(target)),
+                row_factory=dict_row,
+                connect_timeout=timeout_s,
+            )
+        except Exception as exc:
+            # Re-wrap with actionable hint (sslmode / pooler / password).
+            raise RuntimeError(
+                "Postgres-tilkobling feilet innen "
+                f"{timeout_s}s. Sjekk DATABASE_URL (sslmode=require for "
+                "Supabase), Session-pooler :5432 eller direct db.*.supabase.co, "
+                f"passord og nettverk. Årsak: {exc}"
+            ) from exc
         raw.autocommit = False
         return PgConnection(raw)
 

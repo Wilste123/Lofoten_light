@@ -231,11 +231,13 @@ async function api(path, { method = 'GET', body, athleteId, timeoutMs } = {}) {
   const id =
     athleteId === undefined ? getAthleteId() : athleteId || null
   if (id) headers['X-Athlete-Id'] = id
-  const ctrl = typeof timeoutMs === 'number' ? new AbortController() : null
+  // Default timeout so a wedged API (bad DATABASE_URL hang) cannot leave the
+  // UI on a blank/#app forever — bootstrap and login always fail-fast.
+  const ms =
+    typeof timeoutMs === 'number' ? timeoutMs : DEFAULT_API_TIMEOUT_MS
+  const ctrl = ms > 0 ? new AbortController() : null
   const timer =
-    ctrl && timeoutMs > 0
-      ? setTimeout(() => ctrl.abort(), timeoutMs)
-      : null
+    ctrl && ms > 0 ? setTimeout(() => ctrl.abort(), ms) : null
   let res
   try {
     res = await fetch(`${API}${path}`, {
@@ -246,7 +248,9 @@ async function api(path, { method = 'GET', body, athleteId, timeoutMs } = {}) {
     })
   } catch (err) {
     if (err?.name === 'AbortError') {
-      throw new Error('Tidsavbrudd — prøv igjen')
+      throw new Error(
+        'Tidsavbrudd mot API — sjekk at tjenesten svarer (/health) og DATABASE_URL/sslmode.',
+      )
     }
     throw err
   } finally {
@@ -270,6 +274,10 @@ async function api(path, { method = 'GET', body, athleteId, timeoutMs } = {}) {
 
 /** Client wall budget for Intervals save/verify — must exceed server soft-verify (~5s). */
 const INTERVALS_CLIENT_TIMEOUT_MS = 10000
+/** Default fetch budget — prevents infinite spinner when Fly/API/DB is wedged. */
+const DEFAULT_API_TIMEOUT_MS = 15000
+/** Slightly longer for reconnect bootstrap (login + enterApp fan-out). */
+const BOOTSTRAP_API_TIMEOUT_MS = 20000
 
 function setAccent(color) {
   document.documentElement.style.setProperty('--accent', color || ACCENTS[0])
@@ -366,6 +374,7 @@ async function loginSession({ username, athleteId, inviteToken } = {}) {
     method: 'POST',
     body,
     athleteId: null,
+    timeoutMs: BOOTSTRAP_API_TIMEOUT_MS,
   })
   if (!data.athlete) {
     throw new Error(
@@ -405,6 +414,8 @@ async function bootstrap() {
   if (fromUser || fromQuery) {
     state.busy = true
     state.error = ''
+    state.gate = 'login'
+    render()
     try {
       const session = fromUser
         ? await loginSession({ username: fromUser })
@@ -437,6 +448,13 @@ async function bootstrap() {
     return
   }
 
+  // Show a real gate immediately — blank #app looked like an infinite spinner
+  // when /v1/session/login hung on a wedged Postgres lifespan.
+  state.busy = true
+  state.error = ''
+  state.gate = 'login'
+  state.login.athlete_id = id
+  render()
   try {
     const session = await loginWithId(id)
     await enterAfterLogin(session)
@@ -446,6 +464,7 @@ async function bootstrap() {
     state.gate = 'login'
     state.login.athlete_id = id
     state.error = err.message || 'Ukjent profil'
+    state.busy = false
     render()
   }
 }
@@ -3848,5 +3867,5 @@ function bindApp() {
 }
 
 bootstrap().catch((err) => {
-  app.innerHTML = `<div class="onboarding"><h1>Kunne ikke starte</h1><p class="error">${escapeHtml(err.message)}</p><p class="muted">Sjekk at coach-api kjører på port 8000.</p></div>`
+  app.innerHTML = `<div class="onboarding"><h1>Kunne ikke starte</h1><p class="error">${escapeHtml(err.message)}</p><p class="muted">Sjekk /health og DATABASE_URL (sslmode=require for Supabase). coach-api må svare på samme origin.</p></div>`
 })

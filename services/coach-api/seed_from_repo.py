@@ -520,7 +520,9 @@ def seed_athlete(
     root = repo_root or config.REPO_ROOT
     docs = athlete_docs or (root / "docs" / "athlete")
     plans = plans_dir or (root / "plans")
-    database = db_path or config.DATABASE_PATH
+    database = db_path or config.get_db()
+    if database is not None and not isinstance(database, Path):
+        database = str(database)
     out_athletes = athletes_dir or config.ATHLETES_DATA_DIR
 
     payload = build_athlete_payload(
@@ -709,7 +711,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=None,
         help="Override plans/ path",
     )
-    p.add_argument("--db", type=Path, default=None, help="SQLite path")
+    p.add_argument(
+        "--db",
+        default=None,
+        help="SQLite path or Postgres URI (default: config.get_db())",
+    )
     p.add_argument(
         "--athletes-dir",
         type=Path,

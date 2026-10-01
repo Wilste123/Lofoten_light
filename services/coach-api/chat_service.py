@@ -206,6 +206,9 @@ Regler:
   6) ALDRI påstå at noe er synket/pushet til Intervals før utøveren har trykket Ja, sync.
 - Chat og Plan-bygger deler samme modell: workout_proposal / plan_update → preview → confirm →
   lagre planned_sessions (+ plan_blocks). Ikke lag en parallell prosa-plan som ikke kan bekreftes.
+- ALDRI si at økter er lagret/synket/«i Intervals» / «oppdatert» før utøveren har bekreftet kortet.
+  ALDRI be dem redigere Intervals manuelt når Sync-API finnes — fail closed med ærlig feil i stedet.
+- «kan du lage en økt…» / juster fre–lør/helg = WRITE: fence + kort er obligatorisk, ikke bare struktur i prosa.
 - Hvis overblikk mangler ICU-data: si ærlig at *gjennomført* belastning krever Intervals-kobling;
   planlagte økter kan likevel finnes i sessions.planlagt / upcoming fra app-planen.
 - «Hva har jeg denne uka?» / kommende økter: bruk sessions.planlagt / today / upcoming. Ikke finn opp økter.
@@ -346,13 +349,17 @@ _SESSION_INTENT_RE = re.compile(
     r"legg\s+(?:inn|til|på)|"
     r"planlegg|book(?:e)?|"
     r"opprett|"
-    r"lag\s+(?:en\s+)?økt|"
+    # «lag» and «lage» (William: «kan du lage en økt for i morgen»)
+    r"lag(?:e)?\s+(?:en\s+|ei\s+|ett\s+)?(?:økt|trening|pass)|"
+    r"kan\s+du\s+lag(?:e)?|"
+    r"foreslå\s+(?:en\s+)?(?:økt|trening)|"
     r"sett\s+inn|"
     r"putt\s+på|"
     r"kan\s+du\s+legge|"
     r"add\s+(?:a\s+)?(?:workout|session)|"
     r"schedule|"
-    r"create\s+(?:a\s+)?workout"
+    r"create\s+(?:a\s+)?workout|"
+    r"make\s+(?:a\s+)?(?:workout|session)"
     r")",
     re.IGNORECASE,
 )
@@ -362,11 +369,19 @@ _PLAN_ADJUST_INTENT_RE = re.compile(
     r"lett(?:e)?\s+(?:denne\s+)?uka|"
     r"lette\s+uka|"
     r"ease\s+(?:the\s+)?week|"
-    r"juster\s+(?:planen|uka|grovplanen)|"
+    r"juster\s+(?:planen|uka|grovplanen|helg(?:a|en)?|fre|lør|søn)|"
     r"bygg\s+om\s+(?:planen|uka|grovplanen)|"
-    r"endre\s+(?:planen|grovplanen)|"
+    r"endre\s+(?:planen|grovplanen|uka|helg(?:a|en)?|fre|lør)|"
+    r"oppdater\s+(?:planen|uka|helg(?:a|en)?|fre|lør|søn)|"
     r"ny\s+(?:ukeplan|grovplan)|"
-    r"rebuild\s+(?:plan|week)"
+    r"rebuild\s+(?:plan|week)|"
+    # Multi-day / weekend (fre–lør / helg) without requiring «planen»
+    r"(?:juster|endre|oppdater|lette?)\s+"
+    r"(?:fre(?:dag)?|lør(?:dag)?|søn(?:dag)?|helg(?:a|en)?)"
+    r"(?:\s*(?:[-–og,&/]|til|og)\s*"
+    r"(?:fre(?:dag)?|lør(?:dag)?|søn(?:dag)?|helg(?:a|en)?))?|"
+    r"(?:fre|lør|søn|fredag|lørdag|søndag)\s*[-–]\s*"
+    r"(?:fre|lør|søn|fredag|lørdag|søndag)"
     r")",
     re.IGNORECASE,
 )
@@ -374,34 +389,40 @@ _PLAN_ADJUST_INTENT_RE = re.compile(
 # Sync existing app plan → Intervals (not invent a new week).
 _INTERVALS_PLAN_SYNC_INTENT_RE = re.compile(
     r"(?:"
-    r"(?:legg\s+(?:inn|til|på)\s+(?:resten\s+av\s+)?(?:planen|øktene|uka)|"
-    r"synk(?:e|roniser)?\s+(?:resten\s+av\s+)?(?:planen|øktene)|"
-    r"push(?:e)?\s+(?:resten\s+av\s+)?(?:planen|øktene)|"
-    r"send\s+(?:resten\s+av\s+)?(?:planen|øktene))"
+    r"(?:legg\s+(?:inn|til|på)\s+(?:resten\s+av\s+)?(?:planen|øktene|uka|dette|denne|forslaget)|"
+    r"synk(?:e|roniser)?\s+(?:resten\s+av\s+)?(?:planen|øktene|dette|denne)|"
+    r"push(?:e)?\s+(?:resten\s+av\s+)?(?:planen|øktene|dette|denne)|"
+    r"send\s+(?:resten\s+av\s+)?(?:planen|øktene|dette|denne)|"
+    r"oppdater\s+(?:resten\s+av\s+)?(?:planen|øktene|uka|dette|denne|forslaget|det)?)"
     r".{0,40}?"
     r"(?:intervals|icu)|"
     r"(?:intervals|icu).{0,40}?"
-    r"(?:legg\s+(?:inn|til|på)|synk|push|send).{0,40}?"
-    r"(?:planen|øktene|resten)|"
+    r"(?:legg\s+(?:inn|til|på)|synk|push|send|oppdater).{0,40}?"
+    r"(?:planen|øktene|resten|dette|denne|forslaget)?|"
     r"sync\s+(?:the\s+)?plan\s+(?:to\s+)?intervals|"
     r"push\s+(?:the\s+)?plan\s+to\s+intervals|"
     r"put\s+(?:the\s+)?(?:rest\s+of\s+(?:the\s+)?)?plan\s+(?:on|into|in)\s+intervals|"
     # Short / English sync phrases (Kent: «sync til intervals»)
     r"(?:kjør\s+)?(?:sync|synk)(?:\s+til)?\s+(?:intervals|icu)|"
     r"(?:sync|synk)\s+(?:nå|planen|øktene|resten)|"
-    r"push\s+(?:til|to)\s+(?:intervals|icu)"
+    r"push\s+(?:til|to)\s+(?:intervals|icu)|"
+    # «oppdater (dette) til intervals» / «oppdater intervals»
+    r"oppdater(?:\s+(?:dette|denne|forslaget|planen|øktene|det))?\s+"
+    r"(?:til|på|i)\s+(?:intervals|icu)|"
+    r"oppdater\s+(?:intervals|icu)"
     r")",
     re.IGNORECASE | re.DOTALL,
 )
 
-# Follow-up after coach already offered Sync preview («sync», «go», «ja»).
+# Follow-up after coach already offered Sync / write preview («sync», «go», «ja», «ok»).
 _SYNC_CONFIRM_FOLLOWUP_RE = re.compile(
     r"^\s*(?:"
     r"sync|synk|go|kjør|"
-    r"ja(?:\s*,?\s*(?:takk|sync|synk|gjør\s+det|push|bekreft))?|"
+    r"ja(?:\s*,?\s*(?:takk|sync|synk|gjør\s+det|push|bekreft|oppdater))?|"
     r"bekreft(?:\s+sync)?|"
     r"gjør\s+det|"
     r"push\s+det|"
+    r"oppdater(?:\s+det)?|"
     r"ok(?:ay)?|"
     r"yes|"
     r"do\s+it"
@@ -413,6 +434,7 @@ _ASSISTANT_SYNC_OFFER_MARKERS = (
     "nærvindu",
     "sync-forhåndsvis",
     "bekreft sync",
+    "bekreft sync-forhåndsvisningen",
     "synker ikke hele horisonten",
     "planned_sessions",
     "intervals er ikke koblet",
@@ -422,6 +444,54 @@ _ASSISTANT_SYNC_OFFER_MARKERS = (
     "fra lagrede planned_sessions",
     "synke nærvinduet",
     "koble intervals",
+    "intervals_sync_intent",
+    "skal jeg synce",
+    "skal jeg pushe",
+    "vil du at jeg synker",
+    "vil du at jeg pusher",
+)
+
+# Assistant offered a confirmable write (workout / week) — «ok» must not invent success.
+_ASSISTANT_WRITE_OFFER_MARKERS = (
+    "bekreft",
+    "forhåndsvis",
+    "legger jeg det inn",
+    "legger jeg inn",
+    "så legger jeg",
+    "når du bekrefter",
+    "trykk ja",
+    "workout_proposal",
+    "plan_update",
+    "warmup",
+    "oppvarming",
+    "hoveddel",
+    "nedkjøling",
+    "cooldown",
+    "varighet",
+    "duration_minutes",
+)
+
+_WRITE_SUCCESS_CLAIM_RE = re.compile(
+    r"(?:"
+    r"jeg\s+har\s+(?:nå\s+)?(?:oppdatert|synket|pushet|lagt\s+inn|lagret|skrevet)|"
+    r"(?:økten|øktene|planen|endringen|endringene)\s+(?:er|ble)\s+"
+    r"(?:nå\s+)?(?:oppdatert|synket|lagt\s+inn|lagret|på\s+plass)|"
+    r"(?:ligger|står)\s+nå\s+(?:i|på)\s+intervals|"
+    r"er\s+(?:nå\s+)?(?:synket|pushet|lagt\s+inn)\s+(?:til|i|på)\s+intervals|"
+    r"ferdig\s+(?:oppdatert|synket)|"
+    r"i'?ve\s+(?:updated|synced|pushed|saved)|"
+    r"(?:it'?s|workouts?\s+are)\s+(?:now\s+)?(?:in|on)\s+intervals|"
+    r"manuelt\s+i\s+intervals|"
+    r"rediger(?:e)?\s+(?:det\s+)?manuelt\s+(?:i|på)\s+intervals|"
+    r"gå\s+inn\s+i\s+intervals\s+og\s+(?:legg|endre|oppdater)"
+    r")",
+    re.IGNORECASE,
+)
+
+_HONEST_NO_WRITE_YET_NB = (
+    "Ingenting er lagret eller synket ennå. "
+    "Bruk forhåndsvisningskortet → bekreft (app-plan først; Intervals kun via Sync). "
+    "Jeg synker ikke selv, og jeg ber deg ikke redigere Intervals manuelt når API-et finnes."
 )
 
 _SPORT_WORD_RE = re.compile(
@@ -489,6 +559,112 @@ def user_confirms_intervals_plan_sync(
     return assistant_offered_intervals_sync(recent_messages)
 
 
+def _latest_assistant_text(
+    recent_messages: list[dict[str, Any]] | None,
+) -> str:
+    for msg in reversed(list(recent_messages or [])[-8:]):
+        if (msg.get("role") or "") == "assistant" and (msg.get("content") or "").strip():
+            return str(msg.get("content") or "")
+    return ""
+
+
+def assistant_offered_write_confirm(
+    recent_messages: list[dict[str, Any]] | None,
+) -> bool:
+    """True when latest assistant turn offered a confirmable write (not yet synced)."""
+    text = _latest_assistant_text(recent_messages).lower()
+    if not text:
+        return False
+    if any(marker in text for marker in _ASSISTANT_WRITE_OFFER_MARKERS):
+        return True
+    # Structured prose (date + duration + sport) without fence still counts.
+    if _ISO_DATE_RE.search(text) and _DURATION_RE.search(text) and _SPORT_WORD_RE.search(
+        text
+    ):
+        return True
+    if _relative_date_hint(text) and _DURATION_RE.search(text):
+        return True
+    return False
+
+
+def _relative_date_hint(text: str) -> bool:
+    raw = (text or "").lower()
+    return bool(
+        re.search(
+            r"\bi\s+morgen\b|\btomorrow\b|\bi\s+dag\b|\btoday\b|"
+            r"\b(?:mandag|tirsdag|onsdag|torsdag|fredag|lørdag|søndag|"
+            r"monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b",
+            raw,
+        )
+    )
+
+
+def user_confirms_pending_write(
+    message: str,
+    recent_messages: list[dict[str, Any]] | None = None,
+) -> bool:
+    """True for short «ok»/«ja»/«oppdater» after coach offered a write card/prose.
+
+    Must never reach the LLM as «jeg har oppdatert» — reopen proposal or sync.
+    """
+    text = (message or "").strip()
+    if not text:
+        return False
+    # Explicit sync phrases are handled by intervals path, not this helper.
+    if user_requests_intervals_plan_sync(text):
+        return False
+    if user_requests_session_change(text) or user_requests_plan_adjust(text):
+        return False
+    if not _SYNC_CONFIRM_FOLLOWUP_RE.match(text):
+        return False
+    if assistant_offered_intervals_sync(recent_messages):
+        return False  # sync confirm path owns these
+    return assistant_offered_write_confirm(recent_messages)
+
+
+def sanitize_unconfirmed_write_claims(
+    reply: str,
+    *,
+    has_confirm_card: bool,
+) -> str:
+    """Strip/block success claims when no preview→confirm card is attached.
+
+    Fail closed: never let prose say workouts are in Intervals/app without a card.
+    """
+    text = (reply or "").strip()
+    if not text:
+        return text
+    if has_confirm_card:
+        # Even with a card, kill premature «already synced» / «edit manually» lines.
+        if not _WRITE_SUCCESS_CLAIM_RE.search(text):
+            return text
+        cleaned = _WRITE_SUCCESS_CLAIM_RE.sub("", text)
+        cleaned = re.sub(r"[ \t]+\n", "\n", cleaned)
+        cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+        cleaned = re.sub(r"\.\s*\.", ".", cleaned)
+        cleaned = cleaned.strip(" \t\n.")
+        if cleaned and "forhåndsvis" not in cleaned.lower() and "bekreft" not in cleaned.lower():
+            cleaned = (
+                f"{cleaned}.\n\n"
+                "Ingenting er synket ennå — bruk forhåndsvisningskortet → bekreft."
+            )
+        return cleaned or (
+            "Forslaget er klart. Bekreft i forhåndsvisningskortet — "
+            "ingenting er lagret/synket før du trykker Ja."
+        )
+    if not _WRITE_SUCCESS_CLAIM_RE.search(text):
+        # Also catch soft «jeg oppdaterer nå» without the full claim regex
+        soft = re.search(
+            r"jeg\s+(?:oppdaterer|synker|pusher|legger\s+inn)\s+nå|"
+            r"nå\s+er\s+(?:det|økten|planen)\s+(?:i|på)\s+intervals",
+            text,
+            re.IGNORECASE,
+        )
+        if not soft:
+            return text
+    return _HONEST_NO_WRITE_YET_NB
+
+
 def user_requests_session_change(message: str) -> bool:
     """True when the athlete clearly asks to add/change a concrete session."""
     text = (message or "").strip()
@@ -509,6 +685,73 @@ def user_requests_plan_adjust(message: str) -> bool:
     if user_requests_intervals_plan_sync(text):
         return False
     return bool(_PLAN_ADJUST_INTENT_RE.search(text))
+
+
+def write_intent_kind(message: str) -> str | None:
+    """Return 'sync' | 'session' | 'plan' | None for deterministic write routing."""
+    text = (message or "").strip()
+    if not text:
+        return None
+    if user_requests_intervals_plan_sync(text):
+        return "sync"
+    if user_requests_session_change(text):
+        return "session"
+    if user_requests_plan_adjust(text):
+        return "plan"
+    return None
+
+
+def reopen_pending_write_reply(
+    recent_messages: list[dict[str, Any]] | None,
+    *,
+    today: date | None = None,
+) -> tuple[str, dict[str, Any] | None, dict[str, Any] | None]:
+    """Rebuild proposal from last assistant turn when user says «ok»/«ja».
+
+    Returns (reply, workout_proposal|None, plan_prop|None). Never claims success.
+    """
+    last = _latest_assistant_text(recent_messages)
+    day0 = today or date.today()
+    # Prefer extracting a real fence if the model had one in history (rare).
+    _disp, fence_wp = extract_workout_proposal(last)
+    if fence_wp:
+        return (
+            "Forslaget ligger klart — bekreft forhåndsvisningskortet. "
+            "Ingenting er lagret eller synket før du trykker Ja.",
+            fence_wp,
+            None,
+        )
+    _disp, fence_pl = extract_plan_update(last)
+    if fence_pl and fence_pl.get("rebuild"):
+        return (
+            "Planjusteringen ligger klar — bekreft forhåndsvisningen. "
+            "Ingenting er lagret før du bekrefter.",
+            None,
+            fence_pl,
+        )
+    # Seed a synthetic user message so session-change gate passes.
+    seed = "legg inn økt " + (last[:240] if last else "i morgen")
+    inferred = infer_workout_proposal_fallback(seed, last, today=day0)
+    if inferred:
+        return (
+            "Jeg har fortsatt forslaget klart — bekreft kortet for å lagre i planen "
+            "(deretter Sync til Intervals om du vil). "
+            "Jeg har ikke oppdatert noe ennå.",
+            inferred,
+            None,
+        )
+    plan_fb = infer_plan_update_fallback("juster uka")
+    if last and any(
+        m in last.lower()
+        for m in ("uke", "helg", "fredag", "lørdag", "plan", "juster")
+    ):
+        return (
+            "Bekreft uke-/planjustering via forhåndsvisningskortet. "
+            "Jeg har ikke oppdatert Intervals eller planen ennå.",
+            None,
+            plan_fb,
+        )
+    return (_HONEST_NO_WRITE_YET_NB, None, None)
 
 
 def plan_summary_for_chat(
@@ -755,8 +998,16 @@ def infer_plan_update_fallback(user_message: str) -> dict[str, Any] | None:
     if not user_requests_plan_adjust(user_message):
         return None
     text = (user_message or "").lower()
-    week = bool(
-        re.search(r"\buke\b|\bweek\b|denne\s+uka|lette?\s+uka", text)
+    multi_day = bool(
+        re.search(
+            r"helg(?:a|en)?|fre(?:dag)?|lør(?:dag)?|søn(?:dag)?|"
+            r"fri(?:day)?|sat(?:urday)?|sun(?:day)?",
+            text,
+        )
+    )
+    week = (
+        bool(re.search(r"\buke\b|\bweek\b|denne\s+uka|lette?\s+uka", text))
+        or multi_day
     ) and not bool(re.search(r"hele\s+planen|full\s+plan|sesong", text))
     ease = bool(re.search(r"lett|ease|letter|recover|hvile", text))
     return {

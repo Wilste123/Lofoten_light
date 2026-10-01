@@ -1100,6 +1100,12 @@ function applyChatResponse(data, { mirrorToMain = false, userText = '' } = {}) {
     state.sync.error = data.intervals_prep_error
     toast(data.intervals_prep_error)
   }
+  // Never toast «done» from prose-only writes — card or honest block only.
+  if (data.write_blocked_no_card) {
+    toast('Ingenting lagret — mangler bekreftelseskort')
+  } else if (data.pending_write_reopen && !data.workout_proposal?.workouts?.length && !planHasWeek && !planHasFull) {
+    toast('Ingenting oppdatert — bekreft via kortet eller gjenta forespørselen')
+  }
   if (mirrorToMain && userText) {
     state.messages = [
       ...state.messages,

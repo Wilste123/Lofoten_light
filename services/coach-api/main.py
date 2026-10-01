@@ -36,8 +36,14 @@ from chat_service import (
     intervals_plan_sync_reply_nb,
     knowledge_meta_for_chat,
     plan_summary_for_chat,
+    reopen_pending_write_reply,
+    sanitize_unconfirmed_write_claims,
     user_confirms_intervals_plan_sync,
+    user_confirms_pending_write,
     user_requests_intervals_plan_sync,
+    user_requests_plan_adjust,
+    user_requests_session_change,
+    write_intent_kind,
 )
 from db import (
     add_message,
@@ -1369,6 +1375,17 @@ def chat(
             sessions_snap=sessions_snap,
             overview_app_plan=overview["app_plan"],
         )
+    # «ok» / «ja» after prose write offer → reopen card; never LLM «jeg har oppdatert».
+    if user_confirms_pending_write(body.message, history):
+        return _chat_reopen_pending_write(
+            aid=aid,
+            athlete=athlete,
+            body_message=body.message,
+            history=history,
+            sessions_snap=sessions_snap,
+            overview_app_plan=overview["app_plan"],
+            sessions_bundle=sessions_bundle,
+        )
     # Wellness as signals for coach context (soft-fail, never blocks chat)
     try:
         wl = resolve_wellness_bundle(
@@ -1679,6 +1696,197 @@ def chat(
                 "Kunne ikke bygge planforhåndsvisning automatisk — "
                 "bruk Du → «Snakk med treneren om endringene»."
             )
+    # Fail closed: strip hallucinated write/sync success when no confirm card.
+    has_card = bool(
+        (out.get("workout_proposal") or {}).get("workouts")
+        or out.get("plan_proposal")
+        or out.get("workout_removal")
+        or out.get("agreements_proposal")
+        or out.get("athlete_type_proposal")
+        or out.get("intervals_pending")
+    )
+    write_kind = write_intent_kind(body.message)
+    if write_kind in ("session", "plan") and not has_card:
+        # Intent was a write but LLM returned prose only — last-chance fallback
+        if write_kind == "session" and not proposal:
+            proposal = infer_workout_proposal_fallback(
+                body.message, raw_reply, today=date.today()
+            )
+            if proposal:
+                gate = validate_workouts_against_constraints(
+                    athlete,
+                    proposal.get("workouts") or [],
+                    existing_planned_this_week=_count_planned_this_week(sessions_bundle),
+                )
+                if gate["ok"] or gate.get("accepted"):
+                    accepted = (
+                        proposal.get("workouts")
+                        if gate["ok"]
+                        else gate["accepted"]
+                    )
+                    out["workout_proposal"] = {"workouts": accepted, "inferred": True}
+                    out["confirm_required"] = True
+                    out["proposal_inferred"] = True
+                    out["proposal_hint"] = (
+                        "Treneren foreslo økt(er). "
+                        "Trykk Forhåndsvis → bekreft for å lagre i planen."
+                    )
+                    has_card = True
+        if write_kind == "plan" and not out.get("plan_proposal"):
+            plan_prop = infer_plan_update_fallback(body.message)
+            if plan_prop:
+                # Re-enter plan build path lightly — week scope only for safety
+                try:
+                    if (plan_prop.get("scope") or "full") == "week":
+                        with db_session(config.DATABASE_PATH) as conn:
+                            blocks = list_plan_blocks(conn, aid)
+                            existing_n = count_planned_sessions(conn, aid)
+                        if blocks:
+                            week_built = build_week_adjust_sessions(
+                                blocks,
+                                athlete=athlete,
+                                week_start=plan_prop.get("week_start") or "this_week",
+                                ease_load=bool(plan_prop.get("ease_load")),
+                            )
+                            out["plan_proposal"] = {
+                                **plan_prop,
+                                "scope": "week",
+                                "week_start": week_built["week_start"],
+                                "week_end": week_built["week_end"],
+                                "sessions": week_built["sessions"],
+                                "count": week_built["count"],
+                                "planned_sessions_count": existing_n,
+                                "confirm_hint": (
+                                    f"Bekreft for å erstatte kun uka "
+                                    f"{week_built['week_start']}–{week_built['week_end']}."
+                                ),
+                            }
+                            out["confirm_required"] = True
+                            out["plan_hint"] = plan_prop.get("message")
+                            has_card = True
+                except Exception:  # noqa: BLE001
+                    pass
+        if not has_card:
+            out["reply"] = sanitize_unconfirmed_write_claims(
+                out.get("reply") or "", has_confirm_card=False
+            )
+            if write_kind == "session":
+                out["reply"] = (
+                    (out.get("reply") or "").rstrip()
+                    + "\n\n"
+                    + "Jeg trenger en bekreftbar økt (dato + varighet). "
+                    "Si f.eks. «legg inn rolig løp i morgen 40 min» — "
+                    "da får du forhåndsvisningskort. Ingenting er lagret ennå."
+                )
+            out["write_blocked_no_card"] = True
+    else:
+        out["reply"] = sanitize_unconfirmed_write_claims(
+            out.get("reply") or "", has_confirm_card=has_card
+        )
+    return out
+
+
+def _chat_reopen_pending_write(
+    *,
+    aid: str,
+    athlete: dict[str, Any],
+    body_message: str,
+    history: list[dict[str, Any]],
+    sessions_snap: dict[str, Any],
+    overview_app_plan: dict[str, Any],
+    sessions_bundle: dict[str, Any],
+) -> dict[str, Any]:
+    """Short «ok»/«ja» after write offer → re-show card; never claim success."""
+    reply, proposal, plan_prop = reopen_pending_write_reply(
+        history, today=date.today()
+    )
+    with db_session(config.DATABASE_PATH) as conn:
+        add_message(conn, aid, "user", body_message)
+        asst = add_message(conn, aid, "assistant", reply)
+    out: dict[str, Any] = {
+        "reply": reply,
+        "message": asst,
+        "sessions_in_context": True,
+        "sessions_source": sessions_snap.get("source"),
+        "app_plan": overview_app_plan,
+        "pending_write_reopen": True,
+        "workout_proposal": None,
+        "plan_proposal": None,
+    }
+    if proposal and proposal.get("workouts"):
+        planned_this_week = _count_planned_this_week(sessions_bundle)
+        gate = validate_workouts_against_constraints(
+            athlete,
+            proposal.get("workouts") or [],
+            existing_planned_this_week=planned_this_week,
+        )
+        if gate["ok"]:
+            out["workout_proposal"] = proposal
+            out["confirm_required"] = True
+            out["proposal_inferred"] = True
+            out["proposal_hint"] = (
+                "Bekreft forhåndsvisningskortet — ingenting er lagret/synket ennå."
+            )
+        elif gate.get("accepted"):
+            out["workout_proposal"] = {"workouts": gate["accepted"], "inferred": True}
+            out["confirm_required"] = True
+            out["proposal_inferred"] = True
+            out["constraint_reasons"] = gate.get("reasons")
+        else:
+            out["reply"] = sanitize_unconfirmed_write_claims(
+                reply, has_confirm_card=False
+            )
+            out["workout_proposal_blocked"] = True
+            out["constraint_reasons"] = gate.get("reasons")
+    elif plan_prop and plan_prop.get("rebuild"):
+        try:
+            with db_session(config.DATABASE_PATH) as conn:
+                blocks = list_plan_blocks(conn, aid)
+                existing_n = count_planned_sessions(conn, aid)
+            if blocks and (plan_prop.get("scope") or "week") == "week":
+                week_built = build_week_adjust_sessions(
+                    blocks,
+                    athlete=athlete,
+                    week_start=plan_prop.get("week_start") or "this_week",
+                    ease_load=bool(plan_prop.get("ease_load")),
+                )
+                out["plan_proposal"] = {
+                    **plan_prop,
+                    "scope": "week",
+                    "week_start": week_built["week_start"],
+                    "week_end": week_built["week_end"],
+                    "sessions": week_built["sessions"],
+                    "count": week_built["count"],
+                    "planned_sessions_count": existing_n,
+                    "confirm_hint": (
+                        f"Bekreft for å erstatte kun uka "
+                        f"{week_built['week_start']}–{week_built['week_end']}."
+                    ),
+                }
+                out["confirm_required"] = True
+                out["plan_hint"] = (
+                    "Bekreft planjustering — ingenting er lagret/synket ennå."
+                )
+            else:
+                out["reply"] = sanitize_unconfirmed_write_claims(
+                    reply, has_confirm_card=False
+                )
+        except Exception as exc:  # noqa: BLE001
+            out["reply"] = (
+                sanitize_unconfirmed_write_claims(reply, has_confirm_card=False)
+                + f" ({format_exc_nb(exc)})"
+            )
+    else:
+        out["reply"] = sanitize_unconfirmed_write_claims(
+            out.get("reply") or reply, has_confirm_card=False
+        )
+    # Final sanitize — never claim success from this path
+    has_card = bool(
+        (out.get("workout_proposal") or {}).get("workouts") or out.get("plan_proposal")
+    )
+    out["reply"] = sanitize_unconfirmed_write_claims(
+        out.get("reply") or "", has_confirm_card=has_card
+    )
     return out
 
 

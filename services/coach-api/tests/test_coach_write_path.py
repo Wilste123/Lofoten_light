@@ -188,7 +188,7 @@ def test_ok_after_prose_write_reopens_card_not_llm_success():
     assert user_confirms_pending_write("oppdater", [offer]) is True
     reply, prop, plan = reopen_pending_write_reply([offer], today=date(2026, 10, 1))
     assert prop and prop.get("workouts")
-    assert "ikke oppdatert" in reply.lower() or "bekreft" in reply.lower()
+    assert "kort" in reply.lower() or "forhåndsvis" in reply.lower()
     assert "jeg har oppdatert" not in reply.lower()
     assert plan is None
 

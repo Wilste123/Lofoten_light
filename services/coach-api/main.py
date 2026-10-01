@@ -36,6 +36,7 @@ from athlete_constraints import ICU_SYNC_WEEKS, validate_workouts_against_constr
 from chat_service import (
     build_system_prompt,
     call_llm,
+    confirm_write_success_reply_nb,
     extract_agreements_update,
     extract_plan_update,
     extract_workout_proposal,
@@ -48,11 +49,14 @@ from chat_service import (
     plan_summary_for_chat,
     reopen_pending_write_reply,
     sanitize_unconfirmed_write_claims,
+    strip_workout_json_from_prose,
     user_confirms_intervals_plan_sync,
     user_confirms_pending_write,
+    user_requests_confirm_and_push,
     user_requests_intervals_plan_sync,
     user_requests_plan_adjust,
     user_requests_session_change,
+    workout_proposal_history_summary,
     write_intent_kind,
 )
 from db import (
@@ -1541,6 +1545,20 @@ def chat(
         intervals_connected=intervals_ok,
         icu_sync_weeks=ICU_SYNC_WEEKS,
     )
+    # One-shot: «bekreft og push til intervals» → save proposed session + same ICU event.
+    # Must run before plan-sync intent (which also matches «push til intervals»).
+    if user_requests_confirm_and_push(body.message):
+        return _chat_confirm_and_push_workout(
+            aid=aid,
+            athlete=athlete,
+            body_message=body.message,
+            history=history,
+            secrets=secrets,
+            intervals_ok=intervals_ok,
+            sessions_snap=sessions_snap,
+            overview_app_plan=overview["app_plan"],
+            sessions_bundle=sessions_bundle,
+        )
     # Deterministic: push/sync plan → Intervals near window from stored SoT.
     # Also catch Kent follow-ups («sync» / «go») after coach already offered Sync.
     if user_requests_intervals_plan_sync(
@@ -1682,6 +1700,13 @@ def chat(
             reply_pl = (reply_pl or raw_reply or "").strip()
     displays = [d for d in (reply_wp, reply_rm, reply_ty, reply_ag, reply_pl) if d]
     reply = min(displays, key=len) if displays else raw_reply.strip()
+    # Prefer card over JSON-in-chat — always strip workouts fences from prose.
+    reply = strip_workout_json_from_prose(reply) or reply
+    # Keep clean structure in history so «bekreft og push» recovers the same session.
+    if proposal:
+        summary = workout_proposal_history_summary(proposal)
+        if summary and summary.split("\n", 1)[0] not in reply:
+            reply = f"{reply}\n\n{summary}".strip()
 
     with db_session(config.get_db()) as conn:
         add_message(conn, aid, "user", body.message)
@@ -2146,6 +2171,255 @@ def _maybe_attach_plan_roll(
         add_message(conn, aid, "assistant", soft.strip())
         mark_detalj_roll_offered(conn, aid)
     return out
+
+
+def _chat_confirm_and_push_workout(
+    *,
+    aid: str,
+    athlete: dict[str, Any],
+    body_message: str,
+    history: list[dict[str, Any]],
+    secrets: dict[str, Any] | None,
+    intervals_ok: bool,
+    sessions_snap: dict[str, Any],
+    overview_app_plan: dict[str, Any],
+    sessions_bundle: dict[str, Any],
+) -> dict[str, Any]:
+    """One-shot: persist proposed workout then ICU-push the *same* session.
+
+    Uses ``build_workout_events`` → CLI ``build_workout_event`` (not a 10min stub).
+    """
+    last = ""
+    for msg in reversed(list(history or [])[-8:]):
+        if (msg.get("role") or "") == "assistant" and (msg.get("content") or "").strip():
+            last = str(msg.get("content") or "")
+            break
+    _disp, proposal = extract_workout_proposal(last)
+    if not proposal or not proposal.get("workouts"):
+        # Clean seed — never embed reply text that mentions Sync/push (blocks session gate).
+        seed = "legg inn økt i morgen"
+        m_iso = None
+        from chat_service import _ISO_DATE_RE as _iso
+
+        m_iso = _iso.search(last)
+        if m_iso:
+            seed = f"legg inn økt {m_iso.group(1)}"
+        proposal = infer_workout_proposal_fallback(
+            seed, last, today=date.today()
+        )
+    workouts = (proposal or {}).get("workouts") or []
+    if not workouts:
+        reply = (
+            "Fant ingen bekreftbar økt i forrige forslag. "
+            "Be om økta på nytt, så får du kortet — deretter «bekreft og push til intervals»."
+        )
+        with db_session(config.get_db()) as conn:
+            add_message(conn, aid, "user", body_message)
+            asst = add_message(conn, aid, "assistant", reply)
+        return {
+            "reply": reply,
+            "message": asst,
+            "pending_write_reopen": True,
+            "confirm_push_failed": True,
+            "app_plan": overview_app_plan,
+            "sessions_in_context": True,
+            "sessions_source": sessions_snap.get("source"),
+        }
+
+    with db_session(config.get_db()) as conn:
+        planned_n = _count_planned_this_week_db(conn, aid)
+    gate = validate_workouts_against_constraints(
+        athlete,
+        workouts,
+        existing_planned_this_week=planned_n,
+    )
+    if not gate["accepted"]:
+        if gate.get("cap_hit"):
+            out: dict[str, Any] = {
+                "reply": (
+                    "Uka er full mot avtalen — velg økt å erstatte i kortet, "
+                    "deretter bekreft. Ingenting er pushet ennå."
+                ),
+                "pending_write_reopen": True,
+                "app_plan": overview_app_plan,
+                "sessions_in_context": True,
+                "sessions_source": sessions_snap.get("source"),
+            }
+            _attach_cap_replace_offer(
+                out, aid=aid, proposal={"workouts": workouts}, gate=gate, reply=out["reply"]
+            )
+            with db_session(config.get_db()) as conn:
+                add_message(conn, aid, "user", body_message)
+                asst = add_message(conn, aid, "assistant", out["reply"])
+            out["message"] = asst
+            return out
+        reply = (
+            gate.get("ask")
+            or " ".join((gate.get("reasons") or [])[:2])
+            or "Avtale blokkerer lagring."
+        )
+        with db_session(config.get_db()) as conn:
+            add_message(conn, aid, "user", body_message)
+            asst = add_message(conn, aid, "assistant", reply)
+        return {
+            "reply": reply,
+            "message": asst,
+            "workout_proposal_blocked": True,
+            "constraint_reasons": gate.get("reasons"),
+            "app_plan": overview_app_plan,
+        }
+
+    workouts_ok = gate["accepted"]
+    try:
+        events = build_workout_events(workouts_ok, athlete=athlete)
+    except Exception as exc:  # noqa: BLE001
+        from plan_workouts import format_exc_nb as _fmt
+
+        reply = (
+            f"Kunne ikke bygge Intervals-struktur for økta: {_fmt(exc)}. "
+            "Prøv Forhåndsvis på kortet, eller si ifra."
+        )
+        with db_session(config.get_db()) as conn:
+            add_message(conn, aid, "user", body_message)
+            asst = add_message(conn, aid, "assistant", reply)
+        return {
+            "reply": reply,
+            "message": asst,
+            "confirm_push_failed": True,
+            "workout_proposal": {"workouts": workouts_ok},
+            "confirm_required": True,
+            "app_plan": overview_app_plan,
+        }
+
+    key = ((secrets or {}).get("intervals_api_key") or "").strip()
+    icu = ((secrets or {}).get("intervals_athlete_id") or "").strip()
+    want_icu = bool(intervals_ok and key and icu)
+
+    planned_rows: list[dict[str, Any]] = []
+    for i, w in enumerate(workouts_ok):
+        day = str(w.get("date") or "")[:10]
+        name = str(w.get("name") or "").strip()
+        if not day or not name:
+            continue
+        external = events[i].get("external_id") if i < len(events) else None
+        # Prefer structured description from the built ICU event (clean, no JSON)
+        icu_desc = ""
+        if i < len(events):
+            icu_desc = str(events[i].get("description") or "").strip()
+        from plan_workouts import chat_workout_icu_description
+
+        row_desc = icu_desc or chat_workout_icu_description(w)
+        row: dict[str, Any] = {
+            "session_date": day,
+            "sport": str(w.get("sport") or "other").strip().lower() or "other",
+            "name": name[:200],
+            "description": row_desc[:4000],
+            "duration_minutes": w.get("duration_minutes"),
+            "start_time": str(w.get("start_time") or "07:00")[:5] or "07:00",
+            "external_id": external,
+            "source": "chat",
+            "status": "planned",
+            "planned_path": str(w.get("planned_path") or ""),
+        }
+        if w.get("steps"):
+            row["steps"] = w["steps"]
+        planned_rows.append(row)
+
+    if not planned_rows:
+        reply = "Ingen gyldige økter å lagre (trenger navn + dato)."
+        with db_session(config.get_db()) as conn:
+            add_message(conn, aid, "user", body_message)
+            asst = add_message(conn, aid, "assistant", reply)
+        return {"reply": reply, "message": asst, "confirm_push_failed": True}
+
+    payload: dict[str, Any] = {
+        "op": "workout_push",
+        "persist_planned_sessions": True,
+        "planned_sessions": planned_rows,
+        "workouts": workouts_ok,
+        "events": events if want_icu else [],
+        "intervals_athlete_id": icu if want_icu else None,
+        "prepare_intervals_sync": want_icu,
+        "one_shot_confirm_push": True,
+        "builder": "scripts/intervals_push_calendar.build_workout_event",
+    }
+    with db_session(config.get_db()) as conn:
+        pending = insert_pending_action(conn, aid, "intervals_workout_push", payload)
+
+    # Execute immediately (user already said bekreft+push) via same confirm path.
+    try:
+        confirm_out = calendar_confirm(
+            CalendarConfirmIn(pending_id=pending["id"]),
+            x_athlete_id=aid,
+        )
+    except HTTPException as exc:
+        detail = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
+        reply = (
+            f"Forhåndsvisning klar, men bekreftelse feilet: {detail[:280]}. "
+            "Kortet under lar deg prøve Ja på nytt — samme økt, ikke et 10min-bibliotekstub."
+        )
+        with db_session(config.get_db()) as conn:
+            add_message(conn, aid, "user", body_message)
+            asst = add_message(conn, aid, "assistant", reply)
+        return {
+            "reply": reply,
+            "message": asst,
+            "intervals_pending": {
+                "pending_id": pending["id"],
+                "op": "workout_push",
+                "count": len(planned_rows),
+                "planned_sessions_count": len(planned_rows),
+                "intervals_event_count": len(events) if want_icu else 0,
+                "events": [public_event_preview(e) for e in (events if want_icu else [])][
+                    :40
+                ],
+                "sessions": [
+                    {
+                        "session_date": r["session_date"],
+                        "name": r["name"],
+                        "sport": r["sport"],
+                        "duration_minutes": r.get("duration_minutes"),
+                    }
+                    for r in planned_rows
+                ],
+                "confirm_required": True,
+                "message": "Bekreft lagring av samme økt (CLI-struktur).",
+            },
+            "confirm_required": True,
+            "app_plan": overview_app_plan,
+        }
+
+    saved = int(confirm_out.get("planned_sessions_saved") or len(planned_rows))
+    pushed = int(confirm_out.get("pushed") or 0)
+    names = [str(r.get("name") or "") for r in planned_rows]
+    reply = confirm_write_success_reply_nb(saved=saved, pushed=pushed, names=names)
+    if not want_icu:
+        reply += " Intervals er ikke koblet — kun app-plan lagret."
+    with db_session(config.get_db()) as conn:
+        add_message(conn, aid, "user", body_message)
+        asst = add_message(conn, aid, "assistant", reply)
+    return {
+        "reply": reply,
+        "message": asst,
+        "confirm_push_done": True,
+        "planned_sessions_saved": saved,
+        "pushed": pushed,
+        "op": "workout_push",
+        "app_plan": overview_app_plan,
+        "sessions_in_context": True,
+        "sessions_source": sessions_snap.get("source"),
+        "workout_proposal": None,
+        "write_success": True,
+        **{
+            k: confirm_out[k]
+            for k in (
+                "sessions_refetched",
+                "planned_count",
+                "completed_count",
+            )
+            if k in confirm_out
+        },
+    }
 
 
 def _chat_reopen_pending_write(
@@ -2674,7 +2948,12 @@ def session_edit_preview(
             ),
         )
     workout = gate["accepted"][0]
-    events = build_workout_events([workout])
+    try:
+        events = build_workout_events([workout], athlete=athlete)
+    except Exception as exc:  # noqa: BLE001
+        from plan_workouts import format_exc_nb as _fmt
+
+        raise HTTPException(500, f"Økt-bygger feilet: {_fmt(exc)}") from exc
     if not events:
         raise HTTPException(400, "Ugyldig økt (trenger name + date YYYY-MM-DD)")
     # Prefer upsert of the same coach external_id when editing an existing day
@@ -2792,8 +3071,11 @@ def session_builder_confirm(
                     "description": saved.get("description") or "",
                     "duration_minutes": saved.get("duration_minutes"),
                     "start_time": saved.get("start_time") or "07:00",
+                    "steps": steps or saved.get("steps"),
+                    "planned_path": saved.get("planned_path") or "",
                 }
-                events = build_workout_events([workout])
+                ath = get_athlete(conn, aid)
+                events = build_workout_events([workout], athlete=ath)
                 eid = (saved.get("external_id") or "").strip()
                 if eid.startswith("ll-coach-w-") and events:
                     events[0]["external_id"] = eid
@@ -3326,12 +3608,22 @@ def workouts_preview(
             ),
         )
     workouts_ok = gate["accepted"]
-    events = build_workout_events(workouts_ok)
+    try:
+        events = build_workout_events(workouts_ok, athlete=athlete)
+    except Exception as exc:  # noqa: BLE001
+        from plan_workouts import format_exc_nb as _fmt
+
+        raise HTTPException(
+            500,
+            f"Kunne ikke bygge Intervals-økt via CLI-bygger: {_fmt(exc)}",
+        ) from exc
     if not events:
         raise HTTPException(
             400,
             "Ingen gyldige økter (trenger name + date YYYY-MM-DD)",
         )
+    from plan_workouts import chat_workout_icu_description
+
     planned_rows: list[dict[str, Any]] = []
     for i, w in enumerate(workouts_ok):
         day = str(w.get("date") or "")[:10]
@@ -3341,20 +3633,25 @@ def workouts_preview(
         external = None
         if i < len(events):
             external = events[i].get("external_id")
-        planned_rows.append(
-            {
-                "session_date": day,
-                "sport": str(w.get("sport") or "other").strip().lower() or "other",
-                "name": name[:200],
-                "description": str(w.get("description") or "").strip()[:4000],
-                "duration_minutes": w.get("duration_minutes"),
-                "start_time": str(w.get("start_time") or "07:00")[:5] or "07:00",
-                "external_id": external,
-                "source": "chat",
-                "status": "planned",
-                "planned_path": "",
-            }
+        icu_desc = (
+            str(events[i].get("description") or "").strip() if i < len(events) else ""
         )
+        row_desc = icu_desc or chat_workout_icu_description(w)
+        row: dict[str, Any] = {
+            "session_date": day,
+            "sport": str(w.get("sport") or "other").strip().lower() or "other",
+            "name": name[:200],
+            "description": row_desc[:4000],
+            "duration_minutes": w.get("duration_minutes"),
+            "start_time": str(w.get("start_time") or "07:00")[:5] or "07:00",
+            "external_id": external,
+            "source": "chat",
+            "status": "planned",
+            "planned_path": str(w.get("planned_path") or ""),
+        }
+        if w.get("steps"):
+            row["steps"] = w["steps"]
+        planned_rows.append(row)
     payload: dict[str, Any] = {
         "op": "workout_push",
         "persist_planned_sessions": True,

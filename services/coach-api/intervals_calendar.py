@@ -139,50 +139,21 @@ def external_id_for_workout(day: date, name: str, index: int = 0) -> str:
     return f"{WORKOUT_EXTERNAL_PREFIX}{day.strftime('%Y%m%d')}-{slug}-{index}"
 
 
-def build_workout_events(workouts: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Simple WORKOUT calendar events (description text — no ZWO file attach).
+def build_workout_events(
+    workouts: list[dict[str, Any]],
+    *,
+    athlete: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """ICU WORKOUT events via the Cursor/CLI builder — not a thin NOTE-like stub.
 
-    Full CSV/ZWO push remains CLI ``scripts/intervals_push_calendar.py``.
-    This path is the thin chat → preview → confirm slice.
+    Delegates to ``plan_workouts.icu_events_from_chat_workouts`` →
+    ``scripts/intervals_push_calendar.build_workout_event`` so name, duration,
+    moving_time, and ---intervals--- / planned-path structure match Plan Sync.
     """
-    events: list[dict[str, Any]] = []
-    for i, w in enumerate(workouts):
-        day = parse_iso_date(str(w.get("date") or ""))
-        name = (w.get("name") or "").strip()
-        if not day or not name:
-            continue
-        sport = str(w.get("sport") or w.get("type") or "other").strip().lower()
-        icu_type = SPORT_TO_INTERVALS_TYPE.get(sport, "Other")
-        start_time = str(w.get("start_time") or "07:00").strip() or "07:00"
-        if len(start_time) == 5:
-            start_local = f"{day.isoformat()}T{start_time}:00"
-        else:
-            start_local = f"{day.isoformat()}T{start_time}"
-        desc = (w.get("description") or "").strip()
-        if not desc:
-            desc = f"### Lofoten Coach\n\n**{name}**\n\n_Foreslått via chat — detaljer i Intervals._"
-        else:
-            desc = f"### Lofoten Coach\n\n{desc}"
-        ev: dict[str, Any] = {
-            "category": "WORKOUT",
-            "start_date_local": start_local,
-            "type": icu_type,
-            "name": name[:120],
-            "description": desc[:8000],
-            "external_id": external_id_for_workout(day, name, i),
-            "_day": day.isoformat(),
-            "_sport": sport,
-        }
-        dur = w.get("duration_minutes")
-        try:
-            if dur is not None and str(dur).strip():
-                minutes = int(float(dur))
-                if minutes > 0:
-                    ev["moving_time"] = minutes * 60
-        except (TypeError, ValueError):
-            pass
-        events.append(ev)
-    return events
+    # Lazy import avoids circular import with plan_workouts.
+    from plan_workouts import icu_events_from_chat_workouts
+
+    return icu_events_from_chat_workouts(workouts, athlete=athlete)
 
 
 def strip_internal(ev: dict[str, Any]) -> dict[str, Any]:

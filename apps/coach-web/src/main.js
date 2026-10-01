@@ -1150,6 +1150,18 @@ function applyChatResponse(data, { mirrorToMain = false, userText = '' } = {}) {
   // Never toast «done» from prose-only writes — card or honest block only.
   if (data.write_blocked_no_card) {
     toast('Ingenting lagret — mangler bekreftelseskort')
+  } else if (data.confirm_push_done || data.write_success) {
+    const saved = data.planned_sessions_saved
+    const pushed = data.pushed
+    const msg =
+      data.reply ||
+      (saved
+        ? `${saved} økt(er) lagret i planen${pushed ? ` · ${pushed} på Intervals` : ''}`
+        : 'Bekreftet')
+    toast(msg)
+    state.workoutProposal = null
+    state.workoutSync.pending = null
+    state.workoutSync.message = msg
   } else if (
     data.pending_write_reopen &&
     !data.workout_proposal?.workouts?.length &&
@@ -1398,12 +1410,19 @@ function renderChat() {
       <div class="confirm-card workout-proposal-card" aria-label="Foreslått økt">
         <p><strong>${replaceNeeded ? 'Erstatt økt i planen' : 'Foreslått økt til planen'}</strong></p>
         <p class="muted tight">Ingenting er lagret ennå — forhåndsvis, deretter bekreft. Lagrer i app-planen${
-          state.intervals.connected ? '; synces til Intervals hvis du bekrefter sync.' : ' (koble Intervals under Du for Sync).'
+          state.intervals.connected
+            ? '; «Bekreft og push» lagrer og synker samme økt til Intervals (CLI-struktur).'
+            : ' (koble Intervals under Du for Sync).'
         }</p>
         ${replaceList}
         <ul class="sync-sample">${rows}</ul>
         <div class="sync-actions">
           <button type="button" class="btn btn-primary" id="workout-preview-btn" ${state.workoutSync.busy || (replaceNeeded && !(state.replaceSessionIds || []).length) ? 'disabled' : ''}>${replaceNeeded ? 'Forhåndsvis erstatning' : 'Forhåndsvis lagring'}</button>
+          ${
+            state.intervals.connected && !replaceNeeded
+              ? `<button type="button" class="btn secondary" id="workout-confirm-push-btn" ${state.workoutSync.busy ? 'disabled' : ''}>Bekreft og push til Intervals</button>`
+              : ''
+          }
           <button type="button" class="btn secondary" id="workout-dismiss-btn" ${state.workoutSync.busy ? 'disabled' : ''}>Avvis</button>
         </div>
         ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
@@ -3171,6 +3190,54 @@ function bindApp() {
     }
   })
 
+  document.getElementById('workout-confirm-push-btn')?.addEventListener('click', async () => {
+    // One-shot: preview → confirm the *same* card workouts (CLI builder, not library stub).
+    const workouts = state.workoutProposal?.workouts
+    if (!workouts?.length || state.workoutSync.busy) return
+    state.workoutSync.busy = true
+    state.workoutSync.error = ''
+    state.workoutSync.message = 'Lagrer og pusher…'
+    render()
+    try {
+      const prev = await api('/v1/athlete/me/intervals/workouts/preview', {
+        method: 'POST',
+        body: {
+          workouts,
+          prepare_intervals_sync: Boolean(state.intervals?.connected),
+          replace_session_ids: state.replaceSessionIds || [],
+        },
+      })
+      if (!prev?.pending_id) throw new Error('Mangler pending_id fra forhåndsvisning')
+      const data = await api('/v1/athlete/me/intervals/calendar/confirm', {
+        method: 'POST',
+        body: { pending_id: prev.pending_id },
+      })
+      const n = data.pushed ?? 0
+      const saved = data.planned_sessions_saved ?? workouts.length
+      state.workoutSync.pending = null
+      state.workoutProposal = null
+      state.workoutSync.message = `${saved} økt(er) lagret i planen${n ? ` · ${n} på Intervals` : ''}`
+      toast(state.workoutSync.message)
+      state.messages = [
+        ...state.messages,
+        { role: 'assistant', content: `Bekreftet: ${state.workoutSync.message}.` },
+      ]
+      try {
+        await refreshPlannedSessions()
+        await refreshSessions()
+        await refreshDashboard()
+      } catch {
+        /* soft */
+      }
+    } catch (err) {
+      state.workoutSync.error = err.message || 'Bekreft og push feilet'
+      state.workoutSync.message = ''
+    } finally {
+      state.workoutSync.busy = false
+      render()
+    }
+  })
+
   document.getElementById('workout-confirm-no')?.addEventListener('click', () => {
     state.workoutSync.pending = null
     state.workoutSync.message = 'Avbrutt'
@@ -3202,6 +3269,17 @@ function bindApp() {
             ? `${saved} økt(er) lagret i planen${n ? ` · ${n} på Intervals` : ''}`
             : `${n} økt(er) lagt på Intervals-kalenderen`
       toast(state.workoutSync.message)
+      // Keep coach chat aligned with toast — never leave «har ikke oppdatert» after success.
+      state.messages = [
+        ...state.messages,
+        {
+          role: 'assistant',
+          content:
+            data.op === 'delete'
+              ? state.workoutSync.message
+              : `Bekreftet: ${state.workoutSync.message}.`,
+        },
+      ]
       try {
         await refreshPlannedSessions()
         await refreshSessions()

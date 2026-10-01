@@ -59,6 +59,15 @@ _WORKOUT_PROPOSAL_RE = re.compile(
     r"```(?:json\s+)?workout_proposal\s*\n(.*?)```",
     re.DOTALL | re.IGNORECASE,
 )
+# LLM sometimes forgets the workout_proposal label and dumps ```json {workouts…}
+_GENERIC_WORKOUTS_FENCE_RE = re.compile(
+    r"```(?:json)?\s*\n(\{[\s\S]*?\"workouts\"\s*:\s*\[[\s\S]*?\][\s\S]*?\})\s*```",
+    re.IGNORECASE,
+)
+_BARE_WORKOUTS_JSON_RE = re.compile(
+    r"(\{\s*\"workouts\"\s*:\s*\[[\s\S]*?\]\s*\})",
+    re.IGNORECASE,
+)
 _WORKOUT_REMOVAL_RE = re.compile(
     r"```(?:json\s+)?workout_removal\s*\n(.*?)```",
     re.DOTALL | re.IGNORECASE,
@@ -74,6 +83,17 @@ _AGREEMENTS_UPDATE_RE = re.compile(
 _PLAN_UPDATE_RE = re.compile(
     r"```(?:json\s+)?plan_update\s*\n(.*?)```",
     re.DOTALL | re.IGNORECASE,
+)
+# One-shot: save planned_sessions + push same session to Intervals.
+# Deliberately does NOT match bare «ja sync» / «ok sync» (those are plan-sync follow-ups).
+_CONFIRM_AND_PUSH_RE = re.compile(
+    r"^\s*(?:"
+    r"bekreft\s+og\s+(?:push|synk|sync|lagre)(?:\s+(?:til|på|i)\s+(?:intervals|icu))?|"
+    r"(?:lagre|push)\s+og\s+(?:push|synk|sync|bekreft)(?:\s+(?:til|på|i)\s+(?:intervals|icu))?|"
+    r"ja[,]?\s+lagre\s+og\s+(?:push|synk|sync)(?:\s+(?:til|på|i)\s+(?:intervals|icu))?|"
+    r"bekreft\s+(?:og\s+)?push\s+til\s+intervals"
+    r")\s*[!.?]*\s*$",
+    re.IGNORECASE,
 )
 
 
@@ -264,6 +284,49 @@ Regler:
 """
 
 
+def workout_proposal_history_summary(proposal: dict[str, Any] | None) -> str:
+    """Compact structure lines for chat history (no JSON) so reopen/one-shot recover."""
+    workouts = (proposal or {}).get("workouts") or []
+    if not workouts:
+        return ""
+    lines: list[str] = []
+    for w in workouts[:4]:
+        if not isinstance(w, dict):
+            continue
+        name = str(w.get("name") or "Økt").strip()
+        date_s = str(w.get("date") or "")[:10]
+        sport = str(w.get("sport") or "").strip()
+        dur = w.get("duration_minutes")
+        bits = [b for b in (date_s, name, sport) if b]
+        if dur is not None:
+            bits.append(f"{dur} min")
+        lines.append(" · ".join(bits))
+        desc = strip_workout_json_from_prose(str(w.get("description") or "")).strip()
+        if desc and '"workouts"' not in desc:
+            for dl in desc.splitlines()[:8]:
+                if dl.strip():
+                    lines.append(dl.strip())
+        steps = w.get("steps")
+        if isinstance(steps, list) and steps and not desc:
+            for s in steps[:12]:
+                if not isinstance(s, dict):
+                    continue
+                st = s.get("type") or "work"
+                sd = s.get("duration_minutes")
+                si = s.get("intensity") or ""
+                lines.append(
+                    f"- {st}"
+                    + (f" {sd} min" if sd else "")
+                    + (f" {si}" if si else "")
+                )
+    if not lines:
+        return ""
+    return (
+        "Struktur for bekreftelseskortet (Forhåndsvis → Ja, eller one-shot lagre+ICU):\n"
+        + "\n".join(lines)
+    )
+
+
 def knowledge_meta_for_chat(
     knowledge_dir,
     *,
@@ -299,49 +362,96 @@ def _clean_workout_dicts(workouts: list[Any]) -> list[dict[str, Any]]:
         except (TypeError, ValueError):
             dur_i = None
         start = str(w.get("start_time") or "07:00").strip() or "07:00"
-        cleaned.append(
-            {
-                "name": name[:120],
-                "date": date_s,
-                "sport": sport,
-                "duration_minutes": dur_i,
-                "description": str(w.get("description") or "").strip()[:2000],
-                "start_time": start[:5],
-            }
-        )
+        desc = strip_workout_json_from_prose(str(w.get("description") or "")).strip()[:2000]
+        # Never keep raw JSON blobs as the Intervals description.
+        if desc.lstrip().startswith("{") and '"workouts"' in desc:
+            desc = ""
+        row: dict[str, Any] = {
+            "name": name[:120],
+            "date": date_s,
+            "sport": sport,
+            "duration_minutes": dur_i,
+            "description": desc,
+            "start_time": start[:5],
+        }
+        steps = w.get("steps") or w.get("steps_json")
+        if isinstance(steps, list) and steps:
+            row["steps"] = steps
+        elif isinstance(steps, str) and steps.strip().startswith("["):
+            try:
+                parsed = json.loads(steps)
+                if isinstance(parsed, list) and parsed:
+                    row["steps"] = parsed
+            except json.JSONDecodeError:
+                pass
+        cleaned.append(row)
     return cleaned
+
+
+def strip_workout_json_from_prose(text: str) -> str:
+    """Remove workout_proposal fences / bare workouts JSON from assistant prose.
+
+    Prefer the UI card — athletes must not see raw JSON in chat.
+    """
+    if not text:
+        return ""
+    out = _WORKOUT_PROPOSAL_RE.sub("", text)
+    out = _GENERIC_WORKOUTS_FENCE_RE.sub("", out)
+    out = _BARE_WORKOUTS_JSON_RE.sub("", out)
+    out = _WORKOUT_REMOVAL_RE.sub("", out)
+    out = _TYPE_UPDATE_RE.sub("", out)
+    out = _AGREEMENTS_UPDATE_RE.sub("", out)
+    out = _PLAN_UPDATE_RE.sub("", out)
+    # Orphan fence openers left after partial strip
+    out = re.sub(r"```(?:json\s+)?workout_proposal\s*", "", out, flags=re.IGNORECASE)
+    out = re.sub(r"```+", "", out)
+    out = re.sub(r"\n{3,}", "\n\n", out)
+    return out.strip()
+
+
+def _parse_workouts_json_blob(raw: str) -> list[dict[str, Any]] | None:
+    raw = (raw or "").strip()
+    if not raw:
+        return None
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        # Tolerate trailing commas / single quotes lightly — fail closed.
+        return None
+    if not isinstance(data, dict):
+        return None
+    workouts = data.get("workouts")
+    if not isinstance(workouts, list) or not workouts:
+        return None
+    cleaned = _clean_workout_dicts(workouts)
+    return cleaned or None
 
 
 def extract_workout_proposal(reply: str) -> tuple[str, dict[str, Any] | None]:
     """Strip optional workout_proposal fence; return (display_text, proposal|None)."""
     if not reply:
         return "", None
+    cleaned_workouts: list[dict[str, Any]] | None = None
     match = _WORKOUT_PROPOSAL_RE.search(reply)
-    if not match:
-        return reply.strip(), None
-    raw = (match.group(1) or "").strip()
-    display = (_WORKOUT_PROPOSAL_RE.sub("", reply)).strip()
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError:
-        return reply.strip(), None
-    if not isinstance(data, dict):
-        return reply.strip(), None
-    workouts = data.get("workouts")
-    if not isinstance(workouts, list) or not workouts:
+    if match:
+        cleaned_workouts = _parse_workouts_json_blob(match.group(1) or "")
+    if cleaned_workouts is None:
+        gen = _GENERIC_WORKOUTS_FENCE_RE.search(reply)
+        if gen:
+            cleaned_workouts = _parse_workouts_json_blob(gen.group(1) or "")
+    if cleaned_workouts is None:
+        bare = _BARE_WORKOUTS_JSON_RE.search(reply)
+        if bare:
+            cleaned_workouts = _parse_workouts_json_blob(bare.group(1) or "")
+
+    display = strip_workout_json_from_prose(reply)
+    if not cleaned_workouts:
+        # Always strip JSON-looking fences from display even when parse failed.
         return display or reply.strip(), None
-    cleaned = _clean_workout_dicts(workouts)
-    if not cleaned:
-        return display or reply.strip(), None
-    # Strip other fences from display too
-    display = _WORKOUT_REMOVAL_RE.sub("", display)
-    display = _TYPE_UPDATE_RE.sub("", display)
-    display = _AGREEMENTS_UPDATE_RE.sub("", display)
-    display = _PLAN_UPDATE_RE.sub("", display)
-    return display.strip() or (
+    return display or (
         "Her er forslaget — bekreft i appen for å lagre i planen "
         "(deretter Sync til Intervals)."
-    ), {"workouts": cleaned}
+    ), {"workouts": cleaned_workouts}
 
 
 _SESSION_INTENT_RE = re.compile(
@@ -614,6 +724,8 @@ def user_confirms_pending_write(
     text = (message or "").strip()
     if not text:
         return False
+    if user_requests_confirm_and_push(text):
+        return False
     # Explicit sync phrases are handled by intervals path, not this helper.
     if user_requests_intervals_plan_sync(text):
         return False
@@ -691,11 +803,43 @@ def user_requests_plan_adjust(message: str) -> bool:
     return bool(_PLAN_ADJUST_INTENT_RE.search(text))
 
 
+def user_requests_confirm_and_push(message: str) -> bool:
+    """True for one-shot «bekreft og push til intervals» (save + same-session ICU)."""
+    text = (message or "").strip()
+    if not text:
+        return False
+    return bool(_CONFIRM_AND_PUSH_RE.match(text))
+
+
+def confirm_write_success_reply_nb(
+    *,
+    saved: int = 0,
+    pushed: int = 0,
+    names: list[str] | None = None,
+) -> str:
+    """Coach message after preview→confirm actually persisted (must match toast)."""
+    bits: list[str] = []
+    if saved:
+        bits.append(f"{saved} økt(er) lagret i planen")
+    if pushed:
+        bits.append(f"{pushed} på Intervals")
+    if not bits:
+        return "Bekreftet — ingen nye rader ble skrevet."
+    sample = ""
+    if names:
+        shown = ", ".join(n for n in names[:3] if n)
+        if shown:
+            sample = f" ({shown})"
+    return f"Bekreftet: {' · '.join(bits)}{sample}."
+
+
 def write_intent_kind(message: str) -> str | None:
-    """Return 'sync' | 'session' | 'plan' | None for deterministic write routing."""
+    """Return 'sync' | 'session' | 'plan' | 'confirm_push' | None."""
     text = (message or "").strip()
     if not text:
         return None
+    if user_requests_confirm_and_push(text):
+        return "confirm_push"
     if user_requests_intervals_plan_sync(text):
         return "sync"
     if user_requests_session_change(text):
@@ -713,6 +857,7 @@ def reopen_pending_write_reply(
     """Rebuild proposal from last assistant turn when user says «ok»/«ja».
 
     Returns (reply, workout_proposal|None, plan_prop|None). Never claims success.
+    Card path: clear «use the card» — not contradictory success/failure.
     """
     last = _latest_assistant_text(recent_messages)
     day0 = today or date.today()
@@ -720,27 +865,31 @@ def reopen_pending_write_reply(
     _disp, fence_wp = extract_workout_proposal(last)
     if fence_wp:
         return (
-            "Forslaget ligger klart — bekreft forhåndsvisningskortet. "
-            "Ingenting er lagret eller synket før du trykker Ja.",
+            "Forslaget ligger i forhåndsvisningskortet under chatten — "
+            "trykk Forhåndsvis → Ja for å lagre (og Sync til Intervals om koblet). "
+            "Si «bekreft og push til intervals» for å lagre og pushe samme økt i ett steg.",
             fence_wp,
             None,
         )
     _disp, fence_pl = extract_plan_update(last)
     if fence_pl and fence_pl.get("rebuild"):
         return (
-            "Planjusteringen ligger klar — bekreft forhåndsvisningen. "
-            "Ingenting er lagret før du bekrefter.",
+            "Planjusteringen ligger i kortet under — bekreft forhåndsvisningen der. "
+            "Ingenting er lagret før du trykker Ja på kortet.",
             None,
             fence_pl,
         )
     # Seed a synthetic user message so session-change gate passes.
-    seed = "legg inn økt " + (last[:240] if last else "i morgen")
+    # Keep seed free of sync-trigger phrases (those live in the reply body).
+    seed = "legg inn økt i morgen"
+    if date_s := (_ISO_DATE_RE.search(last) or None):
+        seed = f"legg inn økt {date_s.group(1)}"
     inferred = infer_workout_proposal_fallback(seed, last, today=day0)
     if inferred:
         return (
-            "Jeg har fortsatt forslaget klart — bekreft kortet for å lagre i planen "
-            "(deretter Sync til Intervals om du vil). "
-            "Jeg har ikke oppdatert noe ennå.",
+            "Forslaget er i forhåndsvisningskortet under — trykk Forhåndsvis → Ja. "
+            "Si «bekreft og push til intervals» for lagring + samme økt til Intervals. "
+            "Ingenting er lagret før kortet er bekreftet.",
             inferred,
             None,
         )
@@ -750,8 +899,8 @@ def reopen_pending_write_reply(
         for m in ("uke", "helg", "fredag", "lørdag", "plan", "juster")
     ):
         return (
-            "Bekreft uke-/planjustering via forhåndsvisningskortet. "
-            "Jeg har ikke oppdatert Intervals eller planen ennå.",
+            "Bekreft uke-/planjustering via forhåndsvisningskortet under chatten. "
+            "Ingenting er lagret før du trykker Ja.",
             None,
             plan_fb,
         )
@@ -911,11 +1060,18 @@ def infer_workout_proposal_fallback(
     Only runs when the user clearly asked to add/change a session. Parses
     ISO dates / labeled fields from the assistant reply, then falls back to
     duration/sport/relative day in the user message.
+
+    Duration: prefer ``duration_minutes`` in any JSON remnant, labeled varighet,
+    total/totalt, sum of structure minutes, or NxM estimate — never the first
+    «Oppvarming 10 min» alone (that produced «Løping 10min» stubs).
     """
     if not user_requests_session_change(user_message):
         return None
     day0 = today or date.today()
-    blob = f"{reply or ''}\n{user_message or ''}"
+    # Prefer any workouts JSON still sitting in the reply (even without fence label).
+    _disp, fenced = extract_workout_proposal(reply or "")
+    if fenced and fenced.get("workouts"):
+        return fenced
 
     date_s = None
     m_iso = _ISO_DATE_RE.search(reply or "") or _ISO_DATE_RE.search(user_message or "")
@@ -930,19 +1086,13 @@ def infer_workout_proposal_fallback(
     if not date_s:
         return None
 
-    dur_i = None
-    m_dur = _DURATION_RE.search(reply or "") or _DURATION_RE.search(user_message or "")
-    if m_dur:
-        try:
-            dur_i = int(m_dur.group(1))
-        except ValueError:
-            dur_i = None
+    clean_reply = strip_workout_json_from_prose(reply or "")
+    blob = f"{clean_reply}\n{user_message or ''}"
 
     sport = _sport_from_text(blob)
     name = None
     labeled: dict[str, str] = {}
-    for lab in _LABELED_FIELD_RE.finditer(reply or ""):
-        # Recover which label from the match span
+    for lab in _LABELED_FIELD_RE.finditer(clean_reply or ""):
         chunk = lab.group(0).lower()
         val = lab.group(1).strip()
         if "økt" in chunk or "navn" in chunk:
@@ -959,42 +1109,173 @@ def infer_workout_proposal_fallback(
         name = labeled["name"][:120]
     if labeled.get("date") and _ISO_DATE_RE.search(labeled["date"]):
         date_s = _ISO_DATE_RE.search(labeled["date"]).group(1)
-    if labeled.get("duration") and dur_i is None:
-        m_lab_dur = _DURATION_RE.search(labeled["duration"])
-        if m_lab_dur:
-            try:
-                dur_i = int(m_lab_dur.group(1))
-            except ValueError:
-                pass
     if labeled.get("sport"):
         sport = _sport_from_text(labeled["sport"]) or sport
+
+    dur_i = _infer_session_duration_minutes(
+        clean_reply, user_message or "", labeled.get("duration")
+    )
+
+    # Interval prescription in name (6x2) when present
+    nxm = re.search(
+        r"(\d+)\s*[x×]\s*(\d+)\s*(?:min(?:utt(?:er)?)?|m)?\b",
+        blob,
+        re.IGNORECASE,
+    )
     if not name:
-        sport_m = _SPORT_WORD_RE.search(user_message or "") or _SPORT_WORD_RE.search(
-            reply or ""
-        )
-        label = sport_m.group(1) if sport_m else sport
-        name = f"{label} {dur_i}min" if dur_i else f"{label} økt"
+        if nxm:
+            name = f"Intervaller {nxm.group(1)}x{nxm.group(2)}"
+        else:
+            sport_m = _SPORT_WORD_RE.search(user_message or "") or _SPORT_WORD_RE.search(
+                clean_reply or ""
+            )
+            label = (sport_m.group(1) if sport_m else None) or {
+                "run": "Løping",
+                "bike": "Sykkel",
+                "swim": "Svømming",
+                "strength": "Styrke",
+            }.get(sport or "", "Økt")
+            # Capitalize cleanly — avoid «løping 10min» from warmup match
+            name = f"{label} {dur_i} min" if dur_i else f"{label} økt"
         name = name[:120]
 
+    # Clean structure bullets as description — never dump user_message / JSON
     description = (labeled.get("description") or "").strip()[:2000]
     if not description:
-        description = (user_message or "").strip()[:500]
+        struct_lines: list[str] = []
+        for raw in (clean_reply or "").splitlines():
+            line = raw.strip()
+            if not line:
+                continue
+            if re.match(
+                r"^(?:[-*•]|\d+[.)])\s+|"
+                r"(?:oppvarming|hoveddel|nedkjøling|warmup|main|cooldown|"
+                r"main\s*set)",
+                line,
+                re.IGNORECASE,
+            ):
+                struct_lines.append(line)
+        if struct_lines:
+            description = "\n".join(struct_lines[:20])[:2000]
+        elif nxm:
+            description = (
+                f"Oppvarming 10 min\n"
+                f"Hoveddel {nxm.group(1)}x{nxm.group(2)} min\n"
+                f"Nedkjøling 10 min"
+            )
 
-    cleaned = _clean_workout_dicts(
-        [
-            {
-                "name": name,
-                "date": date_s,
-                "sport": sport,
-                "duration_minutes": dur_i,
-                "description": description,
-                "start_time": "07:00",
-            }
+    steps = None
+    if nxm and (sport or "run") in ("run", "løp", "lop"):
+        reps, mins = int(nxm.group(1)), int(nxm.group(2))
+        steps = [
+            {"type": "warmup", "duration_minutes": 10, "intensity": "Z2"},
         ]
-    )
+        for _ in range(reps):
+            steps.append({"type": "work", "duration_minutes": mins, "intensity": "Z4"})
+            steps.append({"type": "recover", "duration_minutes": mins, "intensity": "Z1"})
+        steps.append({"type": "cooldown", "duration_minutes": 10, "intensity": "lett"})
+        if dur_i is None:
+            dur_i = 10 + reps * mins * 2 + 10
+
+    payload: dict[str, Any] = {
+        "name": name,
+        "date": date_s,
+        "sport": sport or "run",
+        "duration_minutes": dur_i,
+        "description": description,
+        "start_time": "07:00",
+    }
+    if steps:
+        payload["steps"] = steps
+
+    cleaned = _clean_workout_dicts([payload])
     if not cleaned:
         return None
     return {"workouts": cleaned, "inferred": True}
+
+
+def _infer_session_duration_minutes(
+    reply: str,
+    user_message: str,
+    labeled_duration: str | None = None,
+) -> int | None:
+    """Pick total session minutes — not the first warmup «10 min»."""
+    if labeled_duration:
+        m_lab = _DURATION_RE.search(labeled_duration)
+        if m_lab:
+            try:
+                return int(m_lab.group(1))
+            except ValueError:
+                pass
+    # Explicit duration_minutes in prose/JSON remnant
+    m_json = re.search(
+        r"duration_minutes\"?\s*[:=]\s*(\d{1,3})",
+        f"{reply}\n{user_message}",
+        re.IGNORECASE,
+    )
+    if m_json:
+        try:
+            return int(m_json.group(1))
+        except ValueError:
+            pass
+    # «totalt 60 min» / «varighet 60»
+    m_tot = re.search(
+        r"(?:totalt|total|varighet|duration)\s*[:=]?\s*(\d{1,3})\s*(?:min|m\b)",
+        f"{reply}\n{user_message}",
+        re.IGNORECASE,
+    )
+    if m_tot:
+        try:
+            return int(m_tot.group(1))
+        except ValueError:
+            pass
+    # NxM intervals → estimate warmup+main+cooldown
+    nxm = re.search(
+        r"(\d+)\s*[x×]\s*(\d+)\s*(?:min(?:utt(?:er)?)?|m)?\b",
+        f"{reply}\n{user_message}",
+        re.IGNORECASE,
+    )
+    if nxm:
+        reps, mins = int(nxm.group(1)), int(nxm.group(2))
+        return 10 + reps * mins * 2 + 10
+    # Sum bullet durations if several structure lines exist
+    durs: list[tuple[int, str]] = []
+    for m in _DURATION_RE.finditer(reply or ""):
+        try:
+            val = int(m.group(1))
+        except ValueError:
+            continue
+        # Context window around match
+        start = max(0, m.start() - 24)
+        ctx = (reply or "")[start : m.end() + 8].lower()
+        durs.append((val, ctx))
+    if not durs:
+        m_u = _DURATION_RE.search(user_message or "")
+        if m_u:
+            try:
+                return int(m_u.group(1))
+            except ValueError:
+                return None
+        return None
+    # Prefer non-warmup-only: if multiple, sum structure-like lines
+    if len(durs) >= 2:
+        total = sum(v for v, _ in durs)
+        # Cap absurd sums; prefer largest single if sum looks like double-count
+        largest = max(v for v, _ in durs)
+        if total <= 180:
+            return total
+        return largest
+    only_val, only_ctx = durs[0]
+    if re.search(r"oppvarm|warmup|wu\b", only_ctx) and only_val <= 15:
+        # Lone warmup mention — look at user message for total
+        m_u = _DURATION_RE.search(user_message or "")
+        if m_u:
+            try:
+                return int(m_u.group(1))
+            except ValueError:
+                pass
+        return None  # don't invent «10min» stub name
+    return only_val
 
 
 def infer_plan_update_fallback(user_message: str) -> dict[str, Any] | None:

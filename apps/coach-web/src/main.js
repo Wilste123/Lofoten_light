@@ -1,4 +1,6 @@
 import {
+  renderAcwrRiskBar,
+  renderBetaLoadTrajectory,
   renderDisciplineBars,
   renderLoadLines,
   renderVolumeBars,
@@ -119,6 +121,9 @@ const state = {
     unread_count: 0,
     error: '',
   },
+  /** Beta forecasts (experimental) */
+  beta: null,
+  betaError: '',
   busy: false,
   intervalsBusy: false,
   intervalsStatus: '',
@@ -565,6 +570,16 @@ async function refreshPlannedSessions() {
   }
 }
 
+async function refreshBeta() {
+  try {
+    state.beta = await api('/v1/beta/forecasts?lookback_days=90&horizon_days=28')
+    state.betaError = ''
+  } catch (err) {
+    state.beta = null
+    state.betaError = err.message || 'Beta-prognoser feilet'
+  }
+}
+
 async function refreshIntervals() {
   try {
     const data = await api('/v1/athlete/me/intervals')
@@ -622,15 +637,19 @@ function render() {
       <section class="panel ${state.tab === 'okter' ? 'active' : ''}" data-panel="okter">
         ${renderOkterTab()}
       </section>
+      <section class="panel ${state.tab === 'beta' ? 'active' : ''}" data-panel="beta">
+        ${renderBetaTab()}
+      </section>
       <section class="panel ${state.tab === 'du' ? 'active' : ''}" data-panel="du">
         ${renderDu()}
       </section>
     </main>
-    <nav class="tabs tabs-five" aria-label="Hovedfaner">
+    <nav class="tabs tabs-six" aria-label="Hovedfaner">
       <button type="button" data-tab="coach" class="${state.tab === 'coach' ? 'active' : ''}">Coach</button>
       <button type="button" data-tab="dashboard" class="${state.tab === 'dashboard' ? 'active' : ''}">Dashboard</button>
       <button type="button" data-tab="plan" class="${state.tab === 'plan' ? 'active' : ''}">Plan</button>
       <button type="button" data-tab="okter" class="${state.tab === 'okter' ? 'active' : ''}">Økter</button>
+      <button type="button" data-tab="beta" class="${state.tab === 'beta' ? 'active' : ''}">Beta</button>
       <button type="button" data-tab="du" class="${state.tab === 'du' ? 'active' : ''}">Du</button>
     </nav>
   `
@@ -2362,6 +2381,96 @@ function renderSessionDetail() {
     </div>`
 }
 
+function renderBetaTab() {
+  const b = state.beta
+  if (state.betaError && !b) {
+    return `
+      <div class="tab-hero">
+        <p class="brand-mark">Beta <span class="badge badge-demo">eksperimentell</span></p>
+        <h2>Prognoser</h2>
+        <p class="error">${escapeHtml(state.betaError)}</p>
+      </div>`
+  }
+  if (!b) {
+    return `
+      <div class="tab-hero">
+        <p class="brand-mark">Beta <span class="badge badge-demo">eksperimentell</span></p>
+        <h2>Prognoser</h2>
+        <p class="muted">Laster CTL/ATL/TSB og risikobånd…</p>
+      </div>`
+  }
+  const load = b.load_now || {}
+  const chart = b.charts?.ctl_atl_tsb || {}
+  const bands = b.charts?.acwr_bands || {}
+  const race = b.race_form || {}
+  const vol = b.volume || {}
+  const sc = b.scenario_ease
+  const cites = b.citations || []
+  const citeHtml = cites
+    .map(
+      (c) =>
+        `<li><span class="cite-id">${escapeHtml(c.id || '')}</span> — ${escapeHtml(c.cite || '')}${
+          c.note ? ` <em class="muted">(${escapeHtml(c.note)})</em>` : ''
+        }</li>`
+    )
+    .join('')
+  const scenarioHtml = sc
+    ? `<section class="section-block" data-testid="beta-scenario">
+        <div class="section-head"><h2>${escapeHtml(sc.title_nb || 'Scenario')}</h2></div>
+        <p class="muted tight">${escapeHtml(sc.note_nb || '')}</p>
+        <div class="stat-row"><span>CTL slutt (plan)</span><span>${sc.baseline_end?.ctl ?? '—'}</span></div>
+        <div class="stat-row"><span>CTL slutt (−20 %)</span><span>${sc.eased_end?.ctl ?? '—'}</span></div>
+        <p class="coach-note">Kun forslag. Trykk «Åpne i Coach» — ingen auto-omskrivning av plan.</p>
+        <button type="button" class="btn secondary" id="beta-open-coach">Åpne i Coach</button>
+      </section>`
+    : ''
+  return `
+    <div class="tab-hero beta-hero">
+      <p class="brand-mark">Beta <span class="badge badge-demo">eksperimentell</span></p>
+      <h2>Avanserte prognoser</h2>
+      <p class="lead tight">CTL/ATL/TSB, overload-risiko og race-form — evidensbaserte soft signals. Human Coach bekrefter før handling.</p>
+    </div>
+    <section class="section-block" data-testid="beta-load-now">
+      <div class="section-head"><h2>Load nå</h2></div>
+      <div class="stat-row"><span>CTL</span><span>${load.ctl != null ? load.ctl : '—'}</span></div>
+      <div class="stat-row"><span>ATL</span><span>${load.atl != null ? load.atl : '—'}</span></div>
+      <div class="stat-row"><span>TSB</span><span>${load.tsb != null ? load.tsb : '—'}</span></div>
+      <div class="stat-row"><span>ATL:CTL</span><span>${load.acwr != null ? Number(load.acwr).toFixed(2) : '—'}</span></div>
+      <p class="muted tight">${escapeHtml(b.truth?.note_nb || '')}</p>
+    </section>
+    <section class="section-block chart-block" data-testid="beta-chart-trajectory" aria-label="CTL ATL TSB">
+      <div class="section-head"><h2>CTL / ATL / TSB</h2></div>
+      ${renderBetaLoadTrajectory(chart)}
+      <p class="muted tight">${escapeHtml(chart.note_nb || '')}</p>
+    </section>
+    <section class="section-block" data-testid="beta-acwr">
+      <div class="section-head"><h2>Overload / akutt:kronisk</h2></div>
+      ${renderAcwrRiskBar(bands)}
+    </section>
+    <section class="section-block" data-testid="beta-race-form">
+      <div class="section-head"><h2>Race-form mot mål</h2></div>
+      <div class="stat-row"><span>Måldato</span><span>${escapeHtml(race.goal_race_date || '—')}</span></div>
+      <div class="stat-row"><span>Dager igjen</span><span>${race.days_to_goal != null ? race.days_to_goal : '—'}</span></div>
+      <div class="stat-row"><span>Confidence</span><span>${escapeHtml(race.confidence || '—')}</span></div>
+      <div class="stat-row"><span>Proj. CTL på mål</span><span>${race.projected_ctl_at_goal != null ? race.projected_ctl_at_goal : '—'}</span></div>
+      <p class="coach-note">${escapeHtml(race.summary_nb || '')}</p>
+      <p class="muted tight">${escapeHtml(race.confidence_band_nb || '')}</p>
+    </section>
+    <section class="section-block" data-testid="beta-volume">
+      <div class="section-head"><h2>Volum: gjennomført vs planlagt</h2></div>
+      <div class="stat-row"><span>Gjennomført (lookback)</span><span>${vol.executed_hours_lookback != null ? `${vol.executed_hours_lookback} t` : '—'}</span></div>
+      <div class="stat-row"><span>Planlagt (horizon)</span><span>${vol.planned_hours_horizon != null ? `${vol.planned_hours_horizon} t` : '—'}</span></div>
+      <p class="muted tight">${escapeHtml(vol.note_nb || '')}</p>
+    </section>
+    ${scenarioHtml}
+    <section class="section-block beta-footnotes" data-testid="beta-citations">
+      <div class="section-head"><h2>Kilder</h2></div>
+      <p class="muted tight">${escapeHtml(b.coach_notes_nb || '')}</p>
+      <ol class="cite-list">${citeHtml}</ol>
+    </section>
+  `
+}
+
 function renderOkterTab() {
   if (state.sessionDetail) {
     return renderSessionDetail()
@@ -2879,11 +2988,25 @@ function bindApp() {
         await refreshIntervals()
         await refreshSessions()
       }
+      if (state.tab === 'beta') {
+        await refreshBeta()
+      }
       if (state.tab === 'du') {
         await refreshIntervals()
       }
       render()
     })
+  })
+
+  document.getElementById('beta-open-coach')?.addEventListener('click', () => {
+    const sc = state.beta?.scenario_ease
+    const draft =
+      sc?.note_nb ||
+      'Beta-scenario: vurdere å lette ~20 % neste 2 uker. Kun forslag — bekreft før lagring.'
+    state.tab = 'coach'
+    state.chatDraft = draft
+    state.error = ''
+    render()
   })
 
   document.getElementById('ticker-read-all')?.addEventListener('click', async () => {

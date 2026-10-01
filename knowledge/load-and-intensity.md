@@ -74,6 +74,18 @@ HM/maraton: `lop/halvmaraton-periodisering.md`, `lop/maraton-periodisering.md`.
 
 Sykkel: `TSS ≈ timer × IF² × 100` (når power finnes). Løp/svøm: HR- eller RPE-TSS — **trend** > perfekt tall.
 
+### Banister-familie (CTL / ATL / TSB) — evidens
+
+Praksis-EWMA (τ≈42 d CTL, τ≈7 d ATL; TSB = CTL − ATL) bygger på Banisters impulse–response (fitness/fatigue), ikke en fasit for race-tid:
+
+| Kilde | Poeng |
+|-------|--------|
+| Banister et al. 1975; Morton/Fitz-Clarke/Banister 1990 | IR-modell: treningsimpuls → treg fitness + rask fatigue |
+| Hellard et al. J Sports Sci 2006 | God fit, men **brede CI** / ill-conditioning — usikker individuell prediksjon |
+| IOC Soligard 2016; Gabbett 2016 | Load-spike / ACWR som **skaderisiko-kontekst**, ikke diagnose |
+
+**Coach:** fortid = ICU wellness/aktiviteter; fremtid = `planned_sessions` merket *planlagt*. Beta-fane projiserer — **ingen auto-omskrivning** av plan.
+
 ### CTL-ramp (William, comeback)
 
 | Situasjon | Veiledning |

@@ -115,6 +115,7 @@ from two_tier_plan import (
     readiness_from_overview,
     user_requests_explicit_roll,
 )
+from beta_forecasts import build_beta_forecasts
 from form_from_intervals import clear_form_caches, persist_estimates_patch, resolve_form_estimates
 from intervals_calendar import (
     build_block_note_events,
@@ -2867,6 +2868,46 @@ def overview(x_athlete_id: str | None = Header(default=None)) -> dict[str, Any]:
         secrets = get_athlete_secrets(conn, aid)
         blocks = list_plan_blocks(conn, aid)
     return _overview_payload(athlete, secrets, blocks)
+
+
+@app.get("/v1/beta/forecasts")
+def beta_forecasts(
+    x_athlete_id: str | None = Header(default=None),
+    lookback_days: int = Query(default=90, ge=14, le=180),
+    horizon_days: int = Query(default=28, ge=7, le=120),
+) -> dict[str, Any]:
+    """Experimental Beta: CTL/ATL/TSB past+planlagt, ACWR bands, race-form.
+
+    Never auto-applies plan changes. Past = ICU activities/wellness;
+    future = planned_sessions (labeled planlagt).
+    """
+    aid = _require_athlete(x_athlete_id)
+    with db_session(config.get_db()) as conn:
+        athlete = get_athlete(conn, aid)
+        if not athlete:
+            raise HTTPException(404, "Utøver ikke funnet")
+        secrets = get_athlete_secrets(conn, aid)
+        today = date.today()
+        past_start = today - timedelta(days=lookback_days - 1)
+        future_end = today + timedelta(days=horizon_days - 1)
+        # Include planned through goal when near — build_beta_forecasts may extend
+        days_g = days_to_goal(athlete, today=today)
+        if days_g is not None and 0 < days_g <= 180:
+            future_end = max(future_end, today + timedelta(days=days_g))
+        planned_rows = list_planned_sessions(
+            conn,
+            aid,
+            start_date=past_start.isoformat(),
+            end_date=future_end.isoformat(),
+        )
+    return build_beta_forecasts(
+        athlete=athlete,
+        secrets=secrets,
+        planned_sessions=planned_rows,
+        today=today,
+        lookback_days=lookback_days,
+        horizon_days=horizon_days,
+    )
 
 
 @app.get("/v1/dashboard")

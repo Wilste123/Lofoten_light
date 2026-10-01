@@ -122,7 +122,12 @@ main {
   grid-template-columns: repeat(5, 1fr);
 }
 
-.tabs.tabs-five button {
+.tabs.tabs-six {
+  grid-template-columns: repeat(6, 1fr);
+}
+
+.tabs.tabs-five button,
+.tabs.tabs-six button {
   font-size: 0.68rem;
   padding: 0.55rem 0.15rem;
   letter-spacing: 0;
@@ -1327,6 +1332,7 @@ button.linkish:hover {
   --chart-strength: #b08d3a;
   --chart-ctl: #7eb8a0;
   --chart-atl: #c4a06a;
+  --chart-tsb: #8b7ec8;
 }
 
 .chart-block .section-head {
@@ -1499,6 +1505,104 @@ button.linkish:hover {
   background: var(--chart-atl);
 }
 
+.chart-legend-item .swatch.tsb {
+  background: var(--chart-tsb, #8b7ec8);
+}
+
+.chart-legend-item .swatch.planned {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--muted) 0 3px,
+    transparent 3px 6px
+  );
+  border: 1px solid var(--muted);
+}
+
+.chart-line-tsb {
+  stroke: var(--chart-tsb, #8b7ec8);
+  stroke-width: 1.5;
+}
+
+.chart-line.is-planned {
+  opacity: 0.85;
+}
+
+.chart-kind-planned {
+  font-style: italic;
+}
+
+.acwr-block {
+  margin-top: 0.35rem;
+}
+
+.acwr-track {
+  position: relative;
+  display: flex;
+  height: 0.85rem;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+}
+
+.acwr-zone.ok {
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.acwr-zone.elevated {
+  background: color-mix(in srgb, #c4a035 70%, transparent);
+}
+
+.acwr-zone.high {
+  background: color-mix(in srgb, var(--danger) 65%, transparent);
+}
+
+.acwr-marker {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 3px;
+  margin-left: -1.5px;
+  background: var(--text);
+  border-radius: 1px;
+  box-shadow: 0 0 0 1px var(--bg0);
+}
+
+.acwr-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+}
+
+.beta-hero .lead.tight {
+  margin-top: 0.35rem;
+}
+
+.cite-list {
+  margin: 0.5rem 0 0;
+  padding-left: 1.15rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.cite-list .cite-id {
+  font-family: ui-monospace, monospace;
+  font-size: 0.72rem;
+  color: var(--text);
+}
+
+.coach-note {
+  margin: 0.5rem 0;
+  padding: 0.55rem 0.65rem;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
 @media (max-width: 420px) {
   .chart-h-row {
     grid-template-columns: 3.6rem 1fr 2.8rem;
@@ -1506,6 +1610,10 @@ button.linkish:hover {
 
   .chart-bars {
     gap: 0.12rem;
+  }
+
+  .tabs.tabs-six button {
+    font-size: 0.62rem;
   }
 }
 

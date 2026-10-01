@@ -113,6 +113,12 @@ const state = {
   /** Du → restart setup: 0 idle, 1 first confirm, 2 type SLETT */
   resetConfirm: 0,
   resetDeleteIcu: false,
+  /** Coach ticker — athlete_events unread strip */
+  ticker: {
+    events: [],
+    unread_count: 0,
+    error: '',
+  },
   busy: false,
   intervalsBusy: false,
   intervalsStatus: '',
@@ -192,6 +198,7 @@ function clearSessionLocal() {
   }
   state.resetConfirm = 0
   state.resetDeleteIcu = false
+  state.ticker = { events: [], unread_count: 0, error: '' }
   state.error = ''
   state.intervalsError = ''
   state.planError = ''
@@ -345,6 +352,7 @@ async function enterApp(athlete, { welcome } = {}) {
     refreshPlannedSessions(),
     refreshDashboard(),
     refreshSessions(),
+    refreshTicker(),
   ])
   render()
 }
@@ -506,6 +514,27 @@ async function refreshSessions() {
   }
 }
 
+async function refreshTicker({ refresh = true } = {}) {
+  try {
+    const qs = new URLSearchParams({
+      limit: '12',
+      refresh: refresh ? 'true' : 'false',
+    })
+    const data = await api(`/v1/athlete/me/events?${qs.toString()}`)
+    state.ticker = {
+      events: data.events || [],
+      unread_count: data.unread_count || 0,
+      error: '',
+      email_notify: data.email_notify || null,
+    }
+  } catch (err) {
+    state.ticker = {
+      ...(state.ticker || { events: [], unread_count: 0 }),
+      error: err.message || 'Ticker feilet',
+    }
+  }
+}
+
 async function refreshPlanBlocks() {
   try {
     const data = await api('/v1/athlete/me/plan-blocks')
@@ -579,6 +608,7 @@ function render() {
         <p>Hei ${escapeHtml(a.display_name)} — Lofoten-coach</p>
       </div>
     </header>
+    ${renderTickerStrip()}
     <main>
       <section class="panel ${state.tab === 'coach' ? 'active' : ''}" data-panel="coach">
         ${renderChat()}
@@ -605,6 +635,37 @@ function render() {
     </nav>
   `
   bindApp()
+}
+
+function renderTickerStrip() {
+  const t = state.ticker || { events: [], unread_count: 0 }
+  const unread = (t.events || []).filter((e) => e && e.unread)
+  if (!unread.length && !t.error) {
+    return ''
+  }
+  const items = (unread.length ? unread : t.events || [])
+    .slice(0, 4)
+    .map((e) => {
+      const kind = escapeHtml(e.kind || '')
+      const title = escapeHtml(e.title || e.kind || 'Hendelse')
+      return `
+        <button type="button" class="ticker-item" data-ticker-id="${escapeHtml(e.id || '')}" data-ticker-kind="${kind}">
+          <span class="ticker-kind">${kind}</span>
+          <span class="ticker-title">${title}</span>
+        </button>`
+    })
+    .join('')
+  return `
+    <div class="ticker-strip" role="region" aria-label="Coach-varsler">
+      <div class="ticker-head">
+        <span class="ticker-label">Varsler${t.unread_count ? ` · ${t.unread_count}` : ''}</span>
+        <button type="button" class="ticker-dismiss" id="ticker-read-all">Merk lest</button>
+      </div>
+      <div class="ticker-items">${items}</div>
+      ${t.error ? `<p class="error tight">${escapeHtml(t.error)}</p>` : ''}
+      <p class="muted tight ticker-hint">Trykk åpner bekreft/plan — aldri auto-apply eller auto-sync.</p>
+    </div>
+  `
 }
 
 function renderEntry() {
@@ -2585,6 +2646,20 @@ function renderDu() {
           </div>
         </details>
         <div class="field"><label>Navn</label><input name="display_name" value="${escapeHtml(a.display_name || '')}" /></div>
+        <div class="field">
+          <label for="du_email">E-post (valgfritt)</label>
+          <input id="du_email" name="email" type="email" autocomplete="email"
+            value="${escapeHtml(a.email || '')}"
+            placeholder="deg@example.com" />
+          <p class="muted tight">Brukes kun til sparsomme ticker-varsler (sync, roll, CTL) — aldri spam.</p>
+        </div>
+        <div class="field">
+          <label class="toggle-label">
+            <input type="checkbox" name="notify_email" ${a.notify_email ? 'checked' : ''} />
+            E-postvarsler (opt-in)
+          </label>
+          <p class="muted tight">Krever e-post + Fly-secret <code>RESEND_API_KEY</code>. Uten nøkkel lagres valget, men sendes ikke.</p>
+        </div>
         <div class="grid-2">
           <div class="field"><label>Trener</label><input name="coach_display_name" value="${escapeHtml(a.coach_display_name || '')}" /></div>
           <div class="field"><label>Personlighet</label><select name="coach_personality">${pers}</select></div>
@@ -2790,6 +2865,10 @@ function bindApp() {
       if (state.tab === 'dashboard') {
         await refreshOverview()
         await refreshDashboard()
+        await refreshTicker({ refresh: true })
+      }
+      if (state.tab === 'coach') {
+        await refreshTicker({ refresh: false })
       }
       if (state.tab === 'plan') {
         await refreshOverview()
@@ -2803,6 +2882,72 @@ function bindApp() {
       if (state.tab === 'du') {
         await refreshIntervals()
       }
+      render()
+    })
+  })
+
+  document.getElementById('ticker-read-all')?.addEventListener('click', async () => {
+    try {
+      await api('/v1/athlete/me/events/read-all', { method: 'POST', body: {} })
+      await refreshTicker({ refresh: false })
+    } catch (err) {
+      state.ticker = {
+        ...(state.ticker || { events: [], unread_count: 0 }),
+        error: err.message || 'Kunne ikke merke lest',
+      }
+    }
+    render()
+  })
+
+  document.querySelectorAll('[data-ticker-id]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.tickerId
+      const kind = btn.dataset.tickerKind || ''
+      const ev = (state.ticker?.events || []).find((e) => e.id === id)
+      const action = ev?.payload?.action || ''
+      try {
+        if (id) {
+          await api(`/v1/athlete/me/events/${encodeURIComponent(id)}/read`, {
+            method: 'POST',
+            body: {},
+          })
+        }
+      } catch {
+        /* soft */
+      }
+      // Open confirm/plan surfaces — never auto-apply
+      if (action === 'open_plan' || kind === 'sessions_saved' || kind === 'sync_ok') {
+        state.tab = 'plan'
+        await refreshPlannedSessions()
+      } else if (
+        action === 'open_roll' ||
+        action === 'open_ease' ||
+        action === 'open_coach' ||
+        kind === 'roll_forward_due' ||
+        kind === 'ctl_overload' ||
+        kind === 'weekly_cap_replace' ||
+        kind === 'sync_fail' ||
+        kind === 'readiness_soft'
+      ) {
+        state.tab = 'coach'
+        if (kind === 'ctl_overload' || action === 'open_ease') {
+          state.chatDraft = 'lette neste økter pga høy belastning'
+          toast(
+            ev?.payload?.message ||
+              'Høy akutt belastning — si til coach at du vil lette (bekreft før lagring).',
+          )
+        } else if (kind === 'roll_forward_due' || action === 'open_roll') {
+          state.chatDraft = 'rull videre'
+          toast('Si «rull videre» eller bekreft roll-kort — ingen auto-apply.')
+        } else if (kind === 'weekly_cap_replace') {
+          toast('Ukeskap full — bruk erstatningskort i chatten (forhåndsvis → bekreft).')
+        } else if (ev?.payload?.message) {
+          toast(ev.payload.message)
+        }
+      } else {
+        state.tab = 'coach'
+      }
+      await refreshTicker({ refresh: false })
       render()
     })
   })
@@ -3698,6 +3843,8 @@ function bindApp() {
       season_start_date: String(fd.get('season_start_date') || '') || null,
       goal_race_date: String(fd.get('goal_race_date') || '') || null,
       show_body_metrics: fd.get('show_body_metrics') === 'on',
+      email: String(fd.get('email') || '').trim(),
+      notify_email: fd.get('notify_email') === 'on',
     }
   }
 

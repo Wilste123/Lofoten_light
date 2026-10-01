@@ -86,6 +86,7 @@ from db import (
     list_plan_blocks,
     list_planned_sessions,
     list_session_completions,
+    mark_all_athlete_events_read,
     mark_detalj_roll_confirmed,
     mark_detalj_roll_offered,
     mark_pending_action,
@@ -103,6 +104,7 @@ from db import (
     upsert_session_completion,
     utc_now,
     validate_username,
+    count_unread_athlete_events,
 )
 from two_tier_plan import (
     DETAIL_WEEKS,
@@ -156,6 +158,17 @@ from setup_plan import (
     merge_confirm_athlete_patch,
     enrich_draft_from_text,
     compose_goal_text,
+)
+from ticker import (
+    emit_sessions_saved,
+    emit_sync_fail,
+    emit_sync_ok,
+    emit_weekly_cap_replace,
+    list_public_events,
+    mark_read as ticker_mark_read,
+    refresh_soft_ticker,
+    resend_configured,
+    validate_email,
 )
 from sessions_service import (
     completion_note_line,
@@ -555,6 +568,8 @@ class AthletePatch(BaseModel):
     season_strength_hours_target: float | None = None
     season_start_date: str | None = None
     goal_race_date: str | None = None
+    email: str | None = None
+    notify_email: bool | None = None
 
 
 class ChatIn(BaseModel):
@@ -1390,9 +1405,149 @@ def get_me(x_athlete_id: str | None = Header(default=None)) -> dict[str, Any]:
     aid = _require_athlete(x_athlete_id)
     with db_session(config.get_db()) as conn:
         athlete = get_athlete(conn, aid)
+        unread = count_unread_athlete_events(conn, aid) if athlete else 0
     if not athlete:
         raise HTTPException(404, "Utøver ikke funnet")
-    return {"athlete": athlete}
+    return {
+        "athlete": athlete,
+        "ticker_unread": unread,
+        "email_notify": {
+            "opt_in": bool(athlete.get("notify_email")),
+            "email_set": bool(athlete.get("email")),
+            "resend_configured": resend_configured(),
+        },
+    }
+
+
+@app.get("/v1/athlete/me/events")
+def list_ticker_events(
+    x_athlete_id: str | None = Header(default=None),
+    unread_only: bool = Query(default=False),
+    limit: int = Query(default=30, ge=1, le=100),
+    refresh: bool = Query(
+        default=True,
+        description="Also evaluate soft triggers (roll/CTL/readiness) — never auto-apply",
+    ),
+) -> dict[str, Any]:
+    """Unread ticker strip. Tap → confirm/plan — never auto-apply or auto-sync."""
+    aid = _require_athlete(x_athlete_id)
+    created: list[dict[str, Any]] = []
+    with db_session(config.get_db()) as conn:
+        athlete = get_athlete(conn, aid)
+        if not athlete:
+            raise HTTPException(404, "Utøver ikke funnet")
+        if refresh:
+            created = _refresh_ticker_soft(conn, aid, athlete)
+        events = list_public_events(
+            conn, aid, unread_only=unread_only, limit=limit
+        )
+        unread = count_unread_athlete_events(conn, aid)
+    return {
+        "events": events,
+        "unread_count": unread,
+        "created_soft": [e.get("id") for e in created if e],
+        "human_coach": True,
+        "auto_apply": False,
+        "email_notify": {
+            "opt_in": bool(athlete.get("notify_email")),
+            "email_set": bool(athlete.get("email")),
+            "resend_configured": resend_configured(),
+        },
+    }
+
+
+@app.post("/v1/athlete/me/events/{event_id}/read")
+def mark_ticker_event_read(
+    event_id: str,
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    aid = _require_athlete(x_athlete_id)
+    with db_session(config.get_db()) as conn:
+        if not get_athlete(conn, aid):
+            raise HTTPException(404, "Utøver ikke funnet")
+        row = ticker_mark_read(conn, aid, event_id)
+        if not row:
+            raise HTTPException(404, "Hendelse ikke funnet")
+        unread = count_unread_athlete_events(conn, aid)
+    return {"event": row, "unread_count": unread}
+
+
+@app.post("/v1/athlete/me/events/read-all")
+def mark_all_ticker_events_read(
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    aid = _require_athlete(x_athlete_id)
+    with db_session(config.get_db()) as conn:
+        if not get_athlete(conn, aid):
+            raise HTTPException(404, "Utøver ikke funnet")
+        n = mark_all_athlete_events_read(conn, aid)
+    return {"ok": True, "marked": n, "unread_count": 0}
+
+
+def _refresh_ticker_soft(
+    conn: Any,
+    aid: str,
+    athlete: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Soft roll/CTL/readiness events — proposal only, never auto-apply."""
+    blocks = list_plan_blocks(conn, aid)
+    sessions = list_planned_sessions(conn, aid)
+    window = get_active_plan_window(conn, aid)
+    roll_eval = evaluate_roll_trigger(
+        plan_window=window,
+        planned_sessions=sessions,
+        plan_blocks=blocks,
+        athlete=athlete,
+        message="",
+        in_coach_chat=True,
+    )
+    load: dict[str, Any] | None = None
+    readiness_signals: dict[str, Any] | None = None
+    hard_day = False
+    try:
+        secrets = get_athlete_secrets(conn, aid)
+        key = ((secrets or {}).get("intervals_api_key") or "").strip()
+        icu = ((secrets or {}).get("intervals_athlete_id") or "").strip()
+        if key and icu:
+            from wellness import (
+                fetch_wellness,
+                load_summary_from_wellness,
+                recovery_signals_from_wellness,
+            )
+
+            newest = date.today().isoformat()
+            oldest = (date.today() - timedelta(days=14)).isoformat()
+            rows = fetch_wellness(key, icu, oldest, newest) or []
+            load = load_summary_from_wellness(rows)
+            readiness_signals = recovery_signals_from_wellness(rows)
+        today = date.today()
+        for s in sessions:
+            sd = str(s.get("session_date") or "")[:10]
+            if not sd:
+                continue
+            try:
+                d = date.fromisoformat(sd)
+            except ValueError:
+                continue
+            if today <= d <= today + timedelta(days=2):
+                st = (s.get("session_type") or s.get("type") or "").lower()
+                name = (s.get("name") or "").lower()
+                if any(
+                    x in st or x in name
+                    for x in ("quality", "threshold", "vo2", "interv", "tempo", "hard")
+                ):
+                    hard_day = True
+                    break
+    except Exception:  # noqa: BLE001
+        pass
+    return refresh_soft_ticker(
+        conn,
+        aid,
+        roll_eval=roll_eval,
+        load=load,
+        readiness_signals=readiness_signals,
+        hard_day_ahead=hard_day,
+    )
 
 
 @app.patch("/v1/athlete/me")
@@ -1402,6 +1557,11 @@ def patch_me(
 ) -> dict[str, Any]:
     aid = _require_athlete(x_athlete_id)
     patch = body.model_dump(exclude_unset=True)
+    if "email" in patch:
+        em = validate_email(patch.get("email"))
+        if patch.get("email") and not em:
+            raise HTTPException(400, "Ugyldig e-postadresse")
+        patch["email"] = em or ""
     with db_session(config.get_db()) as conn:
         existing = get_athlete(conn, aid)
         if not existing:
@@ -1439,6 +1599,11 @@ def patch_me(
         "profile_path": str(path.relative_to(config.REPO_ROOT))
         if path.is_relative_to(config.REPO_ROOT)
         else str(path),
+        "email_notify": {
+            "opt_in": bool(athlete.get("notify_email")),
+            "email_set": bool(athlete.get("email")),
+            "resend_configured": resend_configured(),
+        },
     }
 
 
@@ -3486,6 +3651,28 @@ def calendar_confirm(
                     "result": result,
                     "retry_safe": True,
                 }
+            # Ticker: local save and/or ICU sync (never auto-apply)
+            replace_ids = [
+                str(x).strip()
+                for x in (payload.get("replace_session_ids") or [])
+                if str(x).strip()
+            ]
+            with db_session(config.get_db()) as conn:
+                if persisted:
+                    emit_sessions_saved(
+                        conn,
+                        aid,
+                        count=len(persisted),
+                        source=str(op or "workout_push"),
+                        replace=bool(replace_ids),
+                    )
+                if expected > 0 and int(outcome.get("pushed") or 0) > 0:
+                    emit_sync_ok(
+                        conn,
+                        aid,
+                        pushed=int(outcome["pushed"]),
+                        expected=expected,
+                    )
         elif op == "delete":
             if not key or not icu:
                 raise HTTPException(400, "Koble Intervals under Du først")
@@ -3493,10 +3680,22 @@ def calendar_confirm(
             result = delete_events_bulk(key, icu, ids)
             deleted = result.get("eventsDeleted", len(ids))
             outcome = {"deleted": deleted, "result": result, "retry_safe": True}
+            with db_session(config.get_db()) as conn:
+                emit_sync_ok(
+                    conn,
+                    aid,
+                    pushed=int(deleted or 0),
+                    expected=len(ids),
+                )
         else:
             raise HTTPException(400, "Ugyldig pending op")
     except RuntimeError as exc:
         # Leave pending as-is so client can retry confirm safely (upsert)
+        try:
+            with db_session(config.get_db()) as conn:
+                emit_sync_fail(conn, aid, error=str(exc))
+        except Exception:  # noqa: BLE001
+            pass
         raise HTTPException(
             502,
             f"{str(exc)[:480]} Pending er ikke bekreftet — trygg å prøve igjen.",
@@ -4299,6 +4498,13 @@ def plan_roll_confirm(
         )
         mark_detalj_roll_confirmed(conn, aid)
         total = count_planned_sessions(conn, aid)
+        emit_sessions_saved(
+            conn,
+            aid,
+            count=len(result["sessions"]),
+            source="plan_roll",
+            replace=True,
+        )
         if body.prepare_intervals_sync:
             secrets = get_athlete_secrets(conn, aid)
             key = ((secrets or {}).get("intervals_api_key") or "").strip()
@@ -4389,6 +4595,13 @@ def plan_week_adjust_confirm(
             conn, aid, start_s, end_s, sessions
         )
         total = count_planned_sessions(conn, aid)
+        emit_sessions_saved(
+            conn,
+            aid,
+            count=len(saved),
+            source="week_adjust",
+            replace=True,
+        )
         if body.prepare_intervals_sync:
             secrets = get_athlete_secrets(conn, aid)
             key = ((secrets or {}).get("intervals_api_key") or "").strip()
@@ -4592,6 +4805,7 @@ def _attach_cap_replace_offer(
     workouts = list(proposal.get("workouts") or [])
     with db_session(config.get_db()) as conn:
         candidates = _replace_candidates_for_workouts(conn, aid, workouts)
+        emit_weekly_cap_replace(conn, aid, candidates=len(candidates))
     # Prefer auto-select same-date candidates (1:1 with proposed count)
     auto_ids = [
         c["id"]

@@ -226,6 +226,8 @@ CREATE INDEX IF NOT EXISTS idx_session_completions_athlete
   ON session_completions(athlete_id, session_date);
 CREATE INDEX IF NOT EXISTS idx_athlete_events_athlete
   ON athlete_events(athlete_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_athlete_events_unread
+  ON athlete_events(athlete_id, read_at, created_at);
 """
 
 
@@ -300,6 +302,9 @@ _EXTRA_COLUMNS = [
     ("auth_user_id", "TEXT"),
     ("detalj_roll_offered_at", "TEXT"),
     ("detalj_roll_confirmed_at", "TEXT"),
+    # Ticker email opt-in (coach-ticker.md) — never invent secrets
+    ("email", "TEXT DEFAULT ''"),
+    ("notify_email", "INTEGER DEFAULT 0"),
 ]
 
 _PLAN_BLOCK_EXTRA_COLUMNS = [
@@ -485,6 +490,9 @@ def row_to_athlete(row: Any | None) -> dict[str, Any] | None:
             d["sessions_per_week"] = None
     else:
         d["sessions_per_week"] = None
+    ne = d.get("notify_email")
+    d["notify_email"] = bool(ne) if ne is not None else False
+    d["email"] = (d.get("email") or "").strip().lower()
     return d
 
 
@@ -640,6 +648,7 @@ def update_athlete(
         "auth_user_id",
         "detalj_roll_offered_at",
         "detalj_roll_confirmed_at",
+        "email",
     }
     fields: list[str] = []
     values: list[Any] = []
@@ -662,6 +671,12 @@ def update_athlete(
         elif key == "setup_completed":
             fields.append("setup_completed = ?")
             values.append(1 if val else 0)
+        elif key == "notify_email":
+            fields.append("notify_email = ?")
+            values.append(1 if val else 0)
+        elif key == "email":
+            fields.append("email = ?")
+            values.append((val or "").strip().lower() if val else "")
         elif key == "username":
             uname = normalize_username(val if isinstance(val, str) else str(val or ""))
             err = validate_username(uname)
@@ -1699,3 +1714,145 @@ def completions_by_external_id(
 ) -> dict[str, dict[str, Any]]:
     rows = list_session_completions(conn, athlete_id, limit=500)
     return {r["external_session_id"]: r for r in rows if r.get("external_session_id")}
+
+
+def _row_to_athlete_event(row: Any | None) -> dict[str, Any] | None:
+    if row is None:
+        return None
+    data = dict(row)
+    try:
+        data["payload"] = json.loads(data.get("payload_json") or "{}")
+    except json.JSONDecodeError:
+        data["payload"] = {}
+    return data
+
+
+def insert_athlete_event(
+    conn: Connection,
+    athlete_id: str,
+    *,
+    kind: str,
+    title: str,
+    payload: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    eid = new_id()
+    now = utc_now()
+    conn.execute(
+        """
+        INSERT INTO athlete_events (
+          id, athlete_id, kind, title, payload_json, read_at, created_at
+        ) VALUES (?, ?, ?, ?, ?, NULL, ?)
+        """,
+        (
+            eid,
+            athlete_id,
+            kind,
+            title or "",
+            json.dumps(payload or {}, ensure_ascii=False),
+            now,
+        ),
+    )
+    return get_athlete_event(conn, athlete_id, eid)  # type: ignore[return-value]
+
+
+def get_athlete_event(
+    conn: Connection, athlete_id: str, event_id: str
+) -> dict[str, Any] | None:
+    cur = conn.execute(
+        "SELECT * FROM athlete_events WHERE id = ? AND athlete_id = ?",
+        (event_id, athlete_id),
+    )
+    return _row_to_athlete_event(cur.fetchone())
+
+
+def list_athlete_events(
+    conn: Connection,
+    athlete_id: str,
+    *,
+    unread_only: bool = False,
+    limit: int = 30,
+) -> list[dict[str, Any]]:
+    lim = max(1, min(int(limit or 30), 100))
+    if unread_only:
+        cur = conn.execute(
+            """
+            SELECT * FROM athlete_events
+            WHERE athlete_id = ? AND read_at IS NULL
+            ORDER BY created_at DESC
+            LIMIT ?
+            """,
+            (athlete_id, lim),
+        )
+    else:
+        cur = conn.execute(
+            """
+            SELECT * FROM athlete_events
+            WHERE athlete_id = ?
+            ORDER BY CASE WHEN read_at IS NULL THEN 0 ELSE 1 END, created_at DESC
+            LIMIT ?
+            """,
+            (athlete_id, lim),
+        )
+    return [
+        r for r in (_row_to_athlete_event(row) for row in cur.fetchall()) if r
+    ]
+
+
+def latest_event_of_kind(
+    conn: Connection, athlete_id: str, kind: str
+) -> dict[str, Any] | None:
+    cur = conn.execute(
+        """
+        SELECT * FROM athlete_events
+        WHERE athlete_id = ? AND kind = ?
+        ORDER BY created_at DESC
+        LIMIT 1
+        """,
+        (athlete_id, kind),
+    )
+    return _row_to_athlete_event(cur.fetchone())
+
+
+def mark_athlete_event_read(
+    conn: Connection, athlete_id: str, event_id: str
+) -> dict[str, Any] | None:
+    now = utc_now()
+    conn.execute(
+        """
+        UPDATE athlete_events
+        SET read_at = ?
+        WHERE id = ? AND athlete_id = ? AND read_at IS NULL
+        """,
+        (now, event_id, athlete_id),
+    )
+    return get_athlete_event(conn, athlete_id, event_id)
+
+
+def mark_all_athlete_events_read(
+    conn: Connection, athlete_id: str
+) -> int:
+    now = utc_now()
+    cur = conn.execute(
+        """
+        UPDATE athlete_events
+        SET read_at = ?
+        WHERE athlete_id = ? AND read_at IS NULL
+        """,
+        (now, athlete_id),
+    )
+    return int(cur.rowcount or 0)
+
+
+def count_unread_athlete_events(conn: Connection, athlete_id: str) -> int:
+    cur = conn.execute(
+        """
+        SELECT COUNT(*) AS n FROM athlete_events
+        WHERE athlete_id = ? AND read_at IS NULL
+        """,
+        (athlete_id,),
+    )
+    row = cur.fetchone()
+    if not row:
+        return 0
+    d = dict(row)
+    return int(d.get("n") or 0)

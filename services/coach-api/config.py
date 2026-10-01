@@ -33,6 +33,14 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip()
 SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "").strip()
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
 
+# Ticker email (opt-in) — Resend. Empty = send path no-ops with clear reason.
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "").strip()
+RESEND_FROM_EMAIL = os.environ.get("RESEND_FROM_EMAIL", "").strip()
+COACH_APP_URL = (
+    os.environ.get("COACH_APP_URL", "").strip()
+    or os.environ.get("APP_PUBLIC_URL", "").strip()
+)
+
 
 def get_db() -> Path | str:
     """Active DB target: Postgres URL if set, else SQLite path."""

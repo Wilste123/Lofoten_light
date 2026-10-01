@@ -1692,6 +1692,77 @@ button.linkish:hover {
 .chart-bar.is-executed { background: var(--accent); }
 .chart-kind { margin: 0 0 0.25rem; }
 
+/* Coach ticker — unread strip (athlete_events); never auto-apply */
+.ticker-strip {
+  margin: 0 1.1rem 0.5rem;
+  padding: 0.55rem 0.7rem 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--bg2) 88%, var(--accent) 12%);
+}
+.ticker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+.ticker-label {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ticker-dismiss {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+.ticker-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.ticker-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg1);
+  color: var(--text);
+  padding: 0.45rem 0.55rem;
+  cursor: pointer;
+}
+.ticker-item:hover {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+}
+.ticker-kind {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  font-weight: 600;
+}
+.ticker-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.ticker-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.72rem;
+}
+
 @media (max-width: 640px) {
   .builder-step {
     grid-template-columns: 1fr 1fr;

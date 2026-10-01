@@ -51,6 +51,8 @@ CREATE TABLE IF NOT EXISTS athletes (
   auth_user_id TEXT,
   detalj_roll_offered_at TEXT,
   detalj_roll_confirmed_at TEXT,
+  email TEXT DEFAULT '',
+  notify_email INTEGER DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -205,6 +207,7 @@ CREATE INDEX IF NOT EXISTS idx_planned_sessions_athlete ON planned_sessions(athl
 CREATE INDEX IF NOT EXISTS idx_pending_actions_athlete ON pending_actions(athlete_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_session_completions_athlete ON session_completions(athlete_id, session_date);
 CREATE INDEX IF NOT EXISTS idx_athlete_events_athlete ON athlete_events(athlete_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_athlete_events_unread ON athlete_events(athlete_id, read_at, created_at);
 
 -- ---------------------------------------------------------------------------
 -- RLS (athlete isolation). coach-api uses DATABASE_URL / service_role (bypasses RLS).
@@ -222,6 +225,7 @@ ALTER TABLE pending_actions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE invites ENABLE ROW LEVEL SECURITY;
 ALTER TABLE training_pairs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE coordinated_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE athlete_events ENABLE ROW LEVEL SECURITY;
 
 -- Helper: own row via auth.uid() mapped to athletes.auth_user_id OR session GUC
 CREATE OR REPLACE FUNCTION public.coach_athlete_allowed(p_athlete_id TEXT)
@@ -286,5 +290,10 @@ CREATE POLICY session_completions_isolation ON session_completions
 
 DROP POLICY IF EXISTS pending_actions_isolation ON pending_actions;
 CREATE POLICY pending_actions_isolation ON pending_actions
+  FOR ALL USING (public.coach_athlete_allowed(athlete_id))
+  WITH CHECK (public.coach_athlete_allowed(athlete_id));
+
+DROP POLICY IF EXISTS athlete_events_isolation ON athlete_events;
+CREATE POLICY athlete_events_isolation ON athlete_events
   FOR ALL USING (public.coach_athlete_allowed(athlete_id))
   WITH CHECK (public.coach_athlete_allowed(athlete_id));

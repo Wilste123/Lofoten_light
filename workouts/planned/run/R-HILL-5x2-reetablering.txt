@@ -1,0 +1,29 @@
+name: Løp 5x2 min bakke (re-etablering)
+sport: run
+intervals_target: HR
+---
+William, uke 1-kvalitet — kort og kontrollert. Ikke elghufs-race. Puls i drag: ca. 155–163 (mellom Z3 og terskel), RPE 7 maks. Gå ned bakken mellom drag.
+
+Stopp hele økta hvis legg/Akilles/endret løpsteknikk. Plan B: 4x2 eller 3x2.
+
+Styrke ST01 flyttes til lør morgen (25 min, 2 sett) før sykkel recovery — ikke hopp over.
+
+---intervals---
+- Warmup 15m 81-89% LTHR
+
+- 2m 95-100% LTHR
+- 3m 75-80% LTHR
+
+- 2m 95-100% LTHR
+- 3m 75-80% LTHR
+
+- 2m 95-100% LTHR
+- 3m 75-80% LTHR
+
+- 2m 95-100% LTHR
+- 3m 75-80% LTHR
+
+- 2m 95-100% LTHR
+- 3m 75-80% LTHR
+
+- Cooldown 10m 75-80% LTHR

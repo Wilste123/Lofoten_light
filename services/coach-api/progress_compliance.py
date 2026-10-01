@@ -72,7 +72,11 @@ DEFAULT_TARGETS: dict[str, float] = {
 
 # Intervals list endpoint can truncate; page with limit + shrinking newest.
 _PAGE_LIMIT = 100
-_ACTIVITY_FIELDS = "id,type,sport,moving_time,elapsed_time,duration,start_date_local"
+# paired_event_id links completed activity → calendar event (Intervals truth)
+_ACTIVITY_FIELDS = (
+    "id,type,sport,name,moving_time,elapsed_time,duration,start_date_local,"
+    "paired_event_id"
+)
 _FETCH_TIMEOUT = 12
 _CACHE_TTL_SEC = 120
 
@@ -328,8 +332,13 @@ def build_progress_payload(
     }
     if fetch_error:
         payload["fetch_error"] = True
+        payload["retryable"] = True
         if fetch_error_detail:
             payload["fetch_error_detail"] = fetch_error_detail[:200]
+        payload["offline_or_error_note"] = (
+            "Intervals-henting feilet — completed=0 (ikke demo-timer). "
+            "Prøv igjen; cache tømmes automatisk etter TTL."
+        )
     return payload
 
 
@@ -556,7 +565,7 @@ def resolve_progress(
         # Linked but failed: do NOT show fake demo hours
         return empty_progress(
             athlete,
-            source="demo",
+            source="intervals",
             today=today,
             fetch_error=True,
             fetch_error_detail=detail,

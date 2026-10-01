@@ -32,6 +32,8 @@ from athlete_constraints import (
     DISC_RUN,
     DISC_STRENGTH,
     DISC_SWIM,
+    ICU_SYNC_WEEKS,
+    MAX_PLAN_HORIZON_WEEKS,
     MAX_WORKOUT_WEEKS,
     constraints_summary_nb,
     resolve_constraints,
@@ -99,7 +101,454 @@ def _ancestor_paths(path: Path, max_up: int = 4) -> list[Path]:
     return out
 
 
-DEFAULT_WORKOUT_WEEKS = MAX_WORKOUT_WEEKS
+DEFAULT_WORKOUT_WEEKS = MAX_WORKOUT_WEEKS  # Intervals near-term sync window
+DEFAULT_PLAN_HORIZON_WEEKS = MAX_PLAN_HORIZON_WEEKS
+
+
+def plan_horizon_weeks(
+    blocks: list[dict[str, Any]] | None = None,
+    *,
+    athlete: dict[str, Any] | None = None,
+    today: date | None = None,
+) -> int:
+    """Weeks of app-owned planned_sessions from today → goal (capped)."""
+    today = today or date.today()
+    end: date | None = None
+    race_raw = (athlete or {}).get("goal_race_date") if athlete else None
+    if race_raw:
+        end = parse_iso_date(str(race_raw)[:10])
+    if end is None and blocks:
+        ends: list[date] = []
+        for b in blocks:
+            e = parse_iso_date(b.get("end_date"))
+            if e:
+                ends.append(e)
+        if ends:
+            end = max(ends)
+    if end is None or end <= today:
+        return ICU_SYNC_WEEKS
+    days = (end - today).days
+    weeks = max(1, (days + 6) // 7)
+    return max(1, min(int(weeks), MAX_PLAN_HORIZON_WEEKS))
+
+
+def monday_of(day: date) -> date:
+    return day - timedelta(days=day.weekday())
+
+
+def week_bounds(
+    week_start: date | str | None = None,
+    *,
+    today: date | None = None,
+) -> tuple[date, date]:
+    """Monday–Sunday for ``week_start`` (or this week)."""
+    today = today or date.today()
+    if week_start is None or week_start == "" or week_start == "this_week":
+        start = monday_of(today)
+    elif isinstance(week_start, date):
+        start = monday_of(week_start)
+    else:
+        parsed = parse_iso_date(str(week_start)[:10])
+        start = monday_of(parsed or today)
+    return start, start + timedelta(days=6)
+
+
+def filter_planned_sessions_icu_window(
+    sessions: list[dict[str, Any]],
+    *,
+    today: date | None = None,
+    weeks: int = ICU_SYNC_WEEKS,
+) -> list[dict[str, Any]]:
+    """Near-term slice of stored planned_sessions for Intervals WORKOUT sync."""
+    today = today or date.today()
+    weeks = max(1, min(int(weeks or ICU_SYNC_WEEKS), MAX_WORKOUT_WEEKS))
+    end = today + timedelta(days=7 * weeks - 1)
+    out: list[dict[str, Any]] = []
+    for s in sessions:
+        d = parse_iso_date(str(s.get("session_date") or "")[:10])
+        if d and today <= d <= end:
+            out.append(s)
+    return out
+
+
+def planned_session_to_csv_row(
+    session: dict[str, Any],
+    *,
+    plan_start: date,
+    index: int = 0,
+) -> dict[str, str] | None:
+    """Map a stored planned_sessions row → CLI builder CSV row."""
+    day = parse_iso_date(str(session.get("session_date") or "")[:10])
+    if not day:
+        return None
+    day_index = (day - plan_start).days + 1
+    if day_index < 1:
+        return None
+    planned = str(
+        session.get("planned_path") or session.get("description") or ""
+    ).strip()
+    sport = str(session.get("sport") or "other").strip().lower() or "other"
+    try:
+        dur = int(float(session.get("duration_minutes") or 0))
+    except (TypeError, ValueError):
+        dur = 0
+    start_time = str(session.get("start_time") or "07:00")[:5] or "07:00"
+    stem = Path(planned).stem.lower().replace("_", "")[:12] if planned else ""
+    suffix = stem or "st" if sport == "strength" else ""
+    return {
+        "day": str(day_index),
+        "sport": sport,
+        "subtype": "",
+        "title": str(session.get("name") or session.get("title") or "Økt").strip(),
+        "duration_minutes": str(dur),
+        "tss": "0",
+        "description": planned,
+        "phase": str(session.get("phase") or ""),
+        "external_suffix": suffix,
+        "start_time": start_time,
+        "_session_external_id": str(session.get("external_id") or ""),
+        "_session_index": str(index),
+    }
+
+
+def icu_events_from_planned_sessions(
+    sessions: list[dict[str, Any]],
+    *,
+    athlete: dict[str, Any] | None = None,
+    weeks: int = DEFAULT_WORKOUT_WEEKS,
+    today: date | None = None,
+    repo_root: Path | None = None,
+    module_file: Path | None = None,
+) -> list[dict[str, Any]]:
+    """Build ICU WORKOUT events from stored planned_sessions (near window)."""
+    today = today or date.today()
+    window = filter_planned_sessions_icu_window(
+        sessions, today=today, weeks=weeks
+    )
+    if not window:
+        return []
+    build_fn = _import_build_workout_event(module_file=module_file)
+    root = Path(repo_root or _workouts_root(module_file=module_file))
+    planned_dir = root / "workouts" / "planned"
+    if not planned_dir.is_dir():
+        raise FileNotFoundError(
+            f"Mangler øktbibliotek under {root}/workouts/planned "
+            "(Docker må COPY workouts/ — sjekk .dockerignore)."
+        )
+    first = min(
+        d
+        for d in (parse_iso_date(str(s.get("session_date") or "")[:10]) for s in window)
+        if d
+    )
+    plan_start = monday_of(first)
+    events: list[dict[str, Any]] = []
+    for i, session in enumerate(window):
+        row = planned_session_to_csv_row(session, plan_start=plan_start, index=i)
+        if not row:
+            continue
+        try:
+            ev = build_fn(
+                row,
+                plan_start,
+                row.get("start_time") or "07:00",
+                {},
+                root,
+            )
+        except Exception as exc:
+            raise RuntimeError(
+                f"Økt-bygger feilet for lagret økt {i + 1} "
+                f"({row.get('title') or row.get('sport') or '?'}): {format_exc_nb(exc)}"
+            ) from exc
+        day = parse_iso_date(str(ev.get("start_date_local") or "")[:10])
+        name = str(ev.get("name") or row.get("title") or "okt")
+        stored_eid = str(session.get("external_id") or "").strip()
+        if stored_eid:
+            ev["external_id"] = stored_eid
+        elif day:
+            ev["external_id"] = external_id_for_workout(day, name, i)
+        else:
+            ev["external_id"] = f"{WORKOUT_EXTERNAL_PREFIX}row-{i}"
+        ev["_day"] = str(ev.get("start_date_local") or "")[:10]
+        ev["_sport"] = (row.get("sport") or "").lower()
+        ev["_planned"] = row.get("description")
+        ev["_has_zwo"] = bool(ev.get("file_contents"))
+        ev["_from_stored"] = True
+        try:
+            ev["_duration_minutes"] = int(float(row.get("duration_minutes") or 0))
+        except (TypeError, ValueError):
+            ev["_duration_minutes"] = 0
+        personalize_icu_event(ev, athlete)
+        events.append(ev)
+    return events
+
+
+def build_week_adjust_sessions(
+    blocks: list[dict[str, Any]],
+    *,
+    athlete: dict[str, Any] | None = None,
+    week_start: date | str | None = None,
+    ease_load: bool = False,
+    today: date | None = None,
+    signals: dict[str, bool] | None = None,
+) -> dict[str, Any]:
+    """Rebuild *one* microcycle of planned_sessions — surgical, no full wipe.
+
+    ``ease_load`` softens via fitness_notes signal (same path as full rebuild).
+    Always proposal-shaped; caller must preview → confirm → replace range.
+    If ``this_week`` falls before plan coverage, snap to the first plan week.
+    """
+    today = today or date.today()
+    start, end = week_bounds(week_start, today=today)
+    ath = dict(athlete or {})
+    if ease_load:
+        note = (ath.get("fitness_notes") or "").strip()
+        ease_bit = "Lett uke foreslått (readiness/søvn) — kirurgisk ukejustering."
+        ath["fitness_notes"] = f"{note} {ease_bit}".strip()[:500]
+
+    # Snap forward when target week is before meso/plan coverage
+    anchor = _anchor_start(blocks, today=start)
+    if anchor and end < anchor:
+        start, end = week_bounds(anchor, today=anchor)
+
+    built = build_planned_session_dicts(
+        blocks,
+        athlete=ath,
+        signals=signals,
+        today=start,
+        weeks=1,
+    )
+    sessions = [
+        s
+        for s in (built.get("sessions") or [])
+        if (d := parse_iso_date(str(s.get("session_date") or "")[:10]))
+        and start <= d <= end
+    ]
+    # Fallback: accept whatever weeks=1 produced and re-bound the week
+    if not sessions and built.get("sessions"):
+        first = parse_iso_date(str(built["sessions"][0].get("session_date") or "")[:10])
+        if first:
+            start, end = week_bounds(first, today=first)
+            sessions = [
+                s
+                for s in built["sessions"]
+                if (d := parse_iso_date(str(s.get("session_date") or "")[:10]))
+                and start <= d <= end
+            ]
+    for s in sessions:
+        s["source"] = "week_adjust"
+        if ease_load:
+            phase = str(s.get("phase") or "").strip()
+            s["phase"] = f"{phase}+ease" if phase else "ease"
+    return {
+        "sessions": sessions,
+        "count": len(sessions),
+        "week_start": start.isoformat(),
+        "week_end": end.isoformat(),
+        "ease_load": bool(ease_load),
+        "weeks": 1,
+        "icu_sync_weeks": ICU_SYNC_WEEKS,
+        "scope": "week",
+        "horizon_note_nb": (
+            f"Kirurgisk ukejustering: {len(sessions)} økter "
+            f"{start.isoformat()}–{end.isoformat()}"
+            + (" (lett uke)." if ease_load else ".")
+            + " Resten av planen til måldato beholdes."
+        ),
+    }
+
+
+def readiness_adjustment_hints(
+    recovery: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Coach *proposals* from sleep/HRV/readiness — soft-fail when missing.
+
+    Never mutates the plan autonomously; returns recommendation text only.
+    """
+    signals = recovery if isinstance(recovery, dict) else {}
+    available = bool(signals.get("available"))
+    out: dict[str, Any] = {
+        "available": available,
+        "as_proposals_only": True,
+        "tone": "unknown",
+        "recommendations_nb": [],
+        "summary_nb": (
+            "Ingen søvn/HRV/readiness-data — juster plan ut fra avtaler og subjektiv form."
+            if not available
+            else ""
+        ),
+        "signals_used": {},
+    }
+    if not available:
+        return out
+
+    sleep_h = signals.get("sleep_avg_hours")
+    sleep_score = signals.get("sleep_avg_score")
+    hrv = signals.get("hrv_latest")
+    if hrv is None:
+        hrv = signals.get("hrv_avg_7d")
+    readiness = signals.get("readiness")
+    ctl = signals.get("ctl")
+    atl = signals.get("atl")
+    out["signals_used"] = {
+        "sleep_avg_hours": sleep_h,
+        "sleep_avg_score": sleep_score,
+        "hrv": hrv,
+        "readiness": readiness,
+        "ctl": ctl,
+        "atl": atl,
+    }
+
+    recs: list[str] = []
+    tone = "hold"
+    try:
+        sleep_f = float(sleep_h) if sleep_h is not None else None
+    except (TypeError, ValueError):
+        sleep_f = None
+    try:
+        score_f = float(sleep_score) if sleep_score is not None else None
+    except (TypeError, ValueError):
+        score_f = None
+    try:
+        ready_f = float(readiness) if readiness is not None else None
+    except (TypeError, ValueError):
+        ready_f = None
+    try:
+        ctl_f = float(ctl) if ctl is not None else None
+        atl_f = float(atl) if atl is not None else None
+    except (TypeError, ValueError):
+        ctl_f = atl_f = None
+
+    short_sleep = sleep_f is not None and sleep_f < 6.5
+    low_score = score_f is not None and score_f < 60
+    low_ready = ready_f is not None and ready_f < 5
+    high_load = (
+        ctl_f is not None and atl_f is not None and ctl_f > 0 and (atl_f / ctl_f) > 1.3
+    )
+
+    if short_sleep or low_score or low_ready or high_load:
+        tone = "ease"
+        if short_sleep:
+            recs.append(
+                f"Søvn snitt {sleep_f:.1f} t — foreslå lettere uke / bytt kvalitet → Z2."
+            )
+        if low_score:
+            recs.append(
+                f"Søvnscore {int(score_f)} — vurder å flytte hardøkt 1–2 dager."
+            )
+        if low_ready:
+            recs.append(
+                f"Readiness {ready_f:g} — foreslå Plan B (kortere / lavere intensitet)."
+            )
+        if high_load:
+            recs.append(
+                f"ATL/CTL {atl_f:.0f}/{ctl_f:.0f} høyt — foreslå recovery-dag før ny kvalitet."
+            )
+    else:
+        tone = "ok"
+        bits = []
+        if sleep_f is not None:
+            bits.append(f"søvn {sleep_f:.1f} t")
+        if hrv is not None:
+            bits.append(f"HRV {hrv}")
+        if ready_f is not None:
+            bits.append(f"readiness {ready_f:g}")
+        recs.append(
+            "Formsignaler OK"
+            + (f" ({', '.join(bits)})" if bits else "")
+            + " — hold avtalt struktur; ingen autonom omskrivning."
+        )
+
+    out["tone"] = tone
+    out["recommendations_nb"] = recs
+    out["summary_nb"] = " ".join(recs) if recs else out["summary_nb"]
+    return out
+
+
+def build_planned_session_dicts(
+    blocks: list[dict[str, Any]],
+    *,
+    athlete: dict[str, Any] | None = None,
+    signals: dict[str, bool] | None = None,
+    today: date | None = None,
+    weeks: int | None = None,
+) -> dict[str, Any]:
+    """Full app plan horizon → list of planned_session row dicts (no ICU write)."""
+    today = today or date.today()
+    horizon = weeks if weeks is not None else plan_horizon_weeks(
+        blocks, athlete=athlete, today=today
+    )
+    plan_start, rows = build_plan_week_rows(
+        blocks,
+        signals=signals,
+        weeks=horizon,
+        today=today,
+        athlete=athlete,
+        max_weeks=MAX_PLAN_HORIZON_WEEKS,
+    )
+    sessions: list[dict[str, Any]] = []
+    for i, row in enumerate(rows):
+        try:
+            day_i = int(float(row.get("day") or 0))
+        except (TypeError, ValueError):
+            continue
+        if day_i < 1:
+            continue
+        day = plan_start + timedelta(days=day_i - 1)
+        name = str(row.get("title") or "Økt").strip()
+        sport = str(row.get("sport") or "other").strip().lower()
+        try:
+            dur = int(float(row.get("duration_minutes") or 0)) or None
+        except (TypeError, ValueError):
+            dur = None
+        start_time = str(row.get("start_time") or "07:00")[:5]
+        owning = _block_for_day(blocks, day)
+        external = external_id_for_workout(day, name, i)
+        sessions.append(
+            {
+                "session_date": day.isoformat(),
+                "sport": sport,
+                "name": name,
+                "description": str(row.get("description") or ""),
+                "duration_minutes": dur,
+                "start_time": start_time,
+                "planned_path": str(row.get("description") or ""),
+                "phase": str(row.get("phase") or ""),
+                "block_id": (owning or {}).get("id"),
+                "external_id": external,
+                "source": "plan",
+                "status": "planned",
+                "sort_order": i,
+            }
+        )
+    return {
+        "sessions": sessions,
+        "count": len(sessions),
+        "weeks": horizon,
+        "plan_start": plan_start.isoformat(),
+        "goal_race_date": (athlete or {}).get("goal_race_date"),
+        "icu_sync_weeks": ICU_SYNC_WEEKS,
+    }
+
+
+def persistable_plan_payload(
+    blocks: list[dict[str, Any]],
+    *,
+    athlete: dict[str, Any] | None = None,
+    signals: dict[str, bool] | None = None,
+    today: date | None = None,
+) -> dict[str, Any]:
+    """Used by setup/adjust confirm: meso blocks already given; build sessions."""
+    built = build_planned_session_dicts(
+        blocks, athlete=athlete, signals=signals, today=today
+    )
+    return {
+        **built,
+        "horizon_note_nb": (
+            f"App-plan: {built['count']} økter over {built['weeks']} uker "
+            f"(til måldato {built.get('goal_race_date') or '—'}). "
+            f"Intervals WORKOUT-sync: første {ICU_SYNC_WEEKS} uker etter Sync-bekreftelse."
+        ),
+    }
 
 # Session row: weekday 0=Mon … 6=Sun, then CSV fields for build_workout_event
 # Optional trailing purpose_nb used for coach rationale (not pushed to ICU CSV).
@@ -587,11 +1036,26 @@ def _templates_for_signals(
     run_primary = atype.endswith("runner") or atype == "runner"
     bike_primary = atype == "cyclist"
     swim_primary = atype == "swimmer"
+    # Explicit commercial type only — empty atype keeps legacy multi/rebuild packs
+    # (seeded william / returning tests). general_endurance never inherits ukemaler.
+    general = atype in ("general_endurance", "general")
+    multi = atype in ("triathlete", "beginner_multi") or bool(
+        signals.get("multisport")
+    )
     inj_title, inj_path = injury_strength_session(athlete)
 
     run_strength_only = set(discs) <= {DISC_RUN, DISC_STRENGTH} and DISC_RUN in discs
-    if run_strength_only or (
-        run_primary and DISC_SWIM not in discs and DISC_BIKE not in discs
+    # Commercial / get-in-shape: never inherit William ukemaler swim+bike+run
+    if (
+        run_strength_only
+        or (run_primary and DISC_SWIM not in discs and DISC_BIKE not in discs)
+        or (general and not multi)
+        or (
+            discs
+            and DISC_SWIM not in discs
+            and DISC_BIKE not in discs
+            and DISC_RUN in discs
+        )
     ):
         # Run±strength path — build exactly N from allowed disciplines (knowledge tables)
         sess = sessions_n if sessions_n < 90 else 4
@@ -930,7 +1394,8 @@ def build_prescription_rationale_nb(
         "Økter:",
         *purposes,
         f"Knowledge: {k_line}.",
-        "Intervals: kun første 2 uker som WORKOUT; grovplan-noter kan dekke sesong til måldato.",
+        "Intervals: app-plan dekker sesong til måldato; WORKOUT-sync til Intervals "
+        f"er første {ICU_SYNC_WEEKS} uker (preview → confirm).",
     ]
     return "\n".join(lines)
 
@@ -1007,17 +1472,20 @@ def build_plan_week_rows(
     weeks: int = DEFAULT_WORKOUT_WEEKS,
     today: date | None = None,
     athlete: dict[str, Any] | None = None,
+    max_weeks: int | None = None,
 ) -> tuple[date, list[dict[str, str]]]:
-    """Produce trainingdojo-compatible CSV rows for first ``weeks`` microcycles.
+    """Produce trainingdojo-compatible CSV rows for ``weeks`` microcycles.
 
-    Hard-capped at ``MAX_WORKOUT_WEEKS`` (2). Sessions honour athlete constraints.
+    Default ``max_weeks`` = ``MAX_WORKOUT_WEEKS`` (Intervals sync). Pass
+    ``MAX_PLAN_HORIZON_WEEKS`` when building the full app plan to goal date.
     """
     if not blocks:
         return date.today(), []
     signals = signals or signals_from_athlete(athlete)
     atype = athlete_type_from_athlete(athlete)
     constraints = resolve_constraints(athlete, athlete_type=atype)
-    weeks = max(1, min(int(weeks or DEFAULT_WORKOUT_WEEKS), MAX_WORKOUT_WEEKS))
+    cap = MAX_WORKOUT_WEEKS if max_weeks is None else max(1, int(max_weeks))
+    weeks = max(1, min(int(weeks or DEFAULT_WORKOUT_WEEKS), cap))
     anchor = _anchor_start(blocks, today=today)
     if not anchor:
         return date.today(), []
@@ -1259,28 +1727,41 @@ def build_plan_sync_bundle(
     repo_root: Path | None = None,
     allow_degraded: bool = False,
     module_file: Path | None = None,
+    planned_sessions: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """NOTES (meso) + library WORKOUTs via CLI builder — one sync payload.
+    """NOTES (meso) + WORKOUTs via CLI builder — one sync payload.
 
-    WORKOUT horizon hard-capped at 2 weeks. Disciplines/sessions from athlete
-    agreements. When ``allow_degraded`` is True (setup Forhåndsvis), missing
-    builder/workouts yields notes-only + ``error`` instead of raising.
+    Prefer stored ``planned_sessions`` (app SoT) for the near-term ICU window when
+    present; otherwise regenerate from library templates. WORKOUT horizon hard-
+    capped at ``ICU_SYNC_WEEKS`` (2). When ``allow_degraded`` is True (setup
+    Forhåndsvis), missing builder/workouts yields notes-only + ``error``.
     """
     weeks = max(1, min(int(weeks or DEFAULT_WORKOUT_WEEKS), MAX_WORKOUT_WEEKS))
     signals = signals or signals_from_athlete(athlete)
     meta = prescription_meta_from_athlete(athlete, signals=signals, blocks=blocks)
     k_paths = meta["knowledge_paths"]
     note_events = build_block_note_events(blocks) if include_notes else []
+    from_stored = bool(planned_sessions)
     try:
-        workout_events = build_plan_week_icu_events(
-            blocks,
-            signals=signals,
-            weeks=weeks,
-            today=today,
-            athlete=athlete,
-            repo_root=repo_root,
-            module_file=module_file,
-        )
+        if from_stored:
+            workout_events = icu_events_from_planned_sessions(
+                planned_sessions or [],
+                athlete=athlete,
+                weeks=weeks,
+                today=today,
+                repo_root=repo_root,
+                module_file=module_file,
+            )
+        else:
+            workout_events = build_plan_week_icu_events(
+                blocks,
+                signals=signals,
+                weeks=weeks,
+                today=today,
+                athlete=athlete,
+                repo_root=repo_root,
+                module_file=module_file,
+            )
     except Exception as exc:
         if not allow_degraded:
             raise
@@ -1311,6 +1792,7 @@ def build_plan_sync_bundle(
         row["planned"] = ev.get("_planned")
         row["has_zwo"] = bool(ev.get("_has_zwo"))
         row["filename"] = ev.get("filename")
+        row["from_stored"] = bool(ev.get("_from_stored"))
         row["preview_no"] = norwegian_workout_preview_line(ev)
         workout_previews.append(row)
 
@@ -1318,6 +1800,17 @@ def build_plan_sync_bundle(
     all_events = list(note_events) + list(workout_events)
     zwo_n = sum(1 for e in workout_events if e.get("file_contents"))
     csum = meta["constraints_summary_nb"]
+    app_horizon = plan_horizon_weeks(blocks, athlete=athlete, today=today)
+    source_nb = (
+        "lagrede planned_sessions (nærvindu)"
+        if from_stored
+        else "workouts/planned (bibliotek)"
+    )
+    kind = (
+        "calendar_notes_and_stored_workouts"
+        if from_stored
+        else "calendar_notes_and_library_workouts"
+    )
     return {
         "events": all_events,
         "note_events": note_events,
@@ -1332,15 +1825,19 @@ def build_plan_sync_bundle(
         "signals": {k: v for k, v in signals.items() if not str(k).startswith("_")},
         "knowledge_paths": k_paths,
         "weeks": weeks,
+        "plan_horizon_weeks": app_horizon,
+        "icu_sync_weeks": weeks,
+        "from_stored_sessions": from_stored,
         "constraints": meta["constraints"],
         "constraints_summary_nb": csum,
         "prescription_rationale_nb": meta["prescription_rationale_nb"],
         "builder": "scripts/intervals_push_calendar.build_workout_event",
-        "kind": "calendar_notes_and_library_workouts",
+        "kind": kind,
         "error": None,
         "description_no": (
             f"{csum}. Grovplan-noter ({len(note_events)}) + {len(workout_events)} økter "
-            f"fra workouts/planned (første {weeks} uke(r), {zwo_n} med ZWO). "
+            f"fra {source_nb} (Intervals-sync første {weeks} uke(r), {zwo_n} med ZWO). "
+            f"App-plan til måldato: ~{app_horizon} uker (lagres lokalt ved bekreft). "
             "Bygget med scripts/intervals_push_calendar.build_workout_event. "
             "Id: ll-coach-… / ll-coach-w-…. Upsert — andre ICU-hendelser urørt."
         ),
@@ -1377,6 +1874,8 @@ def events_preview_for_plan_sync(
         "workouts_count": bundle["workouts_count"],
         "zwo_count": bundle["zwo_count"],
         "weeks": bundle["weeks"],
+        "plan_horizon_weeks": bundle.get("plan_horizon_weeks"),
+        "icu_sync_weeks": bundle.get("icu_sync_weeks", bundle["weeks"]),
         "events_preview": bundle["events_preview"][:40],
         "workouts_preview": bundle["workouts_preview"][:40],
         "notes_preview": bundle["notes_preview"][:20],

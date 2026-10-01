@@ -416,33 +416,88 @@ def estimate_weekly_hours(
     raw: Any,
     schedule_notes: str = "",
     signals: dict[str, bool] | None = None,
+    *,
+    sessions_per_week: int | None = None,
 ) -> float:
+    """Typical weekly hours — clamped to sessions/week so plans don't invent 8t on 3 økter."""
     signals = signals or {}
     try:
         if raw is not None and str(raw).strip() != "":
             v = float(raw)
             if 1.5 <= v <= 30.0:
-                return round(v, 1)
+                base = round(v, 1)
+            else:
+                base = None
+        else:
+            base = None
     except (TypeError, ValueError):
-        pass
-    text = (schedule_notes or "").lower()
-    m = re.search(r"(\d{1,2}(?:[.,]\d)?)\s*(?:t|timer|hours?)\s*(?:/|per)?\s*uke", text)
-    if m:
+        base = None
+    if base is None:
+        text = (schedule_notes or "").lower()
+        m = re.search(r"(\d{1,2}(?:[.,]\d)?)\s*(?:t|timer|hours?)\s*(?:/|per)?\s*uke", text)
+        if m:
+            try:
+                v = float(m.group(1).replace(",", "."))
+                if 1.5 <= v <= 30.0:
+                    base = round(v, 1)
+            except ValueError:
+                pass
+    if base is None:
+        if signals.get("beginner"):
+            base = 5.0
+        elif signals.get("time_constrained"):
+            base = 6.0
+        elif signals.get("injury"):
+            base = 6.5
+        elif signals.get("returning"):
+            base = 8.0
+        else:
+            base = 8.0
+    # Knowledge-aligned cap: ~45–75 min average per session (lav-frekvens / maalrealisme)
+    if sessions_per_week is not None:
         try:
-            v = float(m.group(1).replace(",", "."))
-            if 1.5 <= v <= 30.0:
-                return round(v, 1)
-        except ValueError:
-            pass
-    if signals.get("beginner"):
-        return 5.0
-    if signals.get("time_constrained"):
-        return 6.0
-    if signals.get("injury"):
-        return 6.5
-    if signals.get("returning"):
-        return 8.0
-    return 8.0
+            n = int(sessions_per_week)
+        except (TypeError, ValueError):
+            n = 0
+        if 2 <= n <= 8:
+            # Soft ceiling so LLM/default can't claim tri-volume on low frequency
+            cap = round(max(2.5, min(14.0, n * 1.25)), 1)
+            floor = round(max(1.5, n * 0.55), 1)
+            base = max(floor, min(base, cap))
+    return float(base)
+
+
+def clamp_blocks_weekly_hours(
+    blocks: list[dict[str, Any]],
+    *,
+    weekly_hours: float,
+    sessions_per_week: int | None = None,
+) -> list[dict[str, Any]]:
+    """Keep meso hours coherent with target + sessions/week (anti-random LLM spikes)."""
+    if sessions_per_week is not None:
+        try:
+            n = int(sessions_per_week)
+        except (TypeError, ValueError):
+            n = 0
+        if 2 <= n <= 8:
+            hi = round(max(weekly_hours * 1.15, n * 1.35), 1)
+            lo = round(max(1.5, min(weekly_hours * 0.7, n * 0.5)), 1)
+        else:
+            hi = round(weekly_hours * 1.35, 1)
+            lo = round(max(1.5, weekly_hours * 0.55), 1)
+    else:
+        hi = round(weekly_hours * 1.35, 1)
+        lo = round(max(1.5, weekly_hours * 0.55), 1)
+    out: list[dict[str, Any]] = []
+    for b in blocks:
+        nb = dict(b)
+        try:
+            wh = float(nb.get("weekly_hours") if nb.get("weekly_hours") is not None else weekly_hours)
+        except (TypeError, ValueError):
+            wh = weekly_hours
+        nb["weekly_hours"] = round(max(lo, min(hi, wh)), 1)
+        out.append(nb)
+    return out
 
 
 def season_targets_from_hours(
@@ -647,6 +702,48 @@ def _sanitize_block_titles(
             ).strip(" ·") or nb["title"]
             nb["title"] = title
         nb["theme"] = theme
+        out.append(nb)
+    return out
+
+
+def _overlay_llm_block_voice(
+    canonical: list[dict[str, Any]],
+    llm_blocks: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Keep deterministic timeline/hours; optionally take LLM title/theme per phase slot.
+
+    Prevents random LLM periodization while allowing human coach voice on labels.
+    """
+    if not canonical:
+        return list(llm_blocks or [])
+    if not llm_blocks:
+        return [dict(b) for b in canonical]
+    # Match by phase first, then by index
+    by_phase: dict[str, list[dict[str, Any]]] = {}
+    for b in llm_blocks:
+        ph = str(b.get("phase") or "other").lower()
+        by_phase.setdefault(ph, []).append(b)
+    used: set[int] = set()
+    out: list[dict[str, Any]] = []
+    for i, base in enumerate(canonical):
+        nb = dict(base)
+        ph = str(base.get("phase") or "other").lower()
+        cand = None
+        for j, lb in enumerate(by_phase.get(ph) or []):
+            if id(lb) in used:
+                continue
+            cand = lb
+            used.add(id(lb))
+            break
+        if cand is None and i < len(llm_blocks):
+            cand = llm_blocks[i]
+        if cand:
+            title = str(cand.get("title") or "").strip()[:80]
+            theme = str(cand.get("theme") or "").strip()[:160]
+            if title and not re.search(r"re-?etablering", title, re.I):
+                nb["title"] = title
+            if theme:
+                nb["theme"] = theme
         out.append(nb)
     return out
 
@@ -861,10 +958,12 @@ Utøvertype (hoveddisiplin): {type_label} ({athlete_type or "general_endurance"}
 
 Regler:
 - Tilpass strukturen til utøveren (nybegynner ≠ comeback ≠ skade ≠ tidsklemma ≠ enkeltidrett).
-- Respekter hoveddisiplin og allowed_disciplines — halvmaraton-løper skal IKKE få swim/bike/run-tri-mal.
+- Respekter hoveddisiplin og allowed_disciplines — halvmaraton-løper / «komme i form»
+  skal IKKE få swim/bike/run-tri-mal.
 - goal_race_date i defaults er fasit for sesongslutt — ikke flytt til ~8 mnd hvis året er 2028+.
 - Form OK / trener allerede N×/uke → første blokk «Base» (ikke Re-etablering).
-- Ikke hardkod Lofoten/William-volum med mindre utøveren ber om det.
+- Ikke hardkod Lofoten/William/Half Extreme/750t med mindre utøveren ber om det.
+- Respekter sessions_per_week — 2 økter/uke er lav frekvens, ikke ukemaler Fase A.
 - Beskytt mot for høyt volum; skade → ACWR-trygg progresjon.
 - Returner KUN en fenced json-blokk:
 ```json
@@ -1045,6 +1144,7 @@ def build_setup_preview(
         draft.get("weekly_hours_target"),
         str(draft.get("schedule_notes") or ""),
         signals,
+        sessions_per_week=sessions_per_week,
     )
     knowledge_meta = knowledge_selection_meta(
         knowledge_dir,
@@ -1058,8 +1158,23 @@ def build_setup_preview(
         mode="plan",
     )
 
-    if enrich:
-        blocks, coach_note, source = generate_plan_with_llm(
+    # Knowledge-aligned deterministic meso is SoT when agreements are explicit
+    # (anti-random LLM periodization). LLM may still supply coach_note.
+    canonical_blocks = _fallback_blocks(
+        season_start=start,
+        goal_race=race,
+        weekly_hours=weekly,
+        signals=signals,
+        goal_text=goal_text,
+        injury_notes=str(draft.get("injury_notes") or ""),
+        athlete_type=athlete_type,
+        allowed_disciplines=allowed_disciplines,
+        sessions_per_week=sessions_per_week,
+    )
+    constraints_explicit = sessions_per_week is not None or bool(allowed_disciplines)
+
+    if enrich and api_key:
+        llm_blocks, coach_note, llm_source = generate_plan_with_llm(
             {
                 **draft,
                 "allowed_disciplines": allowed_disciplines,
@@ -1075,30 +1190,28 @@ def build_setup_preview(
             weekly_hours=weekly,
             athlete_type=athlete_type,
         )
-        if blocks:
-            start = _parse_date(blocks[0]["start_date"]) or start
-            race = (_parse_date(blocks[-1]["end_date"]) or race) + timedelta(days=1)
-            # Never let LLM shrink a named future year (e.g. 2028) back to ~8 months
-            named = infer_goal_race_date(
-                goal_text=goal_text,
-                schedule_notes=str(draft.get("schedule_notes") or ""),
-                notes=_draft_text_blob(draft),
-                today=today,
-            )
-            if named and race.year < named.year:
-                race = named
+        if constraints_explicit:
+            # Keep deterministic dates/phases/hours; overlay LLM titles/themes when sane
+            blocks = _overlay_llm_block_voice(canonical_blocks, llm_blocks or [])
+            source = "deterministic_constraints_llm_note"
+            if coach_note is None and llm_source == "llm_knowledge":
+                coach_note = None
+        else:
+            blocks = llm_blocks or canonical_blocks
+            source = llm_source
+            if blocks:
+                start = _parse_date(blocks[0]["start_date"]) or start
+                race = (_parse_date(blocks[-1]["end_date"]) or race) + timedelta(days=1)
+                named = infer_goal_race_date(
+                    goal_text=goal_text,
+                    schedule_notes=str(draft.get("schedule_notes") or ""),
+                    notes=_draft_text_blob(draft),
+                    today=today,
+                )
+                if named and race.year < named.year:
+                    race = named
     else:
-        blocks = _fallback_blocks(
-            season_start=start,
-            goal_race=race,
-            weekly_hours=weekly,
-            signals=signals,
-            goal_text=goal_text,
-            injury_notes=str(draft.get("injury_notes") or ""),
-            athlete_type=athlete_type,
-            allowed_disciplines=allowed_disciplines,
-            sessions_per_week=sessions_per_week,
-        )
+        blocks = canonical_blocks
         coach_note = None
         source = "deterministic_fallback"
 
@@ -1108,6 +1221,9 @@ def build_setup_preview(
         signals=signals,
         allowed_disciplines=allowed_disciplines,
         fitness_notes=fitness_notes,
+    )
+    blocks = clamp_blocks_weekly_hours(
+        blocks, weekly_hours=weekly, sessions_per_week=sessions_per_week
     )
 
     targets = season_targets_from_hours(
@@ -1186,7 +1302,7 @@ def build_setup_preview(
     return {
         "overview_md": overview,
         "coach_note": coach_note,
-        "llm_enriched": source == "llm_knowledge",
+        "llm_enriched": source in ("llm_knowledge", "deterministic_constraints_llm_note"),
         "plan_source": source,
         "athlete_archetype": arch,
         "athlete_type": athlete_type,
@@ -1304,19 +1420,30 @@ Samle også Intervals-klarhet: foreslå å lime inn athlete ID + API-nøkkel nå
 
 Regler:
 - Still 1–2 spørsmål om gangen. Ikke et langt skjema.
-- Ikke anta Lofoten/William/750t med mindre de sier det.
+- Ikke anta Lofoten/William/750t/Half Extreme med mindre de sier det eksplisitt.
+- **Spør om hovedidrett / disipliner** når utøveren ikke har sagt det
+  (løp, sykkel, svøm, styrke, triatlon, …). Ikke sett athlete_type=triathlete
+  eller allowed_disciplines med svøm+sykkel+løp uten at de ba om flersport.
+- «Komme i form» uten idrett → general_endurance + spør idrett; foreslå løp+styrke
+  som start — ikke Lofoten-tri-uke.
+- Respekter sessions_per_week strengt (2 økter/uke ≠ 7 økter/uke).
 - Ikke diagnostiser skade/GI; tilpass og anbefal fagperson ved behov.
 - Ikke godkjenn urealistiske mål «for motivasjon» — foreslå A/B/C-målhierarki.
-- Når du har nok til en grovplan (mål + omtrent tid/uke eller livssituasjon + helse-status),
-  si at du kan lage forhåndsvisning, og sett ready_for_plan=true i extract.
+- Når du har nok til en grovplan (mål + **hovedidrett/disiplin** + omtrent tid/uke
+  eller livssituasjon + helse-status), si at du kan lage forhåndsvisning, og sett
+  ready_for_plan=true i extract.
+  Mangler disiplin: ready_for_plan=false og spør først.
   Hvis målet fortsatt er urealistisk uten avtalt justering: ready_for_plan=false og forhandl først.
 - Sett athlete_type når du er sikker, f.eks.:
   half_marathon_runner | marathon_runner | runner | cyclist | swimmer |
   triathlete | beginner_multi | general_endurance
+  Default uten klare signaler: general_endurance — aldri triathlete «fordi knowledge
+  handler om Lofoten».
 - Sett sessions_per_week (heltall 2–8) når utøveren sier f.eks. «3 økter i uka» —
   og oppdater feltet hvis dere avtaler et annet tall etter ærlig forhandling.
 - Sett allowed_disciplines som liste når avtalt, f.eks. ["run","strength"]
-  (gyldige: run, bike, swim, strength). Halvmaraton/løper uten tri → ikke svøm/sykkel.
+  (gyldige: run, bike, swim, strength). Halvmaraton/løper/komme-i-form uten tri
+  → ikke svøm/sykkel.
 - Når utøveren nevner år («triatlon 2028»), sett goal_race_date til sen sesong det året
   (f.eks. YYYY-09-15) ELLER spør én gang om eksakt racedato — aldri finn opp ~8 mnd frem.
   Oppdater goal_race_date hvis dere avtaler senere dato.

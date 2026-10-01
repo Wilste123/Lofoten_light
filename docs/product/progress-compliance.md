@@ -45,7 +45,25 @@ Stub/demo-tall returneres med `source: "demo"` og UI-merke **Demo**. Tallene er 
 
 ### Credentials men fetch feilet
 
-`source: "demo"`, `fetch_error: true`, **completed = 0** (ikke fake demo-timer). UI: **Henting feilet**.
+`source: "intervals"`, `fetch_error: true`, `retryable: true`, **completed = 0** (ikke fake demo-timer). UI: **Henting feilet**. Trygg å prøve igjen (cache TTL ~2 min).
+
+## Sannhet: aktiviteter vs kalender
+
+| Kilde | Teller som gjennomført volum? |
+|-------|-------------------------------|
+| ICU **activities** | **Ja** — eneste kilde til completed hours / compliance |
+| Kalender **NOTE** (inkl. `ll-coach-…` grovplan) | **Nei** — plan-kontekst, ikke trening |
+| Kalender **WORKOUT** uten matching aktivitet | **Nei** — `planned` / `planned_not_done` |
+| App completion «completed» uten ICU-aktivitet | **Nei** for volum (app-logg kun) |
+| Ubekreftet chat-proposal | **Nei** |
+
+API (`GET /v1/sessions` + chat snapshot) skiller: `completed` / `gjennomfort` vs `planned` / `planlagt` vs `planned_not_done` / `ikke_gjennomfort` vs `notes` / `noter`.
+
+## Sync-feil / offline
+
+- Preview → confirm: pending markeres **ikke** `confirmed` ved HTTP-/partial-feil. Upsert → trygg retry.
+- Delvis fetch (activities OK, events feilet eller omvendt): `partial_fetch: true` + `fetch_error_detail` — ikke stille suksess.
+- Uten nett / timeout: completed = 0 + feilmerke; ikke demo-timer når credentials finnes.
 
 ## Formler
 
@@ -75,8 +93,36 @@ Implementasjon: `progress_compliance.on_pace_metrics` · vist under Compliance-f
 
 ### Senere
 
-- `sessions_done / sessions_planned` siste 4 uker (krever planlagte events fra Intervals).
+~~- `sessions_done / sessions_planned` siste 4 uker (krever planlagte events fra Intervals).~~
 
+### 4-ukers økt-compliance
+
+```
+sessions_planned = antall kalender-WORKOUT i [today−27 … today]
+                   (NOTE / HOLIDAY / SICK_DAYS / TRIP utelates)
+sessions_done    = planlagte WORKOUT med matching ICU-aktivitet
+                   (prioritet: paired_event_id → dato+disiplin → dato)
+compliance_pct   = min(100, 100 * sessions_done / sessions_planned)
+```
+
+API: `GET /v1/sessions` → `rolling_compliance_4w`; `GET /v1/dashboard` → `session_compliance_4w`.
+Matching: aktivitet.felt `paired_event_id` = event.`id` (Intervals).
+
+### Matching aktivitet ↔ planlagt økt
+
+| Prioritet | Metode | Merknad |
+|-----------|--------|---------|
+| 1 | `paired_event_id` | ICU-paring (kanonisk) |
+| 2 | samme dato + disiplin | 1:1 — én aktivitet matcher én WORKOUT |
+| 3 | samme dato | fallback |
+
+Avlyste ICU-kategorier (`HOLIDAY`, `SICK_DAYS`, `TRIP`, …) → `cancelled`, ikke `planned_not_done`.
+Flyttet: `paired_event_id` matcher aktivitet på annen dato → `training_status=moved`.
+
+### Sync etter confirm
+
+`POST …/calendar/confirm` tømmer progress/wellness/form-cache og re-henter sessions.
+Klient refresher Økter + Dashboard.
 ## API-felt (overview)
 
 ```json
@@ -113,6 +159,6 @@ Implementasjon: `progress_compliance.on_pace_metrics` · vist under Compliance-f
 | Merke | Når |
 |-------|-----|
 | **Demo** | Ingen Intervals-nøkkel |
-| **Henting feilet** | Credentials finnes, men ICU-kall feilet → 0 t |
+| **Henting feilet** | Credentials finnes, men ICU-kall feilet → `source: intervals` + 0 t + `retryable` |
 | **Intervals** | Ekte summer fra aktiviteter |
 | **Estimat** | Data tynn (&lt; 3 økter i vinduet) — fortsatt reell sum, men usikker |

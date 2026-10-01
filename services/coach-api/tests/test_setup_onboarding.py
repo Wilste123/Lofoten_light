@@ -58,11 +58,13 @@ def test_knowledge_paths_diverge():
     assert "svom/nybegynner-til-triatlet.md" in beginner
     assert "lop/oppbygging-etter-pause.md" in returning
     assert "skader/belastningsstyring-acwr.md" in injury
-    assert "coach/coach-filosofi.md" in beginner
+    assert "coach/maalrealisme.md" in beginner
     # Non-tri beginner → general / lav-frekvens, not automatic Lofoten pack
     assert "coach/ukeplaner-generell-utholdenhet.md" in beginner or (
         "lop/ukeplaner-lav-frekvens.md" in beginner
     )
+    assert "triathlon/periodisering-mot-2027.md" not in beginner
+    assert "coach/ole-grenser.md" not in beginner
     assert "triathlon/periodisering-mot-2027.md" in tri
     assert "load-and-intensity.md" in beginner
     # Goal feasibility always injected for setup/plan

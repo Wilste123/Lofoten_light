@@ -265,7 +265,8 @@ def test_chat_lag_plan_neste_uke_skips_llm_and_uses_sot(client):
     body = r.json()
     assert body.get("week_plan_from_sot") is True
     prop = body.get("plan_proposal") or {}
-    assert prop.get("scope") == "week" or "allerede" in (body.get("reply") or "").lower()
+    low = (body.get("reply") or "").lower()
+    assert prop.get("scope") == "week" or "allerede" in low or "kalender" in low
     low = (body.get("reply") or "").lower()
     assert "hvilke dager" not in low
     assert "trenger jeg litt mer informasjon" not in low

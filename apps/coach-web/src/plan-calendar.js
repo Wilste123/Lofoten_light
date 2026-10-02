@@ -50,6 +50,36 @@ export function defaultMonthKeyForSessions(sessions, fromIso = toIsoDate(new Dat
   return `${pick.slice(0, 7)}-01`
 }
 
+export function calendarDotsHtml(sessions) {
+  if (!sessions?.length) return ''
+  let synced = 0
+  let unsynced = 0
+  let icuOnly = 0
+  for (const s of sessions) {
+    const st = s.sync_status || 'planned_not_synced'
+    if (st === 'synced') synced += 1
+    else if (st === 'intervals_only') icuOnly += 1
+    else unsynced += 1
+  }
+  const parts = []
+  if (synced) {
+    parts.push(
+      `<span class="cal-dot cal-dot-synced" title="Synket med Intervals">${'•'.repeat(Math.min(3, synced))}</span>`,
+    )
+  }
+  if (unsynced) {
+    parts.push(
+      `<span class="cal-dot cal-dot-unsynced" title="Planlagt — ikke synket">${'•'.repeat(Math.min(3, unsynced))}</span>`,
+    )
+  }
+  if (icuOnly) {
+    parts.push(
+      `<span class="cal-dot cal-dot-icu" title="Kun på Intervals">${'•'.repeat(Math.min(3, icuOnly))}</span>`,
+    )
+  }
+  return parts.length ? `<span class="cal-dots">${parts.join('')}</span>` : ''
+}
+
 export function sessionsByDate(sessions) {
   const map = new Map()
   for (const s of sessions || []) {

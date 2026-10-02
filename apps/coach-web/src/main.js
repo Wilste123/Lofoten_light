@@ -17,6 +17,7 @@ import {
 import {
   addMonths,
   buildMonthGrid,
+  calendarDotsHtml,
   defaultMonthKeyForSessions,
   monthKeyFromDate,
   monthLabelNb,
@@ -574,7 +575,9 @@ async function refreshPlanBlocks() {
 
 async function refreshPlannedSessions() {
   try {
-    const data = await api('/v1/athlete/me/planned-sessions')
+    const data = await api(
+      '/v1/athlete/me/planned-sessions?merge_intervals=true',
+    )
     const sessions = (data.sessions || []).map((s) => ({
       ...s,
       session_date: sessionIsoDate(s),
@@ -597,6 +600,8 @@ async function refreshPlannedSessions() {
       total,
       plan_horizon_weeks: data.plan_horizon_weeks ?? null,
       goal_race_date: data.goal_race_date || null,
+      sync_summary: data.sync_summary || null,
+      intervals_connected: data.intervals_connected ?? null,
       error: '',
     }
   } catch (err) {
@@ -2688,10 +2693,7 @@ function renderPlanMonthCalendar() {
       const sel = selected === c.iso ? ' cal-day-selected' : ''
       const out = c.inMonth ? '' : ' cal-day-out'
       const isToday = c.iso === todayIso ? ' cal-day-today' : ''
-      const dots =
-        n > 0
-          ? `<span class="cal-dots" aria-label="${n} økt(er)">${n > 3 ? '•••' : '•'.repeat(n)}</span>`
-          : ''
+      const dots = n > 0 ? calendarDotsHtml(c.sessions) : ''
       return `<button type="button" class="cal-day${sel}${out}${isToday}" data-cal-day="${escapeHtml(c.iso)}" ${
         c.inMonth ? '' : 'tabindex="-1"'
       }>
@@ -2704,6 +2706,10 @@ function renderPlanMonthCalendar() {
       (s) =>
         `<li>${escapeHtml(s.name || 'Økt')} · ${escapeHtml(s.sport || '')}${
           s.duration_minutes != null ? ` · ${s.duration_minutes} min` : ''
+        }${
+          s.sync_status_nb
+            ? ` <span class="cal-sync-tag cal-sync-${escapeHtml(s.sync_status || 'unknown')}">${escapeHtml(s.sync_status_nb)}</span>`
+            : ''
         }</li>`,
     )
     .join('')
@@ -2737,7 +2743,7 @@ function renderPlanMonthCalendar() {
           <button type="button" class="btn btn-sm secondary" id="cal-next-month" aria-label="Neste måned">›</button>
         </div>
       </div>
-      <p class="muted tight">Plan i appen — hele horisonten. Velg dag, sync <strong>uke</strong> eller <strong>måned</strong> til Intervals / TP (beta).</p>
+      <p class="muted tight">App-plan + coach-økter på Intervals. <span class="cal-legend"><span class="cal-dot cal-dot-synced">•</span> synket</span> · <span class="cal-legend"><span class="cal-dot cal-dot-unsynced">•</span> ikke synket</span> · <span class="cal-legend"><span class="cal-dot cal-dot-icu">•</span> kun Intervals</span>. Sync <strong>uke/måned</strong> pusher app → Intervals.</p>
       ${metaBits.length ? `<p class="muted tight">${escapeHtml(metaBits.join(' · '))}</p>` : ''}
       ${
         !total && (state.planBlocks || []).length

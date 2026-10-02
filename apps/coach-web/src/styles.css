@@ -786,10 +786,45 @@ button.linkish:hover {
 }
 
 .cal-dots {
+  display: flex;
+  gap: 0.15rem;
+  justify-content: center;
   font-size: 0.65rem;
-  color: var(--accent);
-  letter-spacing: 0.05em;
+  letter-spacing: 0.02em;
   margin-top: auto;
+}
+
+.cal-dot-synced {
+  color: #3ecf8e;
+}
+
+.cal-dot-unsynced {
+  color: #f0a030;
+}
+
+.cal-dot-icu {
+  color: #7aa2ff;
+}
+
+.cal-legend {
+  white-space: nowrap;
+}
+
+.cal-sync-tag {
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+.cal-sync-planned_not_synced {
+  color: #f0a030;
+}
+
+.cal-sync-synced {
+  color: #3ecf8e;
+}
+
+.cal-sync-intervals_only {
+  color: #7aa2ff;
 }
 
 .cal-side {

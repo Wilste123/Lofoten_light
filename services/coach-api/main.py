@@ -153,6 +153,17 @@ from progress_compliance import (
     public_block,
     resolve_progress,
 )
+from plan_calendar_merge import (
+    SYNC_INTERVALS_ONLY,
+    SYNC_PLANNED_NOT_SYNCED,
+    SYNC_SYNCED,
+    dates_for_weekday_indices,
+    fetch_intervals_workouts_for_range,
+    merge_plan_calendar_sessions,
+    sessions_in_week_range,
+    user_requests_weekday_plan_focus,
+    weekday_indices_from_message,
+)
 from plan_workouts import (
     build_plan_sync_bundle,
     build_week_adjust_sessions,
@@ -1961,6 +1972,16 @@ def chat(
             body_message=body.message,
             plan_blocks=plan_blocks,
             stored_planned=stored_planned,
+            secrets=secrets,
+            overview=overview,
+        )
+    if user_requests_weekday_plan_focus(body.message):
+        return _chat_weekday_plan_focus(
+            aid=aid,
+            athlete=athlete,
+            body_message=body.message,
+            stored_planned=stored_planned,
+            secrets=secrets,
             overview=overview,
         )
     # Explicit «neste måned / rull» → detalj roll card (bypass cooldown).
@@ -2436,6 +2457,120 @@ def chat(
     return out
 
 
+def _merged_plan_calendar(
+    stored_planned: list[dict[str, Any]],
+    secrets: dict[str, Any] | None,
+    *,
+    range_start: date | None = None,
+    range_end: date | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, int], bool]:
+    """App planned_sessions ∪ Intervals coach WORKOUTs with sync_status."""
+    rs = range_start
+    re = range_end
+    if stored_planned and (rs is None or re is None):
+        from plan_workouts import parse_iso_date
+
+        dates = [
+            parse_iso_date(str(s.get("session_date") or "")[:10])
+            for s in stored_planned
+        ]
+        dates = [d for d in dates if d]
+        if dates:
+            rs = rs or min(dates)
+            re = re or max(dates)
+    if rs is None:
+        rs = date.today() - timedelta(days=7)
+    if re is None:
+        re = date.today() + timedelta(days=120)
+    icu = fetch_intervals_workouts_for_range(
+        secrets, range_start=rs, range_end=re
+    )
+    merged, counts = merge_plan_calendar_sessions(
+        stored_planned, icu, range_start=rs, range_end=re
+    )
+    linked = bool(secrets_public_view(secrets or {}).get("connected"))
+    return merged, counts, linked
+
+
+def _format_session_line(s: dict[str, Any]) -> str:
+    sd = str(s.get("session_date") or "")[:10]
+    nm = (s.get("name") or "Økt").strip()
+    sp = (s.get("sport") or "").strip()
+    dur = s.get("duration_minutes")
+    dur_bit = f" · {dur} min" if dur is not None else ""
+    st = s.get("sync_status_nb") or s.get("sync_status") or ""
+    st_bit = f" — {st}" if st else ""
+    return f"- {sd}: {nm} ({sp}){dur_bit}{st_bit}"
+
+
+_DOW_NB = (
+    "mandag",
+    "tirsdag",
+    "onsdag",
+    "torsdag",
+    "fredag",
+    "lørdag",
+    "søndag",
+)
+
+
+def _chat_weekday_plan_focus(
+    *,
+    aid: str,
+    athlete: dict[str, Any],
+    body_message: str,
+    stored_planned: list[dict[str, Any]],
+    secrets: dict[str, Any] | None,
+    overview: dict[str, Any],
+) -> dict[str, Any]:
+    """Factual lør/mandag (etc.) from merged calendar — no LLM weekday hallucination."""
+    indices = weekday_indices_from_message(body_message)
+    week_key = plan_week_target_from_message(body_message)
+    day_dates = dates_for_weekday_indices(
+        indices, anchor=date.today(), week_start_key=week_key
+    )
+    merged, _counts, intervals_linked = _merged_plan_calendar(stored_planned, secrets)
+    by_day: dict[str, list[dict[str, Any]]] = {}
+    for d in day_dates:
+        by_day[d.isoformat()] = [
+            s
+            for s in merged
+            if str(s.get("session_date") or "")[:10] == d.isoformat()
+        ]
+    lines: list[str] = []
+    for d in day_dates:
+        dow = _DOW_NB[d.weekday()]
+        rows = by_day.get(d.isoformat()) or []
+        lines.append(f"{dow.capitalize()} {d.isoformat()}:")
+        if rows:
+            for s in rows:
+                lines.append("  " + _format_session_line(s).lstrip("- "))
+        else:
+            lines.append("  Ingen økt i app/Intervals (coach WORKOUT).")
+    icu_note = (
+        " Intervals er koblet — synket = samme ll-coach-w-id begge steder."
+        if intervals_linked
+        else " Intervals ikke koblet — kun app-plan vises."
+    )
+    reply = (
+        "Her er økter for dagene du nevnte (fasit fra app + coach-hendelser på Intervals):\n"
+        + "\n".join(lines)
+        + icu_note
+        + "\n\nVil du endre en økt: si konkret (f.eks. «legg inn rolig løp mandag 45 min») "
+        "eller «juster uka» for ukekort."
+    )
+    with db_session(config.get_db()) as conn:
+        add_message(conn, aid, "user", body_message)
+        asst = add_message(conn, aid, "assistant", reply)
+    return {
+        "reply": reply,
+        "message": asst,
+        "sessions_in_context": True,
+        "app_plan": overview.get("app_plan"),
+        "weekday_plan_focus": True,
+    }
+
+
 def _chat_week_plan_from_sot(
     *,
     aid: str,
@@ -2443,12 +2578,16 @@ def _chat_week_plan_from_sot(
     body_message: str,
     plan_blocks: list[dict[str, Any]],
     stored_planned: list[dict[str, Any]],
+    secrets: dict[str, Any] | None,
     overview: dict[str, Any],
 ) -> dict[str, Any]:
     """Answer «lag plan for neste uke» from profile + planned_sessions / grovplan."""
     week_key = plan_week_target_from_message(body_message)
     start, end = week_bounds(week_key, today=date.today())
-    in_week = filter_planned_sessions_date_range(stored_planned, start, end)
+    merged, sync_counts, intervals_linked = _merged_plan_calendar(
+        stored_planned, secrets, range_start=start, range_end=end
+    )
+    in_week = sessions_in_week_range(merged, start, end)
     name = athlete.get("display_name") or "deg"
     discs = ", ".join(str(d) for d in (athlete.get("allowed_disciplines") or [])[:6])
     sess_pw = athlete.get("sessions_per_week")
@@ -2456,19 +2595,22 @@ def _chat_week_plan_from_sot(
     range_s = f"{start.isoformat()}–{end.isoformat()}"
 
     if in_week:
-        lines: list[str] = []
-        for s in sorted(in_week, key=lambda x: str(x.get("session_date") or "")):
-            sd = str(s.get("session_date") or "")[:10]
-            nm = (s.get("name") or "Økt").strip()
-            sp = (s.get("sport") or "").strip()
-            dur = s.get("duration_minutes")
-            dur_bit = f" · {dur} min" if dur is not None else ""
-            lines.append(f"- {sd}: {nm} ({sp}){dur_bit}")
+        lines = [_format_session_line(s) for s in in_week]
+        not_synced = sync_counts.get(SYNC_PLANNED_NOT_SYNCED, 0)
+        icu_only = sync_counts.get(SYNC_INTERVALS_ONLY, 0)
+        extra = ""
+        if not_synced:
+            extra += f"\n{not_synced} økt(er) er planlagt i app men ikke synket ennå."
+        if icu_only:
+            extra += f"\n{icu_only} økt(er) finnes kun på Intervals — vurder å legge i app-plan."
+        if intervals_linked and not_synced:
+            extra += " Bruk Sync uke/måned på Plan-fanen."
         reply = (
-            f"{label} ({range_s}) ligger allerede i app-planen, {name}:\n"
+            f"{label} ({range_s}) — kalender (app + Intervals), {name}:\n"
             + "\n".join(lines)
-            + "\n\nÅpne Plan-fanen for kalender. Si «juster uka» for å bygge om, "
-            "eller «sync til Intervals» for nærvindu."
+            + extra
+            + "\n\nPlan-fanen viser grønn/oransje prikker for synket vs ikke synket. "
+            "Si «juster uka» for å bygge om app-planen."
         )
         with db_session(config.get_db()) as conn:
             add_message(conn, aid, "user", body_message)
@@ -4745,19 +4887,30 @@ def get_planned_sessions(
     start: str | None = Query(default=None),
     end: str | None = Query(default=None),
     limit: int | None = Query(default=None, ge=1, le=2000),
+    merge_intervals: bool = Query(default=True),
 ) -> dict[str, Any]:
-    """First-class app plan sessions (SQLite) — full horizon, not ICU."""
+    """App plan sessions; optional merge with Intervals coach WORKOUTs + sync_status."""
     aid = _require_athlete(x_athlete_id)
     with db_session(config.get_db()) as conn:
         athlete = get_athlete(conn, aid)
         if not athlete:
             raise HTTPException(404, "Utøver ikke funnet")
-        sessions = list_planned_sessions(
+        stored = list_planned_sessions(
             conn, aid, start_date=start, end_date=end, limit=limit
         )
-        sessions = [public_planned_session_row(s) for s in sessions]
         total = count_planned_sessions(conn, aid)
         blocks = list_plan_blocks(conn, aid)
+        secrets = get_athlete_secrets(conn, aid)
+    rs = parse_iso_date(str(start)[:10]) if start else None
+    re = parse_iso_date(str(end)[:10]) if end else None
+    if merge_intervals:
+        sessions, sync_counts, intervals_linked = _merged_plan_calendar(
+            stored, secrets, range_start=rs, range_end=re
+        )
+    else:
+        sessions = [public_planned_session_row(s) for s in stored]
+        sync_counts = {}
+        intervals_linked = bool(secrets_public_view(secrets).get("connected"))
     return {
         "sessions": sessions,
         "count": len(sessions),
@@ -4765,6 +4918,9 @@ def get_planned_sessions(
         "plan_horizon_weeks": plan_horizon_weeks(blocks, athlete=athlete),
         "goal_race_date": athlete.get("goal_race_date"),
         "icu_sync_weeks": 2,
+        "intervals_connected": intervals_linked,
+        "merge_intervals": bool(merge_intervals),
+        "sync_summary": sync_counts,
     }
 
 

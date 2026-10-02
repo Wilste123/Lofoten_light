@@ -27,11 +27,13 @@ from athlete_constraints import ICU_SYNC_WEEKS
 from chat_service import (
     infer_plan_update_fallback,
     infer_workout_proposal_fallback,
+    plan_week_target_from_message,
     reopen_pending_write_reply,
     sanitize_unconfirmed_write_claims,
     user_confirms_pending_write,
     user_requests_intervals_plan_sync,
     user_requests_plan_adjust,
+    user_requests_plan_week_build,
     user_requests_session_change,
     write_intent_kind,
 )
@@ -127,6 +129,17 @@ def _stored_sync_bundle(*, workouts=4):
         "icu_sync_weeks": ICU_SYNC_WEEKS,
         "error": None,
     }
+
+
+def test_lag_plan_neste_uke_triggers_plan_path():
+    msg = "Lag en plan for neste uke"
+    assert user_requests_plan_week_build(msg)
+    assert user_requests_plan_adjust(msg)
+    assert write_intent_kind(msg) == "plan"
+    fb = infer_plan_update_fallback(msg)
+    assert fb and fb["scope"] == "week"
+    assert fb.get("week_start") == "next_week"
+    assert plan_week_target_from_message(msg) == "next_week"
 
 
 def test_intent_detect_create_tomorrow_and_weekend():
@@ -228,6 +241,34 @@ def test_chat_create_tomorrow_always_attaches_proposal(client):
     low = (body.get("reply") or "").lower()
     assert "jeg har oppdatert" not in low
     assert "synket" not in low or "ikke" in low
+
+
+def test_chat_lag_plan_neste_uke_skips_llm_and_uses_sot(client):
+    c, _a, _db = client
+    setup = _confirm_setup(c, username="neste-uke")
+    aid = setup["athlete"]["id"]
+    headers = {"X-Athlete-Id": aid}
+    with (
+        patch("main.call_llm") as llm,
+        patch(
+            "main.resolve_wellness_bundle",
+            return_value={"recovery_signals": {"available": False}},
+        ),
+    ):
+        r = c.post(
+            "/v1/chat",
+            headers=headers,
+            json={"message": "Lag en plan for neste uke"},
+        )
+    llm.assert_not_called()
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body.get("week_plan_from_sot") is True
+    prop = body.get("plan_proposal") or {}
+    assert prop.get("scope") == "week" or "allerede" in (body.get("reply") or "").lower()
+    low = (body.get("reply") or "").lower()
+    assert "hvilke dager" not in low
+    assert "trenger jeg litt mer informasjon" not in low
 
 
 def test_chat_adjust_fri_sun_attaches_week_plan(client):

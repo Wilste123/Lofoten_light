@@ -31,10 +31,29 @@ export function monthLabelNb(monthKey) {
   return d.toLocaleDateString('nb-NO', { month: 'long', year: 'numeric' })
 }
 
+export function sessionIsoDate(s) {
+  const raw = s?.session_date ?? s?.date ?? ''
+  if (raw && typeof raw === 'object' && raw.toISOString) {
+    return raw.toISOString().slice(0, 10)
+  }
+  return String(raw || '').slice(0, 10)
+}
+
+/** First month (YYYY-MM-01) with a session on/after ``fromIso``, else first session month. */
+export function defaultMonthKeyForSessions(sessions, fromIso = toIsoDate(new Date())) {
+  const rows = (sessions || [])
+    .map((s) => sessionIsoDate(s))
+    .filter(Boolean)
+    .sort()
+  if (!rows.length) return null
+  const pick = rows.find((d) => d >= fromIso) || rows[0]
+  return `${pick.slice(0, 7)}-01`
+}
+
 export function sessionsByDate(sessions) {
   const map = new Map()
   for (const s of sessions || []) {
-    const day = String(s.session_date || '').slice(0, 10)
+    const day = sessionIsoDate(s)
     if (!day) continue
     if (!map.has(day)) map.set(day, [])
     map.get(day).push(s)

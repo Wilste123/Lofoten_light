@@ -54,7 +54,9 @@ from chat_service import (
     user_confirms_pending_write,
     user_requests_confirm_and_push,
     user_requests_intervals_plan_sync,
+    plan_week_target_from_message,
     user_requests_plan_adjust,
+    user_requests_plan_week_build,
     user_requests_session_change,
     workout_proposal_history_summary,
     write_intent_kind,
@@ -159,7 +161,9 @@ from plan_workouts import (
     format_exc_nb,
     persistable_plan_payload,
     plan_horizon_weeks,
+    public_planned_session_row,
     readiness_adjustment_hints,
+    week_bounds,
 )
 from setup_plan import (
     build_setup_chat_system,
@@ -1949,6 +1953,16 @@ def chat(
             sessions_snap=sessions_snap,
             overview_app_plan=overview["app_plan"],
         )
+    # Week plan from app SoT — never generic «hvilke dager trener du»-intervju.
+    if user_requests_plan_week_build(body.message):
+        return _chat_week_plan_from_sot(
+            aid=aid,
+            athlete=athlete,
+            body_message=body.message,
+            plan_blocks=plan_blocks,
+            stored_planned=stored_planned,
+            overview=overview,
+        )
     # Explicit «neste måned / rull» → detalj roll card (bypass cooldown).
     if user_requests_explicit_roll(body.message):
         return _chat_plan_roll_offer(
@@ -2420,6 +2434,118 @@ def chat(
         if roll_out is not None:
             return roll_out
     return out
+
+
+def _chat_week_plan_from_sot(
+    *,
+    aid: str,
+    athlete: dict[str, Any],
+    body_message: str,
+    plan_blocks: list[dict[str, Any]],
+    stored_planned: list[dict[str, Any]],
+    overview: dict[str, Any],
+) -> dict[str, Any]:
+    """Answer «lag plan for neste uke» from profile + planned_sessions / grovplan."""
+    week_key = plan_week_target_from_message(body_message)
+    start, end = week_bounds(week_key, today=date.today())
+    in_week = filter_planned_sessions_date_range(stored_planned, start, end)
+    name = athlete.get("display_name") or "deg"
+    discs = ", ".join(str(d) for d in (athlete.get("allowed_disciplines") or [])[:6])
+    sess_pw = athlete.get("sessions_per_week")
+    label = "Neste uke" if week_key == "next_week" else "Denne uken"
+    range_s = f"{start.isoformat()}–{end.isoformat()}"
+
+    if in_week:
+        lines: list[str] = []
+        for s in sorted(in_week, key=lambda x: str(x.get("session_date") or "")):
+            sd = str(s.get("session_date") or "")[:10]
+            nm = (s.get("name") or "Økt").strip()
+            sp = (s.get("sport") or "").strip()
+            dur = s.get("duration_minutes")
+            dur_bit = f" · {dur} min" if dur is not None else ""
+            lines.append(f"- {sd}: {nm} ({sp}){dur_bit}")
+        reply = (
+            f"{label} ({range_s}) ligger allerede i app-planen, {name}:\n"
+            + "\n".join(lines)
+            + "\n\nÅpne Plan-fanen for kalender. Si «juster uka» for å bygge om, "
+            "eller «sync til Intervals» for nærvindu."
+        )
+        with db_session(config.get_db()) as conn:
+            add_message(conn, aid, "user", body_message)
+            asst = add_message(conn, aid, "assistant", reply)
+        return {
+            "reply": reply,
+            "message": asst,
+            "sessions_in_context": True,
+            "app_plan": overview.get("app_plan"),
+            "week_plan_from_sot": True,
+        }
+
+    if plan_blocks:
+        week_built = build_week_adjust_sessions(
+            plan_blocks,
+            athlete=athlete,
+            week_start=week_key,
+            ease_load=False,
+        )
+        readiness = readiness_adjustment_hints(overview.get("wellness_signals"))
+        existing_n = len(stored_planned)
+        prof = f"{sess_pw} økter/uke" if sess_pw else "avtalt frekvens"
+        disc_bit = f", disipliner {discs}" if discs else ""
+        reply = (
+            f"Jeg legger {label.lower()} ({week_built['week_start']}–{week_built['week_end']}) "
+            f"fra grovplanen — {prof}{disc_bit}. "
+            "Bekreft forhåndsvisningen under; da lagres øktene i app-planen (ikke bare chat)."
+        )
+        plan_card: dict[str, Any] = {
+            "reason": f"{label} fra grovplan (deterministisk, ikke intervju).",
+            "rebuild": True,
+            "ease_load": False,
+            "scope": "week",
+            "week_start": week_built["week_start"],
+            "week_end": week_built["week_end"],
+            "sessions": week_built["sessions"],
+            "count": week_built["count"],
+            "planned_sessions_count": existing_n,
+            "readiness_hints": readiness,
+            "confirm_hint": (
+                f"Bekreft for å erstatte kun {label.lower()} "
+                f"{week_built['week_start']}–{week_built['week_end']} "
+                f"({week_built['count']} økter)."
+            ),
+            "inferred": True,
+        }
+        with db_session(config.get_db()) as conn:
+            add_message(conn, aid, "user", body_message)
+            asst = add_message(conn, aid, "assistant", reply)
+        return {
+            "reply": reply,
+            "message": asst,
+            "sessions_in_context": True,
+            "app_plan": overview.get("app_plan"),
+            "plan_proposal": plan_card,
+            "confirm_required": True,
+            "plan_hint": plan_card["confirm_hint"],
+            "week_plan_from_sot": True,
+        }
+
+    goal = (athlete.get("goal_text") or "").strip() or "målet i Du-profilen"
+    reply = (
+        f"Ingen lagrede økter for {label.lower()} ({range_s}) ennå, {name}. "
+        f"Profil: {goal[:140]}. "
+        "Kjør grovplan under Du (eller «rull videre» for neste detaljvindu) — "
+        "deretter får du bekreftbar ukeforhåndsvisning her, ikke et nytt intervju."
+    )
+    with db_session(config.get_db()) as conn:
+        add_message(conn, aid, "user", body_message)
+        asst = add_message(conn, aid, "assistant", reply)
+    return {
+        "reply": reply,
+        "message": asst,
+        "sessions_in_context": True,
+        "app_plan": overview.get("app_plan"),
+        "week_plan_from_sot": True,
+    }
 
 
 def _chat_plan_roll_offer(
@@ -4629,6 +4755,7 @@ def get_planned_sessions(
         sessions = list_planned_sessions(
             conn, aid, start_date=start, end_date=end, limit=limit
         )
+        sessions = [public_planned_session_row(s) for s in sessions]
         total = count_planned_sessions(conn, aid)
         blocks = list_plan_blocks(conn, aid)
     return {

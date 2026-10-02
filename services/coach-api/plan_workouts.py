@@ -137,6 +137,16 @@ def monday_of(day: date) -> date:
     return day - timedelta(days=day.weekday())
 
 
+def public_planned_session_row(row: dict[str, Any]) -> dict[str, Any]:
+    """Normalize session_date for JSON + calendar UI."""
+    d = dict(row)
+    sd = d.get("session_date") or d.get("date")
+    if hasattr(sd, "isoformat"):
+        sd = sd.isoformat()
+    d["session_date"] = str(sd or "")[:10]
+    return d
+
+
 def week_bounds(
     week_start: date | str | None = None,
     *,
@@ -146,6 +156,8 @@ def week_bounds(
     today = today or date.today()
     if week_start is None or week_start == "" or week_start == "this_week":
         start = monday_of(today)
+    elif str(week_start).strip().lower() in ("next_week", "neste_uke"):
+        start = monday_of(today) + timedelta(days=7)
     elif isinstance(week_start, date):
         start = monday_of(week_start)
     else:

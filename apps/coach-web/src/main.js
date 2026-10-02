@@ -17,9 +17,11 @@ import {
 import {
   addMonths,
   buildMonthGrid,
+  defaultMonthKeyForSessions,
   monthKeyFromDate,
   monthLabelNb,
   monthRange,
+  sessionIsoDate,
   sessionsByDate,
   toIsoDate,
   weekRangeFromDate,
@@ -573,9 +575,26 @@ async function refreshPlanBlocks() {
 async function refreshPlannedSessions() {
   try {
     const data = await api('/v1/athlete/me/planned-sessions')
+    const sessions = (data.sessions || []).map((s) => ({
+      ...s,
+      session_date: sessionIsoDate(s),
+    }))
+    const total = data.total ?? sessions.length
+    const monthKey = defaultMonthKeyForSessions(sessions)
+    if (monthKey) {
+      state.planCalendar.month = monthKey
+      if (!state.planCalendar.selectedDate) {
+        const today = toIsoDate(new Date())
+        const upcoming = sessions
+          .map((s) => sessionIsoDate(s))
+          .filter((d) => d >= today)
+          .sort()
+        if (upcoming.length) state.planCalendar.selectedDate = upcoming[0]
+      }
+    }
     state.plannedSessions = {
-      sessions: data.sessions || [],
-      total: data.total ?? (data.sessions || []).length,
+      sessions,
+      total,
       plan_horizon_weeks: data.plan_horizon_weeks ?? null,
       goal_race_date: data.goal_race_date || null,
       error: '',
@@ -2720,6 +2739,16 @@ function renderPlanMonthCalendar() {
       </div>
       <p class="muted tight">Plan i appen — hele horisonten. Velg dag, sync <strong>uke</strong> eller <strong>måned</strong> til Intervals / TP (beta).</p>
       ${metaBits.length ? `<p class="muted tight">${escapeHtml(metaBits.join(' · '))}</p>` : ''}
+      ${
+        !total && (state.planBlocks || []).length
+          ? `<p class="muted tight">Grovplan finnes, men ingen lagrede økter ennå — bekreft planjustering eller «rull videre» i Coach.</p>`
+          : ''
+      }
+      ${
+        total && !cells.some((c) => c.inMonth && c.sessions.length)
+          ? `<p class="muted tight">Ingen økter i denne måneden — bruk ‹ › for å bla til uker med plan.</p>`
+          : ''
+      }
       ${ps.error ? `<p class="error">${escapeHtml(ps.error)}</p>` : ''}
       ${scopeHint}
       <div class="cal-grid" role="grid" aria-label="Månedskalender">

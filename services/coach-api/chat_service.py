@@ -491,7 +491,24 @@ _PLAN_ADJUST_INTENT_RE = re.compile(
     r"(?:\s*(?:[-–og,&/]|til|og)\s*"
     r"(?:fre(?:dag)?|lør(?:dag)?|søn(?:dag)?|helg(?:a|en)?))?|"
     r"(?:fre|lør|søn|fredag|lørdag|søndag)\s*[-–]\s*"
-    r"(?:fre|lør|søn|fredag|lørdag|søndag)"
+    r"(?:fre|lør|søn|fredag|lørdag|søndag)|"
+    # Build / show a week plan from SoT (not a generic interview).
+    r"lag(?:e)?\s+(?:en\s+)?(?:plan|ukeplan)|"
+    r"planlegg(?:e)?\s+(?:en\s+)?(?:plan|ukeplan|uke)|"
+    r"plan\s+for\s+(?:denne|neste)\s+uke|"
+    r"(?:denne|neste)\s+uke(?:s)?plan|"
+    r"ukeplan\s+for\s+(?:denne|neste)\s+uke"
+    r")",
+    re.IGNORECASE,
+)
+
+_PLAN_WEEK_BUILD_RE = re.compile(
+    r"(?:"
+    r"lag(?:e)?\s+(?:en\s+)?(?:plan|ukeplan)|"
+    r"planlegg(?:e)?\s+(?:en\s+)?(?:plan|ukeplan|uke)|"
+    r"plan\s+for\s+(?:denne|neste)\s+uke|"
+    r"(?:denne|neste)\s+uke(?:s)?plan|"
+    r"ukeplan\s+for\s+(?:denne|neste)\s+uke"
     r")",
     re.IGNORECASE,
 )
@@ -801,6 +818,26 @@ def user_requests_plan_adjust(message: str) -> bool:
     if user_requests_intervals_plan_sync(text):
         return False
     return bool(_PLAN_ADJUST_INTENT_RE.search(text))
+
+
+def user_requests_plan_week_build(message: str) -> bool:
+    """True when athlete asks to create/show a week plan (not generic chat)."""
+    text = (message or "").strip()
+    if not text:
+        return False
+    if user_requests_intervals_plan_sync(text):
+        return False
+    return bool(_PLAN_WEEK_BUILD_RE.search(text))
+
+
+def plan_week_target_from_message(message: str) -> str:
+    """``this_week`` or ``next_week`` for week_bounds / week adjust."""
+    text = (message or "").lower()
+    if re.search(r"neste\s+uke|next\s+week", text):
+        return "next_week"
+    if re.search(r"denne\s+uke|this\s+week", text):
+        return "this_week"
+    return "this_week"
 
 
 def user_requests_confirm_and_push(message: str) -> bool:
@@ -1291,16 +1328,23 @@ def infer_plan_update_fallback(user_message: str) -> dict[str, Any] | None:
         )
     )
     week = (
-        bool(re.search(r"\buke\b|\bweek\b|denne\s+uka|lette?\s+uka", text))
+        bool(
+            re.search(
+                r"\buke\b|\bweek\b|denne\s+uka|neste\s+uke|lette?\s+uka|ukeplan|plan\s+for",
+                text,
+            )
+        )
         or multi_day
+        or bool(_PLAN_WEEK_BUILD_RE.search(text))
     ) and not bool(re.search(r"hele\s+planen|full\s+plan|sesong", text))
     ease = bool(re.search(r"lett|ease|letter|recover|hvile", text))
+    week_start = plan_week_target_from_message(text)
     return {
         "reason": "Utleidet fra chat-forespørsel (LLM manglet plan_update-fence).",
         "rebuild": True,
         "ease_load": ease,
         "scope": "week" if week else "full",
-        "week_start": "this_week",
+        "week_start": week_start,
         "inferred": True,
         "message": (
             "Foreslått ukejustering — bekreft forhåndsvisning."

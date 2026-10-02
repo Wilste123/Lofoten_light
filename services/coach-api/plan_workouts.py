@@ -154,6 +154,22 @@ def week_bounds(
     return start, start + timedelta(days=6)
 
 
+def filter_planned_sessions_date_range(
+    sessions: list[dict[str, Any]],
+    range_start: date,
+    range_end: date,
+) -> list[dict[str, Any]]:
+    """Sessions with session_date inside [range_start, range_end] (inclusive)."""
+    if range_end < range_start:
+        return []
+    out: list[dict[str, Any]] = []
+    for s in sessions:
+        d = parse_iso_date(str(s.get("session_date") or "")[:10])
+        if d and range_start <= d <= range_end:
+            out.append(s)
+    return out
+
+
 def filter_planned_sessions_icu_window(
     sessions: list[dict[str, Any]],
     *,
@@ -218,14 +234,21 @@ def icu_events_from_planned_sessions(
     athlete: dict[str, Any] | None = None,
     weeks: int = DEFAULT_WORKOUT_WEEKS,
     today: date | None = None,
+    sync_range_start: date | None = None,
+    sync_range_end: date | None = None,
     repo_root: Path | None = None,
     module_file: Path | None = None,
 ) -> list[dict[str, Any]]:
     """Build ICU WORKOUT events from stored planned_sessions (near window)."""
     today = today or date.today()
-    window = filter_planned_sessions_icu_window(
-        sessions, today=today, weeks=weeks
-    )
+    if sync_range_start and sync_range_end:
+        window = filter_planned_sessions_date_range(
+            sessions, sync_range_start, sync_range_end
+        )
+    else:
+        window = filter_planned_sessions_icu_window(
+            sessions, today=today, weeks=weeks
+        )
     if not window:
         return []
     return icu_events_from_session_rows(
@@ -1994,13 +2017,16 @@ def build_plan_sync_bundle(
     allow_degraded: bool = False,
     module_file: Path | None = None,
     planned_sessions: list[dict[str, Any]] | None = None,
+    sync_range_start: date | None = None,
+    sync_range_end: date | None = None,
 ) -> dict[str, Any]:
     """NOTES (meso) + WORKOUTs via CLI builder — one sync payload.
 
     Prefer stored ``planned_sessions`` (app SoT) for the near-term ICU window when
     present; otherwise regenerate from library templates. WORKOUT horizon hard-
-    capped at ``ICU_SYNC_WEEKS`` (2). When ``allow_degraded`` is True (setup
-    Forhåndsvis), missing builder/workouts yields notes-only + ``error``.
+    capped at ``ICU_SYNC_WEEKS`` (2) unless ``sync_range_start/end`` set (calendar
+    scope). When ``allow_degraded`` is True (setup Forhåndsvis), missing builder/
+    workouts yields notes-only + ``error``.
     """
     weeks = max(1, min(int(weeks or DEFAULT_WORKOUT_WEEKS), MAX_WORKOUT_WEEKS))
     signals = signals or signals_from_athlete(athlete)
@@ -2015,6 +2041,8 @@ def build_plan_sync_bundle(
                 athlete=athlete,
                 weeks=weeks,
                 today=today,
+                sync_range_start=sync_range_start,
+                sync_range_end=sync_range_end,
                 repo_root=repo_root,
                 module_file=module_file,
             )

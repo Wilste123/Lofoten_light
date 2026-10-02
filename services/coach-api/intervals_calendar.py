@@ -260,6 +260,26 @@ def filter_coach_events(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
+def event_local_date(ev: dict[str, Any]) -> date | None:
+    raw = ev.get("_day") or str(ev.get("start_date_local") or "")[:10]
+    return parse_iso_date(str(raw)[:10] if raw else None)
+
+
+def filter_events_in_date_range(
+    events: list[dict[str, Any]],
+    range_start: date,
+    range_end: date,
+) -> list[dict[str, Any]]:
+    if range_end < range_start:
+        return []
+    out: list[dict[str, Any]] = []
+    for ev in events:
+        d = event_local_date(ev)
+        if d and range_start <= d <= range_end:
+            out.append(ev)
+    return out
+
+
 def select_blocks(
     all_blocks: list[dict[str, Any]],
     *,

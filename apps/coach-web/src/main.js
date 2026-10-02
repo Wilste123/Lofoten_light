@@ -14,6 +14,16 @@ import {
   readSetupForm,
   renderSetupWizard,
 } from './setup.js'
+import {
+  addMonths,
+  buildMonthGrid,
+  monthKeyFromDate,
+  monthLabelNb,
+  monthRange,
+  sessionsByDate,
+  toIsoDate,
+  weekRangeFromDate,
+} from './plan-calendar.js'
 
 const API = import.meta.env.VITE_API_URL || ''
 const STORAGE_KEY = 'lofoten_athlete_id'
@@ -67,6 +77,17 @@ const state = {
     total: 0,
     plan_horizon_weeks: null,
     goal_race_date: null,
+    error: '',
+  },
+  planCalendar: {
+    month: monthKeyFromDate(),
+    selectedDate: null,
+    syncScopeLabel: '',
+  },
+  tpSync: {
+    busy: false,
+    pending: null,
+    message: '',
     error: '',
   },
   intervals: {
@@ -1686,7 +1707,7 @@ function renderPlanStrip(o) {
         ${curHtml}
         ${nextHtml}
       </div>
-      <p class="muted tight plan-footnote">Detaljer i Intervals — her bare grovplan / bulk.</p>
+      <p class="muted tight plan-footnote">Økter i kalenderen under — sync per uke/måned.</p>
     </section>`
 }
 
@@ -2625,66 +2646,106 @@ function renderPlanTab() {
     </div>
     ${renderPlanStrip(o)}
     ${renderPlanBlocksEditor()}
-    ${renderPlannedHorizon()}
+    ${renderPlanMonthCalendar()}
     ${renderSyncPanel()}
   `
 }
 
-function renderPlannedHorizon() {
+function renderPlanMonthCalendar() {
   const ps = state.plannedSessions || {}
   const sessions = ps.sessions || []
   const total = ps.total ?? sessions.length
-  const byWeek = new Map()
-  for (const s of sessions) {
-    const day = String(s.session_date || '').slice(0, 10)
-    if (!day) continue
-    const d = new Date(`${day}T12:00:00`)
-    if (Number.isNaN(d.getTime())) continue
-    const mon = new Date(d)
-    mon.setDate(d.getDate() - ((d.getDay() + 6) % 7))
-    const key = mon.toISOString().slice(0, 10)
-    if (!byWeek.has(key)) byWeek.set(key, [])
-    byWeek.get(key).push(s)
-  }
-  const weekKeys = [...byWeek.keys()].sort()
-  const weekBlocks = weekKeys
-    .map((wk) => {
-      const rows = byWeek
-        .get(wk)
-        .map(
-          (s) =>
-            `<li><span class="dim">${escapeHtml(String(s.session_date || '').slice(0, 10))}</span> · ${escapeHtml(s.name || 'Økt')} · ${escapeHtml(s.sport || '')}${
-              s.duration_minutes != null ? ` · ${escapeHtml(String(s.duration_minutes))} min` : ''
-            }</li>`,
-        )
-        .join('')
-      const end = new Date(`${wk}T12:00:00`)
-      end.setDate(end.getDate() + 6)
-      const endStr = end.toISOString().slice(0, 10)
-      return `
-        <div class="horizon-week">
-          <p class="plan-kicker">Uke ${escapeHtml(wk)} – ${escapeHtml(endStr)}</p>
-          <ul class="horizon-session-list">${rows}</ul>
-        </div>`
+  const monthKey = state.planCalendar.month || monthKeyFromDate()
+  const byDate = sessionsByDate(sessions)
+  const cells = buildMonthGrid(monthKey, byDate)
+  const selected = state.planCalendar.selectedDate
+  const selectedSessions = selected ? byDate.get(selected) || [] : []
+  const weekdays = ['Man', 'Tir', 'Ons', 'Tor', 'Fre', 'Lør', 'Søn']
+  const head = weekdays.map((w) => `<div class="cal-dow">${w}</div>`).join('')
+  const todayIso = toIsoDate(new Date())
+  const grid = cells
+    .map((c) => {
+      const n = c.sessions.length
+      const sel = selected === c.iso ? ' cal-day-selected' : ''
+      const out = c.inMonth ? '' : ' cal-day-out'
+      const isToday = c.iso === todayIso ? ' cal-day-today' : ''
+      const dots =
+        n > 0
+          ? `<span class="cal-dots" aria-label="${n} økt(er)">${n > 3 ? '•••' : '•'.repeat(n)}</span>`
+          : ''
+      return `<button type="button" class="cal-day${sel}${out}${isToday}" data-cal-day="${escapeHtml(c.iso)}" ${
+        c.inMonth ? '' : 'tabindex="-1"'
+      }>
+        <span class="cal-day-num">${c.day}</span>${dots}
+      </button>`
     })
+    .join('')
+  const selList = selectedSessions
+    .map(
+      (s) =>
+        `<li>${escapeHtml(s.name || 'Økt')} · ${escapeHtml(s.sport || '')}${
+          s.duration_minutes != null ? ` · ${s.duration_minutes} min` : ''
+        }</li>`,
+    )
     .join('')
   const metaBits = []
   if (total) metaBits.push(`${total} økter`)
   if (ps.plan_horizon_weeks) metaBits.push(`~${ps.plan_horizon_weeks} uker`)
-  if (ps.goal_race_date) metaBits.push(`til ${ps.goal_race_date}`)
+  if (ps.goal_race_date) metaBits.push(`mål ${ps.goal_race_date}`)
+  const scopeHint = state.planCalendar.syncScopeLabel
+    ? `<p class="muted tight">Sync-vindu: <strong>${escapeHtml(state.planCalendar.syncScopeLabel)}</strong></p>`
+    : ''
+  const tpPending = state.tpSync.pending
+  const tpConfirm =
+    tpPending?.pending_id
+      ? `<div class="confirm-card cal-sync-confirm">
+          <p><strong>${escapeHtml(tpPending.message_nb || 'Bekreft TrainingPeaks (beta)')}</strong></p>
+          <p class="muted tight">${escapeHtml(String(tpPending.workouts_count || 0))} økter</p>
+          <div class="sync-actions">
+            <button type="button" class="btn btn-primary" id="tp-sync-confirm-yes" ${state.tpSync.busy ? 'disabled' : ''}>Ja, push til TP</button>
+            <button type="button" class="btn secondary" id="tp-sync-confirm-no" ${state.tpSync.busy ? 'disabled' : ''}>Avbryt</button>
+          </div>
+          ${state.tpSync.error ? `<p class="error">${escapeHtml(state.tpSync.error)}</p>` : ''}
+        </div>`
+      : ''
   return `
-    <div class="section-block">
+    <div class="section-block plan-month-calendar">
       <div class="section-head">
-        <h2>Økter til måldato</h2>
+        <h2>Treningskalender</h2>
+        <div class="cal-month-nav">
+          <button type="button" class="btn btn-sm secondary" id="cal-prev-month" aria-label="Forrige måned">‹</button>
+          <span class="cal-month-title">${escapeHtml(monthLabelNb(monthKey))}</span>
+          <button type="button" class="btn btn-sm secondary" id="cal-next-month" aria-label="Neste måned">›</button>
+        </div>
       </div>
-      <p class="muted tight">App-plan (SQLite) — hele horisonten. Intervals får kun nærvindu ved Sync.</p>
+      <p class="muted tight">Plan i appen — hele horisonten. Velg dag, sync <strong>uke</strong> eller <strong>måned</strong> til Intervals / TP (beta).</p>
       ${metaBits.length ? `<p class="muted tight">${escapeHtml(metaBits.join(' · '))}</p>` : ''}
       ${ps.error ? `<p class="error">${escapeHtml(ps.error)}</p>` : ''}
-      ${
-        weekBlocks
-          ? `<div class="horizon-scroll" tabindex="0" aria-label="Planlagte økter">${weekBlocks}</div>`
-          : `<p class="muted">Ingen lagrede økter ennå — bekreft setup eller planjustering først.</p>`
-      }
+      ${scopeHint}
+      <div class="cal-grid" role="grid" aria-label="Månedskalender">
+        ${head}
+        ${grid}
+      </div>
+      <div class="cal-side">
+        <p class="plan-kicker">${selected ? `Dag ${escapeHtml(selected)}` : 'Velg en dag'}</p>
+        ${
+          selected
+            ? `<ul class="horizon-session-list">${selList || '<li class="muted">Ingen økter</li>'}</ul>`
+            : '<p class="muted tight">Klikk en dag for økter og uke-sync.</p>'
+        }
+        <div class="sync-actions cal-scope-actions">
+          <button type="button" class="btn btn-sm" id="cal-sync-week" ${
+            !selected || !state.intervals.connected ? 'disabled' : ''
+          }>Sync uke → Intervals</button>
+          <button type="button" class="btn btn-sm secondary" id="cal-sync-month" ${
+            !state.intervals.connected ? 'disabled' : ''
+          }>Sync måned → Intervals</button>
+          <button type="button" class="btn btn-sm secondary" id="cal-sync-week-tp" ${
+            !selected ? 'disabled' : ''
+          } title="Krever TP-cookie (beta API)">Sync uke → TP β</button>
+        </div>
+      </div>
+      ${tpConfirm}
     </div>`
 }
 
@@ -2982,6 +3043,7 @@ function bindApp() {
       if (state.tab === 'plan') {
         await refreshOverview()
         await refreshPlanBlocks()
+        await refreshPlannedSessions()
         await refreshIntervals()
       }
       if (state.tab === 'okter') {
@@ -4210,17 +4272,23 @@ function bindApp() {
     }
   })
 
-  const runSyncPreview = async (op) => {
+  const runSyncPreview = async (op, scope = null) => {
     if (state.sync.busy || !state.intervals.connected) return
     state.sync.busy = true
     state.sync.error = ''
     state.sync.message = ''
     state.sync.pending = null
+    if (scope?.label) state.planCalendar.syncScopeLabel = scope.label
     render()
     try {
+      const body = { op, include_notes: false }
+      if (scope?.start && scope?.end) {
+        body.start = scope.start
+        body.end = scope.end
+      }
       const data = await api('/v1/athlete/me/intervals/calendar/preview', {
         method: 'POST',
-        body: { op, include_notes: false },
+        body,
         timeoutMs: 20000,
       })
       state.sync.pending = data
@@ -4232,6 +4300,98 @@ function bindApp() {
       render()
     }
   }
+
+  const runTpSyncPreview = async (scope) => {
+    if (state.tpSync.busy || !scope?.start || !scope?.end) return
+    state.tpSync.busy = true
+    state.tpSync.error = ''
+    state.tpSync.pending = null
+    if (scope.label) state.planCalendar.syncScopeLabel = scope.label
+    render()
+    try {
+      const data = await api('/v1/athlete/me/trainingpeaks/beta/calendar/preview', {
+        method: 'POST',
+        body: { start: scope.start, end: scope.end, include_notes: false },
+        timeoutMs: 25000,
+      })
+      state.tpSync.pending = data
+      state.tpSync.message = data.message_nb || 'Bekreft TP'
+    } catch (err) {
+      state.tpSync.error = err.message || 'TP forhåndsvisning feilet'
+    } finally {
+      state.tpSync.busy = false
+      render()
+    }
+  }
+
+  document.getElementById('cal-prev-month')?.addEventListener('click', () => {
+    state.planCalendar.month = addMonths(state.planCalendar.month, -1)
+    render()
+  })
+  document.getElementById('cal-next-month')?.addEventListener('click', () => {
+    state.planCalendar.month = addMonths(state.planCalendar.month, 1)
+    render()
+  })
+  document.querySelectorAll('[data-cal-day]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const iso = btn.getAttribute('data-cal-day')
+      if (!iso) return
+      state.planCalendar.selectedDate = iso
+      render()
+    })
+  })
+  document.getElementById('cal-sync-week')?.addEventListener('click', () => {
+    const d = state.planCalendar.selectedDate
+    const range = weekRangeFromDate(d)
+    if (!range) return
+    runSyncPreview('push', {
+      ...range,
+      label: `Uke ${range.start} – ${range.end}`,
+    })
+  })
+  document.getElementById('cal-sync-month')?.addEventListener('click', () => {
+    const range = monthRange(state.planCalendar.month)
+    if (!range) return
+    runSyncPreview('push', {
+      ...range,
+      label: `Måned ${range.start} – ${range.end}`,
+    })
+  })
+  document.getElementById('cal-sync-week-tp')?.addEventListener('click', () => {
+    const d = state.planCalendar.selectedDate
+    const range = weekRangeFromDate(d)
+    if (!range) return
+    runTpSyncPreview({
+      ...range,
+      label: `TP uke ${range.start} – ${range.end}`,
+    })
+  })
+  document.getElementById('tp-sync-confirm-no')?.addEventListener('click', () => {
+    state.tpSync.pending = null
+    render()
+  })
+  document.getElementById('tp-sync-confirm-yes')?.addEventListener('click', async () => {
+    const pending = state.tpSync.pending
+    if (!pending?.pending_id || state.tpSync.busy) return
+    state.tpSync.busy = true
+    state.tpSync.error = ''
+    render()
+    try {
+      const data = await api('/v1/athlete/me/trainingpeaks/beta/calendar/confirm', {
+        method: 'POST',
+        body: { pending_id: pending.pending_id },
+        timeoutMs: 120000,
+      })
+      state.tpSync.pending = null
+      state.tpSync.message = `TP: ${data.pushed}/${data.attempted} økter`
+      toast(state.tpSync.message)
+    } catch (err) {
+      state.tpSync.error = err.message || 'TP sync feilet'
+    } finally {
+      state.tpSync.busy = false
+      render()
+    }
+  })
 
   document.getElementById('sync-push')?.addEventListener('click', () => runSyncPreview('push'))
   document.getElementById('sync-delete')?.addEventListener('click', () => runSyncPreview('delete'))

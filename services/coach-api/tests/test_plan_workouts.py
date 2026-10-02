@@ -20,6 +20,7 @@ from db import db_session, init_db, upsert_athlete_secrets
 from plan_workouts import (
     build_plan_sync_bundle,
     build_plan_week_icu_events,
+    filter_planned_sessions_date_range,
     knowledge_paths_for_workouts,
     signals_from_athlete,
 )
@@ -233,6 +234,46 @@ def test_calendar_preview_push_uses_builder(client, monkeypatch):
     assert conf.json()["pushed"] == body["count"]
     assert any(e.get("category") == "WORKOUT" for e in captured["events"])
     assert any(e.get("file_contents") for e in captured["events"])
+
+
+def test_calendar_preview_scoped_week(client, monkeypatch):
+    c, _athletes, db = client
+    aid = _onboard(c)
+    headers = {"X-Athlete-Id": aid}
+    with db_session(db) as conn:
+        upsert_athlete_secrets(
+            conn, aid, intervals_api_key="k", intervals_athlete_id="i1"
+        )
+    c.post(
+        "/v1/athlete/me/plan-blocks",
+        headers=headers,
+        json={
+            "title": "Base",
+            "start_date": "2026-10-05",
+            "end_date": "2026-10-26",
+            "weekly_hours": 8,
+        },
+    )
+    preview = c.post(
+        "/v1/athlete/me/intervals/calendar/preview",
+        headers=headers,
+        json={"op": "push", "start": "2026-10-05", "end": "2026-10-11"},
+    )
+    assert preview.status_code == 200, preview.text
+    body = preview.json()
+    assert body.get("sync_range") == {"start": "2026-10-05", "end": "2026-10-11"}
+
+
+def test_filter_planned_sessions_date_range():
+    sessions = [
+        {"session_date": "2026-10-05"},
+        {"session_date": "2026-10-20"},
+    ]
+    out = filter_planned_sessions_date_range(
+        sessions, date(2026, 10, 5), date(2026, 10, 11)
+    )
+    assert len(out) == 1
+    assert out[0]["session_date"] == "2026-10-05"
 
 
 def test_setup_preview_survives_missing_workout_builder(client, monkeypatch):

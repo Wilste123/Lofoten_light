@@ -127,8 +127,11 @@ from intervals_calendar import (
     build_block_note_events,
     build_workout_events,
     delete_events_bulk,
+    event_local_date,
     fetch_events,
     filter_coach_events,
+    filter_events_in_date_range,
+    parse_iso_date,
     post_events_bulk,
     public_event_preview,
     select_blocks,
@@ -152,6 +155,7 @@ from plan_workouts import (
     build_plan_sync_bundle,
     build_week_adjust_sessions,
     events_preview_for_plan_sync,
+    filter_planned_sessions_date_range,
     format_exc_nb,
     persistable_plan_payload,
     plan_horizon_weeks,
@@ -1710,6 +1714,43 @@ def _require_tp_beta() -> None:
         raise HTTPException(501, "TrainingPeaks beta er deaktivert på serveren")
 
 
+def _calendar_sync_range(
+    start: str | None, end: str | None
+) -> tuple[Any, Any]:
+    """Optional inclusive YYYY-MM-DD window from calendar UI."""
+    from datetime import date as date_cls
+
+    rs = parse_iso_date(start)
+    re = parse_iso_date(end)
+    if rs and re and re < rs:
+        raise HTTPException(400, "Sluttdato må være etter startdato")
+    return rs, re
+
+
+def _apply_range_to_bundle(
+    bundle: dict[str, Any], rs: Any, re: Any
+) -> dict[str, Any]:
+    if not rs or not re:
+        return bundle
+    events = filter_events_in_date_range(bundle.get("events") or [], rs, re)
+    note_events = [e for e in events if (e.get("category") or "").upper() == "NOTE"]
+    workout_events = [
+        e for e in events if (e.get("category") or "").upper() == "WORKOUT"
+    ]
+    zwo_n = sum(1 for e in workout_events if e.get("file_contents"))
+    out = dict(bundle)
+    out["events"] = events
+    out["note_events"] = note_events
+    out["workout_events"] = workout_events
+    out["notes_count"] = len(note_events)
+    out["workouts_count"] = len(workout_events)
+    out["zwo_count"] = zwo_n
+    out["count"] = len(events)
+    out["events_preview"] = [public_event_preview(e) for e in events[:80]]
+    out["sync_range"] = {"start": rs.isoformat(), "end": re.isoformat()}
+    return out
+
+
 def _require_tp_secrets(aid: str) -> tuple[dict[str, Any], str, str]:
     with db_session(config.get_db()) as conn:
         athlete = get_athlete(conn, aid)
@@ -1784,20 +1825,26 @@ def trainingpeaks_calendar_preview(
     with db_session(config.get_db()) as conn:
         blocks = list_plan_blocks(conn, aid)
         stored = list_planned_sessions(conn, aid)
+    rs, re = _calendar_sync_range(body.start, body.end)
     selected = select_blocks(
         blocks, block_ids=body.block_ids, start=body.start, end=body.end
     )
     if not selected:
         raise HTTPException(400, "Ingen planblokker i utvalget")
+    if stored and rs and re:
+        stored = filter_planned_sessions_date_range(stored, rs, re)
     bundle = build_plan_sync_bundle(
         selected,
         athlete=athlete,
         include_notes=bool(body.include_notes),
         planned_sessions=stored if stored else None,
+        sync_range_start=rs,
+        sync_range_end=re,
     )
+    bundle = _apply_range_to_bundle(bundle, rs, re)
     events = bundle["events"]
     if not events:
-        raise HTTPException(400, "Ingen økter å speile")
+        raise HTTPException(400, "Ingen økter å speile i valgt periode")
     preview = preview_tp_push(events, athlete_id=tp_uid)
     payload = {
         "events": events,
@@ -3644,11 +3691,16 @@ def calendar_preview(
         stored_for_push = (
             list_planned_sessions(conn, aid) if op == "push" else []
         )
+    rs, re = _calendar_sync_range(body.start, body.end)
     selected = select_blocks(
         blocks, block_ids=body.block_ids, start=body.start, end=body.end
     )
     if not selected:
         raise HTTPException(400, "Ingen planblokker i utvalget")
+    if op == "push" and stored_for_push and rs and re:
+        stored_for_push = filter_planned_sessions_date_range(
+            stored_for_push, rs, re
+        )
 
     if op == "push":
         try:
@@ -3657,7 +3709,10 @@ def calendar_preview(
                 athlete=_athlete,
                 include_notes=bool(body.include_notes),
                 planned_sessions=stored_for_push if stored_for_push else None,
+                sync_range_start=rs,
+                sync_range_end=re,
             )
+            bundle = _apply_range_to_bundle(bundle, rs, re)
         except (ImportError, OSError, ValueError, KeyError, TypeError) as exc:
             raise HTTPException(
                 500,
@@ -3678,6 +3733,7 @@ def calendar_preview(
             "builder": bundle["builder"],
             "knowledge_paths": bundle["knowledge_paths"],
             "from_stored_sessions": bundle.get("from_stored_sessions", False),
+            "sync_range": bundle.get("sync_range"),
         }
         summary = bundle["events_preview"]
         count = bundle["count"]
@@ -3735,6 +3791,8 @@ def calendar_preview(
         out["builder"] = payload.get("builder")
         out["knowledge_paths"] = payload.get("knowledge_paths") or []
         out["from_stored_sessions"] = payload.get("from_stored_sessions", False)
+        if payload.get("sync_range"):
+            out["sync_range"] = payload["sync_range"]
         out["workouts_preview"] = [
             e for e in summary if e.get("category") == "WORKOUT"
         ][:40]
@@ -3748,9 +3806,13 @@ def calendar_preview(
             if int(out["notes_count"] or 0) > 0
             else " (uten grovplan-noter)"
         )
+        range_bit = ""
+        if out.get("sync_range"):
+            sr = out["sync_range"]
+            range_bit = f" periode {sr.get('start')}–{sr.get('end')},"
         out["message"] = (
-            f"Bekreft for å synce {out['workouts_count']} økter fra {src} "
-            f"(første {out['weeks']} uke(r), {out['zwo_count']} med ZWO)"
+            f"Bekreft for å synce {out['workouts_count']} økter fra {src}{range_bit} "
+            f"({out['zwo_count']} med ZWO)"
             f"{notes_bit} til Intervals. "
             "Upsert ll-coach-… / ll-coach-w-…."
         )

@@ -117,6 +117,12 @@ from two_tier_plan import (
 )
 from beta_forecasts import build_beta_forecasts
 from form_from_intervals import clear_form_caches, persist_estimates_patch, resolve_form_estimates
+from trainingpeaks_beta.sync import (
+    preview_tp_push,
+    push_tp_workouts,
+    tp_public_status,
+    verify_tp_credentials,
+)
 from intervals_calendar import (
     build_block_note_events,
     build_workout_events,
@@ -660,6 +666,25 @@ class CalendarSyncPreviewIn(BaseModel):
 
 
 class CalendarConfirmIn(BaseModel):
+    pending_id: str = Field(min_length=1)
+
+
+class TrainingPeaksBetaCredentialsIn(BaseModel):
+    """Beta: Production_tpAuth cookie (tpapi) — unofficial mirror to TP calendar."""
+
+    tp_auth_cookie: str = ""
+    tp_sync_enabled: bool = False
+    verify: bool = True
+
+
+class TpCalendarPreviewIn(BaseModel):
+    block_ids: list[str] | None = None
+    start: str | None = None
+    end: str | None = None
+    include_notes: bool = False
+
+
+class TpCalendarConfirmIn(BaseModel):
     pending_id: str = Field(min_length=1)
 
 
@@ -1678,6 +1703,142 @@ def verify_intervals(x_athlete_id: str | None = Header(default=None)) -> dict[st
     out["verified"] = ok
     out["verify_error"] = err
     return out
+
+
+def _require_tp_beta() -> None:
+    if not config.TRAININGPEAKS_BETA_ENABLED:
+        raise HTTPException(501, "TrainingPeaks beta er deaktivert på serveren")
+
+
+def _require_tp_secrets(aid: str) -> tuple[dict[str, Any], str, str]:
+    with db_session(config.get_db()) as conn:
+        athlete = get_athlete(conn, aid)
+        secrets = get_athlete_secrets(conn, aid)
+    if not athlete:
+        raise HTTPException(404, "Utøver ikke funnet")
+    cookie = ((secrets or {}).get("tp_auth_cookie") or "").strip()
+    tp_uid = ((secrets or {}).get("tp_user_id") or "").strip()
+    if not cookie:
+        raise HTTPException(400, "Lagre TrainingPeaks-cookie (beta) under Du først")
+    if not tp_uid:
+        raise HTTPException(400, "Verifiser TrainingPeaks-tilkobling først")
+    return athlete, cookie, tp_uid
+
+
+@app.get("/v1/athlete/me/trainingpeaks/beta")
+def get_trainingpeaks_beta(
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    _require_tp_beta()
+    aid = _require_athlete(x_athlete_id)
+    with db_session(config.get_db()) as conn:
+        secrets = get_athlete_secrets(conn, aid)
+    return tp_public_status(secrets)
+
+
+@app.put("/v1/athlete/me/trainingpeaks/beta")
+def put_trainingpeaks_beta(
+    body: TrainingPeaksBetaCredentialsIn,
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    _require_tp_beta()
+    aid = _require_athlete(x_athlete_id)
+    cookie_in = (body.tp_auth_cookie or "").strip()
+    with db_session(config.get_db()) as conn:
+        if not get_athlete(conn, aid):
+            raise HTTPException(404, "Utøver ikke funnet")
+        existing = get_athlete_secrets(conn, aid)
+        cookie = cookie_in or ((existing or {}).get("tp_auth_cookie") or "").strip()
+        if not cookie:
+            raise HTTPException(400, "tp_auth_cookie kreves (eller lagret fra før)")
+        tp_uid: str | None = (existing or {}).get("tp_user_id")
+        verified: bool | None = None
+        verify_error: str | None = None
+        if body.verify:
+            ok, err, uid = verify_tp_credentials(cookie)
+            verified = ok
+            verify_error = err
+            if ok and uid:
+                tp_uid = uid
+        row = upsert_athlete_secrets(
+            conn,
+            aid,
+            tp_auth_cookie=cookie,
+            tp_user_id=tp_uid,
+            tp_sync_enabled=body.tp_sync_enabled,
+        )
+    out = tp_public_status(row)
+    out["verified"] = verified
+    out["verify_error"] = verify_error
+    return out
+
+
+@app.post("/v1/athlete/me/trainingpeaks/beta/calendar/preview")
+def trainingpeaks_calendar_preview(
+    body: TpCalendarPreviewIn,
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    _require_tp_beta()
+    aid = _require_athlete(x_athlete_id)
+    athlete, _cookie, tp_uid = _require_tp_secrets(aid)
+    with db_session(config.get_db()) as conn:
+        blocks = list_plan_blocks(conn, aid)
+        stored = list_planned_sessions(conn, aid)
+    selected = select_blocks(
+        blocks, block_ids=body.block_ids, start=body.start, end=body.end
+    )
+    if not selected:
+        raise HTTPException(400, "Ingen planblokker i utvalget")
+    bundle = build_plan_sync_bundle(
+        selected,
+        athlete=athlete,
+        include_notes=bool(body.include_notes),
+        planned_sessions=stored if stored else None,
+    )
+    events = bundle["events"]
+    if not events:
+        raise HTTPException(400, "Ingen økter å speile")
+    preview = preview_tp_push(events, athlete_id=tp_uid)
+    payload = {
+        "events": events,
+        "tp_user_id": tp_uid,
+        "block_ids": [b["id"] for b in selected],
+        "workouts_count": preview["workouts_count"],
+    }
+    with db_session(config.get_db()) as conn:
+        pending = insert_pending_action(conn, aid, "trainingpeaks_beta_push", payload)
+    return {
+        "pending_id": pending["id"],
+        "confirm_required": True,
+        "expires_at": pending.get("expires_at"),
+        "beta": True,
+        **preview,
+    }
+
+
+@app.post("/v1/athlete/me/trainingpeaks/beta/calendar/confirm")
+def trainingpeaks_calendar_confirm(
+    body: TpCalendarConfirmIn,
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    _require_tp_beta()
+    aid = _require_athlete(x_athlete_id)
+    _athlete, cookie, tp_uid = _require_tp_secrets(aid)
+    with db_session(config.get_db()) as conn:
+        pending = get_pending_action(conn, aid, body.pending_id)
+    if not pending or pending.get("status") != "pending":
+        raise HTTPException(404, "Pending handling ikke funnet")
+    payload = pending.get("payload") or {}
+    events = payload.get("events") or []
+    result = push_tp_workouts(cookie, tp_uid, events)
+    with db_session(config.get_db()) as conn:
+        mark_pending_action(
+            conn,
+            aid,
+            body.pending_id,
+            "completed" if not result.get("errors") else "failed",
+        )
+    return {"beta": True, "tp_user_id": tp_uid, **result}
 
 
 @app.post("/v1/chat")

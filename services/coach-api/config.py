@@ -74,6 +74,9 @@ CORS_ORIGINS = [
 ]
 # Optional: POST /v1/admin/seed-from-repo with header X-Admin-Seed-Token
 ADMIN_SEED_TOKEN = os.environ.get("ADMIN_SEED_TOKEN", "").strip()
+TRAININGPEAKS_BETA_ENABLED = os.environ.get(
+    "TRAININGPEAKS_BETA_ENABLED", "1"
+).strip().lower() in ("1", "true", "yes")
 # Built web UI (Fly / Docker). Empty → API only.
 STATIC_DIR = Path(os.environ["STATIC_DIR"]) if os.environ.get("STATIC_DIR") else None
 if STATIC_DIR is None:

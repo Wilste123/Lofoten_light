@@ -204,7 +204,7 @@ def test_calendar_preview_push_uses_builder(client, monkeypatch):
     preview = c.post(
         "/v1/athlete/me/intervals/calendar/preview",
         headers=headers,
-        json={"op": "push"},
+        json={"op": "push", "include_notes": True},
     )
     assert preview.status_code == 200, preview.text
     body = preview.json()

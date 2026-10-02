@@ -321,6 +321,12 @@ _PLANNED_SESSION_EXTRA_COLUMNS = [
     ("steps_json", "TEXT DEFAULT '[]'"),
 ]
 
+_SECRETS_EXTRA_COLUMNS = [
+    ("tp_auth_cookie", "TEXT"),
+    ("tp_user_id", "TEXT"),
+    ("tp_sync_enabled", "INTEGER DEFAULT 0"),
+]
+
 # Seeded returning athletes — always treated as setup-done; re-seed must not wipe them.
 SEED_PROTECTED_IDS = frozenset({"william-lofoten"})
 SEED_PROTECTED_USERNAMES = frozenset({"william"})
@@ -426,6 +432,10 @@ def init_db(db_path: DbTarget) -> None:
         for name, decl in _PLANNED_SESSION_EXTRA_COLUMNS:
             if name not in sess_cols:
                 conn.execute(f"ALTER TABLE planned_sessions ADD COLUMN {name} {decl}")
+        secret_cols = table_columns(conn, "athlete_secrets")
+        for name, decl in _SECRETS_EXTRA_COLUMNS:
+            if name not in secret_cols:
+                conn.execute(f"ALTER TABLE athlete_secrets ADD COLUMN {name} {decl}")
         conn.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_athletes_username ON athletes(username)"
         )
@@ -741,7 +751,8 @@ def get_athlete_secrets(
 ) -> dict[str, Any] | None:
     cur = conn.execute(
         """
-        SELECT athlete_id, intervals_api_key, intervals_athlete_id, updated_at
+        SELECT athlete_id, intervals_api_key, intervals_athlete_id,
+               tp_auth_cookie, tp_user_id, tp_sync_enabled, updated_at
         FROM athlete_secrets WHERE athlete_id = ?
         """,
         (athlete_id,),
@@ -756,20 +767,27 @@ def upsert_athlete_secrets(
     *,
     intervals_api_key: str | None = None,
     intervals_athlete_id: str | None = None,
+    tp_auth_cookie: str | None = None,
+    tp_user_id: str | None = None,
+    tp_sync_enabled: bool | None = None,
 ) -> dict[str, Any]:
-    """Insert or update Intervals credentials. None keeps existing value."""
+    """Insert or update integration secrets. None keeps existing value."""
     existing = get_athlete_secrets(conn, athlete_id)
     now = utc_now()
     if existing is None:
         key = intervals_api_key or None
         aid = intervals_athlete_id or None
+        tp_cookie = tp_auth_cookie or None
+        tp_uid = tp_user_id or None
+        tp_on = 1 if tp_sync_enabled else 0 if tp_sync_enabled is not None else 0
         conn.execute(
             """
             INSERT INTO athlete_secrets (
-              athlete_id, intervals_api_key, intervals_athlete_id, updated_at
-            ) VALUES (?, ?, ?, ?)
+              athlete_id, intervals_api_key, intervals_athlete_id,
+              tp_auth_cookie, tp_user_id, tp_sync_enabled, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (athlete_id, key, aid, now),
+            (athlete_id, key, aid, tp_cookie, tp_uid, tp_on, now),
         )
     else:
         key = (
@@ -782,13 +800,27 @@ def upsert_athlete_secrets(
             if intervals_athlete_id is not None
             else existing.get("intervals_athlete_id")
         )
+        tp_cookie = (
+            tp_auth_cookie
+            if tp_auth_cookie is not None
+            else existing.get("tp_auth_cookie")
+        )
+        tp_uid = (
+            tp_user_id if tp_user_id is not None else existing.get("tp_user_id")
+        )
+        if tp_sync_enabled is not None:
+            tp_on = 1 if tp_sync_enabled else 0
+        else:
+            tp_on = existing.get("tp_sync_enabled") or 0
         conn.execute(
             """
             UPDATE athlete_secrets
-            SET intervals_api_key = ?, intervals_athlete_id = ?, updated_at = ?
+            SET intervals_api_key = ?, intervals_athlete_id = ?,
+                tp_auth_cookie = ?, tp_user_id = ?, tp_sync_enabled = ?,
+                updated_at = ?
             WHERE athlete_id = ?
             """,
-            (key, aid, now, athlete_id),
+            (key, aid, tp_cookie, tp_uid, tp_on, now, athlete_id),
         )
     return get_athlete_secrets(conn, athlete_id)  # type: ignore[return-value]
 

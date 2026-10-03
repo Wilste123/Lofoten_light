@@ -478,6 +478,9 @@ _PLAN_ADJUST_INTENT_RE = re.compile(
     r"(?:"
     r"lett(?:e)?\s+(?:denne\s+)?uka|"
     r"lette\s+uka|"
+    # «lett uke» / «ha en lett uke» / «sliten — lett uke» (QA prose-only gap)
+    r"(?:ha\s+(?:en\s+)?)?lett\s+uke|"
+    r"lette?\s+(?:neste\s+)?(?:økter|okter)|"
     r"ease\s+(?:the\s+)?week|"
     r"jus?etr\s+(?:planen|uka|grovplanen|helg(?:a|en)?)|"
     r"juster\s+(?:planen|uka|grovplanen|helg(?:a|en)?)|"
@@ -486,6 +489,18 @@ _PLAN_ADJUST_INTENT_RE = re.compile(
     r"oppdater\s+(?:planen|uka|helg(?:a|en)?|fre|lør|søn)|"
     r"ny\s+(?:ukeplan|grovplan)|"
     r"rebuild\s+(?:plan|week)|"
+    # Day swap / move session day (tirsdag → onsdag) — must open week confirm card
+    r"(?:bytt(?:e)?|flytt(?:e)?|mov(?:e)?)\s+"
+    r"(?:(?:økt(?:a|en)?|trening(?:en)?|pass(?:et)?)\s+)?"
+    r"(?:fra\s+)?"
+    r"(?:man(?:dag)?|tir(?:sdag)?|ons(?:dag)?|tor(?:sdag)?|fre(?:dag)?|"
+    r"lør(?:dag)?|søn(?:dag)?|monday|tuesday|wednesday|thursday|friday|"
+    r"saturday|sunday)"
+    r".{0,40}"
+    r"(?:→|->|til|to)\s+"
+    r"(?:man(?:dag)?|tir(?:sdag)?|ons(?:dag)?|tor(?:sdag)?|fre(?:dag)?|"
+    r"lør(?:dag)?|søn(?:dag)?|monday|tuesday|wednesday|thursday|friday|"
+    r"saturday|sunday)|"
     # Multi-day / weekend (fre–lør / helg) without requiring «planen»
     r"(?:juster|endre|oppdater|lette?)\s+"
     r"(?:fre(?:dag)?|lør(?:dag)?|søn(?:dag)?|helg(?:a|en)?)"
@@ -1043,17 +1058,67 @@ def intervals_plan_sync_reply_nb(
 
 def _sport_from_text(text: str) -> str:
     raw = (text or "").lower()
-    if re.search(r"\b(svøm|swim)\b", raw):
-        return "swim"
-    if re.search(r"\b(syk|bike|cycling)\b", raw):
-        return "bike"
-    if re.search(r"\b(styrke|strength)\b", raw):
-        return "strength"
-    if re.search(r"\b(løp|run|jogge)\b", raw):
-        return "run"
-    if re.search(r"\b(ski)\b", raw):
-        return "other"
+    # Prefer first explicit sport token (order in text), not a fixed swim-first list.
+    # Fixes «løpetur · swim» / fence sport=swim when user asked for løp.
+    matches: list[tuple[int, str]] = []
+    for pat, sport in (
+        (r"\b(?:svøm(?:me|ming|tur)?|swim(?:ming)?)\b", "swim"),
+        (r"\b(?:syk(?:kel|le|ling)?|bike|cycling)\b", "bike"),
+        (r"\b(?:styrke|strength|vekt)\b", "strength"),
+        (r"\b(?:løp(?:e|etur|ing)?|run(?:ning)?|jogge)\b", "run"),
+        (r"\bski\b", "other"),
+    ):
+        m = re.search(pat, raw, re.IGNORECASE)
+        if m:
+            matches.append((m.start(), sport))
+    if matches:
+        matches.sort(key=lambda x: x[0])
+        return matches[0][1]
     return "run"
+
+
+def reconcile_workout_sports(
+    proposal: dict[str, Any] | None,
+    user_message: str = "",
+) -> dict[str, Any] | None:
+    """Harden sport labels: name/user beat a mismatched fence sport.
+
+    QA: «legg inn rolig løp» sometimes returned sport=swim on the card.
+    """
+    if not proposal or not isinstance(proposal, dict):
+        return proposal
+    workouts = proposal.get("workouts")
+    if not isinstance(workouts, list):
+        return proposal
+    user_has_sport = bool(_SPORT_WORD_RE.search(user_message or ""))
+    user_sport = _sport_from_text(user_message) if user_has_sport else None
+    out_ws: list[dict[str, Any]] = []
+    changed = False
+    for w in workouts:
+        if not isinstance(w, dict):
+            continue
+        row = dict(w)
+        sport = str(row.get("sport") or "").strip().lower()
+        name = str(row.get("name") or "")
+        name_has = bool(_SPORT_WORD_RE.search(name))
+        name_sport = _sport_from_text(name) if name_has else None
+        fixed = sport
+        if name_sport and sport and name_sport != sport:
+            fixed = name_sport
+        elif (
+            user_sport
+            and sport
+            and user_sport != sport
+            and (not name_sport or name_sport == user_sport)
+        ):
+            fixed = user_sport
+        if fixed != sport:
+            row["sport"] = fixed
+            changed = True
+        out_ws.append(row)
+    if not changed:
+        return proposal
+    return {**proposal, "workouts": out_ws}
 
 
 def _relative_date_from_text(text: str, *, today: date) -> date | None:
@@ -1127,7 +1192,12 @@ def infer_workout_proposal_fallback(
     clean_reply = strip_workout_json_from_prose(reply or "")
     blob = f"{clean_reply}\n{user_message or ''}"
 
-    sport = _sport_from_text(blob)
+    # Prefer sport from the athlete's message over assistant prose (avoids swim label on løp).
+    sport = (
+        (_sport_from_text(user_message) if _SPORT_WORD_RE.search(user_message or "") else None)
+        or _sport_from_text(clean_reply)
+        or _sport_from_text(blob)
+    )
     name = None
     labeled: dict[str, str] = {}
     for lab in _LABELED_FIELD_RE.finditer(clean_reply or ""):
@@ -1148,7 +1218,13 @@ def infer_workout_proposal_fallback(
     if labeled.get("date") and _ISO_DATE_RE.search(labeled["date"]):
         date_s = _ISO_DATE_RE.search(labeled["date"]).group(1)
     if labeled.get("sport"):
-        sport = _sport_from_text(labeled["sport"]) or sport
+        labeled_sport = _sport_from_text(labeled["sport"])
+        # Don't let a wrong labeled sport override a clear user sport.
+        if labeled_sport and not (
+            _SPORT_WORD_RE.search(user_message or "")
+            and _sport_from_text(user_message) != labeled_sport
+        ):
+            sport = labeled_sport or sport
 
     dur_i = _infer_session_duration_minutes(
         clean_reply, user_message or "", labeled.get("duration")
@@ -1321,6 +1397,15 @@ def infer_plan_update_fallback(user_message: str) -> dict[str, Any] | None:
     if not user_requests_plan_adjust(user_message):
         return None
     text = (user_message or "").lower()
+    day_swap = bool(
+        re.search(
+            r"(?:bytt(?:e)?|flytt(?:e)?|mov(?:e)?).{0,60}"
+            r"(?:→|->|til|to)\s+"
+            r"(?:man|tir|ons|tor|fre|lør|søn|monday|tuesday|wednesday|"
+            r"thursday|friday|saturday|sunday)",
+            text,
+        )
+    )
     multi_day = bool(
         re.search(
             r"helg(?:a|en)?|fre(?:dag)?|lør(?:dag)?|søn(?:dag)?|"
@@ -1328,29 +1413,43 @@ def infer_plan_update_fallback(user_message: str) -> dict[str, Any] | None:
             text,
         )
     )
+    ease = bool(re.search(r"lett|ease|letter|recover|hvile|sliten", text)) and not day_swap
     week = (
         bool(
             re.search(
-                r"\buke\b|\bweek\b|denne\s+uka|neste\s+uke|lette?\s+uka|ukeplan|plan\s+for",
+                r"\buke\b|\bweek\b|denne\s+uka|neste\s+uke|lette?\s+uka|"
+                r"lett\s+uke|ukeplan|plan\s+for|"
+                r"lette?\s+(?:neste\s+)?(?:økter|okter)",
                 text,
             )
         )
         or multi_day
+        or day_swap
+        or ease  # «lette neste økter» / soft CTL → week card, not full rebuild
         or bool(_PLAN_WEEK_BUILD_RE.search(text))
     ) and not bool(re.search(r"hele\s+planen|full\s+plan|sesong", text))
-    ease = bool(re.search(r"lett|ease|letter|recover|hvile", text))
     week_start = plan_week_target_from_message(text)
+    reason = "Utleidet fra chat-forespørsel (LLM manglet plan_update-fence)."
+    if day_swap:
+        reason = "Ukedagsbytte foreslått — bekreft ukejustering før lagring."
+    elif ease:
+        reason = "Lett uke foreslått — bekreft forhåndsvisning før lagring."
     return {
-        "reason": "Utleidet fra chat-forespørsel (LLM manglet plan_update-fence).",
+        "reason": reason,
         "rebuild": True,
         "ease_load": ease,
         "scope": "week" if week else "full",
         "week_start": week_start,
         "inferred": True,
+        "day_swap": day_swap,
         "message": (
-            "Foreslått ukejustering — bekreft forhåndsvisning."
-            if week
-            else "Foreslått planjustering — bekreft forhåndsvisning."
+            "Foreslått ukedagsbytte — bekreft forhåndsvisning."
+            if day_swap
+            else (
+                "Foreslått ukejustering — bekreft forhåndsvisning."
+                if week
+                else "Foreslått planjustering — bekreft forhåndsvisning."
+            )
         ),
     }
 

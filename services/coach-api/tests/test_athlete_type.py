@@ -51,6 +51,26 @@ def test_infer_half_marathon_not_triathlon():
     assert info["split"]["swim"] == 0.0
 
 
+def test_draft_triathlete_overridden_by_half_marathon_run_focus():
+    """QA: LLM setup_extract triathlete must lose to HM + løp/styrke (svøm vanskelig)."""
+    blob = (
+        "jobb to barn 3-4 økter halvmaraton juni 2027 tirsdag torsdag søndag "
+        "løp og styrke svømming er vanskelig"
+    )
+    info = infer_athlete_type(
+        blob,
+        {
+            "athlete_type": "triathlete",
+            "goal_text": "halvmaraton juni 2027",
+            "allowed_disciplines": ["swim", "bike", "run"],
+            "schedule_notes": "løp og styrke",
+        },
+    )
+    assert info["athlete_type"] == TYPE_HALF_MARATHON
+    assert info["is_multisport"] is False
+    assert "draft_tri" in info["source"] or info["source"] == "goal_half_marathon_over_draft_tri"
+
+
 def test_format_exc_nb_keyerror_not_bare_2():
     msg = format_exc_nb(KeyError(2))
     assert "2" in msg

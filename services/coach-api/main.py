@@ -47,6 +47,7 @@ from chat_service import (
     intervals_plan_sync_reply_nb,
     knowledge_meta_for_chat,
     plan_summary_for_chat,
+    reconcile_workout_sports,
     reopen_pending_write_reply,
     sanitize_unconfirmed_write_claims,
     strip_workout_json_from_prose,
@@ -2103,6 +2104,8 @@ def chat(
         )
         if proposal:
             reply_wp = (reply_wp or raw_reply or "").strip()
+    if proposal:
+        proposal = reconcile_workout_sports(proposal, body.message)
     if not plan_prop:
         plan_prop = infer_plan_update_fallback(body.message)
         if plan_prop:
@@ -2347,6 +2350,7 @@ def chat(
                 body.message, raw_reply, today=date.today()
             )
             if proposal:
+                proposal = reconcile_workout_sports(proposal, body.message)
                 with db_session(config.get_db()) as conn:
                     planned_n = _count_planned_this_week_db(conn, aid)
                 gate = validate_workouts_against_constraints(

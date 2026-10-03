@@ -25,9 +25,11 @@ import config
 import main as main_mod
 from athlete_constraints import ICU_SYNC_WEEKS
 from chat_service import (
+    extract_workout_proposal,
     infer_plan_update_fallback,
     infer_workout_proposal_fallback,
     plan_week_target_from_message,
+    reconcile_workout_sports,
     reopen_pending_write_reply,
     sanitize_unconfirmed_write_claims,
     user_confirms_pending_write,
@@ -140,6 +142,44 @@ def test_lag_plan_neste_uke_triggers_plan_path():
     assert fb and fb["scope"] == "week"
     assert fb.get("week_start") == "next_week"
     assert plan_week_target_from_message(msg) == "next_week"
+
+
+def test_day_swap_and_lett_uke_open_plan_card_intent():
+    """QA: day swap / lett uke must hit plan_adjust fallback (confirm card), not prose-only."""
+    for msg in (
+        "Bytt tirsdag → onsdag (foreldremøte)",
+        "Kan du bytte tirsdag til onsdag?",
+        "flytt tirsdagsøkta til onsdag",
+    ):
+        assert user_requests_plan_adjust(msg), msg
+        assert write_intent_kind(msg) == "plan", msg
+        fb = infer_plan_update_fallback(msg)
+        assert fb and fb["scope"] == "week", msg
+        assert fb.get("day_swap") is True, msg
+        assert fb.get("ease_load") is False, msg
+
+    for msg in (
+        "Sliten — lett uke",
+        "Jeg er sliten, kan vi ha en lett uke?",
+        "lette neste økter pga høy belastning",
+    ):
+        assert user_requests_plan_adjust(msg), msg
+        assert write_intent_kind(msg) == "plan", msg
+        fb = infer_plan_update_fallback(msg)
+        assert fb and fb["scope"] == "week", msg
+        assert fb.get("ease_load") is True, msg
+
+
+def test_reconcile_wrong_fence_sport_swim_for_run():
+    reply = (
+        "Forslag:\n```workout_proposal\n"
+        '{"workouts":[{"name":"løpetur rolig","date":"2026-10-04",'
+        '"sport":"swim","duration_minutes":40,"description":"rolig"}]}\n```'
+    )
+    _disp, prop = extract_workout_proposal(reply)
+    assert prop and prop["workouts"][0]["sport"] == "swim"
+    fixed = reconcile_workout_sports(prop, "legg inn rolig løp i morgen 40 min")
+    assert fixed["workouts"][0]["sport"] == "run"
 
 
 def test_intent_detect_create_tomorrow_and_weekend():

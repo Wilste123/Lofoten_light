@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from athlete_constraints import (
     DISC_RUN,
     DISC_STRENGTH,
+    DISC_SWIM,
     MAX_WORKOUT_WEEKS,
     infer_allowed_disciplines,
     infer_sessions_per_week,
@@ -49,6 +50,20 @@ def test_infer_three_sessions_run_strength():
     assert infer_sessions_per_week(draft, athlete_type=TYPE_HALF_MARATHON) == 3
     discs = infer_allowed_disciplines(draft, athlete_type=TYPE_HALF_MARATHON)
     assert set(discs) == {DISC_RUN, DISC_STRENGTH}
+
+
+def test_swim_difficulty_does_not_force_swim_disciplines():
+    """QA: «svømming er vanskelig» + løp/styrke → run+strength, even if draft listed swim."""
+    draft = {
+        "goal_text": "halvmaraton juni 2027",
+        "schedule_notes": "løp og styrke, svømming er vanskelig",
+        "background_notes": "3-4 økter, tir/tor/søn",
+        "athlete_type": TYPE_HALF_MARATHON,
+        "allowed_disciplines": ["swim", "bike", "run", "strength"],
+    }
+    discs = infer_allowed_disciplines(draft, athlete_type=TYPE_HALF_MARATHON)
+    assert set(discs) == {DISC_RUN, DISC_STRENGTH}
+    assert DISC_SWIM not in discs
 
 
 def test_run_strength_3_per_week_no_swim_bike_two_weeks():

@@ -3135,7 +3135,7 @@ function bindApp() {
       } catch {
         /* soft */
       }
-      // Open confirm/plan surfaces — never auto-apply
+      // Open confirm/plan surfaces — never auto-apply / auto-sync
       if (action === 'open_plan' || kind === 'sessions_saved' || kind === 'sync_ok') {
         state.tab = 'plan'
         await refreshPlannedSessions()
@@ -3150,19 +3150,39 @@ function bindApp() {
         kind === 'readiness_soft'
       ) {
         state.tab = 'coach'
+        // Tap opens a real proposal card when possible (Human Coach preview — not apply).
+        let seed = ''
         if (kind === 'ctl_overload' || action === 'open_ease') {
-          state.chatDraft = 'lette neste økter pga høy belastning'
-          toast(
-            ev?.payload?.message ||
-              'Høy akutt belastning — si til coach at du vil lette (bekreft før lagring).',
-          )
+          seed = 'lette denne uka'
         } else if (kind === 'roll_forward_due' || action === 'open_roll') {
-          state.chatDraft = 'rull videre'
-          toast('Si «rull videre» eller bekreft roll-kort — ingen auto-apply.')
+          seed = 'rull videre'
         } else if (kind === 'weekly_cap_replace') {
+          seed = ''
           toast('Ukeskap full — bruk erstatningskort i chatten (forhåndsvis → bekreft).')
         } else if (ev?.payload?.message) {
           toast(ev.payload.message)
+        }
+        if (seed && !state.busy) {
+          state.chatDraft = ''
+          state.messages.push({ role: 'user', content: seed })
+          state.busy = true
+          render()
+          try {
+            const data = await sendCoachMessage(seed)
+            state.messages.push({ role: 'assistant', content: data.reply || '…' })
+            applyChatResponse(data, { mirrorToMain: false })
+            toast(
+              kind === 'roll_forward_due' || action === 'open_roll'
+                ? 'Roll-forslag åpnet — bekreft kortet (ingen auto-apply).'
+                : 'Lett-uke-forslag åpnet — bekreft kortet (ingen auto-apply).',
+            )
+          } catch (err) {
+            state.messages.pop()
+            state.chatDraft = seed
+            toast(err.message || 'Kunne ikke åpne forslag — send meldingen manuelt.')
+          } finally {
+            state.busy = false
+          }
         }
       } else {
         state.tab = 'coach'

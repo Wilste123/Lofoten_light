@@ -1444,6 +1444,9 @@ Regler:
 - Sett allowed_disciplines som liste når avtalt, f.eks. ["run","strength"]
   (gyldige: run, bike, swim, strength). Halvmaraton/løper/komme-i-form uten tri
   → ikke svøm/sykkel.
+- «Svømming er vanskelig / kan ikke svømme» er begrensning, ikke swim-fokus:
+  ikke sett athlete_type=swimmer/triathlete eller allowed_disciplines med swim
+  med mindre utøveren eksplisitt vil trene svøm.
 - Når utøveren nevner år («triatlon 2028»), sett goal_race_date til sen sesong det året
   (f.eks. YYYY-09-15) ELLER spør én gang om eksakt racedato — aldri finn opp ~8 mnd frem.
   Oppdater goal_race_date hvis dere avtaler senere dato.

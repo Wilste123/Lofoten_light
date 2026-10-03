@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import time
 import unicodedata
 import uuid
 from contextlib import contextmanager
@@ -27,6 +28,11 @@ from db_backend import (
 
 # Lowercase slug: letters/digits, optional hyphens, 2–32 chars.
 USERNAME_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$")
+
+# Serialize concurrent Postgres init_db (uvicorn lifespan + SEED_ON_BOOT).
+# Transaction-scoped so Session/transaction poolers both release on commit.
+_PG_INIT_ADVISORY_LOCK_KEY = 87421031
+_INIT_DB_DEADLOCK_RETRIES = 3
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS athletes (
@@ -369,8 +375,9 @@ def allocate_username(
 
 
 def _backfill_usernames(conn: Connection) -> None:
+    # ORDER BY keeps lock order stable if two migrators ever overlap without advisory lock.
     rows = conn.execute(
-        "SELECT id, display_name, username FROM athletes"
+        "SELECT id, display_name, username FROM athletes ORDER BY id"
     ).fetchall()
     for row in rows:
         if row["username"]:
@@ -406,7 +413,29 @@ def _backfill_setup_completed(conn: Connection, *, column_just_added: bool) -> N
     )
 
 
+def _is_deadlock_error(exc: BaseException) -> bool:
+    msg = str(exc).lower()
+    return "deadlock" in msg or "40p01" in msg
+
+
 def init_db(db_path: DbTarget) -> None:
+    """Create/migrate schema. Safe under concurrent boot (seed + lifespan)."""
+    last: BaseException | None = None
+    for attempt in range(_INIT_DB_DEADLOCK_RETRIES):
+        try:
+            _init_db_once(db_path)
+            return
+        except Exception as exc:
+            last = exc
+            if attempt + 1 < _INIT_DB_DEADLOCK_RETRIES and _is_deadlock_error(exc):
+                time.sleep(0.05 * (2**attempt))
+                continue
+            raise
+    if last is not None:  # pragma: no cover — loop always returns or raises
+        raise last
+
+
+def _init_db_once(db_path: DbTarget) -> None:
     with connect(db_path) as conn:
         # Postgres: enable extensions used by optional RLS helpers (safe if missing).
         if isinstance(conn, PgConnection):
@@ -416,6 +445,13 @@ def init_db(db_path: DbTarget) -> None:
                 conn.rollback()
                 # reconnect path: extension may require superuser; schema still works
                 pass
+            # Must run after any rollback above. Blocks the other boot path
+            # (docker_entrypoint SEED_ON_BOOT → seed_from_repo.init_db) so both
+            # cannot race UPDATE athletes SET setup_completed / username backfill.
+            conn.execute(
+                "SELECT pg_advisory_xact_lock(?)",
+                (_PG_INIT_ADVISORY_LOCK_KEY,),
+            )
         conn.executescript(SCHEMA)
         existing = table_columns(conn, "athletes")
         setup_col_added = False

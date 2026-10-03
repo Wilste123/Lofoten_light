@@ -82,6 +82,12 @@ curl -sS https://lofoten-coach.fly.dev/health
 
 `fly.toml` still mounts `/data` for `ATHLETES_DATA_DIR` (profile.md). Volume is not required for plan DB once on Supabase.
 
+### Boot deadlock (`UPDATE athletes SET setup_completed`)
+
+`SEED_ON_BOOT` runs `seed_from_repo.py` (which calls `init_db`) in the background while uvicorn lifespan also calls `init_db`. Without serialization those two Postgres transactions can deadlock on `athletes` row locks; the process then stays `db_ok:false` until restart.
+
+Mitigation in `db.init_db`: `pg_advisory_xact_lock` + short deadlock retry. After deploy, `curl /health` must show `db_ok:true`.
+
 ## Local / tests
 
 ```bash

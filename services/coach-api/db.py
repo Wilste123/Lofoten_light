@@ -330,8 +330,21 @@ _PLANNED_SESSION_EXTRA_COLUMNS = [
 _SECRETS_EXTRA_COLUMNS = [
     ("tp_auth_cookie", "TEXT"),
     ("tp_user_id", "TEXT"),
+    # SQLite: INTEGER 0/1. Postgres (migration 003): BOOLEAN — see _init_db_once.
     ("tp_sync_enabled", "INTEGER DEFAULT 0"),
 ]
+
+
+def _db_flag(conn: Connection, value: Any) -> bool | int:
+    """Bind flag for dual backends.
+
+    Postgres ``BOOLEAN`` rejects bare ints (``0``/``1``) → HTTP 500 on
+    ``PUT /v1/athlete/me/intervals``. SQLite stores the same column as INTEGER.
+    """
+    flag = bool(value)
+    if isinstance(conn, PgConnection):
+        return flag
+    return 1 if flag else 0
 
 # Seeded returning athletes — always treated as setup-done; re-seed must not wipe them.
 SEED_PROTECTED_IDS = frozenset({"william-lofoten"})
@@ -471,6 +484,8 @@ def _init_db_once(db_path: DbTarget) -> None:
         secret_cols = table_columns(conn, "athlete_secrets")
         for name, decl in _SECRETS_EXTRA_COLUMNS:
             if name not in secret_cols:
+                if name == "tp_sync_enabled" and isinstance(conn, PgConnection):
+                    decl = "BOOLEAN NOT NULL DEFAULT FALSE"
                 conn.execute(f"ALTER TABLE athlete_secrets ADD COLUMN {name} {decl}")
         conn.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_athletes_username ON athletes(username)"
@@ -815,7 +830,9 @@ def upsert_athlete_secrets(
         aid = intervals_athlete_id or None
         tp_cookie = tp_auth_cookie or None
         tp_uid = tp_user_id or None
-        tp_on = 1 if tp_sync_enabled else 0 if tp_sync_enabled is not None else 0
+        tp_on = _db_flag(
+            conn, bool(tp_sync_enabled) if tp_sync_enabled is not None else False
+        )
         conn.execute(
             """
             INSERT INTO athlete_secrets (
@@ -845,9 +862,9 @@ def upsert_athlete_secrets(
             tp_user_id if tp_user_id is not None else existing.get("tp_user_id")
         )
         if tp_sync_enabled is not None:
-            tp_on = 1 if tp_sync_enabled else 0
+            tp_on = _db_flag(conn, tp_sync_enabled)
         else:
-            tp_on = existing.get("tp_sync_enabled") or 0
+            tp_on = _db_flag(conn, existing.get("tp_sync_enabled"))
         conn.execute(
             """
             UPDATE athlete_secrets

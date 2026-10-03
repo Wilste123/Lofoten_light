@@ -17,6 +17,8 @@ ls /app/static/index.html 2>/dev/null || echo "boot: missing static index"
 
 # Seed in background so /health comes up immediately (avoids Fly 503 + phone hang).
 # When DATABASE_URL is set, seed Postgres (not the leftover SQLite volume).
+# seed_from_repo also calls init_db — Postgres path uses pg_advisory_xact_lock so
+# this does not deadlock against uvicorn lifespan init_db (see db.py).
 if [ "${SEED_ON_BOOT:-1}" = "1" ]; then
   (
     sleep 1

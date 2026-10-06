@@ -224,15 +224,12 @@ def fetch_events(
     oldest: str,
     newest: str,
 ) -> list[dict[str, Any]]:
+    from icu_http import http_get_json
+
     qs = urllib.parse.urlencode({"oldest": oldest, "newest": newest})
     url = f"{API_BASE}/athlete/{athlete_id.strip()}/events?{qs}"
-    req = urllib.request.Request(url, method="GET", headers=_headers(api_key))
     try:
-        with urllib.request.urlopen(req, timeout=_HTTP_TIMEOUT) as resp:
-            raw = resp.read().decode("utf-8", errors="replace")
-            if not raw:
-                return []
-            data = json.loads(raw)
+        data = http_get_json(url, _headers(api_key), timeout=_HTTP_TIMEOUT)
     except urllib.error.HTTPError as e:
         detail = e.read().decode("utf-8", errors="replace")[:2000]
         raise RuntimeError(f"Intervals API {e.code}: {detail}") from e

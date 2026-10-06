@@ -574,6 +574,22 @@ _UKESOPP_RE = re.compile(
     re.IGNORECASE,
 )
 
+# US-1 / Copilot: analyse past week — activities + wellness + planned vs done
+_WEEK_CHECK_RE = re.compile(
+    r"(?:"
+    r"sjekk\s+(?:uka|uken)\s*(?:mi|min)?|"
+    r"sjekk\s+(?:denne\s+)?(?:uka|uken)|"
+    r"analyser?\s+(?:uka|uken)|"
+    r"ukeanalyse|"
+    r"hva\s+har\s+jeg\s+gjort\s+(?:denne\s+)?(?:uka|uken)|"
+    r"hvordan\s+ser\s+(?:uka|uken)\s+(?:mi|min)\s+ut|"
+    r"check\s+(?:my\s+)?week|"
+    r"week\s+check|"
+    r"analyze\s+(?:my\s+)?week"
+    r")",
+    re.IGNORECASE,
+)
+
 # Sync existing app plan → Intervals (not invent a new week).
 _INTERVALS_PLAN_SYNC_INTENT_RE = re.compile(
     r"(?:"
@@ -937,7 +953,24 @@ def user_requests_ukesopp(message: str) -> bool:
         return False
     if user_requests_confirm_and_push(text):
         return False
+    # Prefer deterministic week analysis when phrasing is «sjekk uka mi»
+    if user_requests_week_check(text) and not re.search(
+        r"ukesopp|uke\s*[- ]?opp|weekly\s*review|søndags?", text, re.I
+    ):
+        return False
     return bool(_UKESOPP_RE.search(text))
+
+
+def user_requests_week_check(message: str) -> bool:
+    """True for «sjekk uka mi» style analysis (activities + wellness + compliance)."""
+    text = (message or "").strip()
+    if not text:
+        return False
+    if user_requests_intervals_plan_sync(text):
+        return False
+    if user_requests_confirm_and_push(text):
+        return False
+    return bool(_WEEK_CHECK_RE.search(text))
 
 
 UKESOPP_QUESTIONS_NB = (
@@ -965,6 +998,7 @@ def ukesopp_prompt_payload(
         "completed_hint": completed_hint,
         "confirm_required": False,
         "written_to_intervals": False,
+        "can_save_answers": True,
     }
 
 
@@ -975,17 +1009,20 @@ def ukesopp_reply_nb(
     week_end: str,
     planned_count: int = 0,
     session_lines: list[str] | None = None,
+    completed_hint: str | None = None,
 ) -> str:
     """OPV-style ukesopp prompt — questions only, no false write claims."""
     bits = [
         f"Ukesopp {week_start}–{week_end}",
         "",
         f"Hei {name} — svar kort på disse (som søndag hos OPV). "
-        "Ingenting lagres automatisk; jeg bruker svarene til neste uke.",
+        "Svarene kan lagres i appen (ikke Intervals) via kortet under.",
         "",
     ]
     if planned_count:
         bits.append(f"App-plan denne uka: {planned_count} økter.")
+    if completed_hint:
+        bits.append(completed_hint)
     if session_lines:
         bits.append("Planlagt:")
         bits.extend(f"- {ln}" for ln in session_lines[:10])
@@ -996,6 +1033,83 @@ def ukesopp_reply_nb(
     bits.append(
         "Når du har svart, kan jeg foreslå justering (preview → bekreft) — "
         "ikke Intervals-push uten at du ber om det."
+    )
+    return "\n".join(bits)
+
+
+def week_check_summary_nb(
+    *,
+    name: str,
+    week_start: str,
+    week_end: str,
+    planned_lines: list[str],
+    completed_lines: list[str],
+    missed_lines: list[str],
+    wellness_bits: list[str],
+    intervals_linked: bool,
+    fetch_error: bool = False,
+    fetch_detail: str | None = None,
+    compliance_pct: float | None = None,
+    sessions_planned: int = 0,
+    sessions_done: int = 0,
+) -> str:
+    """Deterministic «sjekk uka mi» reply — activities ≠ NOTES; honest when broken."""
+    bits = [
+        f"Ukesjekk {week_start}–{week_end}",
+        "",
+        f"Hei {name}. Her er planlagt vs gjennomført "
+        "(gjennomført = ICU-aktiviteter; NOTE teller ikke).",
+        "",
+    ]
+    if not intervals_linked:
+        bits.append(
+            "Intervals er ikke koblet — jeg kan vise app-plan, "
+            "men ikke faktisk gjennomført volum. Koble under Du."
+        )
+        bits.append("")
+    elif fetch_error:
+        bits.append(
+            "Kunne ikke hente Intervals-data"
+            + (f" ({fetch_detail})." if fetch_detail else ".")
+            + " Viser ikke fake tall — prøv igjen snart."
+        )
+        bits.append("")
+
+    if sessions_planned or sessions_done:
+        pct = f" ({compliance_pct} %)" if compliance_pct is not None else ""
+        bits.append(
+            f"Økt-compliance denne uka: {sessions_done} / {sessions_planned} "
+            f"planlagte WORKOUT matchet til aktivitet{pct}."
+        )
+        bits.append("")
+
+    bits.append(f"Planlagt ({len(planned_lines)}):")
+    if planned_lines:
+        bits.extend(f"- {ln}" for ln in planned_lines[:12])
+    else:
+        bits.append("- (ingen planlagte økter i vinduet)")
+    bits.append("")
+    bits.append(f"Gjennomført / ICU-aktiviteter ({len(completed_lines)}):")
+    if completed_lines:
+        bits.extend(f"- {ln}" for ln in completed_lines[:12])
+    else:
+        bits.append("- (ingen aktiviteter i vinduet)")
+    bits.append("")
+    bits.append(f"Ikke gjennomført ({len(missed_lines)}):")
+    if missed_lines:
+        bits.extend(f"- {ln}" for ln in missed_lines[:10])
+    else:
+        bits.append("- (ingen åpne hull)")
+    bits.append("")
+    bits.append("Wellness (signaler, ikke absolutt sannhet):")
+    if wellness_bits:
+        bits.extend(f"- {b}" for b in wellness_bits[:6])
+    else:
+        bits.append("- (ingen wellness-data)")
+    bits.append("")
+    bits.append(
+        "Ingen endring lagret. Si «ukesopp» for strukturerte spørsmål, "
+        "eller be om justering hvis noe skal endres (preview → bekreft)."
     )
     return "\n".join(bits)
 

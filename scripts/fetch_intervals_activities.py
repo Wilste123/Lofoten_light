@@ -4,12 +4,16 @@
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 import urllib.error
-import urllib.request
 from datetime import date, timedelta
 from pathlib import Path
+
+_SCRIPT_DIR = Path(__file__).resolve().parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+
+from intervals_lib import api_key, fetch_activities_csv  # noqa: E402
 
 
 def main() -> int:
@@ -38,11 +42,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    api_key = (
-        os.environ.get("INTERVALS_API", "").strip()
-        or os.environ.get("INTERVALS_API_KEY", "").strip()
-    )
-    if not api_key:
+    if not api_key():
         print(
             "Set INTERVALS_API or INTERVALS_API_KEY (Intervals Settings → Developer).",
             file=sys.stderr,
@@ -56,23 +56,16 @@ def main() -> int:
         newest_d = date.fromisoformat(newest)
         oldest = (newest_d - timedelta(days=max(args.days, 1) - 1)).isoformat()
 
-    url = (
-        "https://intervals.icu/api/v1/athlete/0/activities.csv"
-        f"?oldest={oldest}&newest={newest}"
-    )
-    req = urllib.request.Request(url)
-    # Personal API key: Basic auth username API_KEY, password = key
-    import base64
-
-    token = base64.b64encode(f"API_KEY:{api_key}".encode()).decode()
-    req.add_header("Authorization", f"Basic {token}")
-    req.add_header("User-Agent", "LofotenLightAgent/1.0 (intervals fetch)")
-
     try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            body = resp.read()
+        body = fetch_activities_csv(oldest, newest, timeout=60)
+    except RuntimeError as e:
+        print(str(e), file=sys.stderr)
+        return 1
     except urllib.error.HTTPError as e:
         print(f"Intervals API error {e.code}: {e.read().decode()[:500]}", file=sys.stderr)
+        return 1
+    except urllib.error.URLError as e:
+        print(f"Intervals API network error: {e.reason}", file=sys.stderr)
         return 1
 
     if args.output:

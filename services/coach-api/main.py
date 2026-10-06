@@ -54,11 +54,14 @@ from chat_service import (
     user_confirms_intervals_plan_sync,
     user_confirms_pending_write,
     user_requests_confirm_and_push,
+    user_requests_dont_touch_calendar,
     user_requests_intervals_plan_sync,
+    user_requests_intervals_review,
     plan_week_target_from_message,
     user_requests_plan_adjust,
     user_requests_plan_week_build,
     user_requests_session_change,
+    user_wants_week_rebuild,
     workout_proposal_history_summary,
     write_intent_kind,
 )
@@ -717,7 +720,7 @@ class WorkoutPreviewIn(BaseModel):
     """
 
     workouts: list[dict[str, Any]] = Field(min_length=1)
-    prepare_intervals_sync: bool = True
+    prepare_intervals_sync: bool = False
     replace_session_ids: list[str] = Field(default_factory=list)
 
 
@@ -1951,6 +1954,26 @@ def chat(
         )
     # Deterministic: push/sync plan → Intervals near window from stored SoT.
     # Also catch Kent follow-ups («sync» / «go») after coach already offered Sync.
+    # Respect «ikke rør kalender» — refuse bulk sync this turn.
+    if user_requests_dont_touch_calendar(body.message) and (
+        user_requests_intervals_plan_sync(body.message)
+        or user_requests_confirm_and_push(body.message)
+    ):
+        reply = (
+            "Ok — jeg rører ikke Intervals-kalenderen. "
+            "Endringer lagres kun i app-planen når du bekrefter et kort. "
+            "Si eksplisitt «sync til intervals» senere hvis du vil pushe."
+        )
+        with db_session(config.get_db()) as conn:
+            add_message(conn, aid, "user", body.message)
+            asst = add_message(conn, aid, "assistant", reply)
+        return {
+            "reply": reply,
+            "message": asst,
+            "dont_touch_calendar": True,
+            "app_plan": overview["app_plan"],
+            "sessions_in_context": True,
+        }
     if user_requests_intervals_plan_sync(
         body.message
     ) or user_confirms_intervals_plan_sync(body.message, history):
@@ -1964,6 +1987,16 @@ def chat(
             secrets=secrets,
             sessions_snap=sessions_snap,
             overview_app_plan=overview["app_plan"],
+        )
+    # Coach-review of Intervals/app calendar — read only, never push.
+    if user_requests_intervals_review(body.message):
+        return _chat_intervals_calendar_review(
+            aid=aid,
+            athlete=athlete,
+            body_message=body.message,
+            stored_planned=stored_planned,
+            secrets=secrets,
+            overview=overview,
         )
     # Week plan from app SoT — never generic «hvilke dager trener du»-intervju.
     if user_requests_plan_week_build(body.message):
@@ -2575,6 +2608,94 @@ def _chat_weekday_plan_focus(
     }
 
 
+def _chat_intervals_calendar_review(
+    *,
+    aid: str,
+    athlete: dict[str, Any],
+    body_message: str,
+    stored_planned: list[dict[str, Any]],
+    secrets: dict[str, Any] | None,
+    overview: dict[str, Any],
+) -> dict[str, Any]:
+    """Coach-review of merged Intervals+app calendar — never push or pending sync."""
+    week_key = plan_week_target_from_message(body_message)
+    start, end = week_bounds(week_key, today=date.today())
+    # Wider window when athlete says «måned» / date range absent
+    if re.search(r"måned|maaned|month|neste\s+2\s*uker", body_message or "", re.I):
+        end = start + timedelta(days=27)
+    merged, sync_counts, intervals_linked = _merged_plan_calendar(
+        stored_planned, secrets, range_start=start, range_end=end
+    )
+    in_range = sessions_in_week_range(merged, start, end)
+    name = athlete.get("display_name") or "deg"
+    label = "Neste uke" if week_key == "next_week" else "Denne perioden"
+    range_s = f"{start.isoformat()}–{end.isoformat()}"
+
+    if not intervals_linked:
+        reply = (
+            f"Intervals er ikke koblet, {name}. "
+            "Jeg kan bare se app-planen. Koble under Du for coach-review av ICU-kalender "
+            "(uten at jeg pusher noe)."
+        )
+        if in_range:
+            lines = [_format_session_line(s) for s in in_range[:20]]
+            reply += f"\n\nApp-plan {range_s}:\n" + "\n".join(lines)
+        with db_session(config.get_db()) as conn:
+            add_message(conn, aid, "user", body_message)
+            asst = add_message(conn, aid, "assistant", reply)
+        return {
+            "reply": reply,
+            "message": asst,
+            "intervals_review": True,
+            "app_plan": overview.get("app_plan"),
+            "sessions_in_context": True,
+        }
+
+    synced_n = sync_counts.get(SYNC_SYNCED, 0)
+    not_synced_n = sync_counts.get(SYNC_PLANNED_NOT_SYNCED, 0)
+    icu_only_n = sync_counts.get(SYNC_INTERVALS_ONLY, 0)
+
+    lines = [_format_session_line(s) for s in in_range[:24]]
+    body_lines = "\n".join(lines) if lines else "Ingen økter i vinduet."
+    notes: list[str] = []
+    if icu_only_n:
+        notes.append(
+            f"{icu_only_n} finnes kun på Intervals (ofte ditt eget utkast) — "
+            "jeg endrer dem ikke uten at du ber om det."
+        )
+    if not_synced_n:
+        notes.append(
+            f"{not_synced_n} er i app-planen men ikke synket — Sync kun hvis du ber om det."
+        )
+    if synced_n:
+        notes.append(f"{synced_n} matcher app ↔ Intervals (ll-coach-w-).")
+    note_block = ("\n" + "\n".join(f"- {n}" for n in notes)) if notes else ""
+    reply = (
+        f"Coach-review {label.lower()} ({range_s}), {name} — "
+        "kun lesing, ingen push:\n"
+        f"{body_lines}"
+        f"{note_block}\n\n"
+        "Si hva du vil beholde/endre; jeg foreslår kort (preview→confirm) "
+        "og synker Intervals bare når du ber om det."
+    )
+    with db_session(config.get_db()) as conn:
+        add_message(conn, aid, "user", body_message)
+        asst = add_message(conn, aid, "assistant", reply)
+    return {
+        "reply": reply,
+        "message": asst,
+        "intervals_review": True,
+        "confirm_required": False,
+        "app_plan": overview.get("app_plan"),
+        "sessions_in_context": True,
+        "sync_summary": {
+            "synced": synced_n,
+            "planned_not_synced": not_synced_n,
+            "intervals_only": icu_only_n,
+        },
+    }
+
+
 def _chat_week_plan_from_sot(
     *,
     aid: str,
@@ -2599,6 +2720,58 @@ def _chat_week_plan_from_sot(
     range_s = f"{start.isoformat()}–{end.isoformat()}"
 
     if in_week:
+        # Rebuild/replace intent → week confirm card (not prose-only SoT list).
+        if user_wants_week_rebuild(body_message) and plan_blocks:
+            ease = bool(
+                re.search(r"lett|ease|letter|recover|hvile|sliten", body_message or "", re.I)
+            )
+            week_built = build_week_adjust_sessions(
+                plan_blocks,
+                athlete=athlete,
+                week_start=week_key,
+                ease_load=ease,
+            )
+            readiness = readiness_adjustment_hints(overview.get("wellness_signals"))
+            existing_n = len(stored_planned)
+            reply = (
+                f"{label} ({week_built['week_start']}–{week_built['week_end']}) "
+                f"har allerede {len(in_week)} økt(er). "
+                f"Her er et erstatningsforslag ({week_built['count']} økter"
+                f"{' · lett uke' if ease else ''}) — bekreft kortet for å erstatte "
+                "kun denne uka i app-planen. Intervals synces ikke automatisk."
+            )
+            plan_card: dict[str, Any] = {
+                "reason": f"Erstatt {label.lower()} (uka var allerede fylt).",
+                "rebuild": True,
+                "ease_load": ease,
+                "scope": "week",
+                "week_start": week_built["week_start"],
+                "week_end": week_built["week_end"],
+                "sessions": week_built["sessions"],
+                "count": week_built["count"],
+                "planned_sessions_count": existing_n,
+                "readiness_hints": readiness,
+                "confirm_hint": (
+                    f"Bekreft for å erstatte kun {label.lower()} "
+                    f"{week_built['week_start']}–{week_built['week_end']} "
+                    f"({week_built['count']} økter)."
+                ),
+                "inferred": True,
+                "replaced_existing_week": True,
+            }
+            with db_session(config.get_db()) as conn:
+                add_message(conn, aid, "user", body_message)
+                asst = add_message(conn, aid, "assistant", reply)
+            return {
+                "reply": reply,
+                "message": asst,
+                "sessions_in_context": True,
+                "app_plan": overview.get("app_plan"),
+                "plan_proposal": plan_card,
+                "confirm_required": True,
+                "plan_hint": plan_card["confirm_hint"],
+                "week_plan_from_sot": True,
+            }
         lines = [_format_session_line(s) for s in in_week]
         not_synced = sync_counts.get(SYNC_PLANNED_NOT_SYNCED, 0)
         icu_only = sync_counts.get(SYNC_INTERVALS_ONLY, 0)
@@ -2614,7 +2787,7 @@ def _chat_week_plan_from_sot(
             + "\n".join(lines)
             + extra
             + "\n\nPlan-fanen viser grønn/oransje prikker for synket vs ikke synket. "
-            "Si «juster uka» for å bygge om app-planen."
+            "Si «juster uka» / «erstatt uka» for å bygge om app-planen (bekreftelses kort)."
         )
         with db_session(config.get_db()) as conn:
             add_message(conn, aid, "user", body_message)
@@ -3204,6 +3377,24 @@ def _chat_intervals_plan_sync(
     if planned_n > 0 and intervals_ok:
         key = ((secrets or {}).get("intervals_api_key") or "").strip()
         icu = ((secrets or {}).get("intervals_athlete_id") or "").strip()
+        # «sync kun fredag» → narrow sync_range to that weekday
+        day_indices = weekday_indices_from_message(body_message)
+        day_scoped = bool(day_indices) and bool(
+            re.search(
+                r"\bkun\b|\bbare\b|only|sync\s+(?:kun\s+)?(?:man|tir|ons|tor|fre|lør|søn)",
+                body_message or "",
+                re.I,
+            )
+        )
+        day_dates = (
+            dates_for_weekday_indices(
+                day_indices,
+                anchor=date.today(),
+                week_start_key=plan_week_target_from_message(body_message),
+            )
+            if day_scoped
+            else []
+        )
         try:
             with db_session(config.get_db()) as conn:
                 bundle = _sync_bundle_preferring_stored(
@@ -3213,8 +3404,23 @@ def _chat_intervals_plan_sync(
                     athlete,
                     allow_degraded=True,
                 )
+            if day_dates:
+                range_start, range_end = min(day_dates), max(day_dates)
+                bundle = _apply_range_to_bundle(bundle, range_start, range_end)
+                bundle["day_scoped"] = True
+                bundle["sync_days_nb"] = [
+                    _DOW_NB[d.weekday()] for d in day_dates
+                ]
             from_stored = bool(bundle.get("from_stored_sessions"))
             workouts_count = bundle.get("workouts_count")
+            day_note = ""
+            if bundle.get("day_scoped") and bundle.get("sync_days_nb"):
+                day_note = (
+                    " kun "
+                    + ", ".join(bundle["sync_days_nb"])
+                    + f" ({bundle.get('sync_range', {}).get('start')}–"
+                    f"{bundle.get('sync_range', {}).get('end')})"
+                )
             intervals_sync = {
                 "will_push": True,
                 "kind": bundle.get("kind"),
@@ -3226,6 +3432,8 @@ def _chat_intervals_plan_sync(
                 "weeks": bundle.get("weeks"),
                 "icu_sync_weeks": bundle.get("icu_sync_weeks", ICU_SYNC_WEEKS),
                 "from_stored_sessions": from_stored,
+                "day_scoped": bool(bundle.get("day_scoped")),
+                "sync_range": bundle.get("sync_range"),
                 "events_preview": (bundle.get("events_preview") or [])[:40],
                 "workouts_preview": (bundle.get("workouts_preview") or [])[:40],
             }
@@ -3247,6 +3455,8 @@ def _chat_intervals_plan_sync(
                             "builder": bundle["builder"],
                             "knowledge_paths": bundle.get("knowledge_paths") or [],
                             "from_stored_sessions": from_stored,
+                            "sync_range": bundle.get("sync_range"),
+                            "day_scoped": bool(bundle.get("day_scoped")),
                         },
                     )
                 intervals_pending = {
@@ -3262,11 +3472,17 @@ def _chat_intervals_plan_sync(
                         0, int(bundle.get("count") or 0) - 40
                     ),
                     "from_stored_sessions": from_stored,
+                    "sync_range": bundle.get("sync_range"),
+                    "day_scoped": bool(bundle.get("day_scoped")),
                     "confirm_required": True,
                     "message": (
-                        f"Bekreft Sync: {bundle.get('workouts_count', 0)} økter "
-                        f"fra lagrede planned_sessions (første "
-                        f"{bundle.get('weeks', ICU_SYNC_WEEKS)} uker)"
+                        f"Bekreft Sync{day_note}: {bundle.get('workouts_count', 0)} økter "
+                        f"fra lagrede planned_sessions"
+                        + (
+                            ""
+                            if day_note
+                            else f" (første {bundle.get('weeks', ICU_SYNC_WEEKS)} uker)"
+                        )
                         + (
                             f" + {bundle.get('notes_count', 0)} grovplan-noter"
                             if int(bundle.get("notes_count") or 0) > 0

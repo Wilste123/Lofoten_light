@@ -1503,6 +1503,11 @@ function renderChat() {
         ${!isWeek && !isRoll && sync.workouts_count != null ? `<p class="muted tight">${escapeHtml(String(sync.workouts_count))} WORKOUT i Intervals-nærvindu (${escapeHtml(String(pa.icu_sync_weeks || sync.weeks || 2))} uker).</p>` : ''}
         <ul class="sync-sample">${rows}</ul>
         ${wprev ? `<p class="plan-kicker">Intervals nærvindu (WORKOUT)</p><ul class="sync-sample">${wprev}</ul>` : ''}
+        ${
+          state.intervals?.connected
+            ? `<label class="muted tight prepare-sync-opt"><input type="checkbox" id="plan-prepare-icu-sync" /> Også forbered Sync til Intervals (valgfritt — ikke auto)</label>`
+            : ''
+        }
         <div class="sync-actions">
           <button type="button" class="btn btn-primary" id="plan-adjust-confirm-btn" ${state.busy ? 'disabled' : ''}>${escapeHtml(confirmLabel)}</button>
           <button type="button" class="btn secondary" id="plan-adjust-dismiss-btn">Avvis</button>
@@ -1541,6 +1546,11 @@ function renderChat() {
         }</p>
         ${replaceList}
         <ul class="sync-sample">${rows}</ul>
+        ${
+          state.intervals.connected && !replaceNeeded
+            ? `<label class="muted tight prepare-sync-opt"><input type="checkbox" id="workout-prepare-icu-sync" /> Forbered Sync til Intervals i forhåndsvisning (valgfritt)</label>`
+            : ''
+        }
         <div class="sync-actions">
           <button type="button" class="btn btn-primary" id="workout-preview-btn" ${state.workoutSync.busy || (replaceNeeded && !(state.replaceSessionIds || []).length) ? 'disabled' : ''}>${replaceNeeded ? 'Forhåndsvis erstatning' : 'Forhåndsvis lagring'}</button>
           ${
@@ -3157,8 +3167,7 @@ function bindApp() {
         } else if (kind === 'roll_forward_due' || action === 'open_roll') {
           seed = 'rull videre'
         } else if (kind === 'weekly_cap_replace') {
-          seed = ''
-          toast('Ukeskap full — bruk erstatningskort i chatten (forhåndsvis → bekreft).')
+          seed = 'legg inn økt i morgen'
         } else if (ev?.payload?.message) {
           toast(ev.payload.message)
         }
@@ -3174,7 +3183,9 @@ function bindApp() {
             toast(
               kind === 'roll_forward_due' || action === 'open_roll'
                 ? 'Roll-forslag åpnet — bekreft kortet (ingen auto-apply).'
-                : 'Lett-uke-forslag åpnet — bekreft kortet (ingen auto-apply).',
+                : kind === 'weekly_cap_replace'
+                  ? 'Ukeskap — erstatningskort åpnet (forhåndsvis → bekreft).'
+                  : 'Lett-uke-forslag åpnet — bekreft kortet (ingen auto-apply).',
             )
           } catch (err) {
             state.messages.pop()
@@ -3389,7 +3400,10 @@ function bindApp() {
     state.workoutSync.error = ''
     render()
     try {
-      const prepareSync = Boolean(state.intervals?.connected)
+      // Default: lagre kun i app. Opt-in checkbox for Intervals-forberedelse.
+      const prepareSync = Boolean(
+        document.getElementById('plan-prepare-icu-sync')?.checked,
+      )
       let data
       if (isRoll) {
         data = await api('/v1/athlete/me/plan/roll/confirm', {
@@ -3541,11 +3555,14 @@ function bindApp() {
     state.workoutSync.message = 'Lager forhåndsvisning…'
     render()
     try {
+      const prepareSync = Boolean(
+        document.getElementById('workout-prepare-icu-sync')?.checked,
+      )
       const data = await api('/v1/athlete/me/intervals/workouts/preview', {
         method: 'POST',
         body: {
           workouts,
-          prepare_intervals_sync: Boolean(state.intervals?.connected),
+          prepare_intervals_sync: prepareSync,
           replace_session_ids: replaceIds,
         },
       })
@@ -3588,7 +3605,7 @@ function bindApp() {
         method: 'POST',
         body: {
           workouts,
-          prepare_intervals_sync: Boolean(state.intervals?.connected),
+          prepare_intervals_sync: true,
           replace_session_ids: state.replaceSessionIds || [],
         },
       })

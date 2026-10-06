@@ -19,7 +19,7 @@ from two_tier_plan import (
 
 def test_constants_match_spec():
     assert DETAIL_WEEKS == 4
-    assert ROLL_TRIGGER_DAYS_LEFT == 14
+    assert ROLL_TRIGGER_DAYS_LEFT == 21
     assert ROLL_TRIGGER_BLOCK_ELAPSED_DAYS == 14
     assert ROLL_COOLDOWN_DAYS == 5
 
@@ -71,7 +71,7 @@ def test_roll_trigger_days_left():
     today = date(2026, 10, 20)
     window = {
         "start_date": "2026-10-01",
-        "end_date": "2026-10-28",  # 8 days left → ≤14
+        "end_date": "2026-10-28",  # 8 days left → ≤21
         "status": "active",
     }
     ev = evaluate_roll_trigger(
@@ -84,6 +84,28 @@ def test_roll_trigger_days_left():
     )
     assert ev["should_offer"] is True
     assert ev["trigger"] == "days_left"
+
+
+def test_roll_soft_offer_mid_detalj_window():
+    """Soft roll should fire mid 4w detalj (≤21d left), not only last 14d."""
+    today = date(2026, 10, 10)
+    # detalj 2026-10-01 → 2026-10-28 = 18 days left → offer with new threshold
+    window = {
+        "start_date": "2026-10-01",
+        "end_date": "2026-10-28",
+        "status": "active",
+    }
+    ev = evaluate_roll_trigger(
+        today=today,
+        plan_window=window,
+        planned_sessions=[],
+        plan_blocks=[],
+        athlete={},
+        message="",
+    )
+    assert ev["should_offer"] is True
+    assert ev["trigger"] == "days_left"
+    assert ev["constants"]["ROLL_TRIGGER_DAYS_LEFT"] == 21
 
 
 def test_roll_cooldown_blocks_soft_offer():

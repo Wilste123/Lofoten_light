@@ -31,7 +31,8 @@ from plan_workouts import (
 # --- Roll-forward / detalj constants (tunable; keep names stable) ---
 DETAIL_WEEKS = 4
 DETALJ_PLAN_WEEKS = DETAIL_WEEKS  # alias
-ROLL_TRIGGER_DAYS_LEFT = 14
+# Soft-offer when ≤21d left of detalj (4w window ≈ mid-window; was 14 → rarely fired)
+ROLL_TRIGGER_DAYS_LEFT = 21
 ROLL_TRIGGER_BLOCK_ELAPSED_DAYS = 14
 ROLL_COOLDOWN_DAYS = 5
 

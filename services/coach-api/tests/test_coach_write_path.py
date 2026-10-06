@@ -170,6 +170,36 @@ def test_day_swap_and_lett_uke_open_plan_card_intent():
         assert fb.get("ease_load") is True, msg
 
 
+def test_uke_replace_and_uka_scope_intents():
+    """QA BLOCKED: erstatt uka / juster uka → week confirm card, not full/prose."""
+    from chat_service import (
+        user_requests_dont_touch_calendar,
+        user_requests_intervals_review,
+        user_wants_week_rebuild,
+    )
+
+    for msg in (
+        "erstatt uka",
+        "erstatt hele uka",
+        "juster uka",
+        "juster denne uka",
+        "bygg om uken",
+        "oppdater uka",
+    ):
+        assert user_requests_plan_adjust(msg), msg
+        fb = infer_plan_update_fallback(msg)
+        assert fb and fb["scope"] == "week", (msg, fb)
+        assert user_wants_week_rebuild(msg), msg
+
+    assert user_requests_dont_touch_calendar("ikke rør kalenderen — bare lagre")
+    assert user_requests_dont_touch_calendar("uten å synce til intervals")
+    assert not user_requests_dont_touch_calendar("legg inn økt i morgen")
+
+    assert user_requests_intervals_review("sjekk Intervals-kalenderen min")
+    assert user_requests_intervals_review("gjennomgå hva som ligger på ICU denne uka")
+    assert not user_requests_intervals_review("sync planen til intervals")
+
+
 def test_reconcile_wrong_fence_sport_swim_for_run():
     reply = (
         "Forslag:\n```workout_proposal\n"

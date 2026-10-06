@@ -476,17 +476,19 @@ _SESSION_INTENT_RE = re.compile(
 
 _PLAN_ADJUST_INTENT_RE = re.compile(
     r"(?:"
-    r"lett(?:e)?\s+(?:denne\s+)?uka|"
-    r"lette\s+uka|"
+    r"lett(?:e)?\s+(?:denne\s+)?uk(?:a|en)|"
+    r"lette\s+uk(?:a|en)|"
     # «lett uke» / «ha en lett uke» / «sliten — lett uke» (QA prose-only gap)
     r"(?:ha\s+(?:en\s+)?)?lett\s+uke|"
     r"lette?\s+(?:neste\s+)?(?:økter|okter)|"
     r"ease\s+(?:the\s+)?week|"
-    r"jus?etr\s+(?:planen|uka|grovplanen|helg(?:a|en)?)|"
-    r"juster\s+(?:planen|uka|grovplanen|helg(?:a|en)?)|"
-    r"bygg\s+om\s+(?:planen|uka|grovplanen)|"
-    r"endre\s+(?:planen|grovplanen|uka|helg(?:a|en)?|fre|lør)|"
-    r"oppdater\s+(?:planen|uka|helg(?:a|en)?|fre|lør|søn)|"
+    # «juster (denne/neste) uka/uken», «bygg om uka», «erstatt hele uka»
+    r"jus?etr\s+(?:(?:denne|neste)\s+)?(?:planen|uk(?:a|en)|grovplanen|helg(?:a|en)?)|"
+    r"juster\s+(?:(?:denne|neste)\s+)?(?:planen|uk(?:a|en)|grovplanen|helg(?:a|en)?)|"
+    r"bygg\s+om\s+(?:(?:denne|neste)\s+)?(?:planen|uk(?:a|en)|grovplanen)|"
+    r"endre\s+(?:(?:denne|neste)\s+)?(?:planen|grovplanen|uk(?:a|en)|helg(?:a|en)?|fre|lør)|"
+    r"oppdater\s+(?:(?:denne|neste)\s+)?(?:planen|uk(?:a|en)|helg(?:a|en)?|fre|lør|søn)|"
+    r"erstatt(?:e)?\s+(?:hele\s+)?(?:denne\s+|neste\s+)?uk(?:a|en)|"
     r"ny\s+(?:ukeplan|grovplan)|"
     r"rebuild\s+(?:plan|week)|"
     # Day swap / move session day (tirsdag → onsdag) — must open week confirm card
@@ -522,9 +524,40 @@ _PLAN_WEEK_BUILD_RE = re.compile(
     r"(?:"
     r"lag(?:e)?\s+(?:en\s+)?(?:plan|ukeplan)|"
     r"planlegg(?:e)?\s+(?:en\s+)?(?:plan|ukeplan|uke)|"
-    r"plan\s+for\s+(?:denne|neste)\s+uke|"
+    r"plan\s+for\s+(?:denne|neste)\s+uk(?:e|a|en)|"
     r"(?:denne|neste)\s+uke(?:s)?plan|"
-    r"ukeplan\s+for\s+(?:denne|neste)\s+uke"
+    r"ukeplan\s+for\s+(?:denne|neste)\s+uk(?:e|a|en)|"
+    # Explicit week replace/rebuild (confirm card, not prose list)
+    r"erstatt(?:e)?\s+(?:hele\s+)?(?:denne\s+|neste\s+)?uk(?:a|en)|"
+    r"bygg\s+om\s+(?:(?:denne|neste)\s+)?uk(?:a|en)"
+    r")",
+    re.IGNORECASE,
+)
+
+# «ikke rør kalender / ikke synce» — never auto-bulk Intervals
+_DONT_TOUCH_CALENDAR_RE = re.compile(
+    r"(?:"
+    r"ikke\s+(?:rør|endre|oppdater|synce?|pushe?|touch).{0,40}"
+    r"(?:kalender|intervals|icu|planen\s+på\s+intervals)|"
+    r"(?:don't|do\s+not)\s+touch\s+(?:the\s+)?calendar|"
+    r"bare\s+lagre(?:\s+(?:i|til)\s+(?:appen|planen))?|"
+    r"uten\s+(?:å\s+)?(?:synce?|pushe?|oppdatere\s+intervals)|"
+    r"ingen\s+(?:sync|synk|push)\s+(?:til\s+)?(?:intervals|icu)|"
+    r"ikke\s+(?:sync|synk|push)\s+(?:til\s+)?(?:intervals|icu)"
+    r")",
+    re.IGNORECASE,
+)
+
+# Coach-review of Intervals calendar — read/merge only, never push
+_INTERVALS_REVIEW_RE = re.compile(
+    r"(?:"
+    r"(?:sjekk|se\s+over|gjennomgå|review|vurder|analyser).{0,50}"
+    r"(?:intervals|icu|kalender(?:en)?)|"
+    r"(?:hva\s+ligger|vis\s+(?:meg\s+)?(?:hva\s+som\s+er)).{0,40}"
+    r"(?:på\s+)?(?:intervals|icu|kalender(?:en)?)|"
+    r"(?:intervals|icu).{0,30}"
+    r"(?:kalender|uke|events?|forslag|utkast)|"
+    r"coach[- ]?review.{0,20}(?:intervals|icu|kalender)"
     r")",
     re.IGNORECASE,
 )
@@ -846,12 +879,49 @@ def user_requests_plan_week_build(message: str) -> bool:
     return bool(_PLAN_WEEK_BUILD_RE.search(text))
 
 
+def user_wants_week_rebuild(message: str) -> bool:
+    """True when athlete wants to replace/rebuild the week (not just list SoT)."""
+    text = (message or "").strip().lower()
+    if not text:
+        return False
+    return bool(
+        re.search(
+            r"erstatt|bygg\s+om|ny\s+ukeplan|rebuild|"
+            r"juster\s+(?:(?:denne|neste)\s+)?uk|"
+            r"oppdater\s+(?:(?:denne|neste)\s+)?uk|"
+            r"endre\s+(?:(?:denne|neste)\s+)?uk|"
+            r"lett(?:e)?\s+(?:(?:denne|neste)\s+)?uk",
+            text,
+        )
+    )
+
+
+def user_requests_dont_touch_calendar(message: str) -> bool:
+    """True when athlete forbids Intervals/calendar writes this turn."""
+    text = (message or "").strip()
+    if not text:
+        return False
+    return bool(_DONT_TOUCH_CALENDAR_RE.search(text))
+
+
+def user_requests_intervals_review(message: str) -> bool:
+    """True for coach-review of ICU calendar without push."""
+    text = (message or "").strip()
+    if not text:
+        return False
+    if user_requests_intervals_plan_sync(text):
+        return False
+    if user_requests_confirm_and_push(text):
+        return False
+    return bool(_INTERVALS_REVIEW_RE.search(text))
+
+
 def plan_week_target_from_message(message: str) -> str:
     """``this_week`` or ``next_week`` for week_bounds / week adjust."""
     text = (message or "").lower()
-    if re.search(r"neste\s+uke|next\s+week", text):
+    if re.search(r"neste\s+uk(?:e|a|en)|next\s+week", text):
         return "next_week"
-    if re.search(r"denne\s+uke|this\s+week", text):
+    if re.search(r"denne\s+uk(?:e|a|en)|this\s+week", text):
         return "this_week"
     return "this_week"
 
@@ -1417,8 +1487,9 @@ def infer_plan_update_fallback(user_message: str) -> dict[str, Any] | None:
     week = (
         bool(
             re.search(
-                r"\buke\b|\bweek\b|denne\s+uka|neste\s+uke|lette?\s+uka|"
-                r"lett\s+uke|ukeplan|plan\s+for|"
+                r"\buk(?:e|a|en)\b|\bweek\b|denne\s+uk(?:a|en)|neste\s+uk(?:e|a|en)|"
+                r"lette?\s+uk(?:a|en)|lett\s+uke|ukeplan|plan\s+for|"
+                r"erstatt(?:e)?\s+(?:hele\s+)?(?:denne\s+|neste\s+)?uk|"
                 r"lette?\s+(?:neste\s+)?(?:økter|okter)",
                 text,
             )

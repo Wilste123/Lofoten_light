@@ -59,6 +59,53 @@ def _monday_on_or_after(d: date) -> date:
 _DEFAULT_GOAL_MONTH = 9
 _DEFAULT_GOAL_DAY = 15
 
+_NB_MONTHS: dict[str, int] = {
+    "januar": 1,
+    "january": 1,
+    "jan": 1,
+    "februar": 2,
+    "february": 2,
+    "feb": 2,
+    "mars": 3,
+    "march": 3,
+    "mar": 3,
+    "april": 4,
+    "apr": 4,
+    "mai": 5,
+    "may": 5,
+    "juni": 6,
+    "june": 6,
+    "jun": 6,
+    "juli": 7,
+    "july": 7,
+    "jul": 7,
+    "august": 8,
+    "aug": 8,
+    "september": 9,
+    "sep": 9,
+    "sept": 9,
+    "oktober": 10,
+    "october": 10,
+    "okt": 10,
+    "oct": 10,
+    "november": 11,
+    "nov": 11,
+    "desember": 12,
+    "december": 12,
+    "des": 12,
+    "dec": 12,
+}
+
+
+def _month_from_blob(blob: str) -> int | None:
+    """Norwegian/English month name → 1–12, or None."""
+    text = (blob or "").lower()
+    # Prefer longer names first so «september» wins over «sep»
+    for name, month in sorted(_NB_MONTHS.items(), key=lambda x: -len(x[0])):
+        if re.search(rf"\b{re.escape(name)}\b", text):
+            return month
+    return None
+
 
 def infer_goal_race_date(
     *,
@@ -68,9 +115,10 @@ def infer_goal_race_date(
     notes: str = "",
     today: date | None = None,
 ) -> date | None:
-    """ISO date, or year-only («2028», «triatlon 2028») → mid/late that year.
+    """ISO date, or year/month («juni 2027», «triatlon 2028») → that season.
 
     Never invents ~8 months ahead when the athlete named a future year.
+    Month names (NB/EN) override the late-season default (15. sep).
     """
     today = today or date.today()
     explicit = _parse_date(goal_race)
@@ -90,13 +138,38 @@ def infer_goal_race_date(
         except ValueError:
             pass
 
+    # «11. mai 2028» / «15 juni 2027»
+    m_nb = re.search(
+        r"(\d{1,2})\.?\s*"
+        r"(jan(?:uar)?|feb(?:ruar)?|mar(?:s)?|apr(?:il)?|mai|may|"
+        r"jun(?:i|e)?|jul(?:i|y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|"
+        r"okt(?:ober)?|oct(?:ober)?|nov(?:ember)?|des(?:ember)?|dec(?:ember)?)"
+        r"\s+(20[2-3]\d)",
+        blob,
+        re.IGNORECASE,
+    )
+    if m_nb:
+        month = _month_from_blob(m_nb.group(2))
+        if month:
+            try:
+                d = date(int(m_nb.group(3)), month, int(m_nb.group(1)))
+                if d > today:
+                    return d
+            except ValueError:
+                pass
+
     years = [int(y) for y in re.findall(r"\b(20[2-3]\d)\b", blob)]
     # Prefer the furthest future year mentioned (season target)
     future_years = sorted({y for y in years if y >= today.year}, reverse=True)
     if future_years:
         y = future_years[0]
+        month = _month_from_blob(blob) or _DEFAULT_GOAL_MONTH
+        day = _DEFAULT_GOAL_DAY
         # Same calendar year mention without month → late this year if still ahead
-        candidate = date(y, _DEFAULT_GOAL_MONTH, _DEFAULT_GOAL_DAY)
+        try:
+            candidate = date(y, month, day)
+        except ValueError:
+            candidate = date(y, month, 28)
         if candidate <= today:
             # Year is current and default already passed → end of year
             candidate = date(y, 12, 15)

@@ -58,8 +58,11 @@ from chat_service import (
     user_requests_intervals_plan_sync,
     user_requests_intervals_review,
     user_requests_ukesopp,
+    user_requests_week_check,
     ukesopp_prompt_payload,
     ukesopp_reply_nb,
+    week_check_summary_nb,
+    UKESOPP_QUESTIONS_NB,
     plan_week_target_from_message,
     user_requests_plan_adjust,
     user_requests_plan_week_build,
@@ -616,6 +619,15 @@ class ChatIn(BaseModel):
         default=None,
         description="Optional: focus chat on one Økter session (detail-view chat).",
     )
+
+
+class UkesoppSaveIn(BaseModel):
+    """Persist Sunday ukesopp answers in-app (athlete_events) — never Intervals."""
+
+    week_start: str = Field(min_length=10, max_length=10)
+    week_end: str = Field(min_length=10, max_length=10)
+    answers: list[str] = Field(default_factory=list)
+    notes: str = ""
 
 
 class SessionEditPreviewIn(BaseModel):
@@ -2010,6 +2022,19 @@ def chat(
             secrets=secrets,
             overview=overview,
         )
+    # US-1: «sjekk uka mi» — activities + wellness + planned vs done (no write).
+    if user_requests_week_check(body.message):
+        return _chat_week_check(
+            aid=aid,
+            athlete=athlete,
+            body_message=body.message,
+            stored_planned=stored_planned,
+            secrets=secrets,
+            sessions_bundle=sessions_bundle,
+            sessions_snap=sessions_snap,
+            overview=overview,
+            intervals_ok=intervals_ok,
+        )
     # Sunday ukesopp — structured questions, no auto write/sync.
     if user_requests_ukesopp(body.message):
         return _chat_ukesopp(
@@ -2017,7 +2042,10 @@ def chat(
             athlete=athlete,
             body_message=body.message,
             stored_planned=stored_planned,
+            secrets=secrets,
+            sessions_bundle=sessions_bundle,
             overview=overview,
+            intervals_ok=intervals_ok,
         )
     # Week plan from app SoT — never generic «hvilke dager trener du»-intervju.
     if user_requests_plan_week_build(body.message):
@@ -2629,37 +2657,201 @@ def _chat_weekday_plan_focus(
     }
 
 
+def _session_line_for_week(s: dict[str, Any]) -> str:
+    day = str(s.get("session_date") or s.get("date") or s.get("start_date") or "")[:10]
+    nm = str(s.get("name") or "Økt")
+    sport = str(s.get("sport") or s.get("discipline") or s.get("discipline_label") or "")
+    dur = s.get("duration_minutes") or s.get("duration_hours")
+    extra = ""
+    if dur is not None:
+        try:
+            if float(dur) < 15 and "duration_hours" in s:
+                extra = f" · {round(float(dur) * 60)} min"
+            else:
+                extra = f" · {int(dur)} min" if float(dur) >= 15 else f" · {dur}"
+        except (TypeError, ValueError):
+            extra = ""
+    return f"{day} · {nm}" + (f" ({sport})" if sport else "") + extra
+
+
+def _filter_snap_rows_by_week(
+    rows: list[dict[str, Any]], start: date, end: date
+) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for s in rows or []:
+        day_s = str(s.get("session_date") or s.get("date") or s.get("start_date") or "")[:10]
+        try:
+            d = date.fromisoformat(day_s)
+        except ValueError:
+            continue
+        if start <= d <= end:
+            out.append(s)
+    return out
+
+
+def _chat_week_check(
+    *,
+    aid: str,
+    athlete: dict[str, Any],
+    body_message: str,
+    stored_planned: list[dict[str, Any]],
+    secrets: dict[str, Any] | None,
+    sessions_bundle: dict[str, Any],
+    sessions_snap: dict[str, Any],
+    overview: dict[str, Any],
+    intervals_ok: bool,
+) -> dict[str, Any]:
+    """US-1: deterministic week analysis — plan vs ICU activities + wellness."""
+    week_key = plan_week_target_from_message(body_message)
+    start, end = week_bounds(week_key, today=date.today())
+    name = athlete.get("display_name") or "deg"
+
+    planned_app = filter_planned_sessions_date_range(stored_planned, start, end)
+    planned_snap = _filter_snap_rows_by_week(
+        list(sessions_snap.get("planlagt") or []), start, end
+    )
+    # Prefer snap (merged) when Intervals linked; else app SoT
+    planned_rows = planned_snap if planned_snap else planned_app
+    completed_rows = _filter_snap_rows_by_week(
+        list(sessions_snap.get("gjennomfort") or []), start, end
+    )
+    missed_rows = _filter_snap_rows_by_week(
+        list(sessions_snap.get("ikke_gjennomfort") or []), start, end
+    )
+
+    sessions_planned = len(planned_rows)
+    missed_n = len(missed_rows)
+    # Honest week compliance: planned minus unmatched past WORKOUTs (ICU activities only).
+    if sessions_planned > 0 and (missed_n or completed_rows):
+        sessions_done = max(0, sessions_planned - missed_n) if missed_n else min(
+            len(completed_rows), sessions_planned
+        )
+        compliance_pct = round(
+            min(100.0, 100.0 * float(sessions_done) / float(sessions_planned)), 1
+        )
+    else:
+        sessions_done = len(completed_rows)
+        compliance_pct = None
+
+    rolling = sessions_snap.get("rolling_compliance_4w") or {}
+    wellness_bits: list[str] = []
+    fetch_error = bool(
+        sessions_snap.get("fetch_error") or sessions_bundle.get("fetch_error")
+    )
+    fetch_detail = sessions_snap.get("note") if fetch_error else None
+    try:
+        wl = resolve_wellness_bundle(secrets, days=7, include_body=False)
+        sig = wl.get("recovery_signals") or {}
+        if wl.get("fetch_error"):
+            wellness_bits.append(
+                f"Wellness-henting feilet: {wl.get('fetch_error_detail') or 'ukjent'}"
+            )
+            fetch_error = True
+        elif sig.get("available"):
+            if sig.get("sleep_avg_hours") is not None:
+                wellness_bits.append(f"Søvn snitt ~{sig['sleep_avg_hours']} t")
+            if sig.get("hrv_avg_7d") is not None:
+                wellness_bits.append(f"HRV 7d snitt ~{sig['hrv_avg_7d']}")
+            if sig.get("rhr_avg_7d") is not None:
+                wellness_bits.append(f"RHR 7d snitt ~{sig['rhr_avg_7d']}")
+            if sig.get("ctl") is not None or sig.get("atl") is not None:
+                wellness_bits.append(
+                    f"CTL {sig.get('ctl')} / ATL {sig.get('atl')} (signal)"
+                )
+            if sig.get("sleep_note"):
+                wellness_bits.append(str(sig["sleep_note"]))
+        else:
+            wellness_bits.append(str(sig.get("note") or "Ingen wellness-signaler"))
+    except Exception as exc:  # noqa: BLE001 — soft-fail
+        wellness_bits.append(f"Wellness utilgjengelig ({exc.__class__.__name__})")
+
+    reply = week_check_summary_nb(
+        name=name,
+        week_start=start.isoformat(),
+        week_end=end.isoformat(),
+        planned_lines=[_session_line_for_week(s) for s in planned_rows[:12]],
+        completed_lines=[_session_line_for_week(s) for s in completed_rows[:12]],
+        missed_lines=[_session_line_for_week(s) for s in missed_rows[:10]],
+        wellness_bits=wellness_bits,
+        intervals_linked=intervals_ok,
+        fetch_error=fetch_error,
+        fetch_detail=str(fetch_detail)[:200] if fetch_detail else None,
+        compliance_pct=compliance_pct,
+        sessions_planned=sessions_planned,
+        sessions_done=sessions_done,
+    )
+    with db_session(config.get_db()) as conn:
+        add_message(conn, aid, "user", body_message)
+        asst = add_message(conn, aid, "assistant", reply)
+    return {
+        "reply": reply,
+        "message": asst,
+        "week_check": {
+            "week_start": start.isoformat(),
+            "week_end": end.isoformat(),
+            "sessions_planned": sessions_planned,
+            "sessions_done": sessions_done,
+            "compliance_pct": compliance_pct,
+            "missed_count": len(missed_rows),
+            "intervals_linked": intervals_ok,
+            "fetch_error": fetch_error,
+            "rolling_compliance_4w": rolling,
+            "written_to_intervals": False,
+        },
+        "confirm_required": False,
+        "written_to_intervals": False,
+        "app_plan": overview.get("app_plan"),
+        "sessions_in_context": True,
+    }
+
+
 def _chat_ukesopp(
     *,
     aid: str,
     athlete: dict[str, Any],
     body_message: str,
     stored_planned: list[dict[str, Any]],
+    secrets: dict[str, Any] | None = None,
+    sessions_bundle: dict[str, Any] | None = None,
     overview: dict[str, Any],
+    intervals_ok: bool = False,
 ) -> dict[str, Any]:
-    """Sunday ukesopp stub — structured questions; never writes Intervals."""
+    """Sunday ukesopp — structured questions; save answers in-app; never ICU write."""
     week_key = plan_week_target_from_message(body_message)
     start, end = week_bounds(week_key, today=date.today())
     in_range = filter_planned_sessions_date_range(stored_planned, start, end)
     name = athlete.get("display_name") or "deg"
-    lines = []
-    for s in in_range[:10]:
-        day = str(s.get("session_date") or "")[:10]
-        nm = str(s.get("name") or "Økt")
-        sport = str(s.get("sport") or "")
-        lines.append(f"{day} · {nm}" + (f" ({sport})" if sport else ""))
+    lines = [_session_line_for_week(s) for s in in_range[:10]]
+
+    completed_hint = None
+    snap = sessions_snapshot_for_chat(sessions_bundle) if sessions_bundle else {}
+    done = _filter_snap_rows_by_week(list(snap.get("gjennomfort") or []), start, end)
+    missed = _filter_snap_rows_by_week(
+        list(snap.get("ikke_gjennomfort") or []), start, end
+    )
+    if intervals_ok and not snap.get("fetch_error"):
+        completed_hint = (
+            f"ICU-hint: {len(done)} aktiviteter · {len(missed)} planlagt uten match "
+            f"(NOTE ≠ trening)."
+        )
+    elif not intervals_ok:
+        completed_hint = "Intervals ikke koblet — kun app-plan under."
+    elif snap.get("fetch_error"):
+        completed_hint = "Intervals-henting feilet — ingen fake gjennomført-tall."
+
     reply = ukesopp_reply_nb(
         name=name,
         week_start=start.isoformat(),
         week_end=end.isoformat(),
         planned_count=len(in_range),
         session_lines=lines,
+        completed_hint=completed_hint,
     )
     payload = ukesopp_prompt_payload(
         week_start=start.isoformat(),
         week_end=end.isoformat(),
         planned_count=len(in_range),
-        completed_hint=None,
+        completed_hint=completed_hint,
     )
     with db_session(config.get_db()) as conn:
         add_message(conn, aid, "user", body_message)
@@ -2672,6 +2864,50 @@ def _chat_ukesopp(
         "written_to_intervals": False,
         "app_plan": overview.get("app_plan"),
         "sessions_in_context": True,
+    }
+
+
+@app.post("/v1/ukesopp/save")
+def ukesopp_save(
+    body: UkesoppSaveIn,
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Save ukesopp answers to athlete_events — never writes Intervals."""
+    aid = _require_athlete(x_athlete_id)
+    answers = [str(a or "").strip() for a in (body.answers or [])]
+    answers = [a for a in answers if a]
+    notes = (body.notes or "").strip()
+    if not answers and not notes:
+        raise HTTPException(422, "Skriv minst ett svar før lagring")
+    with db_session(config.get_db()) as conn:
+        athlete = get_athlete(conn, aid)
+        if not athlete:
+            raise HTTPException(404, "Utøver ikke funnet")
+        row = insert_athlete_event(
+            conn,
+            aid,
+            kind="ukesopp",
+            title=f"Ukesopp {body.week_start}–{body.week_end}",
+            payload={
+                "week_start": body.week_start,
+                "week_end": body.week_end,
+                "answers": answers,
+                "notes": notes[:1000],
+                "questions": list(UKESOPP_QUESTIONS_NB),
+                "written_to_intervals": False,
+                "human_coach": True,
+                "message": f"Ukesopp lagret ({len(answers)} svar)",
+            },
+        )
+    return {
+        "ok": True,
+        "saved": True,
+        "written_to_intervals": False,
+        "event_id": row.get("id"),
+        "week_start": body.week_start,
+        "week_end": body.week_end,
+        "answer_count": len(answers),
+        "message_nb": "Ukesopp lagret i appen (ikke Intervals).",
     }
 
 

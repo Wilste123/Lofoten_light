@@ -20,6 +20,7 @@ def test_ukesopp_intent():
     assert user_requests_ukesopp("weekly review please")
     assert not user_requests_ukesopp("sync til intervals")
     assert not user_requests_ukesopp("legg inn løp i morgen")
+    assert not user_requests_ukesopp("sjekk uka mi")
 
 
 def test_ukesopp_payload_and_reply():
@@ -30,6 +31,7 @@ def test_ukesopp_payload_and_reply():
     )
     assert len(p["questions"]) >= 4
     assert p["written_to_intervals"] is False
+    assert p.get("can_save_answers") is True
     reply = ukesopp_reply_nb(
         name="William",
         week_start="2026-10-06",
@@ -40,3 +42,4 @@ def test_ukesopp_payload_and_reply():
     assert "Ukesopp" in reply
     assert "Kontinuitet" in reply
     assert "Intervals-push" in reply or "push" in reply.lower()
+    assert "lagres" in reply.lower() or "Lagre" in reply or "kortet" in reply.lower()

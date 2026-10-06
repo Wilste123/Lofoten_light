@@ -838,6 +838,40 @@ button.linkish:hover {
   color: #7aa2ff;
 }
 
+.cal-source-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.cal-source-filter.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.ukesopp-q li {
+  margin-bottom: 0.65rem;
+}
+
+.ukesopp-q-label {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.ukesopp-answer {
+  width: 100%;
+  min-height: 2.5rem;
+  resize: vertical;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.5rem;
+}
+
 .cal-week-quality {
   margin: 0.5rem 0 0.75rem;
   padding: 0.5rem 0.65rem;

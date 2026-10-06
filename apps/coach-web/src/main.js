@@ -86,6 +86,7 @@ const state = {
     month: monthKeyFromDate(),
     selectedDate: null,
     syncScopeLabel: '',
+    sourceFilter: 'all', // all | coach | agent | manual | app
   },
   tpSync: {
     busy: false,
@@ -116,6 +117,9 @@ const state = {
   agreementsProposal: null,
   /** Sunday ukesopp prompt (questions only — no auto write) */
   ukesopp: null,
+  ukesoppAnswerDrafts: {},
+  ukesoppSaveMessage: '',
+  ukesoppSaveError: '',
   /** Du → plan adjust preview (local blocks; Intervals only after Sync confirm) */
   planAdjust: null,
   /** Selected ids when weekly cap requires replace */
@@ -1248,6 +1252,9 @@ function applyChatResponse(data, { mirrorToMain = false, userText = '' } = {}) {
   }
   if (data.ukesopp?.questions?.length) {
     state.ukesopp = data.ukesopp
+    state.ukesoppAnswerDrafts = {}
+    state.ukesoppSaveMessage = ''
+    state.ukesoppSaveError = ''
   } else if (data.ukesopp === null) {
     state.ukesopp = null
   }
@@ -1572,18 +1579,31 @@ function renderChat() {
       </div>`
   } else if (state.ukesopp?.questions?.length) {
     const u = state.ukesopp
+    const drafts = state.ukesoppAnswerDrafts || {}
     const qs = (u.questions || [])
-      .map((q, i) => `<li><strong>${i + 1}.</strong> ${escapeHtml(q)}</li>`)
+      .map(
+        (q, i) => `<li>
+          <label class="ukesopp-q-label"><strong>${i + 1}.</strong> ${escapeHtml(q)}</label>
+          <textarea class="ukesopp-answer" data-ukesopp-i="${i}" rows="2" placeholder="Kort svar…">${escapeHtml(drafts[i] || '')}</textarea>
+        </li>`,
+      )
       .join('')
+    const hint = u.completed_hint
+      ? `<p class="muted tight">${escapeHtml(u.completed_hint)}</p>`
+      : ''
     proposalCard = `
       <div class="confirm-card workout-proposal-card" aria-label="Ukesopp">
         <p><strong>Ukesopp ${escapeHtml(u.week_start || '')}–${escapeHtml(u.week_end || '')}</strong></p>
-        <p class="muted tight">Svar i chatten — ingen auto-lagring eller Intervals-push.</p>
+        <p class="muted tight">Lagre svar i appen (ikke Intervals-push).</p>
         ${u.planned_count != null ? `<p class="muted tight">${escapeHtml(String(u.planned_count))} planlagte økter i uka.</p>` : ''}
+        ${hint}
         <ol class="sync-sample ukesopp-q">${qs}</ol>
         <div class="sync-actions">
+          <button type="button" class="btn btn-primary" id="ukesopp-save-btn">Lagre svar</button>
           <button type="button" class="btn secondary" id="ukesopp-dismiss-btn">Skjul</button>
         </div>
+        ${state.ukesoppSaveMessage ? `<p class="intervals-status is-ok">${escapeHtml(state.ukesoppSaveMessage)}</p>` : ''}
+        ${state.ukesoppSaveError ? `<p class="error">${escapeHtml(state.ukesoppSaveError)}</p>` : ''}
       </div>`
   } else if (state.workoutSync.message) {
     proposalCard = `<p class="intervals-status is-ok">${escapeHtml(state.workoutSync.message)}</p>`
@@ -1965,10 +1985,17 @@ function renderDashboard() {
   const sc4 = dash.session_compliance_4w
   const sc4Html =
     sc4 && sc4.sessions_planned != null
-      ? `<p class="muted tight">4-ukers økt-compliance: <strong>${sc4.sessions_done ?? 0} / ${sc4.sessions_planned}</strong> planlagte WORKOUT matchet til ICU-aktiviteter${
-          sc4.compliance_pct != null ? ` (${sc4.compliance_pct} %)` : ''
-        }. NOTE teller ikke.</p>`
-      : ''
+      ? `<div class="section-block compliance-week-block">
+          <div class="section-head"><h2>Planlagt vs gjennomført</h2></div>
+          <p class="muted tight">4-ukers økt-compliance: <strong>${sc4.sessions_done ?? 0} / ${sc4.sessions_planned}</strong> planlagte WORKOUT matchet til ICU-aktiviteter${
+            sc4.compliance_pct != null ? ` (${sc4.compliance_pct} %)` : ''
+          }.</p>
+          <p class="muted tight">NOTE og planlagt uten aktivitet = ikke gjennomført. Spør Coach «sjekk uka mi» for ukesdetalj.</p>
+        </div>`
+      : `<div class="section-block compliance-week-block">
+          <div class="section-head"><h2>Planlagt vs gjennomført</h2></div>
+          <p class="muted tight">Koble Intervals under Du for ærlig økt-compliance (aktiviteter ≠ NOTES).</p>
+        </div>`
   return `
     <div class="tab-hero">
       <p class="brand-mark">Dashboard</p>
@@ -1979,12 +2006,12 @@ function renderDashboard() {
     ${renderLoadCard(dash)}
     ${renderSleepCard(dash.sleep, dash.wellness_fetch_error, dash.wellness_fetch_error_detail, sleepLabel)}
     ${renderBodyCard(dash.body, dash.body_hidden || !dash.show_body_metrics)}
+    ${sc4Html}
     <p class="compliance-banner" role="note">
       <strong>Sesongmål &amp; compliance</strong> er uavhengig av periodevalget over.
       Beregnes i appen (aktiviteter vs sesongmål) og <em>skrives ikke</em> til Intervals.
     </p>
     ${renderProgressSection(progressForSection)}
-    ${sc4Html}
     ${renderFormCard({ ...(dash.form || {}), ...o })}
     ${renderPlanStrip(o)}
   `
@@ -2717,17 +2744,23 @@ function renderPlanMonthCalendar() {
   const byDate = sessionsByDate(sessions)
   const cells = buildMonthGrid(monthKey, byDate)
   const selected = state.planCalendar.selectedDate
-  const selectedSessions = selected ? byDate.get(selected) || [] : []
+  const sourceFilter = state.planCalendar.sourceFilter || 'all'
+  const filterBySource = (list) =>
+    sourceFilter === 'all'
+      ? list
+      : list.filter((s) => (s.source_kind || 'app') === sourceFilter)
+  const selectedSessions = filterBySource(selected ? byDate.get(selected) || [] : [])
   const weekdays = ['Man', 'Tir', 'Ons', 'Tor', 'Fre', 'Lør', 'Søn']
   const head = weekdays.map((w) => `<div class="cal-dow">${w}</div>`).join('')
   const todayIso = toIsoDate(new Date())
   const grid = cells
     .map((c) => {
-      const n = c.sessions.length
+      const filtered = filterBySource(c.sessions)
+      const n = filtered.length
       const sel = selected === c.iso ? ' cal-day-selected' : ''
       const out = c.inMonth ? '' : ' cal-day-out'
       const isToday = c.iso === todayIso ? ' cal-day-today' : ''
-      const dots = n > 0 ? calendarDotsHtml(c.sessions) : ''
+      const dots = n > 0 ? calendarDotsHtml(filtered) : ''
       return `<button type="button" class="cal-day${sel}${out}${isToday}" data-cal-day="${escapeHtml(c.iso)}" ${
         c.inMonth ? '' : 'tabindex="-1"'
       }>
@@ -2761,6 +2794,20 @@ function renderPlanMonthCalendar() {
           ${riskBits ? `<p class="muted tight"><strong>Ukerisiko</strong><br/>${riskBits}</p>` : ''}
         </div>`
       : ''
+  const sourceFilters = [
+    ['all', 'Alle'],
+    ['coach', 'Coach'],
+    ['agent', 'Agent'],
+    ['manual', 'Manuell'],
+    ['app', 'App'],
+  ]
+    .map(
+      ([id, label]) =>
+        `<button type="button" class="btn btn-sm secondary cal-source-filter${
+          sourceFilter === id ? ' is-active' : ''
+        }" data-source-filter="${id}">${label}</button>`,
+    )
+    .join('')
   const metaBits = []
   if (total) metaBits.push(`${total} økter`)
   if (ps.plan_horizon_weeks) metaBits.push(`~${ps.plan_horizon_weeks} uker`)
@@ -2792,6 +2839,7 @@ function renderPlanMonthCalendar() {
         </div>
       </div>
       <p class="muted tight">App-plan + Intervals-WORKOUTs. <span class="cal-legend"><span class="cal-dot cal-dot-synced">•</span> synket</span> · <span class="cal-legend"><span class="cal-dot cal-dot-unsynced">•</span> ikke synket</span> · <span class="cal-legend"><span class="cal-dot cal-dot-icu">•</span> kun Intervals</span>. Kilde: coach / agent / manuell. Sync <strong>uke/måned</strong> pusher app → Intervals.</p>
+      <div class="cal-source-filters" role="group" aria-label="Filtrer kilde">${sourceFilters}</div>
       ${metaBits.length ? `<p class="muted tight">${escapeHtml(metaBits.join(' · '))}</p>` : ''}
       ${
         !total && (state.planBlocks || []).length
@@ -3386,7 +3434,64 @@ function bindApp() {
 
   document.getElementById('ukesopp-dismiss-btn')?.addEventListener('click', () => {
     state.ukesopp = null
+    state.ukesoppAnswerDrafts = {}
+    state.ukesoppSaveMessage = ''
+    state.ukesoppSaveError = ''
     render()
+  })
+
+  document.querySelectorAll('.ukesopp-answer').forEach((el) => {
+    el.addEventListener('input', () => {
+      const i = el.getAttribute('data-ukesopp-i')
+      if (i == null) return
+      state.ukesoppAnswerDrafts = {
+        ...(state.ukesoppAnswerDrafts || {}),
+        [i]: el.value,
+      }
+    })
+  })
+
+  document.getElementById('ukesopp-save-btn')?.addEventListener('click', async () => {
+    const u = state.ukesopp
+    if (!u?.week_start || !u?.week_end) return
+    const answers = (u.questions || []).map((_, i) => {
+      const el = document.querySelector(`.ukesopp-answer[data-ukesopp-i="${i}"]`)
+      return (el?.value || state.ukesoppAnswerDrafts?.[i] || '').trim()
+    })
+    if (!answers.some(Boolean)) {
+      state.ukesoppSaveError = 'Skriv minst ett svar før lagring'
+      state.ukesoppSaveMessage = ''
+      render()
+      return
+    }
+    state.busy = true
+    state.ukesoppSaveError = ''
+    state.ukesoppSaveMessage = ''
+    render()
+    try {
+      const data = await api('/v1/ukesopp/save', {
+        method: 'POST',
+        body: {
+          week_start: u.week_start,
+          week_end: u.week_end,
+          answers,
+        },
+      })
+      state.ukesoppSaveMessage =
+        data.message_nb || 'Ukesopp lagret i appen (ikke Intervals).'
+      state.ukesopp = null
+      state.ukesoppAnswerDrafts = {}
+      try {
+        await refreshTicker()
+      } catch {
+        /* soft */
+      }
+    } catch (err) {
+      state.ukesoppSaveError = err.message || 'Kunne ikke lagre ukesopp'
+    } finally {
+      state.busy = false
+      render()
+    }
   })
 
   document.getElementById('agreements-confirm-btn')?.addEventListener('click', async () => {
@@ -4465,6 +4570,14 @@ function bindApp() {
       const iso = btn.getAttribute('data-cal-day')
       if (!iso) return
       state.planCalendar.selectedDate = iso
+      render()
+    })
+  })
+  document.querySelectorAll('[data-source-filter]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-source-filter')
+      if (!id) return
+      state.planCalendar.sourceFilter = id
       render()
     })
   })

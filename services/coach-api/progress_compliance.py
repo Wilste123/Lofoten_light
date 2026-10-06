@@ -385,16 +385,9 @@ def _auth_headers(api_key: str) -> dict[str, str]:
 
 
 def _http_get_json(url: str, api_key: str, *, timeout: int = _FETCH_TIMEOUT) -> Any:
-    req = urllib.request.Request(
-        url,
-        method="GET",
-        headers=_auth_headers(api_key),
-    )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        raw = resp.read().decode("utf-8", errors="replace")
-    if not raw:
-        return []
-    return json.loads(raw)
+    from icu_http import http_get_json
+
+    return http_get_json(url, _auth_headers(api_key), timeout=timeout)
 
 
 def fetch_intervals_activities_page(

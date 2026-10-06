@@ -815,6 +815,36 @@ button.linkish:hover {
   opacity: 0.85;
 }
 
+.cal-source-tag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  opacity: 0.9;
+  margin-right: 0.25rem;
+}
+
+.cal-source-coach {
+  color: #3ecf8e;
+}
+
+.cal-source-agent {
+  color: #c9a227;
+}
+
+.cal-source-manual {
+  color: #9aa4b2;
+}
+
+.cal-source-app {
+  color: #7aa2ff;
+}
+
+.cal-week-quality {
+  margin: 0.5rem 0 0.75rem;
+  padding: 0.5rem 0.65rem;
+  border-left: 3px solid var(--accent, #1a6b4a);
+  background: color-mix(in srgb, var(--accent, #1a6b4a) 8%, transparent);
+}
+
 .cal-sync-planned_not_synced {
   color: #f0a030;
 }

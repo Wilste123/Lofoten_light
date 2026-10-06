@@ -1,4 +1,10 @@
-"""Merge app ``planned_sessions`` with coach WORKOUT events on Intervals for Plan calendar."""
+"""Merge app ``planned_sessions`` with Intervals WORKOUT events for Plan calendar.
+
+Source provenance (Intervals ID model):
+- ``ll-agent-*`` — CLI/agent push
+- ``ll-coach-*`` / ``ll-coach-w-*`` — app/coach
+- bare / other — manual or other planner
+"""
 
 from __future__ import annotations
 
@@ -19,6 +25,36 @@ SYNC_PLANNED_NOT_SYNCED = "planned_not_synced"
 SYNC_SYNCED = "synced"
 SYNC_INTERVALS_ONLY = "intervals_only"
 
+# Provenance for multi-planner Intervals calendars.
+SOURCE_AGENT = "agent"
+SOURCE_COACH = "coach"
+SOURCE_MANUAL = "manual"
+SOURCE_APP = "app"
+
+AGENT_EXTERNAL_PREFIX = "ll-agent-"
+
+
+def classify_external_source(external_id: str | None) -> str:
+    """Map Intervals/app external_id → agent | coach | manual | app."""
+    eid = str(external_id or "").strip()
+    if not eid:
+        return SOURCE_APP
+    if eid.startswith(AGENT_EXTERNAL_PREFIX):
+        return SOURCE_AGENT
+    if eid.startswith("ll-coach-"):
+        return SOURCE_COACH
+    return SOURCE_MANUAL
+
+
+def source_kind_label_nb(kind: str) -> str:
+    if kind == SOURCE_AGENT:
+        return "Agent (ll-agent)"
+    if kind == SOURCE_COACH:
+        return "Coach (ll-coach)"
+    if kind == SOURCE_MANUAL:
+        return "Manuell / annen"
+    return "App-plan"
+
 
 def _planned_external_id(row: dict[str, Any]) -> str:
     eid = str(row.get("external_id") or "").strip()
@@ -32,12 +68,20 @@ def _planned_external_id(row: dict[str, Any]) -> str:
     return f"{WORKOUT_EXTERNAL_PREFIX}local-{slug}-ps"
 
 
-def _is_coach_workout_event(ev: dict[str, Any]) -> bool:
-    eid = str(ev.get("external_id") or "").strip()
-    if not eid.startswith(WORKOUT_EXTERNAL_PREFIX):
-        return False
+def _is_calendar_workout_event(ev: dict[str, Any]) -> bool:
+    """Any calendar WORKOUT — coach, agent, or manual (not NOTES)."""
     cat = str(ev.get("category") or "WORKOUT").upper()
     return cat == "WORKOUT"
+
+
+def _icu_event_key(ev: dict[str, Any]) -> str:
+    eid = str(ev.get("external_id") or "").strip()
+    if eid:
+        return eid
+    icu_id = ev.get("id")
+    if icu_id is not None:
+        return f"icu-manual-{icu_id}"
+    return ""
 
 
 def _event_to_calendar_row(ev: dict[str, Any], *, sync_status: str) -> dict[str, Any]:
@@ -45,8 +89,10 @@ def _event_to_calendar_row(ev: dict[str, Any], *, sync_status: str) -> dict[str,
     day_s = d.isoformat() if d else str(ev.get("start_date_local") or "")[:10]
     name = str(ev.get("name") or "Økt").strip() or "Økt"
     eid = str(ev.get("external_id") or "").strip()
+    # Empty eid on ICU = manual/other planner (not app SoT).
+    kind = classify_external_source(eid) if eid else SOURCE_MANUAL
     return {
-        "id": f"icu:{ev.get('id') or eid}",
+        "id": f"icu:{ev.get('id') or eid or day_s}",
         "session_date": day_s,
         "name": name[:200],
         "sport": _sport_from_intervals_type(ev.get("type")),
@@ -56,6 +102,8 @@ def _event_to_calendar_row(ev: dict[str, Any], *, sync_status: str) -> dict[str,
         "source": "intervals",
         "sync_status": sync_status,
         "sync_status_nb": _status_label_nb(sync_status),
+        "source_kind": kind,
+        "source_kind_nb": source_kind_label_nb(kind),
     }
 
 
@@ -99,15 +147,27 @@ def _row_from_planned(
     icu_event: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     base = public_planned_session_row(row)
+    eid = str(base.get("external_id") or "").strip() or _planned_external_id(row)
+    kind = classify_external_source(eid if str(row.get("external_id") or "").strip() else "")
+    # App rows without stored external_id stay "app"; synthesized match ids stay coach.
+    if not str(row.get("external_id") or "").strip():
+        kind = SOURCE_APP
     out = {
         **base,
         "sync_status": sync_status,
         "sync_status_nb": _status_label_nb(sync_status),
         "source": "planned_sessions",
+        "source_kind": kind,
+        "source_kind_nb": source_kind_label_nb(kind),
     }
     if icu_event:
         out["icu_event_id"] = icu_event.get("id")
         out["intervals_name"] = icu_event.get("name")
+        # Prefer ICU provenance when synced (agent push matching app row)
+        icu_eid = str(icu_event.get("external_id") or "").strip()
+        if icu_eid:
+            out["source_kind"] = classify_external_source(icu_eid)
+            out["source_kind_nb"] = source_kind_label_nb(out["source_kind"])
     return out
 
 
@@ -118,10 +178,12 @@ def merge_plan_calendar_sessions(
     range_start: date | None = None,
     range_end: date | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, int]]:
-    """Union calendar rows with sync classification (app SoT + ICU coach WORKOUTs)."""
+    """Union calendar rows with sync + source_kind (app SoT + ICU WORKOUTs)."""
     planned = [public_planned_session_row(r) for r in (planned_rows or [])]
     icu_workouts = [
-        e for e in (icu_events or []) if isinstance(e, dict) and _is_coach_workout_event(e)
+        e
+        for e in (icu_events or [])
+        if isinstance(e, dict) and _is_calendar_workout_event(e)
     ]
 
     if planned:
@@ -145,12 +207,12 @@ def merge_plan_calendar_sessions(
 
     icu_by_eid: dict[str, dict[str, Any]] = {}
     for ev in icu_workouts:
-        eid = str(ev.get("external_id") or "").strip()
-        if not eid:
+        key = _icu_event_key(ev)
+        if not key:
             continue
         d = event_local_date(ev)
         if d and rs <= d <= re:
-            icu_by_eid[eid] = ev
+            icu_by_eid[key] = ev
 
     merged: list[dict[str, Any]] = []
     counts = {SYNC_PLANNED_NOT_SYNCED: 0, SYNC_SYNCED: 0, SYNC_INTERVALS_ONLY: 0}
@@ -191,7 +253,7 @@ def fetch_intervals_workouts_for_range(
     range_start: date,
     range_end: date,
 ) -> list[dict[str, Any]]:
-    """Coach WORKOUT events on Intervals in [range_start, range_end] (soft-fail)."""
+    """Calendar WORKOUT events on Intervals in [range_start, range_end] (soft-fail)."""
     sec = secrets or {}
     key = str(sec.get("intervals_api_key") or "").strip()
     aid = str(sec.get("intervals_athlete_id") or "").strip()
@@ -206,7 +268,41 @@ def fetch_intervals_workouts_for_range(
         )
     except Exception:  # noqa: BLE001
         return []
-    return [e for e in raw if _is_coach_workout_event(e)]
+    return [e for e in raw if _is_calendar_workout_event(e)]
+
+
+def extract_plan_b_lines(sessions: list[dict[str, Any]]) -> list[str]:
+    """Pull «Plan B: …» lines from session descriptions (week quality bar)."""
+    found: list[str] = []
+    seen: set[str] = set()
+    for s in sessions or []:
+        text = str(s.get("description") or "")
+        for m in re.finditer(r"Plan\s*B\s*:\s*([^\n]+)", text, re.IGNORECASE):
+            line = m.group(0).strip()
+            key = line.lower()
+            if key not in seen:
+                seen.add(key)
+                found.append(line[:240])
+    return found[:5]
+
+
+def extract_weekly_risk_lines(sessions: list[dict[str, Any]]) -> list[str]:
+    """Pull ukerisiko / risiko lines from session descriptions."""
+    found: list[str] = []
+    seen: set[str] = set()
+    for s in sessions or []:
+        text = str(s.get("description") or "")
+        for m in re.finditer(
+            r"(?:Ukerisiko|Weekly\s*risk|Risiko)\s*:\s*([^\n]+)",
+            text,
+            re.IGNORECASE,
+        ):
+            line = m.group(0).strip()
+            key = line.lower()
+            if key not in seen:
+                seen.add(key)
+                found.append(line[:240])
+    return found[:3]
 
 
 def sessions_in_week_range(

@@ -641,4 +641,6 @@ def public_block(b: dict[str, Any] | None) -> dict[str, Any] | None:
         "end_date": b.get("end_date"),
         "weekly_hours": b.get("weekly_hours"),
         "sort_order": b.get("sort_order") or 0,
+        "plan_b": b.get("plan_b") or "",
+        "weekly_risk": b.get("weekly_risk") or "",
     }

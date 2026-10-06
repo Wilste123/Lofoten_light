@@ -57,6 +57,9 @@ from chat_service import (
     user_requests_dont_touch_calendar,
     user_requests_intervals_plan_sync,
     user_requests_intervals_review,
+    user_requests_ukesopp,
+    ukesopp_prompt_payload,
+    ukesopp_reply_nb,
     plan_week_target_from_message,
     user_requests_plan_adjust,
     user_requests_plan_week_build,
@@ -85,6 +88,7 @@ from db import (
     get_planned_session,
     init_db,
     insert_athlete,
+    insert_athlete_event,
     insert_pending_action,
     insert_plan_block,
     insert_planned_session_rows,
@@ -162,6 +166,8 @@ from plan_calendar_merge import (
     SYNC_PLANNED_NOT_SYNCED,
     SYNC_SYNCED,
     dates_for_weekday_indices,
+    extract_plan_b_lines,
+    extract_weekly_risk_lines,
     fetch_intervals_workouts_for_range,
     merge_plan_calendar_sessions,
     sessions_in_week_range,
@@ -458,6 +464,8 @@ class WeekAdjustConfirmIn(BaseModel):
     sessions: list[dict[str, Any]] = Field(default_factory=list)
     ease_load: bool = False
     prepare_intervals_sync: bool = False
+    reason: str = ""
+    readiness: dict[str, Any] = Field(default_factory=dict)
 
 
 class PlanRollConfirmIn(BaseModel):
@@ -666,6 +674,8 @@ class PlanBlockIn(BaseModel):
     end_date: str | None = None
     weekly_hours: float | None = None
     sort_order: int = 0
+    plan_b: str = ""
+    weekly_risk: str = ""
 
 
 class PlanBlockPatch(BaseModel):
@@ -675,6 +685,8 @@ class PlanBlockPatch(BaseModel):
     end_date: str | None = None
     weekly_hours: float | None = None
     sort_order: int | None = None
+    plan_b: str | None = None
+    weekly_risk: str | None = None
 
 
 class CalendarSyncPreviewIn(BaseModel):
@@ -1998,6 +2010,15 @@ def chat(
             secrets=secrets,
             overview=overview,
         )
+    # Sunday ukesopp — structured questions, no auto write/sync.
+    if user_requests_ukesopp(body.message):
+        return _chat_ukesopp(
+            aid=aid,
+            athlete=athlete,
+            body_message=body.message,
+            stored_planned=stored_planned,
+            overview=overview,
+        )
     # Week plan from app SoT — never generic «hvilke dager trener du»-intervju.
     if user_requests_plan_week_build(body.message):
         return _chat_week_plan_from_sot(
@@ -2605,6 +2626,52 @@ def _chat_weekday_plan_focus(
         "sessions_in_context": True,
         "app_plan": overview.get("app_plan"),
         "weekday_plan_focus": True,
+    }
+
+
+def _chat_ukesopp(
+    *,
+    aid: str,
+    athlete: dict[str, Any],
+    body_message: str,
+    stored_planned: list[dict[str, Any]],
+    overview: dict[str, Any],
+) -> dict[str, Any]:
+    """Sunday ukesopp stub — structured questions; never writes Intervals."""
+    week_key = plan_week_target_from_message(body_message)
+    start, end = week_bounds(week_key, today=date.today())
+    in_range = filter_planned_sessions_date_range(stored_planned, start, end)
+    name = athlete.get("display_name") or "deg"
+    lines = []
+    for s in in_range[:10]:
+        day = str(s.get("session_date") or "")[:10]
+        nm = str(s.get("name") or "Økt")
+        sport = str(s.get("sport") or "")
+        lines.append(f"{day} · {nm}" + (f" ({sport})" if sport else ""))
+    reply = ukesopp_reply_nb(
+        name=name,
+        week_start=start.isoformat(),
+        week_end=end.isoformat(),
+        planned_count=len(in_range),
+        session_lines=lines,
+    )
+    payload = ukesopp_prompt_payload(
+        week_start=start.isoformat(),
+        week_end=end.isoformat(),
+        planned_count=len(in_range),
+        completed_hint=None,
+    )
+    with db_session(config.get_db()) as conn:
+        add_message(conn, aid, "user", body_message)
+        asst = add_message(conn, aid, "assistant", reply)
+    return {
+        "reply": reply,
+        "message": asst,
+        "ukesopp": payload,
+        "confirm_required": False,
+        "written_to_intervals": False,
+        "app_plan": overview.get("app_plan"),
+        "sessions_in_context": True,
     }
 
 
@@ -5141,6 +5208,40 @@ def get_planned_sessions(
         "intervals_connected": intervals_linked,
         "merge_intervals": bool(merge_intervals),
         "sync_summary": sync_counts,
+        "week_quality": _week_quality_hints(sessions, blocks),
+    }
+
+
+def _week_quality_hints(
+    sessions: list[dict[str, Any]],
+    blocks: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Plan B + ukerisiko from current grov block and/or session descriptions."""
+    today = date.today()
+    mon, sun = week_bounds("this_week", today=today)
+    week_sess = sessions_in_week_range(sessions, mon, sun)
+    plan_b = extract_plan_b_lines(week_sess)
+    risk = extract_weekly_risk_lines(week_sess)
+    cur = None
+    for b in blocks or []:
+        sd = parse_iso_date(str(b.get("start_date") or "")[:10])
+        ed = parse_iso_date(str(b.get("end_date") or "")[:10])
+        if sd and ed and sd <= today <= ed:
+            cur = b
+            break
+    if cur:
+        pb = str(cur.get("plan_b") or "").strip()
+        wr = str(cur.get("weekly_risk") or "").strip()
+        if pb and pb not in plan_b:
+            plan_b = [pb] + plan_b
+        if wr and wr not in risk:
+            risk = [wr] + risk
+    return {
+        "week_start": mon.isoformat(),
+        "week_end": sun.isoformat(),
+        "plan_b": plan_b[:5],
+        "weekly_risk": risk[:3],
+        "block_id": (cur or {}).get("id"),
     }
 
 
@@ -5369,6 +5470,27 @@ def plan_week_adjust_confirm(
             source="week_adjust",
             replace=True,
         )
+        if body.ease_load:
+            # Durable decision log (signals → decision → reason) — not auto ICU.
+            reason = (body.reason or "").strip() or (
+                "Lett uke bekreftet (ease_load)."
+            )
+            insert_athlete_event(
+                conn,
+                aid,
+                kind="load_decision",
+                title=f"Belastning: lett uke {start_s}–{end_s}",
+                payload={
+                    "decision": "ease_load",
+                    "reason": reason[:500],
+                    "week_start": start_s,
+                    "week_end": end_s,
+                    "signals": body.readiness or {},
+                    "human_coach": True,
+                    "auto_apply": False,
+                    "message": reason[:280],
+                },
+            )
         if body.prepare_intervals_sync:
             secrets = get_athlete_secrets(conn, aid)
             key = ((secrets or {}).get("intervals_api_key") or "").strip()
@@ -5427,6 +5549,7 @@ def plan_week_adjust_confirm(
         "replaced_count": len(saved),
         "planned_sessions_count": total,
         "ease_load": bool(body.ease_load),
+        "load_decision_logged": bool(body.ease_load),
         "intervals_pending": intervals_pending,
         "intervals_prep_error": intervals_prep_error,
         "written_to_intervals": False,

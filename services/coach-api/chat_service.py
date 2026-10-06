@@ -562,6 +562,18 @@ _INTERVALS_REVIEW_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Sunday ukesopp / weekly review (OPV-style structured questions)
+_UKESOPP_RE = re.compile(
+    r"(?:"
+    r"ukesopp|uke\s*[- ]?opp|"
+    r"søndags?(?:oppsummering|review|sjekk)|"
+    r"weekly\s*review|"
+    r"oppsummer\s+(?:uka|uken|denne\s+uka)|"
+    r"hvordan\s+(?:gikk|var)\s+(?:uka|uken)"
+    r")",
+    re.IGNORECASE,
+)
+
 # Sync existing app plan → Intervals (not invent a new week).
 _INTERVALS_PLAN_SYNC_INTENT_RE = re.compile(
     r"(?:"
@@ -914,6 +926,78 @@ def user_requests_intervals_review(message: str) -> bool:
     if user_requests_confirm_and_push(text):
         return False
     return bool(_INTERVALS_REVIEW_RE.search(text))
+
+
+def user_requests_ukesopp(message: str) -> bool:
+    """True for Sunday ukesopp / weekly review (structured questions)."""
+    text = (message or "").strip()
+    if not text:
+        return False
+    if user_requests_intervals_plan_sync(text):
+        return False
+    if user_requests_confirm_and_push(text):
+        return False
+    return bool(_UKESOPP_RE.search(text))
+
+
+UKESOPP_QUESTIONS_NB = (
+    "Kontinuitet: Hvor mange planlagte økter fullførte du (X/Y)? Hva droppet du?",
+    "Belastning: Hvordan føltes totalvolumet (lett / passe / hardt)? Søvn/stress?",
+    "Highlight: Én økt som gikk bra — hva var bra?",
+    "Justering neste uke: Én ting å skjerpe (eller Plan B hvis uka var rød).",
+)
+
+
+def ukesopp_prompt_payload(
+    *,
+    week_start: str,
+    week_end: str,
+    planned_count: int = 0,
+    completed_hint: str | None = None,
+) -> dict[str, Any]:
+    """Structured ukesopp card payload (no Intervals write)."""
+    questions = list(UKESOPP_QUESTIONS_NB)
+    return {
+        "week_start": week_start,
+        "week_end": week_end,
+        "questions": questions,
+        "planned_count": planned_count,
+        "completed_hint": completed_hint,
+        "confirm_required": False,
+        "written_to_intervals": False,
+    }
+
+
+def ukesopp_reply_nb(
+    *,
+    name: str,
+    week_start: str,
+    week_end: str,
+    planned_count: int = 0,
+    session_lines: list[str] | None = None,
+) -> str:
+    """OPV-style ukesopp prompt — questions only, no false write claims."""
+    bits = [
+        f"Ukesopp {week_start}–{week_end}",
+        "",
+        f"Hei {name} — svar kort på disse (som søndag hos OPV). "
+        "Ingenting lagres automatisk; jeg bruker svarene til neste uke.",
+        "",
+    ]
+    if planned_count:
+        bits.append(f"App-plan denne uka: {planned_count} økter.")
+    if session_lines:
+        bits.append("Planlagt:")
+        bits.extend(f"- {ln}" for ln in session_lines[:10])
+        bits.append("")
+    for i, q in enumerate(UKESOPP_QUESTIONS_NB, 1):
+        bits.append(f"{i}. {q}")
+    bits.append("")
+    bits.append(
+        "Når du har svart, kan jeg foreslå justering (preview → bekreft) — "
+        "ikke Intervals-push uten at du ber om det."
+    )
+    return "\n".join(bits)
 
 
 def plan_week_target_from_message(message: str) -> str:

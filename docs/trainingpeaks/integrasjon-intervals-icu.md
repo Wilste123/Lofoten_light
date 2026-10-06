@@ -99,7 +99,9 @@ python3 scripts/intervals_push_calendar.py --start 2026-10-26 \
 
    **Wellness** (søvn, hvilepuls, HRV, vekt, readiness, subjektivt) kommer fra Garmin/klokke **og/eller** push over. API: `GET /athlete/0/wellness.csv?oldest=&newest=`.
 
-4. **Cloud Agent:** Legg `INTERVALS_API_KEY` som **secret** i Cursor-miljøet hvis du vil at agenten skal hente uten manuell CSV. Uten secret: last ned **activities.csv** fra Intervals (eller kjør fetch lokalt) og legg i `data/intervals/exports/` / lim inn i chat.
+4. **Cloud Agent:** Legg `INTERVALS_API` (eller `INTERVALS_API_KEY`) som **secret** i Cursor-miljøet hvis du vil at agenten skal hente uten manuell CSV. Uten secret: last ned **activities.csv** fra Intervals (eller kjør fetch lokalt) og legg i `data/intervals/exports/` / lim inn i chat.
+
+   **DNS:** Noen cloud-VM-er feiler på systemresolver for `intervals.icu`. `scripts/intervals_lib.py` faller da tilbake til offentlig DNS (`dig @8.8.8.8`) og kobler med korrekt TLS/SNI — alle fetch/push-skript bruker dette.
 
 **Auth:** Personlig nøkkel = HTTP Basic, brukernavn `API_KEY`, passord = nøkkelen ([Intervals API-guide](https://forum.intervals.icu/t/api-access-to-intervals-icu/609)).
 

@@ -3,14 +3,113 @@
 from __future__ import annotations
 
 import base64
+import http.client
 import json
 import os
 import re
+import socket
+import ssl
+import subprocess
 import urllib.error
 import urllib.request
+from io import BytesIO
 from pathlib import Path
+from urllib.parse import urlparse
+from urllib.response import addinfourl
 
 API_BASE = "https://intervals.icu/api/v1"
+INTERVALS_HOST = "intervals.icu"
+_resolved_intervals_ipv4: str | None | bool = False  # False=uncached, None=use system DNS
+
+
+def _dig_a_record(hostname: str) -> str | None:
+    try:
+        proc = subprocess.run(
+            ["dig", "+short", "A", hostname, "@8.8.8.8"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return None
+    for line in proc.stdout.splitlines():
+        line = line.strip()
+        if line and re.fullmatch(r"\d+\.\d+\.\d+\.\d+", line):
+            return line
+    return None
+
+
+def intervals_ipv4_fallback() -> str | None:
+    """When the VM resolver fails (e.g. 198.18.0.53), resolve via public DNS."""
+    global _resolved_intervals_ipv4
+    if _resolved_intervals_ipv4 is not False:
+        return _resolved_intervals_ipv4  # type: ignore[return-value]
+    try:
+        socket.getaddrinfo(INTERVALS_HOST, 443, socket.AF_INET)
+        _resolved_intervals_ipv4 = None
+        return None
+    except OSError:
+        _resolved_intervals_ipv4 = _dig_a_record(INTERVALS_HOST)
+        return _resolved_intervals_ipv4
+
+
+def urlopen(req: urllib.request.Request, timeout: int = 60):
+    """urllib.urlopen with fallback connect when system DNS cannot resolve intervals.icu."""
+    url = req.full_url
+    parsed = urlparse(url)
+    if parsed.hostname != INTERVALS_HOST:
+        return urllib.request.urlopen(req, timeout=timeout)
+
+    ip = intervals_ipv4_fallback()
+    if not ip:
+        return urllib.request.urlopen(req, timeout=timeout)
+
+    context = ssl.create_default_context()
+    sock = socket.create_connection((ip, 443), timeout=timeout)
+    try:
+        ssock = context.wrap_socket(sock, server_hostname=INTERVALS_HOST)
+    except Exception:
+        sock.close()
+        raise
+
+    path = parsed.path or "/"
+    if parsed.query:
+        path += "?" + parsed.query
+
+    conn = http.client.HTTPSConnection(INTERVALS_HOST)
+    conn.sock = ssock
+
+    headers = {k: v for k, v in req.header_items()}
+    headers.setdefault("Host", INTERVALS_HOST)
+    conn.request(req.get_method(), path, body=req.data, headers=headers)
+    response = conn.getresponse()
+    body = response.read()
+    status = response.status
+    reason = response.reason
+    conn.close()
+
+    if status >= 400:
+        raise urllib.error.HTTPError(
+            url,
+            status,
+            reason,
+            hdrs={k: v for k, v in response.getheaders()},
+            fp=BytesIO(body),
+        )
+
+    hdrs = {k: v for k, v in response.getheaders()}
+    fp = BytesIO(body)
+
+    class _Resp(addinfourl):
+        def getcode(self):
+            return response.status
+
+        @property
+        def status(self):
+            return response.status
+
+    return _Resp(fp, hdrs, url, status)
 
 SPORT_TO_INTERVALS_TYPE: dict[str, str] = {
     "bike": "Ride",
@@ -238,7 +337,7 @@ def post_events_bulk(
         },
     )
     try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
+        with urlopen(req, timeout=120) as resp:
             raw = resp.read().decode()
             if not raw:
                 return {"status": resp.status}
@@ -261,11 +360,19 @@ def api_get(path: str, *, timeout: int = 60) -> bytes:
         },
     )
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with urlopen(req, timeout=timeout) as resp:
             return resp.read()
     except urllib.error.HTTPError as e:
         detail = e.read().decode()[:2000]
         raise RuntimeError(f"Intervals API {e.code}: {detail}") from e
+
+
+def fetch_activities_csv(oldest: str, newest: str, *, timeout: int = 60) -> bytes:
+    aid = athlete_id()
+    return api_get(
+        f"/athlete/{aid}/activities.csv?oldest={oldest}&newest={newest}",
+        timeout=timeout,
+    )
 
 
 def fetch_wellness_csv(oldest: str, newest: str) -> bytes:
@@ -292,7 +399,7 @@ def put_wellness(day: str, fields: dict) -> dict:
         },
     )
     try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
+        with urlopen(req, timeout=60) as resp:
             raw = resp.read().decode()
             return json.loads(raw) if raw else {"status": resp.status}
     except urllib.error.HTTPError as e:
@@ -318,7 +425,7 @@ def put_wellness_bulk(rows: list[dict]) -> dict | list:
         },
     )
     try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
+        with urlopen(req, timeout=120) as resp:
             raw = resp.read().decode()
             return json.loads(raw) if raw else {"status": resp.status}
     except urllib.error.HTTPError as e:
@@ -345,7 +452,7 @@ def delete_events_bulk(external_ids: list[str]) -> dict:
         },
     )
     try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
+        with urlopen(req, timeout=120) as resp:
             raw = resp.read().decode()
             if not raw:
                 return {"status": resp.status}

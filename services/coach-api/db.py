@@ -111,6 +111,8 @@ CREATE TABLE IF NOT EXISTS plan_blocks (
   hours_max REAL,
   session_types_json TEXT DEFAULT '{}',
   layer TEXT DEFAULT 'grov',
+  plan_b TEXT DEFAULT '',
+  weekly_risk TEXT DEFAULT '',
   sort_order INTEGER DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -318,6 +320,8 @@ _PLAN_BLOCK_EXTRA_COLUMNS = [
     ("hours_max", "REAL"),
     ("session_types_json", "TEXT DEFAULT '{}'"),
     ("layer", "TEXT DEFAULT 'grov'"),
+    ("plan_b", "TEXT DEFAULT ''"),
+    ("weekly_risk", "TEXT DEFAULT ''"),
 ]
 
 _PLANNED_SESSION_EXTRA_COLUMNS = [
@@ -971,8 +975,8 @@ def insert_plan_block(
         INSERT INTO plan_blocks (
           id, athlete_id, title, theme, start_date, end_date,
           weekly_hours, hours_min, hours_max, session_types_json, layer,
-          sort_order, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          sort_order, plan_b, weekly_risk, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             block_id,
@@ -987,6 +991,8 @@ def insert_plan_block(
             st_json,
             str(data.get("layer") or "grov"),
             int(data.get("sort_order") or 0),
+            str(data.get("plan_b") or ""),
+            str(data.get("weekly_risk") or ""),
             now,
             now,
         ),
@@ -1013,6 +1019,8 @@ def update_plan_block(
         "hours_max",
         "layer",
         "sort_order",
+        "plan_b",
+        "weekly_risk",
     }
     fields: list[str] = []
     values: list[Any] = []

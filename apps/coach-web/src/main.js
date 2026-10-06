@@ -114,6 +114,8 @@ const state = {
   athleteTypeProposal: null,
   /** Chat → negotiated training agreements (confirm → PATCH Du) */
   agreementsProposal: null,
+  /** Sunday ukesopp prompt (questions only — no auto write) */
+  ukesopp: null,
   /** Du → plan adjust preview (local blocks; Intervals only after Sync confirm) */
   planAdjust: null,
   /** Selected ids when weekly cap requires replace */
@@ -1244,6 +1246,11 @@ function applyChatResponse(data, { mirrorToMain = false, userText = '' } = {}) {
     state.agreementsProposal = data.agreements_proposal
     if (data.agreements_hint) toast(data.agreements_hint)
   }
+  if (data.ukesopp?.questions?.length) {
+    state.ukesopp = data.ukesopp
+  } else if (data.ukesopp === null) {
+    state.ukesopp = null
+  }
   const planProp = data.plan_roll || data.plan_proposal
   const planHasFull = Boolean(planProp?.plan_blocks?.length)
   const planHasWeek = planProp?.scope === 'week' && Array.isArray(planProp?.sessions)
@@ -1563,6 +1570,21 @@ function renderChat() {
         ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
         ${state.workoutSync.message ? `<p class="intervals-status is-ok">${escapeHtml(state.workoutSync.message)}</p>` : ''}
       </div>`
+  } else if (state.ukesopp?.questions?.length) {
+    const u = state.ukesopp
+    const qs = (u.questions || [])
+      .map((q, i) => `<li><strong>${i + 1}.</strong> ${escapeHtml(q)}</li>`)
+      .join('')
+    proposalCard = `
+      <div class="confirm-card workout-proposal-card" aria-label="Ukesopp">
+        <p><strong>Ukesopp ${escapeHtml(u.week_start || '')}–${escapeHtml(u.week_end || '')}</strong></p>
+        <p class="muted tight">Svar i chatten — ingen auto-lagring eller Intervals-push.</p>
+        ${u.planned_count != null ? `<p class="muted tight">${escapeHtml(String(u.planned_count))} planlagte økter i uka.</p>` : ''}
+        <ol class="sync-sample ukesopp-q">${qs}</ol>
+        <div class="sync-actions">
+          <button type="button" class="btn secondary" id="ukesopp-dismiss-btn">Skjul</button>
+        </div>
+      </div>`
   } else if (state.workoutSync.message) {
     proposalCard = `<p class="intervals-status is-ok">${escapeHtml(state.workoutSync.message)}</p>`
   }
@@ -1712,6 +1734,8 @@ function renderPlanStrip(o) {
         <h3>${escapeHtml(cur.title || 'Uten tittel')}</h3>
         <p class="plan-theme">${escapeHtml(cur.theme || '—')}</p>
         <p class="muted tight">${escapeHtml(cur.start_date || '?')} – ${escapeHtml(cur.end_date || '?')}${cur.weekly_hours != null ? ` · ${formatHours(cur.weekly_hours)} t/uke` : ''}</p>
+        ${cur.plan_b ? `<p class="muted tight"><strong>Plan B:</strong> ${escapeHtml(cur.plan_b)}</p>` : ''}
+        ${cur.weekly_risk ? `<p class="muted tight"><strong>Ukerisiko:</strong> ${escapeHtml(cur.weekly_risk)}</p>` : ''}
       </div>`
     : `<div class="plan-current">
         <p class="plan-kicker">Grovplan</p>
@@ -2717,12 +2741,26 @@ function renderPlanMonthCalendar() {
         `<li>${escapeHtml(s.name || 'Økt')} · ${escapeHtml(s.sport || '')}${
           s.duration_minutes != null ? ` · ${s.duration_minutes} min` : ''
         }${
+          s.source_kind_nb
+            ? ` <span class="cal-source-tag cal-source-${escapeHtml(s.source_kind || 'app')}">${escapeHtml(s.source_kind_nb)}</span>`
+            : ''
+        }${
           s.sync_status_nb
             ? ` <span class="cal-sync-tag cal-sync-${escapeHtml(s.sync_status || 'unknown')}">${escapeHtml(s.sync_status_nb)}</span>`
             : ''
         }</li>`,
     )
     .join('')
+  const weekQ = ps.week_quality || {}
+  const planBBits = (weekQ.plan_b || []).map((t) => escapeHtml(t)).join('<br/>')
+  const riskBits = (weekQ.weekly_risk || []).map((t) => escapeHtml(t)).join('<br/>')
+  const weekQualityHtml =
+    planBBits || riskBits
+      ? `<div class="cal-week-quality">
+          ${planBBits ? `<p class="muted tight"><strong>Plan B (uke)</strong><br/>${planBBits}</p>` : ''}
+          ${riskBits ? `<p class="muted tight"><strong>Ukerisiko</strong><br/>${riskBits}</p>` : ''}
+        </div>`
+      : ''
   const metaBits = []
   if (total) metaBits.push(`${total} økter`)
   if (ps.plan_horizon_weeks) metaBits.push(`~${ps.plan_horizon_weeks} uker`)
@@ -2753,7 +2791,7 @@ function renderPlanMonthCalendar() {
           <button type="button" class="btn btn-sm secondary" id="cal-next-month" aria-label="Neste måned">›</button>
         </div>
       </div>
-      <p class="muted tight">App-plan + coach-økter på Intervals. <span class="cal-legend"><span class="cal-dot cal-dot-synced">•</span> synket</span> · <span class="cal-legend"><span class="cal-dot cal-dot-unsynced">•</span> ikke synket</span> · <span class="cal-legend"><span class="cal-dot cal-dot-icu">•</span> kun Intervals</span>. Sync <strong>uke/måned</strong> pusher app → Intervals.</p>
+      <p class="muted tight">App-plan + Intervals-WORKOUTs. <span class="cal-legend"><span class="cal-dot cal-dot-synced">•</span> synket</span> · <span class="cal-legend"><span class="cal-dot cal-dot-unsynced">•</span> ikke synket</span> · <span class="cal-legend"><span class="cal-dot cal-dot-icu">•</span> kun Intervals</span>. Kilde: coach / agent / manuell. Sync <strong>uke/måned</strong> pusher app → Intervals.</p>
       ${metaBits.length ? `<p class="muted tight">${escapeHtml(metaBits.join(' · '))}</p>` : ''}
       ${
         !total && (state.planBlocks || []).length
@@ -2767,6 +2805,7 @@ function renderPlanMonthCalendar() {
       }
       ${ps.error ? `<p class="error">${escapeHtml(ps.error)}</p>` : ''}
       ${scopeHint}
+      ${weekQualityHtml}
       <div class="cal-grid" role="grid" aria-label="Månedskalender">
         ${head}
         ${grid}
@@ -2804,6 +2843,8 @@ function renderPlanBlocksEditor() {
           <div class="field"><label>Uketimer</label><input name="weekly_hours" type="number" step="0.5" value="${b.weekly_hours ?? ''}" /></div>
         </div>
         <div class="field"><label>Tema</label><input name="theme" value="${escapeHtml(b.theme || '')}" /></div>
+        <div class="field"><label>Plan B</label><input name="plan_b" value="${escapeHtml(b.plan_b || '')}" placeholder="Hvis sliten / vær / tid …" /></div>
+        <div class="field"><label>Ukerisiko</label><input name="weekly_risk" value="${escapeHtml(b.weekly_risk || '')}" placeholder="Én setning — hva kan gå galt" /></div>
         <div class="grid-2">
           <div class="field"><label>Start</label><input name="start_date" type="date" value="${escapeHtml(b.start_date || '')}" /></div>
           <div class="field"><label>Slutt</label><input name="end_date" type="date" value="${escapeHtml(b.end_date || '')}" /></div>
@@ -3298,6 +3339,7 @@ function bindApp() {
     state.workoutRemoval = null
     state.athleteTypeProposal = null
     state.agreementsProposal = null
+    state.ukesopp = null
     state.workoutSync.pending = null
     state.workoutSync.error = ''
     state.workoutSync.message = ''
@@ -3339,6 +3381,11 @@ function bindApp() {
 
   document.getElementById('agreements-dismiss-btn')?.addEventListener('click', () => {
     state.agreementsProposal = null
+    render()
+  })
+
+  document.getElementById('ukesopp-dismiss-btn')?.addEventListener('click', () => {
+    state.ukesopp = null
     render()
   })
 
@@ -3417,6 +3464,11 @@ function bindApp() {
           },
         })
       } else if (isWeek) {
+        const ready = pa.readiness_hints || pa.readiness || {}
+        const reason =
+          pa.reason ||
+          ready.summary_nb ||
+          (pa.ease_load ? 'Lett uke bekreftet' : '')
         data = await api('/v1/athlete/me/plan/week-adjust/confirm', {
           method: 'POST',
           body: {
@@ -3425,6 +3477,8 @@ function bindApp() {
             sessions: pa.sessions,
             ease_load: Boolean(pa.ease_load),
             prepare_intervals_sync: prepareSync,
+            reason,
+            readiness: ready,
           },
         })
       } else {
@@ -4211,6 +4265,8 @@ function bindApp() {
         start_date: wrap.querySelector('[name="start_date"]')?.value || null,
         end_date: wrap.querySelector('[name="end_date"]')?.value || null,
         weekly_hours: numOrNull(wrap.querySelector('[name="weekly_hours"]')?.value),
+        plan_b: wrap.querySelector('[name="plan_b"]')?.value || '',
+        weekly_risk: wrap.querySelector('[name="weekly_risk"]')?.value || '',
       }
       state.busy = true
       state.planError = ''

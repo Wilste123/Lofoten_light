@@ -1,0 +1,77 @@
+day,sport,subtype,title,duration_minutes,tss,description,phase,external_suffix,start_time
+1,Swim,technique,Svøm teknikk A (S01),55,38,workouts/planned/swim/S01-teknikk-a.txt,re-etablering,,
+1,Strength,general,"Styrke hjemme — rygg, isjas, ankel",35,18,workouts/planned/strength/ST04-prehab-rygg-isjas-hjemme.txt,re-etablering,st04,18:00
+2,Run,endurance,Myr-løp staver 70 (OPV),70,60,workouts/planned/run/OPV-myr-loping-staver.txt,re-etablering,,
+3,Bike,intervals,Sykkel sweet spot 3x15,95,72,workouts/planned/bike/sweet-spot-3x15.txt,re-etablering,,
+4,Strength,general,Styrke på 3T — maskiner,45,25,workouts/planned/strength/ST01-base-3t.txt,re-etablering,,18:00
+5,Swim,endurance,Svøm aerob 3x500 (S03),55,45,workouts/planned/swim/S03-aerob-3x500.txt,re-etablering,,
+6,Bike,technique,Sykkel rest-teknikk 85 (OPV),85,50,workouts/planned/bike/sykkel-rest-teknikk-75.txt,re-etablering,,
+7,Run,endurance,Løp easy + strides (R02),55,48,workouts/planned/run/R02-easy-55-strides.txt,re-etablering,,
+8,Swim,technique,Svøm teknikk A (S01),55,38,workouts/planned/swim/S01-teknikk-a.txt,re-etablering,,
+8,Strength,general,"Styrke hjemme — rygg, isjas, ankel",35,18,workouts/planned/strength/ST04-prehab-rygg-isjas-hjemme.txt,re-etablering,st04,18:00
+9,Run,endurance,Løp easy 45 (R01),45,42,workouts/planned/run/R01-easy-40.txt,re-etablering,,
+10,Bike,test,FTP ramp test (B17),55,65,workouts/planned/bike/ftp-ramp-test.txt,re-etablering,,
+11,Strength,general,Styrke på 3T — maskiner,45,25,workouts/planned/strength/ST01-base-3t.txt,re-etablering,,18:00
+12,Swim,endurance,Svøm aerob 1500 (S04),65,52,workouts/planned/swim/S04-aerob-1500.txt,re-etablering,,
+13,Bike,endurance,Sykkel Z2 120 (B02),120,72,workouts/planned/bike/endurance-90.txt,re-etablering,,
+14,Run,endurance,Løp trail lett 70 (R03),55,50,workouts/planned/run/R03-trail-55.txt,re-etablering,,
+15,Swim,technique,Svøm teknikk skulder (S02),45,30,workouts/planned/swim/S02-teknikk-skulder.txt,re-etablering,,
+15,Strength,general,"Styrke hjemme — rygg, isjas, ankel",35,18,workouts/planned/strength/ST04-prehab-rygg-isjas-hjemme.txt,re-etablering,st04,18:00
+16,Run,intervals,Elghufs 4x3 (OPV),70,75,workouts/planned/run/R-OPV-elghufs-4x3.txt,re-etablering,,
+17,Bike,endurance,Sykkel Z2 135 (B03),135,82,workouts/planned/bike/endurance-120.txt,re-etablering,,
+18,Strength,general,Styrke på 3T — maskiner,45,25,workouts/planned/strength/ST01-base-3t.txt,re-etablering,,18:00
+19,Swim,endurance,Svøm aerob 3x500 (S03),55,45,workouts/planned/swim/S03-aerob-3x500.txt,re-etablering,,
+20,Bike,endurance,Sykkel Z2 105 (B02),105,62,workouts/planned/bike/endurance-90.txt,re-etablering,,
+21,Run,endurance,Løp long easy 85 (R04),85,75,workouts/planned/run/R04-long-easy-80.txt,re-etablering,,
+22,Swim,recovery,Svøm recovery (S09),40,22,workouts/planned/swim/S09-recovery.txt,recovery,,
+23,Run,recovery,Løp easy 35 (R01),35,28,workouts/planned/run/R01-recovery-35.txt,recovery,,
+24,Bike,intervals,Sykkel sweet spot 2x20 (lett),85,58,workouts/planned/bike/sweet-spot-2x20.txt,recovery,,
+25,Strength,recovery,Styrke recovery — hjemme,28,15,workouts/planned/strength/ST03-recovery-hjemme.txt,recovery,,18:00
+26,Swim,technique,Svøm teknikk lett (S02),40,25,workouts/planned/swim/S02-teknikk-skulder.txt,recovery,,
+27,Bike,recovery,Sykkel Z2 60,60,32,workouts/planned/bike/recovery-spin-45.txt,recovery,,
+28,Run,recovery,Løp easy 40 + ukesopp,40,32,workouts/planned/run/R01-recovery-30.txt,recovery,,
+29,Swim,technique,Svøm teknikk A (S01),55,38,workouts/planned/swim/S01-teknikk-a.txt,base,,
+29,Strength,general,"Styrke hjemme — rygg, isjas, ankel",35,18,workouts/planned/strength/ST04-prehab-rygg-isjas-hjemme.txt,base,st04,18:00
+30,Run,intervals,Løp 5x2 bakke (R-HILL),55,62,workouts/planned/run/R-HILL-5x2-reetablering.txt,base,,
+31,Bike,endurance,Sykkel Z2 135 (B03),135,82,workouts/planned/bike/endurance-120.txt,base,,
+32,Strength,general,Styrke på 3T — maskiner,45,25,workouts/planned/strength/ST01-base-3t.txt,base,,18:00
+33,Swim,test,CSS-test (S11),55,45,workouts/planned/swim/S11-css-test.txt,base,,
+34,Bike,endurance,Sykkel Z2 105 (B02),105,62,workouts/planned/bike/endurance-90.txt,base,,
+35,Run,endurance,Løp long easy 85 (R04),85,75,workouts/planned/run/R04-long-easy-80.txt,base,,
+36,Swim,technique,Svøm teknikk A (S01),55,38,workouts/planned/swim/S01-teknikk-a.txt,base,,
+36,Strength,general,"Styrke hjemme — rygg, isjas, ankel",35,18,workouts/planned/strength/ST04-prehab-rygg-isjas-hjemme.txt,base,st04b,18:00
+37,Run,endurance,Løp easy 45 (R01),45,42,workouts/planned/run/R01-easy-40.txt,base,,
+38,Bike,intervals,Sykkel sweet spot 3x15,95,72,workouts/planned/bike/sweet-spot-3x15.txt,base,,
+39,Strength,general,Styrke på 3T — maskiner,45,25,workouts/planned/strength/ST01-base-3t.txt,base,,18:00
+40,Swim,endurance,Svøm aerob 3x500 (S03),55,45,workouts/planned/swim/S03-aerob-3x500.txt,base,,
+41,Bike,endurance,Sykkel Z2 150 (B03),150,88,workouts/planned/bike/endurance-120.txt,base,,
+42,Run,endurance,Løp long easy 85 (R04),85,75,workouts/planned/run/R04-long-easy-80.txt,base,,
+43,Swim,technique,Svøm teknikk A (S01),55,38,workouts/planned/swim/S01-teknikk-a.txt,base,,
+43,Strength,general,"Styrke hjemme — rygg, isjas, ankel",35,18,workouts/planned/strength/ST04-prehab-rygg-isjas-hjemme.txt,base,st04c,18:00
+44,Run,intervals,Løp 5x3 intervall,55,68,workouts/planned/run/R-5x3-intervall-45.txt,base,,
+45,Bike,endurance,Sykkel Z2 150 (B03),150,88,workouts/planned/bike/endurance-120.txt,base,,
+46,Strength,general,Styrke på 3T — maskiner,45,25,workouts/planned/strength/ST01-base-3t.txt,base,,18:00
+47,Swim,intervals,Svøm CSS 10x100 (S05),60,55,workouts/planned/swim/S05-css-10x100.txt,base,,
+48,Bike,endurance,Sykkel Z2 165 (B03),165,95,workouts/planned/bike/endurance-120.txt,base,,
+49,Run,endurance,Løp trail 75 (R03),75,62,workouts/planned/run/R03-trail-55.txt,base,,
+50,Swim,technique,Svøm teknikk skulder (S02),50,35,workouts/planned/swim/S02-teknikk-skulder.txt,base,,
+50,Strength,general,"Styrke hjemme — rygg, isjas, ankel",35,18,workouts/planned/strength/ST04-prehab-rygg-isjas-hjemme.txt,base,st04d,18:00
+51,Run,endurance,Løp easy 50 (R01),50,45,workouts/planned/run/R01-easy-40.txt,base,,
+52,Bike,intervals,Sykkel sweet spot 2x20,95,70,workouts/planned/bike/sweet-spot-2x20.txt,base,,
+53,Strength,general,Styrke på 3T — maskiner,45,25,workouts/planned/strength/ST01-base-3t.txt,base,,18:00
+54,Swim,endurance,Svøm aerob 1500 (S04),70,55,workouts/planned/swim/S04-aerob-1500.txt,base,,
+55,Bike,endurance,Sykkel Z2 150 (B03),150,88,workouts/planned/bike/endurance-120.txt,base,,
+56,Run,endurance,Løp long easy 90 (R04),90,78,workouts/planned/run/R04-long-easy-80.txt,base,,
+57,Swim,technique,Svøm teknikk A (S01),55,38,workouts/planned/swim/S01-teknikk-a.txt,base,,
+57,Strength,general,"Styrke hjemme — rygg, isjas, ankel",35,18,workouts/planned/strength/ST04-prehab-rygg-isjas-hjemme.txt,base,st04e,18:00
+58,Run,intervals,Elghufs 4x3 (OPV),70,75,workouts/planned/run/R-OPV-elghufs-4x3.txt,base,,
+59,Bike,endurance,Sykkel Z2 180 (B03),180,105,workouts/planned/bike/endurance-120.txt,base,,
+60,Strength,general,Styrke på 3T — maskiner,45,25,workouts/planned/strength/ST01-base-3t.txt,base,,18:00
+61,Swim,intervals,Svøm CSS 10x100 (S05),60,55,workouts/planned/swim/S05-css-10x100.txt,base,,
+62,Bike,endurance,Sykkel Z2 120 (B02),120,72,workouts/planned/bike/endurance-90.txt,base,,
+63,Run,endurance,Løp long easy 95 (R04),95,82,workouts/planned/run/R04-long-easy-80.txt,base,,
+64,Swim,recovery,Svøm recovery (S09),45,25,workouts/planned/swim/S09-recovery.txt,base,,
+64,Strength,recovery,Styrke recovery — hjemme,30,15,workouts/planned/strength/ST03-recovery-hjemme.txt,base,st03b,18:00
+65,Run,endurance,Løp easy 45 (R01),45,38,workouts/planned/run/R01-recovery-35.txt,base,,
+66,Bike,intervals,Sykkel sweet spot 2x20 (jule),85,58,workouts/planned/bike/sweet-spot-2x20.txt,base,,
+67,Swim,technique,Svøm teknikk lett (S02),40,28,workouts/planned/swim/S02-teknikk-skulder.txt,base,,

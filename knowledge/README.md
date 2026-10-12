@@ -5,7 +5,8 @@ Referanse for **topp-coach**-agenten. Alt skal kunne brukes til **konkrete ukepl
 ## Start her (agent)
 
 1. `coach/coach-filosofi.md` — tone, beslutningsregler, kvalitetskrav  
-2. `coach/treneridentitet.md` + `coach/ole-petter-vibekken-referanse.md` — hvem treneren er for William  
+2. `coach/kvalitetsnorm-toppidrett.md` — **hvor mange harde økter/uke** (toppidrett, ikke PT-nivå)  
+3. `coach/treneridentitet.md` + `coach/ole-petter-vibekken-referanse.md` — hvem treneren er for William  
 3. `docs/athlete/profile.md` + `goals.md`  
 4. `coach/ukemaler.md` — fasebaserte uker  
 5. `triathlon/periodisering-mot-2027.md` + `lofoten-half-extreme.md`

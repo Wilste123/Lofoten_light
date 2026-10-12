@@ -25,13 +25,13 @@ William ønsker en trener i **Ole Petter Vibekken**-tradisjon: norsk sykkelstruk
 
 Å planlegge som om det er **2019** (1050 t, 410 W) i en kropp som har hatt **4–5 år ujevn belastning**. Hjerte/lunger kan respondere raskt; **sener, fascier, ben og svømskuldre** respondere sakte. Volum er medisin og gift — dose avhenger av kronisk belastning.
 
-## Ukens «non-negotiables» (før intensitet)
+## Ukens «non-negotiables»
 
-1. Minst **3 treningsdager med kontakt** (svøm/løp/sykkel/styrke) — heller kort enn null.
-2. **Én full restitusjonsdag** (eller aktiv Z1 max 30 min).
-3. **Svøm 2–3×** når livet tillater — svakeste ben krever frekvens.
-4. **Styrke 2×** minimum i base/build (se `skader/forebygging-styrke-mobilitet.md`).
-5. Før volumøkning: sjekk ACWR-logikk i `skader/belastningsstyring-acwr.md`.
+1. Minst **3 treningsdager med kontakt** — heller kort enn null.
+2. **Svøm 3×** i base/build; **styrke 2×** (se `skader/forebygging-styrke-mobilitet.md`).
+3. **Kvalitet:** se `coach/kvalitetsnorm-toppidrett.md` — **2–3 økter/uke** med reell stimulus (Z3–Z5) i base; **ikke** «én intervall og resten gåtur».
+4. **Én dag** med lite eller ingen trening (ikke fyll med skjult Z3).
+5. Før volumøkning: ACWR / +10 % timer (`skader/belastningsstyring-acwr.md`).
 
 ## Beslutningsregler (coach)
 
@@ -55,7 +55,7 @@ William ønsker en trener i **Ole Petter Vibekken**-tradisjon: norsk sykkelstruk
 | Spesifikk | 8–12 uker | 15–16 t | Half-sim, OWS, bakke |
 | Taper | 2–3 uker | fallende | skarphet, ikke fitness-jakt |
 
-Recovery-uke hver **3.–4. uke**: −35 % timer, behold 1 kort kvalitetsstikk.
+Recovery-uke hver **3.–4. uke**: −25–35 % timer, **1–2** lett kvalitetsøkter (SS kort, svøm-drag) — ikke null stimulus.
 
 ## Testprotokoller (planlegg eksplisitt)
 
@@ -75,7 +75,7 @@ For hver uke agenten skriver til `plans/`:
 1. **Tema** (én setning)
 2. **Timer / TSS-mål** (range)
 3. **Tabell** man–søn med disiplin, varighet, nøkkelintensitet
-4. **Øktbeskrivelser** for alle kvalitetsøkter (oppvarming, main set, cooldown)
+4. **Øktbeskrivelser** for **alle** kvalitetsøkter (minst 3/uke i base — oppvarming, main set, cooldown)
 5. **Styrke** (øvelser, sett, reps) — **3T vs hjemme** tydelig; full tekst til Intervals (`intervals-tekst-opv.md`)
 6. **Ernæring** kun hvis lang økt eller brick
 7. **Risiko** — hva som kan gå galt denne uken og Plan B

@@ -6,6 +6,8 @@
 
 ## Prinsipp
 
+**Kvalitet:** min **3 harde økter/uke** i base — [`knowledge/coach/kvalitetsnorm-toppidrett.md`](../knowledge/coach/kvalitetsnorm-toppidrett.md)
+
 **Mengde-mesosykluser (3+1, uke-for-uke):** [`mengdeperioder-2026-2027.md`](mengdeperioder-2026-2027.md) · CSV [`csv/mengdeperioder-2026-2027.csv`](csv/mengdeperioder-2026-2027.csv) · Intervals TARGET [`csv/intervals-weekly-targets-2026-10-12-12-31.csv`](csv/intervals-weekly-targets-2026-10-12-12-31.csv) (nå til apr 2027).
 
 Kort:

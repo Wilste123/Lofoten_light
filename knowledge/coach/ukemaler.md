@@ -24,19 +24,19 @@ Timer er **indikative** — juster til faktisk liv og nåværende belastning. Sy
 
 ## Fase B — Aerob base (ca. 11–14 t/uke)
 
-**Mål:** Bygge mot 750–800 t; Z2 75–85 % av tid; én sykkel-Q.
+**Mål:** 750–800 t; Z2 **bærer** volum; **minst 3 kvalitetsøkter/uke** (`kvalitetsnorm-toppidrett.md`).
 
 | Dag | Økt | Varighet |
 |-----|-----|----------|
-| Man | Svøm | 50–60 min (aerob + 6×100 @ CSS når test finnes) |
-| Tir | Løp E | 50–70 min |
-| Ons | Sykkel **Q** sweet spot | 75 min (2×15 @ 88–92 % FTP) |
-| Tor | Svøm + styrke | 45 min svøm + 30 styrke |
-| Fre | Løp E | 45 min |
-| Lør | Sykkel lang **E** | 2,5–3,5 t | Fueling øv |
-| Søn | Løp medium | 70–90 min trail easy |
+| Man | Svøm **Q** (CSS / 8×100 / aerob hard) | 55–60 min |
+| Tir | Løp **Q** (tempo / bakke / OPV) | 55–70 min |
+| Ons | Sykkel **Q** SS 2×20 eller 3×15 | 85–95 min |
+| Tor | Styrke 3T | 45 min |
+| Fre | Svøm **Q** eller aerob 1500 kontrollert | 55–70 min |
+| Lør | Sykkel lang Z2 (ev. 3×10 min @ 85 % inni) | 2,5–3 t |
+| Søn | Løp lang Z2 eller lett tempo-avslutning | 75–95 min |
 
-**Uketotal:** ~12–14 t.
+**Uketotal:** ~12–14 t. **Ikke** erstatt fre/lør Q med «bare rolig» uten recovery-meso.
 
 ---
 

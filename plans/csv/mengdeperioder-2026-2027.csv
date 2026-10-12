@@ -23,8 +23,8 @@ M6-W1,B5,2027-03-15,13.0,620,false,,Plan TBD
 M6-W2,B5,2027-03-22,13.5,650,false,,Plan TBD
 M6-W3,B5,2027-03-29,14.0,680,false,,Plan TBD
 M6-W4,B5,2027-04-05,10.0,480,true,,Recovery
-M6-W5,B5,2027-04-12,13.5,640,false,2027-04-12-uke-leksvik.md,Leksvik opphold fra 16 apr (uke 1)
-M6-W6,B5,2027-04-19,14.5,660,false,2027-04-19-uke-leksvik.md,Leksvik uke 2 til 25 apr
+M6-W5,B5,2027-04-12,15.0,700,false,2027-04-12-uke-leksvik.md,Leksvik camp uke 1 ~15t
+M6-W6,B5,2027-04-19,18.5,800,false,2027-04-19-uke-leksvik.md,Leksvik camp uke 2 17-20t
 M7,B6,2027-05-01,14.5,700,false,,Build 1 meso — detalj senere
 M8,B7,2027-06-01,15.5,750,false,,Build 2 brick
 M9,B8,2027-07-01,16.0,780,false,,Volumtopp ar

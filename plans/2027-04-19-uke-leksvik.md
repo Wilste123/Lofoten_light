@@ -1,34 +1,34 @@
-# Uke — 19.–25. april 2027 · B5 · Leksvik (uke 2)
+# Uke — 19.–25. april 2027 · B5 · Leksvik camp (uke 2)
 
-**Sted:** Fortsatt på hytta til **søndag 25. apr**  
-**Mål timer / TSS:** **~14–15 t** | ~640–680  
-**Kvalitet:** **Ons 21.** — én kort SS **eller** 5×3 løp (se leir-dok; ikke hvis SS ble kjørt 14. apr)  
-**Leir:** [`2027-04-leksvik-treningsleir.md`](2027-04-leksvik-treningsleir.md) (dager 19.–25.)  
-**Risiko:** Fri mandag hoppes over → ons+frelør for hardt  
-**Plan B:** Dropp ons Q; fre 23. → 90 min Z2; lør 24. kun løp 60 min  
+**Sted:** Hytta til **søndag 25. apr**  
+**Mål timer / TSS:** **~17–20 t** | ~**750–850**  
+**Camp-gulv:** **15 t** — under det: legg på **45 min Z2** tir eller tor (lett).  
+**Kvalitet:** **Ons 21.** — én kort Q (se leir-dok)  
+**Leir:** [`2027-04-leksvik-treningsleir.md`](2027-04-leksvik-treningsleir.md)  
+**Risiko:** Hoppe over man 19. + full gas fre/lør → 20 t som knuser bein  
+**Plan B (15 t):** fre 23. → 2:30 sykkel; lør 24. → 2 t sykkel uten løp; beholde ons Q  
 
 | Dag | Dato | Økt | Varighet | TSS ca. |
 |-----|------|-----|----------|---------|
-| Man | 19.04 | **Restitusjon** — gå/kort sykkel med samboer | 0–45 min | 0–25 |
-| Tir | 20.04 | Sykkel eller løp Z2 lett | 75–90 min | 55–65 |
-| Ons | 21.04 | **Q kort** — SS 2×15 *eller* løp 5×3 | 55–75 min | 65–80 |
-| Tor | 22.04 | **Avlastning** — fri / 40 min rolig | 0–40 min | 0–30 |
-| Fre | 23.04 | **Sykkel Z2 lang** (2.15–2.45) | 135–165 min | 130–160 |
-| Lør | 24.04 | **Brick lett** eller felles trail | 105–125 min | 95–115 |
-| Søn | 25.04 | Shakeout + avreise | 30–45 min | 25–35 |
+| Man | 19.04 | Lett sykkel / tur med samboer | **75 min** | 45 |
+| Tir | 20.04 | Sykkel Z2 | **2:45** | 155 |
+| Ons | 21.04 | **Q** — 5×3 løp *eller* SS 2×15 / 3×8 | **85–95 min** | 75–85 |
+| Tor | 22.04 | Svøm teknikk (Trondheim) *eller* sykkel Z1 | **75–90 min** | 50–60 |
+| Fre | 23.04 | **Lang sykkel Z2** | **3:30–4:00** | 200–235 |
+| Lør | 24.04 | **Brick** Z2 + løp easy | **3:15–3:30** | 175–195 |
+| Søn | 25.04 | Shakeout + avreise | **60–75 min** | 40–50 |
 
-**26. apr (man):** Recovery — svøm S09 eller off.
+**Sum uke:** ca. **17,5–20 t** (1020–1200 min).
+
+**26. apr:** Recovery — svøm S09 eller fri (~11–12 t uke etter).
 
 ---
 
-## Ons — ikke dobbel hard
+## Volumkontroll
 
-Hvis du kjørte **SS 2×20 14. apr** hjemme: ons 21. = **løp 5×3** eller **3×8 SS sykkel**, ikke begge.
+- Tell **manuelt** før avreise søn — skal være **≥ 17 t** denne uken hvis du ligger an på 18–20 t camp totalt.  
+- **Ikke** SS + lang sykkel **samme dag**.
 
-## Fre — lang sykkel #2
+## Fre + lør
 
-Kortere og roligere enn **lør 17. apr** — annen rute, samme fueling-disiplin.
-
-## Søn — hjem
-
-Ikke «ta igjen» taper-uke mandag — du har mai foran deg.
+To store dager — **man 19.** og **tor 22.** er ikke valgfrie «fri» hvis du vil ha 17–20 t uten å ødelegge fre/lør.

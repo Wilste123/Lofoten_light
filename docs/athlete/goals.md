@@ -45,11 +45,12 @@ Agenten skal aktivt **dempe** Norseman/full-Extreme-logikk (ultra-spesifisitet, 
 - **Blokker og formål (start her):** [`plans/blokker-periodisering-2026-2027.md`](../plans/blokker-periodisering-2026-2027.md)  
 - Månedstabell: [`plans/2026-2027-12mnd-periodisering.md`](../plans/2026-2027-12mnd-periodisering.md) (sep 2026 → Half Extreme aug 2027 + 750–800 t).
 
-## Denne blokken (4–8 uker) — utfyll med agent
+## Denne blokken (okt–nov 2026)
 
-- **Primærfokus:** TBD (f.eks. løpefrekvens + sykkel Z2 + 2× svøm/uke)
-- **Ukemål timer:** TBD nå → bygg mot **~14,5–15,5 t/uke snitt** over 12 mnd (750–800 t totalt); 2026 &gt;50 t hittil er lav base — ikke 2019-volum (~20 t/uke) før kroppen tåler det
-- **Non-negotiables:** Skadefrihet, gradvis progresjon (prioritet 2–3)
+- **Primærfokus:** **Sykkel Z2 tilbake** + **3× svøm/uke** + **maks én** hard løpeanker/uke (etter deload 19.–25. okt)
+- **Ukemål timer:** B1 **~8–8,5 t** → B2 **~9–10 t** (november); bygg mot **~14,5–15,5 t/uke snitt** over 12 mnd (750–800 t totalt)
+- **Non-negotiables:** Skadefrihet, gradvis progresjon; fullføre Half Extreme 2027 først (styringsanker 6:30–7:00)
+- **Analyse:** [`plans/2026-10-analyse-siste-uker.md`](../plans/2026-10-analyse-siste-uker.md) · **Måned nov:** [`plans/2026-11-måned.md`](../plans/2026-11-måned.md)
 
 ## Suksesskriterier
 

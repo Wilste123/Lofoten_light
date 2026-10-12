@@ -7,3 +7,5 @@ date,weekday,workout_id,zwo_path,ftp_pct_summary,notes
 2026-11-14,Saturday,B02,workouts/zwo/bike/endurance-90.zwo,"~68%",""
 2026-11-18,Wednesday,B01,workouts/zwo/bike/recovery-spin-45.zwo,"Recovery B1","Uke 8"
 2026-11-21,Saturday,B01,workouts/zwo/bike/recovery-spin-45.zwo,"Valgfri 30 min","Recovery"
+2026-11-25,Wednesday,B03,workouts/zwo/bike/endurance-120.zwo,"2t15 Z2","B2 uke 9"
+2026-11-28,Saturday,B02,workouts/zwo/bike/endurance-90.zwo,"~68%","B2 uke 9"

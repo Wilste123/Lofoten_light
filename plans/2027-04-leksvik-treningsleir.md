@@ -77,6 +77,17 @@
 
 - **10 netter** 16.–25. · sykkel + medhaling · værforbehold → skyv hele blokken, ikke mai.
 
+## Intervals.icu
+
+```bash
+python3 scripts/intervals_push_calendar.py --start 2027-04-12 \
+  --plan plans/csv/trainingdojo-2027-04-leksvik.csv \
+  --notes plans/csv/trainingdojo-uke-notater-2027-04-leksvik.csv \
+  --bike-calendar plans/csv/sykkel-zwo-kalender-2027-04-leksvik.csv
+```
+
+`external_id` bruker planstart **2027-04-12** — påvirker ikke Q4-planen (2026-10-26).
+
 ## Koblinger
 
 - [`mengdeperioder-2026-2027.md`](mengdeperioder-2026-2027.md) · [`blokker-periodisering-2026-2027.md`](blokker-periodisering-2026-2027.md)  

@@ -4,7 +4,7 @@ Timer er **indikative** — juster til faktisk liv og nåværende belastning. Sy
 
 ---
 
-## Fase A — Re-etablering (ca. 8–11 t/uke → **William: min 10 t fra nov 2026** etter deload)
+## Fase A — Re-etablering (ca. 8–11 t/uke; William nov 2026: **9–10 t**, des **11+**)
 
 **Mål:** 3+ dager kontakt, svøm-vane, løp uten skade, sykkel uten å «bare rulle seg død».
 

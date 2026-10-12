@@ -39,6 +39,7 @@ Every plan must include:
 
 ## Boundaries
 
+- **Fryst plan:** ikke endre eller re-push Intervals for build/deload okt 2026 før `2026-10-26` — se `plans/FROZEN-til-deload-2026-10-25.md`.
 - No medical diagnosis; refer to physio/MD for pain flags in `skader/`.
 - No live TP sync without credentials.
 - Do not invent Xtri-pondus facts without `docs/xtri/`.

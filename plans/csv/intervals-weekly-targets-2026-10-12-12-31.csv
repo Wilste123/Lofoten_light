@@ -1,13 +1,13 @@
 week_start,phase,total_tss,hours,notes
-2026-10-12,build,480,9.5,Build uke 12-18 — plans/2026-10-12-uke-build.md
-2026-10-19,deload,200,5.0,Deload — plans/2026-10-19-uke-deload.md
-2026-10-26,b1,520,10.0,Uke 5 B1 — min 10t etter deload
-2026-11-02,b1,540,10.0,Uke 6 FTP
-2026-11-09,b1,560,10.5,Uke 7 elghufs
-2026-11-16,b1-recovery,500,10.0,Uke 8 — lav intensitet, ikke lavt volum
-2026-11-23,b2,540,10.5,B2 start CSS
-2026-11-30,b2,560,10.5,
-2026-12-07,b2,580,11.0,
-2026-12-14,b2,600,11.0,
-2026-12-21,b2,580,10.5,
-2026-12-28,b2,540,10.0,Last week of 2026
+2026-10-12,build,480,9.5,FROZEN — build 12-18
+2026-10-19,deload,200,5.0,FROZEN — deload 19-25
+2026-10-26,b1,460,9.0,Uke 5 — re-inn etter deload (ikke årstopp)
+2026-11-02,b1,485,9.5,Uke 6 FTP
+2026-11-09,b1,510,10.0,Uke 7 — nov-topp kvalitet (elghufs)
+2026-11-16,b1-recovery,360,7.5,Uke 8 — ekte recovery
+2026-11-23,b2,485,9.5,B2 CSS-uke
+2026-11-30,b2,510,10.0,
+2026-12-07,b2,540,10.5,
+2026-12-14,b2,580,11.0,
+2026-12-21,b2,620,11.5,Des-topp 2026 (under sommer-build 2027)
+2026-12-28,b2,500,10.0,Juleuke — lett ned

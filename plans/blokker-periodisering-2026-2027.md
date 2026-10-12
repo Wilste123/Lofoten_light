@@ -31,8 +31,8 @@ gantt
 
     section Re-etablering
     B0 Start 4u           :b0, 2026-09-28, 28d
-    B1 Kontakt 8t         :b1, after b0, 28d
-    B2 Opp mot 10t        :b2, after b1, 28d
+    B1 Kontakt 9-10t      :b1, after b0, 28d
+    B2 Des 10-11.5t      :b2, after b1, 28d
 
     section Base
     B3 Aerob bred         :b3, 2026-12-01, 56d
@@ -71,8 +71,8 @@ gantt
 
 | | |
 |---|---|
-| **Timer** | **~10 t/uke** (etter deload 19.–25. okt; ikke under 10 t i B1/B2) |
-| **Hvorfor** | Stabilisere **12 økter/14 dager** uten fall; bevise at ukestruktur tåler jobb + Trondheim-vinter innendørs |
+| **Timer** | **~9 → 10 t/uke** (uke 8 recovery **~7,5 t**); **ikke** årets topp — se [`2026-post-deload-ramp.md`](2026-post-deload-ramp.md) |
+| **Hvorfor** | Struktur etter deload; kvalitet (myr, elghufs, FTP) uten å topp-load november |
 | **Fokus** | Svøm 3×, løp **myr/elghufs lett** (OPV), sykkel Z2 + **rest-teknikk** (ettbens), styrke 2× |
 | **Tester** | **FTP ramp** (sykkel) uke 2–3 i blokken hvis 3 uker grønn etter B0 |
 | **Nøkkeløkter** | `OPV-myr-loping-staver`, kort `OPV-elghufs 4×3`, sykkel rest-teknikk ([`opv-nokkelokter.md`](../knowledge/coach/opv-nokkelokter.md)) |
@@ -86,8 +86,8 @@ gantt
 
 | | |
 |---|---|
-| **Timer** | **~10–11 t/uke** (gulv 10 t; mot des 11 t) |
-| **Hvorfor** | Du skal **nærme deg** årsmålets snitt over måneder — ikke hoppe til 15 t på én uke |
+| **Timer** | **~10 → 11,5 t/uke** i des (**høyere enn nov**) |
+| **Hvorfor** | Ramp mot base jan–apr; **årets topp** kommer build mai–jul 2027 (14–16 t) |
 | **Fokus** | Første **CSS-test** (svøm), løp long 75–90 min, sykkel **2–2,5 t** rolig |
 | **Intensitet** | Fortsatt **80 %+** Z1–Z2; maks 1 «kontrolløkt» sykkel lett |
 | **Suksess** | 10 t/uke én gang uten å føles som 2019 |

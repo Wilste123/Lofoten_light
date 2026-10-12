@@ -44,7 +44,7 @@ Snittvekt **morgen** (7-dagers snitt). Hvis du er **over tak** 2 uker: lett kalo
 |-----|----------------|------|-------------|-------------------------|------------|
 | 1 | Sep 2026 | Re-etablering | 8–9 | 32–36 | Svøm 3×, løp skadefri, sykkel variert |
 | 2 | Okt 2026 | Re-etablering | 9–10 *(faktisk ~6–7 t uke 40–41 — se analyse)* | 68–76 | + styrke 2×, første FTP-test |
-| 3 | Nov 2026 | Base tidlig | **10–11** *(min 10 t/uke fra 26. okt)* | 108–120 | Z2 + sykkel 2,5–3 t, CSS-test svøm |
+| 3 | Nov 2026 | Base tidlig | **9–10** *(des stiger over nov)* | 108–120 | Ramp mot ekstrem-volum; CSS-test; nov ≠ årstopp |
 | 4 | Des 2026 | Base | 11–12 | 152–168 | Innendørs sykkel, løp volum |
 | 5 | Jan 2027 | Base | 11–13 | 196–220 | Stabil rutine vinter |
 | 6 | Feb 2027 | Base | 12–13 | 244–272 | Lang sykkel 2,5–3 h |

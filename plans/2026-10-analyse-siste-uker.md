@@ -1,5 +1,7 @@
 # Analyse — trening sep–okt 2026 (oppdatert 12. okt)
 
+> **Revisjon (samme dag):** William vil **pushe volum** — fra uke 5 (26. okt) er **gulv 10 t/uke** (uke 8 = lav intensitet, ikke 5 t). Svøm til Intervals = **notat + varighet/load**, ikke strukturerte intervaller.
+
 **Kilde:** `data/intervals/exports/activities-60d-2026-10-12.csv`, wellness 5.–12. okt  
 **Kontekst:** Re-etablering mot **Half Extreme Lofoten 2027** — fullføre først, styringsanker **6:30–7:00**; årsmål **750–800 t** (~14,5–15,5 t/uke når du er oppe i form).
 

@@ -71,7 +71,7 @@ gantt
 
 | | |
 |---|---|
-| **Timer** | ~8–9 t/uke |
+| **Timer** | **~10 t/uke** (etter deload 19.–25. okt; ikke under 10 t i B1/B2) |
 | **Hvorfor** | Stabilisere **12 økter/14 dager** uten fall; bevise at ukestruktur tåler jobb + Trondheim-vinter innendørs |
 | **Fokus** | Svøm 3×, løp **myr/elghufs lett** (OPV), sykkel Z2 + **rest-teknikk** (ettbens), styrke 2× |
 | **Tester** | **FTP ramp** (sykkel) uke 2–3 i blokken hvis 3 uker grønn etter B0 |
@@ -86,8 +86,8 @@ gantt
 
 | | |
 |---|---|
-| **Timer** | ~9–10 t/uke |
-| **Hvorfor** | Du skal **nærme deg** årsmålets snitt over måneder — ikke hoppe til 15 t |
+| **Timer** | **~10–11 t/uke** (gulv 10 t; mot des 11 t) |
+| **Hvorfor** | Du skal **nærme deg** årsmålets snitt over måneder — ikke hoppe til 15 t på én uke |
 | **Fokus** | Første **CSS-test** (svøm), løp long 75–90 min, sykkel **2–2,5 t** rolig |
 | **Intensitet** | Fortsatt **80 %+** Z1–Z2; maks 1 «kontrolløkt» sykkel lett |
 | **Suksess** | 10 t/uke én gang uten å føles som 2019 |

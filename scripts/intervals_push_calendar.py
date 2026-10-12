@@ -16,6 +16,7 @@ if str(Path(__file__).resolve().parent) not in sys.path:
 from intervals_lib import (  # noqa: E402
     SPORT_TO_INTERVALS_TYPE,
     api_key,
+    format_swim_coach_note_only,
     post_events_bulk,
     planned_intervals_target,
     resolve_bike_zwo_path,
@@ -102,8 +103,8 @@ def build_workout_event(
             ev["type"] = "Swim"
         elif sport_key == "bike":
             ev["type"] = "Ride"
-    elif sport_key in ("run", "swim", "bike") and duration_min > 0:
-        # Fallback: simple steady block in Intervals workout text
+    elif sport_key in ("run", "bike") and duration_min > 0:
+        # Fallback steady block (not swim — kun trenernotat + varighet/load)
         pct = "Z2 HR" if sport_key != "bike" else "68%"
         ev["description"] = f"- {duration_min}m {pct}\n\n{description}".strip()
 
@@ -111,6 +112,12 @@ def build_workout_event(
         body = resolve_strength_description(description, repo_root)
         if body:
             ev["description"] = body
+    elif sport_key == "swim":
+        planned_path = resolve_planned_session_path(description, sport_key, repo_root)
+        if planned_path:
+            ev["description"] = format_swim_coach_note_only(planned_path)
+        elif description:
+            ev["description"] = description
     else:
         planned_path = resolve_planned_session_path(description, sport_key, repo_root)
         session = (
@@ -124,8 +131,6 @@ def build_workout_event(
             itarget = planned_intervals_target(planned_path)
             if sport_key == "run" and itarget == "HR":
                 ev["target"] = "HR"
-            elif sport_key == "swim" and itarget == "Pace":
-                ev["target"] = "PACE"
 
     return ev
 

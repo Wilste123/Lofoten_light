@@ -92,6 +92,15 @@ def format_planned_session_for_intervals(path: Path) -> str:
     return intervals
 
 
+def format_swim_coach_note_only(path: Path) -> str:
+    """Coach text for Intervals swim WORKOUT — no ---intervals--- block (avoids 12m/50m parser)."""
+    raw = path.read_text(encoding="utf-8")
+    head = raw.split("---intervals---", 1)[0]
+    if "\n---\n" in head:
+        return head.split("\n---\n", 1)[1].strip()
+    return format_strength_txt_for_intervals(path)
+
+
 def resolve_planned_session_path(
     description: str, sport: str, repo_root: Path
 ) -> Path | None:

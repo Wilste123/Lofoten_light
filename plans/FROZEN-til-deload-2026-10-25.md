@@ -10,4 +10,4 @@
 
 **Agent:** Ingen redigering av disse filene, ingen `intervals_push_calendar` med `--start` før `2026-10-26`.
 
-**Etter 26. okt:** Se [`2026-post-deload-ramp.md`](2026-post-deload-ramp.md) og uke 5+.
+**Etter 26. okt:** [`2026-Q4-26okt-31des.md`](2026-Q4-26okt-31des.md) · CSV `trainingdojo-2026-10-26-des31.csv`

@@ -1,0 +1,9 @@
+day,sport,subtype,title,duration_minutes,tss,description,phase,external_suffix,start_time
+2,Swim,technique,Svøm teknikk skulder (S02) 70,70,38,workouts/planned/swim/S02-teknikk-skulder.txt,build,,
+3,Bike,endurance,Sykkel Z2 165 (B03),165,100,workouts/planned/bike/endurance-120.txt,build,b03,
+4,Swim,endurance,Svøm aerob 3x500 (S03) 60,60,42,workouts/planned/swim/S03-aerob-3x500.txt,build,,
+5,Run,interval,Løpeintervaller 5×3 (ANKER),50,62,workouts/planned/run/R-5x3-intervall-45.txt,build,5x3,
+6,Run,endurance,Løp long easy 95 (R04),95,72,workouts/planned/run/R-god-okt-trail-70.txt,build,run-am,09:00
+6,Bike,recovery,Sykkel recovery 45 (B01),45,25,workouts/planned/bike/recovery-spin-45.txt,build,b01-pm,16:00
+7,Swim,recovery,Svøm recovery (S09) 45,45,22,workouts/planned/swim/S09-recovery.txt,build,,
+7,Strength,general,ST04 rygg/isjas hjemme,35,15,workouts/planned/strength/ST04-prehab-rygg-isjas-hjemme.txt,build,st04,18:00

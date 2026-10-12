@@ -43,6 +43,7 @@ Agenten skal aktivt **dempe** Norseman/full-Extreme-logikk (ultra-spesifisitet, 
 ## 12-måneders plan
 
 - **Blokker og formål (start her):** [`plans/blokker-periodisering-2026-2027.md`](../plans/blokker-periodisering-2026-2027.md)  
+- **Mengdeperioder (4-ukers volum):** [`plans/mengdeperioder-2026-2027.md`](../plans/mengdeperioder-2026-2027.md)  
 - Månedstabell: [`plans/2026-2027-12mnd-periodisering.md`](../plans/2026-2027-12mnd-periodisering.md) (sep 2026 → Half Extreme aug 2027 + 750–800 t).
 
 ## Denne blokken (okt–nov 2026)

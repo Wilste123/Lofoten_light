@@ -2,7 +2,8 @@
 
 **Horisont:** ca. 12–18 måneder avhengig av «nå». **Årsmål:** 750–800 t. **Race:** 1,9 / 100 / 21 km Lofoten.
 
-**Operativ blokkplan (William):** [`../../plans/blokker-periodisering-2026-2027.md`](../../plans/blokker-periodisering-2026-2027.md)
+**Operativ blokkplan (William):** [`../../plans/blokker-periodisering-2026-2027.md`](../../plans/blokker-periodisering-2026-2027.md)  
+**Mengde-mesosykluser (timer/uke, 3+1):** [`../../plans/mengdeperioder-2026-2027.md`](../../plans/mengdeperioder-2026-2027.md)
 
 ## Årshjul (konseptuelt)
 

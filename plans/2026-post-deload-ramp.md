@@ -6,15 +6,15 @@
 
 ## Prinsipp
 
-| Periode | Timer/uke (ca.) | Rolle |
-|---------|-----------------|--------|
-| **B1** uke 5–7 (26. okt – 15. nov) | **9 → 9,5 → 10** | Tilbake i struktur; **én** kvalitetsanker/uke; sykkel **vokser**, ikke 3 t lør i uke 6 |
-| **B1** uke 8 (16.–22. nov) | **~7,5** | Ekte recovery — lavere **timer**, ikke «10 t rolig» |
-| **B2** (23. nov – des) | **9,5 → 11,5** | CSS, lang løp, sykkel mot **2,5 t**; **desember > november** |
-| **B3–B5** (jan–apr 27) | **11 → 14** | Base mot build |
-| **B6–B8** (mai–jul 27) | **14 → 16** | **Årets topp** — threshold, brick, lang sykkel 4–5 t |
+**Mengde-mesosykluser (3+1, uke-for-uke):** [`mengdeperioder-2026-2027.md`](mengdeperioder-2026-2027.md) · CSV [`csv/mengdeperioder-2026-2027.csv`](csv/mengdeperioder-2026-2027.csv) · Intervals TARGET [`csv/intervals-weekly-targets-2026-10-12-12-31.csv`](csv/intervals-weekly-targets-2026-10-12-12-31.csv) (nå til apr 2027).
 
-**Årsmål 750–800 t** krever at **snittet stiger mot vår/sommer 2027**, ikke toppes i november 2026.
+Kort:
+- **M1** (26. okt – 22. nov): 9 → 10 t, **uke 8 recovery 7,5 t**
+- **M2–M3** (nov–jan): des **> nov**; topp **11,5 t** uke 21. des
+- **M4–M6** (jan–apr): **12 → 14 t** med recovery hver 4. uke
+- **M7–M9** (mai–jul 27): **14 → 16 t** — årets mengdetopp
+
+**Årsmål 750–800 t** krever stigende mesos mot sommer 2027, ikke topp i november 2026.
 
 ## Intervals
 

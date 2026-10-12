@@ -14,7 +14,7 @@ Detaljerte månedstall: [`2026-2027-12mnd-periodisering.md`](2026-2027-12mnd-per
 |-----|--------|
 | **År** | Bygge **aerob + MSK** på tre ben mot 750–800 t — ikke 2019-volum på 2026-kropp |
 | **Fase** | Først **kontakt og vane**, så **bred base**, så **kvalitet + brick**, til slutt **Lofoten-spesifikk + taper** |
-| **Blokk (4 uker)** | 3 uker progresjon → **1 recovery** (OPV «ressursuke») |
+| **Blokk (4 uker)** | 3 uker progresjon → **1 recovery** (OPV «ressursuke») — **mengde-tabell:** [`mengdeperioder-2026-2027.md`](mengdeperioder-2026-2027.md) |
 | **Uke** | Ett tydelig fokus + TP-kommentarer ([`trener-feedback-syklus.md`](../docs/trainingpeaks/trener-feedback-syklus.md)) |
 
 **Prioriteringsfilter** (fra profil): kontinuitet → skadefrihet → gradvis progresjon → aerob → Lofoten → prestasjon.
@@ -263,5 +263,8 @@ gantt
 |-----|------|
 | [`2026-2027-12mnd-periodisering.md`](2026-2027-12mnd-periodisering.md) | Måned-for-måned tabeller |
 | [`csv/12mnd-periodisering.csv`](csv/12mnd-periodisering.csv) | Excel/ark import |
+| [`mengdeperioder-2026-2027.md`](mengdeperioder-2026-2027.md) | **Mengde-mesosykluser** (timer/TSS per uke) |
+| [`csv/mengdeperioder-2026-2027.csv`](csv/mengdeperioder-2026-2027.csv) | Meso-import / agent |
+| [`csv/intervals-weekly-targets-2026-10-12-12-31.csv`](csv/intervals-weekly-targets-2026-10-12-12-31.csv) | Ukentlig TARGET Intervals |
 | [`coach/ukemaler.md`](../knowledge/coach/ukemaler.md) | Eksempeluker per fase A–D |
 | [`coach/opv-nokkelokter.md`](../knowledge/coach/opv-nokkelokter.md) | Signaturøkter |

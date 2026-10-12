@@ -126,7 +126,7 @@ gantt
 | **Hvorfor** | «Bro» — kroppen skal tåle **to kvalitetsstimuli** i uka uten å ryke |
 | **Fokus** | Roter sykkel-Q og løp-Q **ulike uker**; brick **intro** (BR01) |
 | **Suksess** | Brick 90 min sykkel + 20 min løp uten 5 dager ødelagt bein |
-| **Leir** | **Leksvik 16.–18. apr 2027** (fre–søn, med samboer) etter recovery — utendørs åpning, ikke mai-volum — [`2027-04-leksvik-treningsleir.md`](2027-04-leksvik-treningsleir.md) |
+| **Leir** | **Leksvik 16.–25. apr 2027** (10 dager, med samboer) etter recovery — utendørs åpning, ikke mai-volum — [`2027-04-leksvik-treningsleir.md`](2027-04-leksvik-treningsleir.md) |
 
 ---
 

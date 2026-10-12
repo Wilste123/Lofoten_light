@@ -1,100 +1,107 @@
-# Treningsleir Leksvik — 16.–18. april 2027 (tentativ)
+# Treningsleir Leksvik — 16.–25. april 2027 (tentativ)
 
-**Format:** Fredag ettermiddag → søndag ettermiddag · **med samboer** (felles tur, ikke isolert leir)  
-**Plassering i planen:** Uke etter **M6-W4 recovery** (5.–11. apr) · **B5 base → build-bro** · før mai-build (M7).  
-**Hvorfor da:** Lavland/kyst (Leksvik/Indre Fosen) er vanligvis **snøfri og kjørbart** fra midt april; du er ut av recovery og skal **åpne utesesongen** uten å kaste deg rett inn i 15 t/uke.
+**Format:** **Fredag 16. apr → søndag 25. apr** (10 dager) · **med samboer** på hytta/leilighet  
+**Plassering i planen:** Rett etter **M6-W4 recovery** (5.–11. apr) · **B5 base → build-bro** · **før** mai-build (M7).  
+**Hvorfor da:** Kyst/Leksvik er normalt **snøfri og kjørbart** fra midt april — dette er **ute-sesongåpning**, ikke mai-mengde.
 
-**Ikke mai** — denne leiren er bevisst **april**, mens mai–jul er mengdetopp (M7–M9).
+**Ikke mai** — lengre opphold i april, mens mai–jul er årets volumtopp.
 
 ---
 
-## Styring
+## Styring (hele oppholdet)
 
 | | |
 |---|---|
-| **Ukentimer (hele uke 12.–18. apr)** | **~13–14 t** (normal B5, ikke leir-uke på 18 t) |
-| **TSS ca.** | ~620–650 |
-| **Kvalitet** | **1** tydelig hard/SS-anker **før** fredag · leir = **volum Z2 + terreng**, ikke intervallfest |
-| **Risiko** | For mye ny asfalt + hyttekropp på lørdag → stiv hamstring søndag |
-| **Plan B** | Regn/is: kortere løp/sykkel, ekstra svøm Trondheim uke etter |
+| **Treningsdager** | 8 av 10 (man 19. og tor 22. er bevisst **lave** / fri) |
+| **Timer totalt 16.–25.** | **~14–16 t** (spredt — ikke toppidrett-leir hver dag) |
+| **To kalenderuker** | Uke 12.–18. apr: **~13–14 t** (hjemme man–tor + leir fre–søn) · Uke 19.–25. apr: **~14–15 t** (hele uken Leksvik til avreise søn) |
+| **Kvalitet** | **1× SS** (ons 14. hjemme *eller* ons 21. på hytta — **ikke begge**) · ellers Z2 + ett langløp |
+| **Risiko** | To «store» sykkeldager tett (lør 17. + fre 23.) uten ro mandag → sykdom/skade |
+| **Plan B** | Is/regn: kortere økter, mer løp/grus, svøm først uke hjemme etter 25. |
 
-**Mikroplan:** [`2027-04-12-uke-leksvik.md`](2027-04-12-uke-leksvik.md)
-
----
-
-## Fredag 16. april — ankomst / kontakt
-
-**Ettermiddag (60–90 min)** — valgfri **lett sykkel** eller **gåtur/jogg 40 min** med samboer  
-- RPE 3–4, ingen intervaller.  
-- Sjekk dekk, bremser, klær mot vind (fjord).
-
-**Kveld:** Mat, sengetid — du skal kjøre **lørdag**, ikke «fredagstempo».
+**Mikro:** [`2027-04-12-uke-leksvik.md`](2027-04-12-uke-leksvik.md) · [`2027-04-19-uke-leksvik.md`](2027-04-19-uke-leksvik.md)
 
 ---
 
-## Lørdag 17. april — hoveddag (sykkel)
-
-**Sykkel lang Z2 utendørs — 3:00–3:30** (mål **~180–210 TSS** avhengig av vind)
-
-- **Oppvarming:** 20 min rolig.  
-- **Hoveddel:** steady Z2, **60–75 % FTP** (eller RPE 4–5). Varianter som passer Leksvik/Fosen:
-  - langs fjorden mot Rørvika / Lennøya-rute (roter, unngå motorvei-tunnel stress),
-  - eller «kafé-loop» med 1 stopp midt — **samboer på sykkel eller i bil** etter avtale.
-- **Ingen** 3×15 SS denne dagen — det er leir-volum.  
-- **Nedkjøling:** 15 min.  
-- **Fueling:** 60–90 g CHO/t fra t 1; flasker fylles fredag kveld.
-
-**Alternativ (Plan B):** 2:00 sykkel + 30 min lett løp ettermiddag (separert med mat og 2+ t).
-
-**Kveld:** Lett — ingen ekstra «jeg tar en runde til».
-
----
-
-## Søndag 18. april — avslutning + hjem
-
-**Morgen — løp trail/vei 70–85 min**  
-- RPE 4, **ingen** bakkeintervaller.  
-- Terreng hvis tørt; ellers grus/asfalt med litt stigning.  
-- Poenget: **bein etter gårsdagens sykkel**, Lofoten-lignende «dag 2 lett».
-
-**Ettermiddag:** Pakk, kjør hjem. **Valgfri** 30 min svøm recovery mandag kveld hjemme (ikke søndag kveld hvis lang reise).
-
----
-
-## Uken rundt leiren (man 12. – tor 15.)
+## Før avreise (hjemme 12.–15. apr)
 
 | Dag | Fokus |
 |-----|--------|
 | **Man 12** | Svøm CSS/aerob (S05/S06) · ST04 hjemme |
-| **Tir 13** | Løp easy/staver 60–70 (R03) — **ikke** elghufs |
-| **Ons 14** | **Sykkel SS 2×20** eller 3×12 (én Q) — siste harde sykkel før leir |
-| **Tor 15** | Svøm teknikk · kort styrke ST03/lett ST01 |
-
-**Onsdag er anker.** Torsdag skal føles «tommel opp» fredag.
+| **Tir 13** | Løp easy/staver 60–70 (R03) |
+| **Ons 14** | **Sykkel SS 2×20** (én Q) — siste harde sykkel før hytta |
+| **Tor 15** | Svøm teknikk · kort styrke ST03/lett ST01 · pakking |
 
 ---
 
-## Etter leiren (uke 19. apr)
+## På hytta — dag for dag
 
-- **Mandag:** recovery svøm eller off.  
-- **Tir–ons:** normal B5 (SS rotert, løp tempo lett).  
-- **Ikke** ny 3 t-sykkel før ca. 7 dager etter leir.  
-- Logg **søvn + stivhet** — OPV-regel: god leir = du er litt sliten **onsdag**, ikke ødelagt **mandag**.
+### Fredag 16. — ankomst
+- **60–90 min** lett sykkel **eller** gå/jogg med samboer (RPE 3–4).  
+- Ingen intervaller. Sen kveld OK.
+
+### Lørdag 17. — hoveddag 1 (sykkel)
+- **3:00–3:30 Z2** utendørs (~**180–210 TSS**).  
+- Fjordruter, ev. kafé-stopp sammen. **60–90 g CHO/t** fra t 1.  
+- **Ingen SS.**
+
+### Søndag 18. — hoveddag 2 (løp)
+- **70–85 min** long easy løp (RPE 4), trail/grus om tørt.  
+- Etter gårsdagens sykkel — **Lofoten «dag 2»-følelse**, ikke intervaller.
+
+### Mandag 19. — samboer / restitusjon
+- **Fri** eller **30–45 min** gåtur / lett sykkel (RPE 2–3).  
+- **Ingen** tredje dag på rad med store økter.
+
+### Tirsdag 20. — kontakt uten load
+- **75–90 min** sykkel Z1–Z2 **eller** rolig løp 50 min.  
+- Felles tur; stoppe når det fortsatt føles sosialt.
+
+### Onsdag 21. — eneste harde (kort)
+**Valg A (anbefalt hvis SS ble kjørt 14. apr hjemme):**  
+- **Løp 5×3 min** lett hill/flat (R06-stil) **eller** **sykkel 3×8 min SS** — totalt **~55–70 min** inkl. opp/ned (~**65–80 TSS**).
+
+**Valg B (hvis du droppet SS 14. apr):**  
+- **Sykkel SS 2×15** (~75 min) — da **ingen** løp-intervall denne uken.
+
+### Torsdag 22. — avlastning
+- **Fri** eller svøm hvis dere er hjemme en tur Trondheim **eller** 40 min rolig sykkel.  
+- Planlegg **fredag** som neste sykkellangdag.
+
+### Fredag 23. — hoveddag 3 (sykkel, kortere enn lør 17.)
+- **2:15–2:45 Z2** (~**130–160 TSS**).  
+- Ikke prøve å «matche» 17. apr — annen rute, roligere vind.
+
+### Lørdag 24. — brick lett / felles dag
+- **Sykkel 90–105 min Z2** + **løp 15–20 min** very easy **eller**  
+- **90 min** trail/gå+løp med samboer (én økt, RPE 4 maks).  
+- Brick = **intro B5**, ikke race simulation.
+
+### Søndag 25. — avreise
+- **30–45 min** shakeout jog/spinn · pakking · kjør hjem ettermiddag.  
+- **Mandag 26. apr:** svøm recovery S09 eller helt fri.
 
 ---
 
-## Praktisk (tentativ)
+## Etter 25. april (hjemme)
 
-- **Overnatting:** hytte/leilighet Leksvik (book tidlig påskeferie-etterklapp).  
-- **Sykkel:** racer/gravel; medhaling + dekk for grus om du vil unngå E6-stress.  
-- **Samboer:** minst én felles aktivitet per dag (gåtur, kafé-stopp, kort tur) — leiren skal **holde**, ikke teste forholdet.
+- **Uke 26. apr – 2. mai:** normal B5 (**~13 t**), **ikke** ny 3 t-sykkel før ca. 7 dager etter siste lange sykkel (23.).  
+- **Mai:** M7 build som planlagt — leiren er **ikke** grunn til å starte mai på 16 t.
+
+---
+
+## Praktisk
+
+- **Booking:** 16.–25. apr (10 netter) — book tidlig.  
+- **Sykkel + medhaling:** racer/gravel; dekk for grus om E6/vind er stress.  
+- **Samboer:** minst **én felles, lavterskel-aktivitet** nesten hver dag; **man 19. og tor 22.** er gode «vin og tur»-dager uten dårlig samvittighet.
 
 ---
 
 ## Koblinger
 
-- Meso: **M6** recovery → første «grønne» uke utendørs · [`mengdeperioder-2026-2027.md`](mengdeperioder-2026-2027.md)  
-- Blokk **B5** · [`blokker-periodisering-2026-2027.md`](blokker-periodisering-2026-2027.md)  
-- Tidligere høy Leksvik-load i logg: [`2026-10-analyse-siste-uker.md`](2026-10-analyse-siste-uker.md) — **ikke** gjenta 173 TSS på én dag uten opptjening.
+- [`mengdeperioder-2026-2027.md`](mengdeperioder-2026-2027.md) (uke 12. og 19. apr)  
+- [`blokker-periodisering-2026-2027.md`](blokker-periodisering-2026-2027.md) (B5 leir)  
+- Tidligere høy Leksvik-load: [`2026-10-analyse-siste-uker.md`](2026-10-analyse-siste-uker.md) — **ikke** jage gammel en-dags-TSS.
 
-**Flytting:** Hvis snø/is 16. apr: skyv **én uke** til 23.–25. apr (samme struktur), ikke mai.
+**Flytting:** Ved snø/is **hele** oppholdet: skyv til **23. apr – 2. mai** (fortsatt ikke mai-build), eller forkort til 7 dager — ikke doble volum.

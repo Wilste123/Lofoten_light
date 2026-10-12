@@ -83,7 +83,8 @@ Hver meso: **uke 1–3 progresjon**, **uke 4 −25–35 % timer** (lav intensite
 | 2027-03-22 | 13,5 | 650 |
 | 2027-03-29 | 14,0 | 680 |
 | 2027-04-05 | 10,0 | 480 | Recovery |
-| 2027-04-12 | 13,5 | 640 | **Leksvik-leir** fre–søn 16.–18. apr — [`2027-04-leksvik-treningsleir.md`](2027-04-leksvik-treningsleir.md) |
+| 2027-04-12 | 13,5 | 640 | **Leksvik** uke 1 (avreise fre 16.) — [`2027-04-12-uke-leksvik.md`](2027-04-12-uke-leksvik.md) |
+| 2027-04-19 | 14,5 | 660 | **Leksvik** uke 2 (hjem søn 25.) — [`2027-04-19-uke-leksvik.md`](2027-04-19-uke-leksvik.md) |
 
 ### M7–M9 — Build (mai–jul 2027) · **årets mengdetopp**
 

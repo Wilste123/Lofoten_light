@@ -1,9 +1,9 @@
 day,sport,subtype,title,duration_minutes,tss,description,phase,external_suffix,start_time
-1,Swim,technique,Svøm pull/teknikk (S05) 60 — kveld Lillehammer,60,38,workouts/planned/swim/S05-nybegynner-pull-40.txt,build,,18:30
+1,Run,recovery,Løp easy 40 (R01) — kveld Lillehammer,40,38,workouts/planned/run/R01-easy-40.txt,build,,18:30
 2,Run,endurance,Løp long easy 90 (R-god) — kveld,90,80,workouts/planned/run/R-god-okt-trail-70.txt,build,run-pm,18:00
-3,Swim,endurance,Svøm aerob (S03) 55 — morgen,55,42,workouts/planned/swim/S03-aerob-3x500.txt,build,,06:45
+3,Run,recovery,Løp easy 35 (R01) — morgen Lillehammer,35,32,workouts/planned/run/R01-easy-40.txt,build,,06:45
 4,Bike,endurance,Sykkel Z2 120 (B02),120,72,workouts/planned/bike/endurance-90.txt,build,b02,16:00
 4,Strength,general,ST04 rygg/isjas hjemme,35,15,workouts/planned/strength/ST04-prehab-rygg-isjas-hjemme.txt,build,st04,20:00
 5,Run,interval,Løpeintervaller 5×3 morgen (ANKER),50,62,workouts/planned/run/R-5x3-intervall-45.txt,build,5x3,06:15
 5,Bike,recovery,Valgfri: sykkel recovery 45 (B01) kveld,45,22,workouts/planned/bike/recovery-spin-45.txt,build,b01-opt,18:30
-7,Swim,recovery,Svøm recovery (S09) 45 — kveld,45,22,workouts/planned/swim/S09-recovery.txt,build,,18:30
+7,Swim,technique,Svøm teknikk (S02) 60 — kveld,60,38,workouts/planned/swim/S02-teknikk-skulder.txt,build,,18:30

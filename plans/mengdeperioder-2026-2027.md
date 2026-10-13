@@ -10,7 +10,7 @@
 | **Ukentlig TARGET** | [`csv/intervals-weekly-targets-2026-10-12-12-31.csv`](csv/intervals-weekly-targets-2026-10-12-12-31.csv) | Intervals planned load/time (**operativ**) |
 | **Intensitet** | [`knowledge/triathlon/periodisering-mot-2027.md`](../knowledge/triathlon/periodisering-mot-2027.md) | Hvilken Q på sykkel/løp/svøm per fase — **ikke** samme tabell som mengde |
 
-**Fryst (ikke mengde-meso):** B0 til og med deload 25. okt — [`FROZEN-til-deload-2026-10-25.md`](FROZEN-til-deload-2026-10-25.md).
+**Fryst (ikke mengde-meso):** Uke 12.–18. okt — [`FROZEN-til-deload-2026-10-25.md`](FROZEN-til-deload-2026-10-25.md). Uke 19.–25. = build (Lillehammer), ikke kalender-deload.
 
 ---
 

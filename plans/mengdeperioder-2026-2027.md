@@ -121,6 +121,7 @@ Mengde-mesos over **stiger** mot M7–M9; panikk-volum i én uke er forbudt (+10
 2. **M1** er skrevet og pushet fra 26. okt (`trainingdojo-2026-10-26-nov30.csv`).  
 3. **M2** timer ligger i TARGET CSV; **des-ukefiler** kommer etter nov (eller si «push des»).  
 4. Spørsmål «ligger jeg riktig?» → sammenlign **faktisk uke** med `intervals-weekly-targets` + denne tabellen.
+5. **Volum-checkpoints** (NOTE i Intervals): [`csv/intervals-volum-checkpoints-okt-des2026.csv`](csv/intervals-volum-checkpoints-okt-des2026.csv) — push med `intervals_push_calendar.py --notes-only`.
 
 ---
 

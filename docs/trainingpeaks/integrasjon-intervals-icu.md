@@ -55,6 +55,14 @@ python3 scripts/intervals_push_calendar.py --start 2026-09-28
 | Alle økter | `plans/csv/trainingdojo-4uker-2026-09-28.csv` |
 | Sykkel-ZWO på dato | `plans/csv/sykkel-zwo-kalender-4uker.csv` |
 | Ukentlige notater | `plans/csv/trainingdojo-uke-notater-4uker-opv.csv` |
+| Volum-checkpoints (okt–des) | `plans/csv/intervals-volum-checkpoints-okt-des2026.csv` |
+
+Kun volum-NOTEs (uten økter):
+
+```bash
+python3 scripts/intervals_push_calendar.py --start 2026-09-28 --notes-only \
+  --notes plans/csv/intervals-volum-checkpoints-okt-des2026.csv
+```
 
 Sykkel/løp/svøm får **ZWO** når fil finnes i `workouts/zwo/`. Styrke: CSV peker på `workouts/planned/strength/*.txt` — push-scriptet legger inn **full coach-tekst** (etter `---` i filen). `external_id` `ll-agent-…` gjør re-push tryggere (`upsert=true`).
 

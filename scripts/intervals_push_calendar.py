@@ -143,13 +143,14 @@ def build_note_event(
     day = int(row["day"])
     title = (row.get("title") or "Ukenotat").strip()
     description = (row.get("description") or "").strip()
+    note_suffix = (row.get("note_id") or row.get("id_suffix") or "note").strip()
     return {
         "category": "NOTE",
         "start_date_local": day_to_datetime(plan_start, day, start_time),
         "name": title,
         "description": description,
         "color": "blue",
-        "external_id": external_id(plan_start, day, "note"),
+        "external_id": external_id(plan_start, day, note_suffix),
     }
 
 
@@ -199,6 +200,11 @@ def main() -> int:
         action="store_true",
         help="Print summary only, no API calls",
     )
+    parser.add_argument(
+        "--notes-only",
+        action="store_true",
+        help="Push only NOTE rows from --notes CSV (no workouts from --plan)",
+    )
     args = parser.parse_args()
 
     if not args.dry_run and not api_key():
@@ -212,15 +218,16 @@ def main() -> int:
     bike_by_date = load_bike_by_date(args.bike_calendar)
     events: list[dict] = []
 
-    for row in load_csv(args.plan):
-        sport = (row.get("sport") or "").strip().lower()
-        if sport in ("other",) or (row.get("subtype") or "").lower() == "note":
-            continue
-        events.append(
-            build_workout_event(
-                row, plan_start, args.start_time, bike_by_date, _REPO
+    if not args.notes_only:
+        for row in load_csv(args.plan):
+            sport = (row.get("sport") or "").strip().lower()
+            if sport in ("other",) or (row.get("subtype") or "").lower() == "note":
+                continue
+            events.append(
+                build_workout_event(
+                    row, plan_start, args.start_time, bike_by_date, _REPO
+                )
             )
-        )
 
     if args.notes.is_file():
         for row in load_csv(args.notes):
@@ -230,7 +237,8 @@ def main() -> int:
                 events.append(build_note_event(row, plan_start, args.note_time))
 
     events.sort(key=lambda e: e["start_date_local"])
-    print(f"Prepared {len(events)} calendar events from {args.plan.name}")
+    src = args.notes.name if args.notes_only else args.plan.name
+    print(f"Prepared {len(events)} calendar events from {src}")
 
     zwo_count = sum(1 for e in events if e.get("file_contents"))
     print(f"  With structured ZWO: {zwo_count}")

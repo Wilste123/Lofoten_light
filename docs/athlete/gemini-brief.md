@@ -1,6 +1,6 @@
 # Brief — William / Half Extreme Lofoten 2027 (for ekstern AI, f.eks. Gemini)
 
-**Sist oppdatert:** 15. oktober 2026  
+**Sist oppdatert:** 16. oktober 2026  
 **Primær coach-kilde:** GitHub-repo `Lofoten_light` + Cursor Cloud Agent (trener som Ole Petter Vibekken-inspirert struktur, tri/comeback-tilpasset).  
 **Språk:** Norsk i planer og coach-tekst; engelsk ok for teknisk.
 
@@ -17,6 +17,7 @@
 | **Bakgrunn** | NTG / landevei høyt nivå; **FTP 410 W @ ~74 kg (2019)** — **ikke** dagens intensitet |
 | **Nå (okt 2026)** | Comeback etter 4–5 år lavt volum; **FTP plan ~210 W**; **svøm = limiter**; løp = motivasjon; sykkel = kan bli kjedelig uten variasjon |
 | **Prioritering (rekkefølge)** | 1 Kontinuitet → 2 Skadefrihet → 3 Gradvis progresjon → 4 Aerob → 5 Lofoten-spesifikk → 6 Prestasjon |
+| **Totalbelastning** | TSS/CTL er ikke hele bildet: søvn, jobb/stress, **nikotin ~13–15× No55/d**, koffein/alkohol, vektnedgang, MSK — se `profile.md` → *Totalbelastning* |
 
 ---
 

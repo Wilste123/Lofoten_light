@@ -210,8 +210,31 @@ Svøm: **distanse eller varighet** + **% threshold pace** i Builder; pause = rec
 - **Regler:** Gradvis opptrapping; unngå tenåringsvolum på dekadent MSK-grunnlag (se utgangspunkt over)
 - **Motivasjon:** Varier sykkel med løp der det gir mening; ikke «bare sykkel»-blokker uten mening for William
 
+## Totalbelastning (trening + liv)
+
+**Prinsipp:** Intervals **CTL/ATL/TSS** er bare **treningsdelen**. Riktig analyse krever **allostatic load** — jobb, søvn, stress, reise, sykdom, nikotin, koffein/alkohol, vektnedgang og **MSK-flaskehalser**. Agenten skal **ikke** tolke rød HRV kun som «for lite hvile mellom økter» uten å sjekke tabellen under.
+
+| Faktor | Status i repo | William: fyll inn / oppdater |
+|--------|----------------|------------------------------|
+| **Trening** | Intervals (TSS, timer, plan vs faktisk) | Si fra ved **systematisk** avvik (f.eks. hard løp når easy står) |
+| **Søvn** | Wellness (varighet); kvalitet ofte mangler | Typisk **leggetid / oppv.** (hverdager vs helg), barn/støy? |
+| **Jobb / studie** | **Mangler** | Yrke, **skift vs kontor**, timer/uke, **reisefrekvens**, «tunge» uker (deadline) |
+| **Livsstress** | Delvis (Lillehammer, helgeplan) | Eksamen, par/familie, økonomi — **1–5** i wellness-notat ved behov |
+| **Nikotin** | Skruf No55, 13–15/d, jobb+kveld | **Siste pose** (kl.); taper **ingen etter 18:00** |
+| **Koffein** | **Mangler** | Kaffe/energy **antall + siste kl.** |
+| **Alkohol** | **Mangler** | Frekvens (helg?), typisk antall enheter |
+| **Kropp / vekt** | ~83–84 kg trend, race &lt;80 kg | Kaloriunderskudd = **ekstra belastning** — hvor aggressiv nedgang nå? |
+| **MSK / plager** | Rygg/isjas, ankel, støt; finger historikk | **0–10** smerte + **hvilken økt** som trigger |
+| **Styrke / prehab** | 2×/uke plan | Faktisk gjennomført? (hopp over = høyere skaderisiko) |
+| **Sykdom** | Ad hoc | Forkjølelse, antibiotika, feber — alltid nevne |
+
+**Minimum logging (anbefalt):** I Intervals wellness **søndag**: snitt søvn uke, **stress 1–5**, **soreness** (finnes), ev. én linje «jobb/reise/tung uke». Ved rød/gul uke: **siste snus/koffein kl.** + om du **overkjørte** plan.
+
+Se også [`knowledge/restitusjon/sovn-stress.md`](../../knowledge/restitusjon/sovn-stress.md).
+
 ## Coaching notes (for agenten)
 
+- **Totalbelastning før volum:** Ved ATL ≫ CTL, flat HRV eller hard økt «fra magen» — sjekk **livstabellen** over før du foreslår mer timer for å nå checkpoint.
 - **Tidligere trener:** Ole Petter Vibekken — agenten skal lene seg på `knowledge/coach/ole-petter-vibekken-referanse.md` (offentlig + Williams notater der). Fyll inn periode og hva som fungerte i tabellen der.
 - Erfaren syklist — forstår TSS, CTL, intervaller og periodisering; trenger ikke grunnleggende forklaring på sykkel.
 - **Løp:** høy motivasjon — bruk det for kontinuitet og skadefri progresjon (viktigste prioritet 1–3).

@@ -1,18 +1,22 @@
 # TB-Score — treningsevne / totalbelastning
 
-**Mål:** Én **0–100**-indeks som svarer på *«har William kapasitet til det som står i planen i dag?»* — ikke bare Garmin, ikke bare CTL.
+**Mål:** Én **0–100**-indeks for *«har jeg kapasitet **nå** (klokkeslett), ikke bare i dag?»* — totalbelastning, ikke Garmin-black-box.
 
-Garmin **Training Readiness** bruker søvn, HRV, stress og nylig trening internt. **TB-Score** er repoets variant, optimalisert for **Half Extreme-comeback** og **totalbelastning** (trening + recovery + kjente livsfaktorer fra profil).
+**Snapshot (default):** `--at now` + **activities.csv** → timer siden siste økt, load siste 24/48 t, plus morgen-HRV/søvn fra wellness-dato.
 
-## Hva inngår
+Garmin **Training Readiness** oppdateres gjennom dagen; TB-Score gjør det samme eksplisitt fra Intervals-aktiviteter.
+
+## Hva inngår (v2, subjektiv **av**)
 
 | Komponent | Vekt (default) | Kilde |
 |-----------|----------------|--------|
-| **Trening** | 35 % | Intervals `ctl`, `atl` → TSB og ATL/CTL-ratio |
-| **HRV** | 25 % | `hrv` vs **21-dagers median** (personlig baseline) |
-| **Hvilepuls** | 15 % | `restingHR` vs median |
-| **Søvn** | 15 % | `sleepSecs` mot mål (7,5 h) eller `sleepScore` |
-| **Subjektivt** | 10 % | `soreness`, `fatigue`, `stress`, `injury` (hvis fylt) |
+| **Kronisk form** | 30 % | `ctl`, `atl` → TSB og ATL/CTL |
+| **Tid siden siste økt** | 25 % | `activities.csv`: sluttid + `icu_training_load` |
+| **Akutt vindu** | 10 % | Sum load **siste 24/48 t** fra `--at`; straff hvis hard økt &lt; 14 t siden |
+| **HRV** | 22 % | `hrv` vs **21-dagers median** (wellness-dato) |
+| **Hvilepuls** | 13 % | `restingHR` vs median |
+| **Søvn** | 10 % | `sleepSecs` / score (natt til wellness-dato) |
+| **Subjektivt** | **0 %** | Kun med `--include-subjective` (gaming-risiko) |
 
 **Livsjustering** (fra `readiness-config.json`, ikke Garmin):
 
@@ -34,9 +38,19 @@ Sammenlign **trend** (7–14 dager), ikke én dag isolert.
 
 ```bash
 python3 scripts/fetch_intervals_wellness.py --days 30 -o data/intervals/exports/wellness-latest.csv
-python3 scripts/compute_readiness.py data/intervals/exports/wellness-latest.csv
-python3 scripts/compute_readiness.py data/intervals/exports/wellness-latest.csv --json
-python3 scripts/compute_readiness.py data/intervals/exports/wellness-latest.csv --push-readiness  # skriver readiness i Intervals
+python3 scripts/fetch_intervals_activities.py --days 30 -o data/intervals/exports/activities-latest.csv
+
+# Snapshot nå (anbefalt før intervall)
+python3 scripts/compute_readiness.py data/intervals/exports/wellness-latest.csv \
+  --activities data/intervals/exports/activities-latest.csv --at now
+
+# «Kan jeg kjøre 5×3 kl 17?»
+python3 scripts/compute_readiness.py data/intervals/exports/wellness-latest.csv \
+  --activities data/intervals/exports/activities-latest.csv --at 2026-10-16T17:00
+
+python3 scripts/compute_readiness.py ... --json
+python3 scripts/compute_readiness.py ... --push-readiness   # Intervals readiness-felt
+python3 scripts/compute_readiness.py ... --daily            # kun daglig historikk
 python3 scripts/compute_readiness.py --self-test
 ```
 
@@ -50,7 +64,8 @@ python3 scripts/compute_readiness.py --self-test
 |---|------------------|----------|
 | Trening | Ja (ukjent vekting) | CTL/ATL/TSB eksplisitt |
 | Liv (underskudd) | Nei | Ja (config) |
-| Subjektivt | Delvis | Intervals-felt |
+| Tid siden hard økt | Delvis | TB + activities |
+| Subjektivt | Delvis | TB default **av** |
 | Synk | `readiness`-kolonne hvis fylt | `--push-readiness` eller manuell |
 
 Bruk begge: hvis Garmin **høy** og TB-Score **gul** → stol på **TB** når ATL ≫ CTL (typisk etter hard helg).

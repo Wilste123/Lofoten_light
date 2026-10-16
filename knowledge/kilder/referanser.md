@@ -12,6 +12,14 @@
 - [Half Extreme](https://thearctictriple.no/lofoten-triathlon-half-extreme)
 - [Race Manual](https://thearctictriple.no/lofoten-triathlon-half-extreme-race-manual)
 
+## Snus / nikotin (utholdenhet)
+
+- Repo: [`snus-nikotin-litteratur.md`](snus-nikotin-litteratur.md) — DOI/PMID-tabell  
+- Heishman et al. 2017 systematic review: [10.1111/cpf.12443](https://doi.org/10.1111/cpf.12443)  
+- Zandonai et al. snus endurance JSHS 2018: [PMC6226421](https://pmc.ncbi.nlm.nih.gov/articles/PMC6226421/)  
+- Mundel et al. PLOS ONE 2017 (langtids snuff): [journal.pone.0181228](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0181228)  
+- WADA 2025 Monitoring Program (nikotin): [wada-ama.org PDF](https://www.wada-ama.org/sites/default/files/2024-09/2025_list_monitoring_program_en_final_clean_11_september_2024.pdf)
+
 ## Belastning / skade
 
 - Gabbett TJ. Training-injury prevention paradox. BJSM 2016. https://bjsm.bmj.com/content/50/5/273

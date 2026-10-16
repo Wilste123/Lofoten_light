@@ -4,31 +4,69 @@
 
 **William:** Oppdater `docs/athlete/profile.md` (livsstil) med frekvens hvis det endrer råd (f.eks. daglig vs. sjelden).
 
+**Litteratur:** [`knowledge/kilder/snus-nikotin-litteratur.md`](../kilder/snus-nikotin-litteratur.md) — systematisk review, PLOS One, JAHA, WADA, HRV-studier.
+
 ---
 
 ## Kort svar: har det noe å si?
 
 **Ja — moderat, særlig for det du allerede måler:**
 
-| Område | Effekt av nikotin/snus |
-|--------|-------------------------|
-| **Hvilepuls / HRV** | Ofte **høyere RHR** og **litt lavere HRV** (sympatikus) — kan ligne «dårlig recovery» i Garmin/Intervals |
-| **Søvn** | Nikotin **stimulerer**; bruk **sent på kvelden** kan forsinke innsovning og **forkorte dyp søvn** |
-| **Under økt** | Akutt **↑ puls** for samme watt/pace; kan **maskere** opplevd anstrengelse (føles «lettere», men HR er høyere) |
-| **Lang løp / sykkel / svøm** | Sjelden avgjørende for én økt; **kronisk** kan det **øke** total stressbelastning (allostatic load) |
-| **Skade / restitusjon** | Svakere evidens enn søvn; **ikke** positivt for heling — prioriter søvn og mat først |
+| Område | Effekt av nikotin/snus | Evidens (kort) |
+|--------|-------------------------|----------------|
+| **Hvilepuls / HRV** | Ofte **høyere RHR** og **litt lavere HRV** (sympatikus) | Sterk for akutt nikotin ([Heishman 2017](https://doi.org/10.1111/cpf.12443); idrett [Wang 2021](https://doi.org/10.1186/s12970-021-00413-9)) |
+| **Søvn** | Stimulant; **↑ latens**, **↓ REM**, fragmentering | Reviews ([Jaehne 2009](https://pubmed.ncbi.nlm.nih.gov/19345124/)); PSG ([Salin-Pascual 2017](https://pmc.ncbi.nlm.nih.gov/articles/PMC5561409/)) |
+| **Under økt** | Akutt **↑ puls** for samme watt/pace | Systematisk review: HR ofte ↑ ([Heishman 2017](https://doi.org/10.1111/cpf.12443)) |
+| **Aerob prestasjon (snus)** | **Ingen** konsistent ergogenisk effekt på TTE/VO2max | RCT snus ([Zandonai 2018](https://pmc.ncbi.nlm.nih.gov/articles/PMC6226421/)); langtidsbruk ([Mundel 2017](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0181228)) |
+| **Daglig bruker «får kick»** | Etter natt uten snus: ofte **abstinens**, ikke «superform» | Utøverstudie +13 % TTE ([Zandonai 2019](https://pubmed.ncbi.nlm.nih.gov/30387193/)) |
+| **Skade / restitusjon** | Ingen god grunn til at det **hjelper** heling | Prioriter søvn og mat |
 
 **Ikke** bruk snus som forklaring på alt (ATL 90 er fortsatt **trening**). Men ignorér det **ikke** når HRV er **flat ~49** og RHR **+3–5** uten annen årsak.
 
 ---
 
+## Hva anerkjente artikler sier (syntese)
+
+### 1. Autonom nervesystem (HRV)
+
+- Nikotin **øker sympatikus** → **høyere HR**, ofte **lavere parasympatisk HRV** (HF, pNN50) og høyere LF/HF i akutte studier på **utøvere** (skyting, baseball) med lav dose gum.
+- **Mazhar et al. (2014)** oppsummerer klinisk: **redusert HRV**, økt katekolamin, potensielt **arytmirisiko** ved røykfri tobakk — relevant for **hjerte-belastning**, ikke bare «sinnemestring».
+
+**For Garmin/Intervals:** Daglig snus kan gi **lavere baseline HRV** enn uten nikotin; **trend** og sammenheng med **søvn/load** er viktigere enn å sammenligne med ikke-snusere.
+
+### 2. Prestasjon
+
+- **Systematisk review (nikotin-naive):** sterke fysiologiske endringer, **svake og inkonsistente** prestasjonsgevinster ([Heishman 2017](https://doi.org/10.1111/cpf.12443)).
+- **Swedish snus, ikke-brukere:** ingen forbedring av **tid til utmattelse** ([Zandonai 2018](https://pmc.ncbi.nlm.nih.gov/articles/PMC6226421/)).
+- **Langvarig moist snuff:** **ingen** endring i **VO2max** eller maks test etter 6+ uker seponering; **HR/BP falt** ved submaks ([Mundel 2017](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0181228)).
+- **Snus-brukende utøvere:** bedre test **etter 12 t abstinens** + snus — tolk som **withdrawal-relief** ([Zandonai 2019](https://pubmed.ncbi.nlm.nih.gov/30387193/)).
+
+**Coach:** Ikke planlegg race rundt snus som ergogen midler; planlegg rundt **søvn, fueling og pacing**.
+
+### 3. Søvn og recovery
+
+- Nikotin under bruk: ofte **insomni-lignende** mønster og **REM-reduksjon** ([Jaehne 2009](https://pubmed.ncbi.nlm.nih.gov/19345124/)).
+- Transdermal nikotin hos friske: **lengre innsovning**, mindre REM, mer fragmentert søvn ([Salin-Pascual 2017](https://pmc.ncbi.nlm.nih.gov/articles/PMC5561409/)).
+- **Daglige brukere:** nattlig/ tidlig morgen **abstinens** kan forstyrre søvn og øke **morgen-RHR** — overlapper med det du ser i wearable-data.
+
+### 4. Hjerte og hard belastning
+
+- Stor sykkelstudie (NEEDED): **snus** assosiert med **lavere** hs-troponin i rest og etter **91 km** — **ikke** bevis for at snus er «bra for hjertet»; kan **maskere** stressmarkører ([Omland et al. 2020](https://doi.org/10.1161/JAHA.120.017363)).
+
+### 5. Antidoping
+
+- **WADA:** nikotin på **Monitoring Program** (in-competition), **ikke** forbudt ([WADA 2025](https://www.wada-ama.org/sites/default/files/2024-09/2025_list_monitoring_program_en_final_clean_11_september_2024.pdf)).
+- Mazhar (2014) argumenterer **etisk/medisinsk** for restriksjon; det er **ikke** samme som dagens WADA-status.
+
+---
+
 ## Mekanisme (forenklet)
 
-- Nikotin binder **nikotiniske acetylkolinreseptorer** → **adrenalin/noradrenalin** ↑  
+- Nikotin → **nikotiniske acetylkolinreseptorer** → **adrenalin/noradrenalin** ↑  
 - **Parasympatisk** aktivitet (restitusjon, HRV) kan **undertrykkes** i timene etter dose  
-- **Toleranse:** daglige brukere får mindre «kick», men **abstinens** om natten kan gi **urolig søvn** og **høyere morgen-RHR** hos noen  
+- **Toleranse + avhengighet:** daglig bruk → **abstinens** ved gap (natt) → høyere arousal, søvn/HRV-effekter  
 
-**For coach-data:** Morgen-HRV måles **etter** natt — hvis du **alltid** snuser rett etter du står opp, kan trenden være **stabil men kunstig lav** sammenlignet med ikke-brukere. Viktig er **din egen kurve over uker**, ikke absolutt tall.
+**For coach-data:** Morgen-HRV etter natt uten snus i munnen kan fortsatt reflektere **abstinens**. Viktig er **din egen kurve over uker**.
 
 ---
 
@@ -36,14 +74,13 @@
 
 | Regel | Hvorfor |
 |-------|---------|
-| **Ikke ny snus** rett før **HRV-måling** / før du legger deg (ideelt **4+ t** før søvn) | Søvn og morgen-tall |
-| **Unngå første gang / ekstra dose** før **5×3, FTP-test, CSS-test** | Du vil lese **ekte** puls/respons — ikke bland med akutt stimulant |
-| **Lang økt (&gt;2 t):** ikke **øk** bruk for «å komme gjennom» — bruk **mat/drikk** | Glykogen og salt, ikke nikotin |
-| **Recovery-uke / HRV 3 dager flat/rød:** **reduser** eller utsett snus **på kvelden** først | Billigste recovery-intervensjon etter søvn |
-| **Race / Lofoten:** bestem **policy på forhånd** (ingen / kun tidlig på dagen) — ikke eksperimenter på startlinjen |
+| **Ikke ny snus** rett før **HRV-måling** / før du legger deg (ideelt **4+ t** før søvn) | Søvn ([Salin-Pascual 2017](https://pmc.ncbi.nlm.nih.gov/articles/PMC5561409/)) |
+| **Unngå ekstra dose** før **5×3, FTP-test, CSS-test** | Les **ekte** puls — akutt HR↑ ([Heishman 2017](https://doi.org/10.1111/cpf.12443)) |
+| **Lang økt (&gt;2 t):** mat/drikk, ikke mer snus | Ingen solid TTE-data for snus ([Zandonai 2018](https://pmc.ncbi.nlm.nih.gov/articles/PMC6226421/)) |
+| **Recovery-uke / HRV flat:** reduser **kvelds-snus** først | Billig intervensjon |
+| **Race:** fast policy på forhånd | WADA monitorerer; helse &gt; «kick» |
 
-**Harm reduction (hvis du ikke vil slutte nå):**  
-Færre doser **etter kl. 18**, ikke **koffein + snus + intervall** samme morgen hvis puls/spenning allerede er høy.
+**Harm reduction:** Færre doser **etter kl. 18**; unngå **koffein + snus + intervall** samme morgen hvis puls allerede er høy.
 
 ---
 
@@ -52,43 +89,31 @@ Færre doser **etter kl. 18**, ikke **koffein + snus + intervall** samme morgen 
 | | Røyking | Snus (svensk snus) |
 |---|---------|---------------------|
 | Lunge / VO2max | **Sterkt negativt** | Ikke direkte som røyk |
-| Hjerte-kar | Negativt | **Lavere risiko** enn røyk, **ikke null** |
+| Hjerte-kar | Negativt | **Lavere risiko** enn røyk i populasjon, **ikke null** (FHI, epidemiologi) |
 | Kreft oral | — | **Høyere** enn ikke-brukere |
-| Prestasjon | Negativt | **Nikotin-effekter** som over — ingen «doping»-gevinst på lang tri |
-
-**Coach:** Slutt med røyk **før** du jager CTL. Snus er **livsstil** — vi **optimaliserer timing og søvn**, ikke skammer.
+| Prestasjon | Negativt | **Ingen** pålitelig aerob gevinst; ev. abstinens-effekt |
 
 ---
 
-## Kobling til det du ser i Intervals (okt 2026)
+## Kobling til Intervals (William, okt 2026)
 
-Typisk **blandet** bilde når du snuser daglig **og** har **ATL &gt;&gt; CTL**:
-
-- **HRV ~45–55** etter harde uker — **forventet** fra load  
-- **+ snus sent + kort søvn** → lettere å **henge** på 49 ms uten at trening alene forklarer alt  
-- **Subjektiv stress 2** + snus + jobb/studier = **samme skala** — ikke skill dem i hodet som «bare psykisk»
-
-**Eksperiment (valgfritt, 2 uker):** Ingen snus **etter 18:00** + logg søvn/HRV — hvis **ingen** endring, er load hovedsaken; hvis **+3–5 HRV** eller bedre søvn, har det **noe å si** for deg.
+- **HRV ~45–55** + **ATL &gt;&gt; CTL** → først **load**; **kvelds-snus + kort søvn** kan **bidra**  
+- **Eksperiment (2 uker):** ingen snus **etter 18:00** → sammenlign søvn/HRV (personlig N=1)
 
 ---
 
 ## Når lege / røykeslutt
 
-- Brystsmerter, uregelmessig puls, **svimmelhet** under trening → **lege**, ikke coach  
-- Vil du **slutte:** fastlege, slutta.no, nikotinerstatning — **ikke** tren hardt samme uke som kald snus-avvenning uten plan  
+- Brystsmerter, arytmier, **svimmelhet** → lege  
+- Slutt: fastlege, [slutta.no](https://www.slutta.no) — ikke hard avvenning samme uke som maks intervall uten plan  
 
 ---
 
 ## Relatert
 
-- [`sovn-stress.md`](sovn-stress.md) — søvn, HRV, allostatic load  
-- [`../ernaring/grunnlag.md`](../ernaring/grunnlag.md) — koffein og timing  
-- `docs/athlete/profile.md` — livsstil (snus-notat)
+- [`sovn-stress.md`](sovn-stress.md)  
+- [`../ernaring/grunnlag.md`](../ernaring/grunnlag.md)  
+- [`../kilder/snus-nikotin-litteratur.md`](../kilder/snus-nikotin-litteratur.md)  
+- `docs/athlete/profile.md`
 
-## Kilder (oversikt, ikke exhaustiv)
-
-- Nikotin og akutt HR/BLP: velkjent farmakologi; idrettsstudier ofte små N  
-- Snus og langtids-CV: lavere enn røyk i populasjonsstudier (Norge/Sverige), **ikke** «fritt for helserisiko»  
-- Søvn og nikotin: stimulant, kveldsbruk assosiert med dårligere søvnkvalitet i flere reviews  
-
-**Agent:** Ikke moraliser. **Juster plan** (søvn, kvelds-snus, morgen-Q) når bruker sier de snuser **og** recovery-tall er gule uten tydelig overtrening.
+**Agent:** Ikke moraliser. Bruk litteratur for **timing, søvn, tolkning av HRV** — ikke for å skyve på volum.

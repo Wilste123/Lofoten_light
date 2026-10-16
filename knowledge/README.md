@@ -25,7 +25,7 @@ Referanse for **topp-coach**-agenten. Alt skal kunne brukes til **konkrete ukepl
 | [triathlon/](triathlon/) | Brick, Lofoten, periodisering |
 | [restitusjon/](restitusjon/) | Søvn, sykdom, stress, snus/nikotin |
 | [mental/](mental/) | Kontinuitet, motivasjon |
-| [kilder/](kilder/) | Lenker + PDF |
+| [kilder/](kilder/) | Lenker + PDF; [`snus-nikotin-litteratur.md`](kilder/snus-nikotin-litteratur.md) |
 | [load-and-intensity.md](load-and-intensity.md) | TSS, soner, CTL |
 
 ## PDF-arkiv

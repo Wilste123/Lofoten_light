@@ -23,7 +23,7 @@ Referanse for **topp-coach**-agenten. Alt skal kunne brukes til **konkrete ukepl
 | [lop/](lop/) | Oppbygging, intervallbibliotek, terreng |
 | [utstyr/](utstyr/) | Race checklist, sykkel, vinter |
 | [triathlon/](triathlon/) | Brick, Lofoten, periodisering |
-| [restitusjon/](restitusjon/) | Søvn, sykdom, stress |
+| [restitusjon/](restitusjon/) | Søvn, sykdom, stress, snus/nikotin |
 | [mental/](mental/) | Kontinuitet, motivasjon |
 | [kilder/](kilder/) | Lenker + PDF |
 | [load-and-intensity.md](load-and-intensity.md) | TSS, soner, CTL |

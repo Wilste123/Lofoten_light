@@ -54,7 +54,9 @@ python3 scripts/build_zwo_library.py   # regenerates swim/run/strength/brick; ke
 python3 scripts/analyze_tp_export.py data/trainingpeaks/exports/<file>.csv
 python3 scripts/fetch_intervals_wellness.py --days 7 -o data/intervals/exports/wellness.csv
 python3 scripts/analyze_intervals_wellness.py data/intervals/exports/wellness.csv
-python3 scripts/compute_readiness.py data/intervals/exports/wellness.csv  # TB-Score totalbelastning
+python3 scripts/compute_readiness.py data/intervals/exports/wellness.csv --activities data/intervals/exports/uke.csv --at now
+python3 scripts/generate_coach_report.py --days 30 -o reports/coach  # standard rapport + TB-grafer
+python3 scripts/plot_readiness_report.py data/intervals/exports/wellness.csv --activities data/intervals/exports/uke.csv
 python3 scripts/push_intervals_wellness.py plans/csv/intervals-bia-daily.csv
 python3 scripts/aggregate_bia_weekly.py --week-ending YYYY-MM-DD
 python3 scripts/intervals_push_calendar.py --start 2026-09-28  # plan → Intervals (secret INTERVALS_API)
@@ -65,3 +67,12 @@ python3 scripts/analyze_intervals_export.py data/intervals/exports/uke.csv
 ```
 
 Update `docs/athlete/` when he states new FTP, availability, or injuries.
+
+## Rapporter / analyse / ukesopp (William)
+
+When William asks for **rapport**, **analyse**, **ukesopp**, **wellness**, **belastning**, **readiness**, or similar:
+
+1. Hent data: `fetch_intervals_wellness.py` + `fetch_intervals_activities.py` (or use latest CSV in `data/intervals/exports/`).
+2. Kjør **`python3 scripts/generate_coach_report.py --days 30`** (eller `--fetch` med API).
+3. Inkluder i svaret: **TB-Score snapshot** (`--at now`), **grønn/gul/rød** → Plan A/B, og **grafene** fra `reports/coach/latest/` (dashboard + trend). Subjektiv wellness **ikke** i TB med mindre han ber om det.
+4. Suppler med OPV-tekst per `docs/trainingpeaks/trener-feedback-syklus.md`.

@@ -52,7 +52,13 @@ python3 scripts/compute_readiness.py ... --json
 python3 scripts/compute_readiness.py ... --push-readiness   # Intervals readiness-felt
 python3 scripts/compute_readiness.py ... --daily            # kun daglig historikk
 python3 scripts/compute_readiness.py --self-test
+
+# Standard coach-rapport (tekst + alle grafer)
+python3 scripts/generate_coach_report.py --days 30
+python3 scripts/generate_coach_report.py --fetch --days 30   # med Intervals API
 ```
+
+**Grafer:** `reports/coach/latest/tb-dashboard.png`, `tb-score-trend.png`, `tb-components-now.png`, `tb-score-now.png`.
 
 **Konfig:** [`readiness-config.json`](readiness-config.json)
 

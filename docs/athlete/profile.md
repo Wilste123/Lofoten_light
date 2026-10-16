@@ -232,7 +232,9 @@ Svøm: **distanse eller varighet** + **% threshold pace** i Builder; pause = rec
 
 **Minimum logging (anbefalt):** I Intervals wellness **søndag**: snitt søvn uke, **stress 1–5**, **soreness** (finnes), ev. én linje «jobb/reise/tung uke». Ved rød/gul uke: **siste snus** + om du **overkjørte** plan. (Koffein/alkohol ligger i profil — oppdater ved endring.)
 
-**Automatisk vs manuelt:** Se [`docs/trainingpeaks/integrasjon-intervals-icu.md`](../trainingpeaks/integrasjon-intervals-icu.md) — agenten henter wellness/aktiviteter med `INTERVALS_API`; **snus, underskudd, jobbstress** kommer **ikke** fra Garmin.
+**Operativt mål (totalbelastning):** **TB-Score** 0–100 — `python3 scripts/compute_readiness.py data/intervals/exports/wellness-latest.csv`. Tolkning og vekter: [`readiness-totalbelastning.md`](readiness-totalbelastning.md). Grønn/gul/rød styrer Plan A/B før du jager volum.
+
+**Automatisk vs manuelt:** Se [`docs/trainingpeaks/integrasjon-intervals-icu.md`](../trainingpeaks/integrasjon-intervals-icu.md) — agenten henter wellness/aktiviteter med `INTERVALS_API`; **snus, underskudd, jobbstress** kommer **ikke** fra Garmin (underskudd er −6 i TB-config).
 
 Se også [`knowledge/restitusjon/sovn-stress.md`](../../knowledge/restitusjon/sovn-stress.md).
 

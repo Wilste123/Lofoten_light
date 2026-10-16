@@ -101,7 +101,10 @@ python3 scripts/intervals_push_calendar.py --start 2026-10-26 \
    python3 scripts/fetch_intervals_wellness.py --days 7 \
      -o data/intervals/exports/uke-wellness.csv
    python3 scripts/analyze_intervals_wellness.py data/intervals/exports/uke-wellness.csv
+   python3 scripts/compute_readiness.py data/intervals/exports/uke-wellness.csv
    ```
+
+   **TB-Score (totalbelastning):** `scripts/compute_readiness.py` — se `docs/athlete/readiness-totalbelastning.md`. Valgfri `--push-readiness` skriver score til Intervals `readiness`-felt.
 
    **BIA / smartvekt (push):** `plans/csv/intervals-bia-daily.csv` og `intervals-bia-ukesnitt.csv` → `scripts/push_intervals_wellness.py` (vekt + `bodyFat` + vann/FFM i `comments`). Se `docs/athlete/kroppssammensetning-smartvekt.md`.
 

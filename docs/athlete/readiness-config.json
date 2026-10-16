@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "TB-Score",
+  "description": "Treningsevne / totalbelastning — repo-score (ikke Garmin-kopi). Juster life_adjustments når livssituasjon endres.",
+  "sleep_target_hours": 7.5,
+  "baseline_window_days": 21,
+  "weights": {
+    "load": 0.35,
+    "hrv": 0.25,
+    "rhr": 0.15,
+    "sleep": 0.15,
+    "subjective": 0.1
+  },
+  "life_adjustments": {
+    "calorie_deficit_active": -6
+  },
+  "bands": {
+    "green_min": 78,
+    "yellow_min": 58
+  }
+}

@@ -76,7 +76,8 @@ Agenten skal **planlegge faser** (f.eks. start der William er nå → stabil bas
 | Innendørs / utendørs | Trondheim — **rulle nov 2025**; **PM ute våren**; **basseng 3T** vinter; **utesvøm til vår** |
 | Utstyr | Se **Utstyr (sep 2026)** under; **smartvekt (BIA)** — logg morgen snitt |
 | Kroppssammensetning | Race **&lt;80 kg**; BIA-mål: [`kroppssammensetning-smartvekt.md`](kroppssammensetning-smartvekt.md) |
-| Livsstil | **Nikotinposer** **Skruf Super White No55 Fresh S5** (slim, supersterk; typ. **~17 mg nikotin/pose** — sjekk esken). ~**13–15 poser/dag** (ca. halv boks), mest **jobb + kveld** (okt 2026). HRV/søvn: [`knowledge/restitusjon/snus-nikotin.md`](../../knowledge/restitusjon/snus-nikotin.md). Nedtrapping: kveld først, ikke mer. |
+| Yrke | **Finansiell rådgiving / regnskap** (kontor) |
+| Livsstil | **Nikotinposer** **Skruf Super White No55 Fresh S5** (slim, supersterk; typ. **~17 mg nikotin/pose** — sjekk esken). ~**13–15 poser/dag** (ca. halv boks), mest **jobb + kveld**. **Kaffe:** 1–2 morgen, siste ~11–12. **Alkohol:** lite (glass vin helg). **Leggetid** ~22:00–22:30. **Kaloriunderskudd:** ja (okt 2026). HRV/søvn: [`knowledge/restitusjon/snus-nikotin.md`](../../knowledge/restitusjon/snus-nikotin.md). Nedtrapping: kveld først, ikke mer. |
 
 ## Utstyr (sep 2026)
 
@@ -214,21 +215,24 @@ Svøm: **distanse eller varighet** + **% threshold pace** i Builder; pause = rec
 
 **Prinsipp:** Intervals **CTL/ATL/TSS** er bare **treningsdelen**. Riktig analyse krever **allostatic load** — jobb, søvn, stress, reise, sykdom, nikotin, koffein/alkohol, vektnedgang og **MSK-flaskehalser**. Agenten skal **ikke** tolke rød HRV kun som «for lite hvile mellom økter» uten å sjekke tabellen under.
 
-| Faktor | Status i repo | William: fyll inn / oppdater |
-|--------|----------------|------------------------------|
+| Faktor | Status i repo | Detalj (okt 2026) |
+|--------|----------------|-------------------|
 | **Trening** | Intervals (TSS, timer, plan vs faktisk) | Si fra ved **systematisk** avvik (f.eks. hard løp når easy står) |
-| **Søvn** | Wellness (varighet); kvalitet ofte mangler | Typisk **leggetid / oppv.** (hverdager vs helg), barn/støy? |
-| **Jobb / studie** | **Mangler** | Yrke, **skift vs kontor**, timer/uke, **reisefrekvens**, «tunge» uker (deadline) |
-| **Livsstress** | Delvis (Lillehammer, helgeplan) | Eksamen, par/familie, økonomi — **1–5** i wellness-notat ved behov |
-| **Nikotin** | Skruf No55, 13–15/d, jobb+kveld | **Siste pose** (kl.); taper **ingen etter 18:00** |
-| **Koffein** | **Mangler** | Kaffe/energy **antall + siste kl.** |
-| **Alkohol** | **Mangler** | Frekvens (helg?), typisk antall enheter |
-| **Kropp / vekt** | ~83–84 kg trend, race &lt;80 kg | Kaloriunderskudd = **ekstra belastning** — hvor aggressiv nedgang nå? |
-| **MSK / plager** | Rygg/isjas, ankel, støt; finger historikk | **0–10** smerte + **hvilken økt** som trigger |
-| **Styrke / prehab** | 2×/uke plan | Faktisk gjennomført? (hopp over = høyere skaderisiko) |
-| **Sykdom** | Ad hoc | Forkjølelse, antibiotika, feber — alltid nevne |
+| **Søvn** | Wellness `sleepSecs` / score fra Garmin→Intervals | **Leggetid ~22:00–22:30** (vanlig); oppv. ikke fast logget — bruk klokke-søvn når synket |
+| **Jobb** | Profil | **Finansiell rådgiving / regnskap** (kontor — sannsynlig mye sitting). Reise/deadline-uker: noter i `comments` ved behov |
+| **Livsstress** | Wellness `stress` 1–5 når fylt | Lillehammer/hytte i kalender; ellers kort notat søndag |
+| **Nikotin** | Profil + taper | Skruf No55, 13–15/d, jobb+kveld — **ingen etter 18:00** (eksperiment) |
+| **Koffein** | Profil | **1–2 kaffe morgen**, siste **~11–12** (lav kveldsrisiko vs snus) |
+| **Alkohol** | Profil | **Lite** — typ. **ett glass vin** til mat i helg |
+| **Kropp / vekt** | BIA + wellness | **Aktivt kaloriunderskudd** nå → teller som **ekstra belastning** ved høy ATL; ikke krasj underskudd + hard uke |
+| **MSK / plager** | `plager-rygg-isjas.md` | Rygg/isjas — **trigger uklar**; bruk `injury` / soreness i wellness ved flare |
+| **Styrke / prehab** | 2×/uke plan | **Holder styrkedagene** (okt 2026) |
+| **Medisin** | Profil | **Ingen** |
+| **Sykdom** | Ad hoc | Forkjølelse, feber — alltid nevne |
 
-**Minimum logging (anbefalt):** I Intervals wellness **søndag**: snitt søvn uke, **stress 1–5**, **soreness** (finnes), ev. én linje «jobb/reise/tung uke». Ved rød/gul uke: **siste snus/koffein kl.** + om du **overkjørte** plan.
+**Minimum logging (anbefalt):** I Intervals wellness **søndag**: snitt søvn uke, **stress 1–5**, **soreness** (finnes), ev. én linje «jobb/reise/tung uke». Ved rød/gul uke: **siste snus** + om du **overkjørte** plan. (Koffein/alkohol ligger i profil — oppdater ved endring.)
+
+**Automatisk vs manuelt:** Se [`docs/trainingpeaks/integrasjon-intervals-icu.md`](../trainingpeaks/integrasjon-intervals-icu.md) — agenten henter wellness/aktiviteter med `INTERVALS_API`; **snus, underskudd, jobbstress** kommer **ikke** fra Garmin.
 
 Se også [`knowledge/restitusjon/sovn-stress.md`](../../knowledge/restitusjon/sovn-stress.md).
 

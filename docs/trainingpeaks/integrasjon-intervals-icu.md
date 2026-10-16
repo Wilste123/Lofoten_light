@@ -107,6 +107,10 @@ python3 scripts/intervals_push_calendar.py --start 2026-10-26 \
 
    **Wellness** (søvn, hvilepuls, HRV, vekt, readiness, subjektivt) kommer fra Garmin/klokke **og/eller** push over. API: `GET /athlete/0/wellness.csv?oldest=&newest=`.
 
+   **Hva som typisk synker fra Garmin (William okt 2026):** `sleepSecs`, `sleepScore`, `sleepQuality`, `restingHR`, `hrv`, `steps`, `weight`/`bodyFat` (smartvekt/BIA), `ctl`/`atl` på wellness-raden, subjektive felt hvis du fyller dem i Intervals/Garmin (`soreness`, `stress`, `fatigue`, `mood`, `motivation`). Kolonner som `bedTime`/`wakeUpTime`, `kcalConsumed`, `readiness` kan være **tomme** avhengig av klokke/app — da er **søvntimer** fra klokke det vi stoler på.
+
+   **Hva som *ikke* kommer automatisk:** jobb/deadline, snus, koffein/alkohol (med mindre du logger), aktivt kaloriunderskudd, rygg-triggere, plan vs faktisk intensitet (må sammenligne kalender + aktivitet). **Svøm:** pace/laps = Garmin Connect; **load/timer** = Intervals (husk ignore velocity på svøm).
+
 4. **Cloud Agent:** Legg `INTERVALS_API_KEY` som **secret** i Cursor-miljøet hvis du vil at agenten skal hente uten manuell CSV. Uten secret: last ned **activities.csv** fra Intervals (eller kjør fetch lokalt) og legg i `data/intervals/exports/` / lim inn i chat.
 
 **Auth:** Personlig nøkkel = HTTP Basic, brukernavn `API_KEY`, passord = nøkkelen ([Intervals API-guide](https://forum.intervals.icu/t/api-access-to-intervals-icu/609)).

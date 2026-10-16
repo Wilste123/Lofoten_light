@@ -82,6 +82,13 @@
 
 **Harm reduction:** Færre doser **etter kl. 18**; unngå **koffein + snus + intervall** samme morgen hvis puls allerede er høy.
 
+### Nikotinposer / «superwhite» (merke og styrke)
+
+- **Nikotin per pose** (mg/pose på esken) × **antall poser** = det som teller for puls, søvn og HRV — ikke om det er tobakks-snus eller hvit pose.
+- **Høy styrke** (f.eks. Skruf **No55 / S5**, ofte **~15–19 mg/pose**) med **13–15 poser/dag** ⇒ grovt **200–280 mg nikotin eksponert/dag** før absorpsjon — langt over det de fleste studier bruker (gummi 2–4 mg). Toleranse er høy, men **sympatikus-belastning** og **kveldsstimulans** er reelle.
+- **Mint/kjøling** kan føles «friskere»; det er **ikke** mindre belastning på autonom nervesystem enn vanlig snus med samme mg.
+- **Bytte til svakere sort** hjelper bare hvis du **ikke** kompenserer med flere poser — første steg er fortsatt **færre poser etter 18:00**, ikke produktjakt.
+
 ---
 
 ## Snus vs. røyking (ærlig ramme)

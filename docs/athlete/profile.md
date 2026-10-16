@@ -76,7 +76,7 @@ Agenten skal **planlegge faser** (f.eks. start der William er nå → stabil bas
 | Innendørs / utendørs | Trondheim — **rulle nov 2025**; **PM ute våren**; **basseng 3T** vinter; **utesvøm til vår** |
 | Utstyr | Se **Utstyr (sep 2026)** under; **smartvekt (BIA)** — logg morgen snitt |
 | Kroppssammensetning | Race **&lt;80 kg**; BIA-mål: [`kroppssammensetning-smartvekt.md`](kroppssammensetning-smartvekt.md) |
-| Livsstil | **Snus** ~**13–15 poser/dag** (ca. halv boks), mest **jobb + kveld** (okt 2026). HRV/søvn: [`knowledge/restitusjon/snus-nikotin.md`](../../knowledge/restitusjon/snus-nikotin.md). Nedtrapping: kveld først, ikke mer. |
+| Livsstil | **Nikotinposer** **Skruf Super White No55 Fresh S5** (slim, supersterk; typ. **~17 mg nikotin/pose** — sjekk esken). ~**13–15 poser/dag** (ca. halv boks), mest **jobb + kveld** (okt 2026). HRV/søvn: [`knowledge/restitusjon/snus-nikotin.md`](../../knowledge/restitusjon/snus-nikotin.md). Nedtrapping: kveld først, ikke mer. |
 
 ## Utstyr (sep 2026)
 

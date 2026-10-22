@@ -1,9 +1,0 @@
-# Overkropp + kjerne + mobilitet
-Date: 2026-10-03
-Sport: WeightTraining
-Planned load (Intervals): 15
-Duration (s): 2700
-
-## TrainingPeaks
-- Sykkel med .zwo i bike/: importer til bibliotek, dra til kalender på dato.
-- Løp/svøm/styrke: bruk Workout Builder (HR/pace) eller lim inn struktur over.

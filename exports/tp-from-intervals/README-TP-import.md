@@ -1,27 +1,28 @@
 # Intervals → TrainingPeaks export
 
-Generated from Intervals.icu calendar **2026-09-01** … **2026-10-31** (planned workouts only).
+Kalender **2026-10-22** … **2026-10-31** (planlagte økter fra Intervals.icu).
 
-| Count | |
-|-------|---|
-| Bike `.zwo` | 9 |
-| Run/swim/strength `.txt` | 50 |
-| Index | `index.csv` |
+| | Antall |
+|---|--:|
+| `.zwo` (sykkel + løp + svøm) | 11 |
+| Styrke (TrainingDojo CSV) | 3 |
+| Tekst-fallback (mangler struktur) | 0 |
 
-## Sykkel (TP Virtual / rulla)
+## Hvorfor bare ZWO i TP?
 
-1. TrainingPeaks → **Library** → Import **`.zwo`** from `bike/`.
-2. Dra økt til **kalender** på riktig dato (se `index.csv`).
-3. FTP **210 W** i TP soner.
+TrainingPeaks **Library → Import** godtar kun **kraftbasert sykkel** `.zwo` ([TP Help](https://help.trainingpeaks.com/hc/en-us/articles/32432105650573-Import-Planned-Workouts-into-TrainingPeaks)). Ingen filimport for planlagt løp/svøm/styrke.
 
-## Løp / svøm / styrke
+**Løsning i denne pakken**
 
-- TP importerer ikke struktur fra `.txt` automatisk.
-- Åpne filen → bygg i **Workout Builder** (HR / % threshold pace / CSS), eller lim beskrivelse i kalender-notat.
-- `index.csv` har dato, navn og planlagt load fra Intervals.
+1. **Sykkel** — `bike/*.zwo` → importer → dra på kalender (FTP i TP).
+2. **Løp/svøm** — `run/` og `swim/` er **sykkel-format ZWO** med prefiks LØP/SVØM (samme triks som i repo: `docs/trainingpeaks/importer-lop-svom-zwo.md`):
+   - Importer `.zwo` som sykkel
+   - Åpne økt → **Build** → sport **Run** / **Swim** → intensitet **% threshold pace**
+   - Lagre → dra på kalender
+3. **Styrke** — ingen ZWO. Bruk **`trainingdojo-import.csv`** på [trainingdojo.app/import](https://trainingdojo.app/import), plan start **`2026-10-22`**.
 
-Kjør på nytt etter endringer i Intervals:
+## Kjør på nytt
 
 ```bash
-python3 scripts/export_intervals_plan_to_tp.py --start 2026-11-01 -o exports/tp-from-intervals
+python3 scripts/export_intervals_plan_to_tp.py --start 2026-10-22 --end 2026-10-31 -o exports/tp-from-intervals
 ```

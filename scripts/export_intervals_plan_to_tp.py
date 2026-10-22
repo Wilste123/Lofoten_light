@@ -7,7 +7,9 @@ import argparse
 import csv
 import json
 import re
+import shutil
 import sys
+from datetime import date
 from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
@@ -16,7 +18,7 @@ if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
 
 from intervals_lib import api_get  # noqa: E402
-from zwo_common import esc, write_zwo_power  # noqa: E402
+from zwo_common import RUN_NOTE, SWIM_NOTE, write_zwo_power  # noqa: E402
 
 WORKOUT_TYPES = {"Ride", "Run", "Swim", "WeightTraining"}
 
@@ -47,10 +49,17 @@ def flatten_steps(steps: list, out: list[tuple[int, str, float]]) -> None:
         if units == "%ftp" and val is not None:
             out.append((dur, text, float(val) / 100.0))
         elif step.get("hr"):
-            # fallback: map mid HR % LTHR to rough power for ZWO placeholder
             hr = step["hr"]
             mid = (float(hr.get("start", 85)) + float(hr.get("end", 85))) / 2
             out.append((dur, f"{text} (~{mid:.0f}% LTHR)", min(max(mid / 100.0, 0.5), 1.15)))
+        elif step.get("pace"):
+            pc = step["pace"]
+            start = float(pc.get("start", 100))
+            end = float(pc.get("end", start))
+            mid = (start + end) / 2
+            out.append((dur, text, min(max(mid / 100.0, 0.5), 1.2)))
+        else:
+            out.append((dur, text, 0.78))
 
 
 def format_steps_text(steps: list, indent: int = 0) -> list[str]:
@@ -77,19 +86,93 @@ def format_steps_text(steps: list, indent: int = 0) -> list[str]:
     return lines
 
 
+def day_number(plan_start: str, workout_date: str) -> int:
+    return (date.fromisoformat(workout_date) - date.fromisoformat(plan_start)).days + 1
+
+
+def strength_dojo_row(event: dict, plan_start: str) -> dict[str, str]:
+    name = (event.get("name") or "Styrke").strip()
+    wdate = (event.get("start_date_local") or "")[:10]
+    moving = int(event.get("moving_time") or 0)
+    dur_min = max(1, round(moving / 60)) if moving else 35
+    load = event.get("icu_training_load")
+    desc = (event.get("description") or "").strip()
+    wd = event.get("workout_doc")
+    steps = (wd or {}).get("steps") if isinstance(wd, dict) else None
+    if steps:
+        struct = "\n".join(format_steps_text(steps))
+        desc = f"{desc}\n\n{struct}".strip() if desc else struct
+    if not desc:
+        desc = f"Fra Intervals.icu ({wdate})"
+    desc = desc.replace("\r\n", "\n").replace("\n", " ").strip()
+    return {
+        "day": str(day_number(plan_start, wdate)),
+        "sport": "Strength",
+        "subtype": "general",
+        "title": name,
+        "duration_minutes": str(dur_min),
+        "tss": str(int(load)) if load else "15",
+        "description": desc[:8000],
+        "phase": "export",
+    }
+
+
+def write_structured_zwo(
+    typ: str,
+    out_dir: Path,
+    base: str,
+    date: str,
+    name: str,
+    desc: str,
+    steps: list | None,
+    moving: int | None,
+) -> Path | None:
+    flat: list[tuple[int, str, float]] = []
+    flatten_steps(steps, flat)
+    if not flat and moving and int(moving) > 0:
+        flat = [(int(moving), name, 0.78)]
+    if not flat:
+        return None
+
+    folder = {"Ride": "bike", "Run": "run", "Swim": "swim"}[typ]
+    zwo_path = out_dir / folder / f"{base}.zwo"
+    if typ == "Ride":
+        zwo_name = f"{date} — {name}"
+        note = "Eksport Intervals → TP bibliotek (sett sykkel-FTP i TP)."
+    elif typ == "Run":
+        zwo_name = f"LØP {date} — {name}"
+        note = RUN_NOTE
+    else:
+        zwo_name = f"SVØM {date} — {name}"
+        note = SWIM_NOTE
+
+    write_zwo_power(
+        zwo_path,
+        "bike",
+        zwo_name,
+        desc.split("\n")[0][:120] if desc else name,
+        [(d, t, p, None) for d, t, p in flat],
+        note,
+        tp_library_import=True,
+    )
+    return zwo_path
+
+
 def event_to_files(
-    event: dict, out_dir: Path, repo_root: Path
-) -> dict[str, str] | None:
+    event: dict,
+    out_dir: Path,
+    plan_start: str,
+) -> tuple[dict[str, str] | None, dict[str, str] | None]:
     cat = event.get("category") or ""
     if cat in ("TARGET",):
-        return None
+        return None, None
     typ = event.get("type") or ""
     if typ not in WORKOUT_TYPES:
-        return None
+        return None, None
     name = (event.get("name") or "Workout").strip()
     date = (event.get("start_date_local") or "")[:10]
     if not date:
-        return None
+        return None, None
     eid = event.get("id")
     base = f"{date}_{slug(name)}_{eid}"
     desc = (event.get("description") or "").strip()
@@ -114,24 +197,19 @@ def event_to_files(
     wd = event.get("workout_doc")
     steps = (wd or {}).get("steps") if isinstance(wd, dict) else None
 
-    if typ == "Ride" and steps:
-        flat: list[tuple[int, str, float]] = []
-        flatten_steps(steps, flat)
-        if flat:
-            zwo_path = out_dir / "bike" / f"{base}.zwo"
-            write_zwo_power(
-                zwo_path,
-                "bike",
-                f"{date} — {name}",
-                desc.split("\n")[0][:120] if desc else name,
-                [(d, t, p, None) for d, t, p in flat],
-                "Eksport fra Intervals.icu → TP bibliotek (FTP 210 W i TP).",
-                tp_library_import=True,
-            )
-            result["file"] = str(zwo_path.relative_to(out_dir))
-            return result
+    if typ == "WeightTraining":
+        result["file"] = "trainingdojo-import.csv"
+        result["format"] = "trainingdojo"
+        return result, strength_dojo_row(event, plan_start)
 
-    # Run / swim / strength / bike without structure: text bundle for TP calendar notes + builder
+    mov = int(moving) if moving else None
+    if typ in ("Ride", "Run", "Swim"):
+        zwo_path = write_structured_zwo(typ, out_dir, base, date, name, desc, steps, mov)
+        if zwo_path:
+            result["file"] = str(zwo_path.relative_to(out_dir))
+            result["format"] = "zwo"
+            return result, None
+
     txt_path = out_dir / sport_folder / f"{base}.txt"
     txt_path.parent.mkdir(parents=True, exist_ok=True)
     body = [
@@ -141,25 +219,14 @@ def event_to_files(
         f"Planned load (Intervals): {load or '—'}",
         f"Duration (s): {moving or '—'}",
         "",
+        "Ingen struktur i Intervals — bygg manuelt i TP eller legg til steg i Intervals og kjør export på nytt.",
     ]
     if desc:
-        body.append("## Description (from Intervals)")
-        body.append(desc)
-        body.append("")
-    if steps:
-        body.append("## Structure")
-        body.extend(format_steps_text(steps))
-        body.append("")
-    body.append("## TrainingPeaks")
-    body.append(
-        "- Sykkel med .zwo i bike/: importer til bibliotek, dra til kalender på dato."
-    )
-    body.append(
-        "- Løp/svøm/styrke: bruk Workout Builder (HR/pace) eller lim inn struktur over."
-    )
+        body.extend(["", desc])
     txt_path.write_text("\n".join(body), encoding="utf-8")
     result["file"] = str(txt_path.relative_to(out_dir))
-    return result
+    result["format"] = "txt-fallback"
+    return result, None
 
 
 def fetch_events(oldest: str, newest: str) -> list[dict]:
@@ -194,28 +261,59 @@ def main() -> int:
     events.sort(key=lambda e: e.get("start_date_local") or "")
 
     out_dir = args.output
+    if out_dir.exists():
+        shutil.rmtree(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     for sub in ("bike", "run", "swim", "strength"):
         (out_dir / sub).mkdir(exist_ok=True)
 
     rows: list[dict[str, str]] = []
+    dojo_rows: list[dict[str, str]] = []
     zwo_n = 0
     txt_n = 0
     for ev in events:
-        row = event_to_files(ev, out_dir, _REPO)
+        row, dojo = event_to_files(ev, out_dir, args.start)
         if row:
             rows.append(row)
-            if row["file"].endswith(".zwo"):
+            fmt = row.get("format", "")
+            if fmt == "zwo":
                 zwo_n += 1
-            else:
+            elif fmt == "txt-fallback":
                 txt_n += 1
+        if dojo:
+            dojo_rows.append(dojo)
+
+    if dojo_rows:
+        dojo_path = out_dir / "trainingdojo-import.csv"
+        fields = [
+            "day",
+            "sport",
+            "subtype",
+            "title",
+            "duration_minutes",
+            "tss",
+            "description",
+            "phase",
+        ]
+        with dojo_path.open("w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=fields)
+            w.writeheader()
+            w.writerows(dojo_rows)
 
     index_path = out_dir / "index.csv"
     if rows:
         with index_path.open("w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(
                 f,
-                fieldnames=["date", "type", "name", "load", "duration_sec", "file"],
+                fieldnames=[
+                    "date",
+                    "type",
+                    "name",
+                    "load",
+                    "duration_sec",
+                    "format",
+                    "file",
+                ],
             )
             w.writeheader()
             w.writerows(rows)
@@ -224,37 +322,38 @@ def main() -> int:
     readme.write_text(
         f"""# Intervals → TrainingPeaks export
 
-Generated from Intervals.icu calendar **{args.start}** … **{args.end}** (planned workouts only).
+Kalender **{args.start}** … **{args.end}** (planlagte økter fra Intervals.icu).
 
-| Count | |
-|-------|---|
-| Bike `.zwo` | {zwo_n} |
-| Run/swim/strength `.txt` | {txt_n} |
-| Index | `index.csv` |
+| | Antall |
+|---|--:|
+| `.zwo` (sykkel + løp + svøm) | {zwo_n} |
+| Styrke (TrainingDojo CSV) | {len(dojo_rows)} |
+| Tekst-fallback (mangler struktur) | {txt_n} |
 
-## Sykkel (TP Virtual / rulla)
+## Hvorfor bare ZWO i TP?
 
-1. TrainingPeaks → **Library** → Import **`.zwo`** from `bike/`.
-2. Dra økt til **kalender** på riktig dato (se `index.csv`).
-3. FTP **210 W** i TP soner.
+TrainingPeaks **Library → Import** godtar kun **kraftbasert sykkel** `.zwo` ([TP Help](https://help.trainingpeaks.com/hc/en-us/articles/32432105650573-Import-Planned-Workouts-into-TrainingPeaks)). Ingen filimport for planlagt løp/svøm/styrke.
 
-## Løp / svøm / styrke
+**Løsning i denne pakken**
 
-- TP importerer ikke struktur fra `.txt` automatisk.
-- Åpne filen → bygg i **Workout Builder** (HR / % threshold pace / CSS), eller lim beskrivelse i kalender-notat.
-- `index.csv` har dato, navn og planlagt load fra Intervals.
+1. **Sykkel** — `bike/*.zwo` → importer → dra på kalender (FTP i TP).
+2. **Løp/svøm** — `run/` og `swim/` er **sykkel-format ZWO** med prefiks LØP/SVØM (samme triks som i repo: `docs/trainingpeaks/importer-lop-svom-zwo.md`):
+   - Importer `.zwo` som sykkel
+   - Åpne økt → **Build** → sport **Run** / **Swim** → intensitet **% threshold pace**
+   - Lagre → dra på kalender
+3. **Styrke** — ingen ZWO. Bruk **`trainingdojo-import.csv`** på [trainingdojo.app/import](https://trainingdojo.app/import), plan start **`{args.start}`**.
 
-Kjør på nytt etter endringer i Intervals:
+## Kjør på nytt
 
 ```bash
-python3 scripts/export_intervals_plan_to_tp.py --start 2026-09-01 --end 2026-10-31 -o exports/tp-from-intervals
+python3 scripts/export_intervals_plan_to_tp.py --start {args.start} --end {args.end} -o exports/tp-from-intervals
 ```
 """,
         encoding="utf-8",
     )
 
     print(f"Exported {len(rows)} workouts to {out_dir}")
-    print(f"  ZWO: {zwo_n}, TXT: {txt_n}")
+    print(f"  ZWO: {zwo_n}, strength (dojo): {len(dojo_rows)}, txt fallback: {txt_n}")
     print(f"  {index_path}")
     return 0
 

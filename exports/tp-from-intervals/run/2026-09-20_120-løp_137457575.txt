@@ -1,9 +1,0 @@
-# 120 løp
-Date: 2026-09-20
-Sport: Run
-Planned load (Intervals): 60
-Duration (s): 4500
-
-## TrainingPeaks
-- Sykkel med .zwo i bike/: importer til bibliotek, dra til kalender på dato.
-- Løp/svøm/styrke: bruk Workout Builder (HR/pace) eller lim inn struktur over.

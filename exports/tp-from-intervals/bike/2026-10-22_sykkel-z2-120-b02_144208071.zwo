@@ -2,7 +2,7 @@
 <workout_file>
   <author>Xtri training coach</author>
   <name>2026-10-22 — Sykkel Z2 120 (B02)</name>
-  <description>Base aerobic — Power = andel av sykkel-FTP. Sett FTP under TrainingPeaks Innstillinger → Soner. — Eksport fra Intervals.icu → TP bibliotek (FTP 210 W i TP).</description>
+  <description>Base aerobic — Power = andel av sykkel-FTP. Sett FTP under TrainingPeaks Innstillinger → Soner. — Eksport Intervals → TP bibliotek (sett sykkel-FTP i TP).</description>
   <sportType>bike</sportType>
   <tags/>
   <workout>

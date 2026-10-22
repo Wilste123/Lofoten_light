@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>LØP 2026-10-30 — 6x3min</name>
+  <description>### Fra treneren — IMPORT: TP godtar kun sykkel-ZWO — filen er sportType=bike for import. Etter import: åpne økt → Bygg → sett sport til Løp → intensitet % terskel-pace (samme %-tall). Power ≈ % av løpsterskel (lett ~78 %, terskel 100 %). Ikke sykkel-FTP på kalender.</description>
+  <sportType>bike</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="900" Power="0.8500" pace="0">
+      <textevent message="Press lap (~85% LTHR)" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="180" Power="1.0500" pace="0">
+      <textevent message="Step (~105% LTHR)" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.8700" pace="0">
+      <textevent message="Step (~87% LTHR)" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="180" Power="1.0500" pace="0">
+      <textevent message="Step (~105% LTHR)" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.8700" pace="0">
+      <textevent message="Step (~87% LTHR)" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="180" Power="1.0500" pace="0">
+      <textevent message="Step (~105% LTHR)" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.8700" pace="0">
+      <textevent message="Step (~87% LTHR)" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="180" Power="1.0500" pace="0">
+      <textevent message="Step (~105% LTHR)" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.8700" pace="0">
+      <textevent message="Step (~87% LTHR)" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="180" Power="1.0500" pace="0">
+      <textevent message="Step (~105% LTHR)" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.8700" pace="0">
+      <textevent message="Step (~87% LTHR)" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="180" Power="1.0500" pace="0">
+      <textevent message="Step (~105% LTHR)" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="120" Power="0.8700" pace="0">
+      <textevent message="Step (~87% LTHR)" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="180" Power="1.1000" pace="0">
+      <textevent message="Step (~110% LTHR)" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="0.8500" pace="0">
+      <textevent message="Step (~85% LTHR)" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="180" Power="1.1000" pace="0">
+      <textevent message="Step (~110% LTHR)" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="0.8500" pace="0">
+      <textevent message="Step (~85% LTHR)" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0.8000" pace="0">
+      <textevent message="Cooldown (~80% LTHR)" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

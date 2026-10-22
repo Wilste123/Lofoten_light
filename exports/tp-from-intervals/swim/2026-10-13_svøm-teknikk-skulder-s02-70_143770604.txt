@@ -1,0 +1,30 @@
+# Svøm teknikk skulder (S02) 70
+Date: 2026-10-13
+Sport: Swim
+Planned load (Intervals): 38
+Duration (s): 4200
+
+## Description (from Intervals)
+Skuldervennlig. Bytt til rygg ved øm skulder.
+
+I dag: 60 min svøm (justert)
+
+Oppvarming — 10 min
+200 lett + 4×50 drill (f.eks. catch / 6-3-6) med 15 s pause
+Pust bilateral — rolig, ikke sprint på vegg
+
+Hoveddel — 30–35 min
+Kun Z2 / teknikk: f.eks. 6×100 @ svært rolig CSS+8–12 s (eller 4×150) med 20 s pause
+Fokus: vanngrep, rotasjon, avslappet skulder — ikke tempo
+Ingen 50-er hardt, ingen «siste 100 best effort»
+
+Avslutning — 10–15 min
+200–400 pull lett (evt. paddles av hvis skuldre stramme)
+4×25 superlett, lang utpust under vann
+
+
+RPE: 3–4/10 | Puls: sone 1–2 om du følger den | TSS-mål: ~35–45, ikke 60+
+
+## TrainingPeaks
+- Sykkel med .zwo i bike/: importer til bibliotek, dra til kalender på dato.
+- Løp/svøm/styrke: bruk Workout Builder (HR/pace) eller lim inn struktur over.

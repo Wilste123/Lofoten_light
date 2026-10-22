@@ -1,11 +1,11 @@
 # Intervals → TrainingPeaks export
 
-Generated from Intervals.icu calendar **2026-11-01** … **2027-04-30** (planned workouts only).
+Generated from Intervals.icu calendar **2026-09-01** … **2026-10-31** (planned workouts only).
 
 | Count | |
 |-------|---|
-| Bike `.zwo` | 24 |
-| Run/swim/strength `.txt` | 66 |
+| Bike `.zwo` | 9 |
+| Run/swim/strength `.txt` | 50 |
 | Index | `index.csv` |
 
 ## Sykkel (TP Virtual / rulla)

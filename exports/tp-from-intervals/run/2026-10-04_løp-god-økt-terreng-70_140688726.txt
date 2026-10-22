@@ -1,0 +1,35 @@
+# Løp god økt terreng 70
+Date: 2026-10-04
+Sport: Run
+Planned load (Intervals): 75
+Duration (s): 4200
+
+## Description (from Intervals)
+### Fra treneren
+
+God økt = **70 min rolig terreng/Z2**, ikke ny intervalløkt. Hold samtaletempo.
+
+---
+
+### Fra treneren
+
+Søndagens «god økt» = **varighet og terreng**, ikke ny VO2-smell. Z2 samtale, puls 134–147 snitt, bakker ok å gå.
+
+Plan B: 55 min flat. Dropp hvis lørdagens sykkel + gårsdagens intervaller sitter som stein — da 40 min easy.
+
+---
+
+- Warmup 10m 81-89% LTHR
+
+- 50m 81-89% LTHR
+
+- Cooldown 10m 75-85% LTHR
+
+## Structure
+- 10:00 Warmup HR 81-89%lthr
+- 50:00 Step HR 81-89%lthr
+- 10:00 Cooldown HR 75-85%lthr
+
+## TrainingPeaks
+- Sykkel med .zwo i bike/: importer til bibliotek, dra til kalender på dato.
+- Løp/svøm/styrke: bruk Workout Builder (HR/pace) eller lim inn struktur over.

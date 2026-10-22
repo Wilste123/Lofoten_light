@@ -1,0 +1,29 @@
+# Løp easy 40 (R01)
+Date: 2026-09-29
+Sport: Run
+Planned load (Intervals): 40
+Duration (s): 2400
+
+## Description (from Intervals)
+### Fra treneren
+
+William, rolig løp i dag. Puls er boss — ikke pace på klokka. Terskelpuls ca. 165: hold deg på 134–147 slag i minuttet (easy). Pace kan være 6:35–7:00 per km på flatt underlag; i motvind eller myr, ignorer pace.
+
+Rygg og isjas: hvis nerven bråker, gå 1 min og fortsett rolig. Plan B: 30 min + tøying hjemme.
+
+---
+
+- Warmup 10m 81-89% LTHR
+
+- 25m 81-89% LTHR
+
+- Cooldown 5m 75-80% LTHR
+
+## Structure
+- 10:00 Warmup HR 81-89%lthr
+- 25:00 Step HR 81-89%lthr
+- 5:00 Cooldown HR 75-80%lthr
+
+## TrainingPeaks
+- Sykkel med .zwo i bike/: importer til bibliotek, dra til kalender på dato.
+- Løp/svøm/styrke: bruk Workout Builder (HR/pace) eller lim inn struktur over.

@@ -1,0 +1,37 @@
+# Styrke prehab rygg/isjas (ST04)
+Date: 2026-09-30
+Sport: WeightTraining
+Planned load (Intervals): 18
+Duration (s): 2100
+
+## Description (from Intervals)
+William — hjemme på matte. Ca. 35 min. Ingen 3T denne dagen. Dette er den viktigste økta for rygg og isjasnerven når løpevolumet øker.
+
+Regel: Alt skal være smertefritt. Øker prikking, nummenhet eller «trekk fra ryggen» — stopp den øvelsen og noter det til meg.
+
+Oppvarming (5 min)
+- 10 gang på stedet med høye knær rolig.
+- Cat–camel på matte: 10 repetisjoner, små bevegelser, ikke kast.
+
+Rygg og isjasnerven (10 min)
+1. Bird dog — 3 sett × 8 per side. Arm og ben strekker, rygg nøytral, ikke roter hoften.
+2. Sideplanke på kne eller full — 3 × 30 sek per side. Pust rolig.
+3. Dead bug — 3 × 8 per side. Lenderyggen presset lett mot gulvet.
+4. Glidning isjasnerven (forsiktig) — 5 × per bein, bare til du kjenner mild strekk, ikke smerte. Ligg på ryggen, løft ett ben, strekk kneet delvis — stopp ved rygg eller nerve. Hopp over hvis du er usikker eller det føles feil.
+
+Ankel og støt (12 min)
+5. Knee-to-wall (dorsiflex) — 2 × 45 sek per bein. Knær mot vegg, hæl i gulv.
+6. Tibialis mot vegg — 3 × 15. Rygg mot vegg, løft tærne.
+7. Ettbeins calf raise på trapp eller gulv — 3 × 12 per bein, kontrollert, ingen hopp.
+8. Glute bridge — 3 × 12. Klem setemusklene i topp, ikke overekstender ryggen.
+9. Clamshell med strikk (valgfritt) — 2 × 15 per side.
+
+Ikke i denne økta: Markløft, RDL, nordic hamstring, tunge knebøy — det tar du på 3T torsdag når ryggen er grønn.
+
+Plan B (18 min): Cat–camel, bird dog, dead bug, knee-to-wall, calf — ferdig.
+
+Etter økta: Kort notat: ankel ok? Rygg/isjas 0–10?
+
+## TrainingPeaks
+- Sykkel med .zwo i bike/: importer til bibliotek, dra til kalender på dato.
+- Løp/svøm/styrke: bruk Workout Builder (HR/pace) eller lim inn struktur over.

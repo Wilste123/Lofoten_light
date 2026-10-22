@@ -1,0 +1,9 @@
+# Elapsed
+Date: 2026-10-13
+Sport: Swim
+Planned load (Intervals): —
+Duration (s): 1500
+
+## TrainingPeaks
+- Sykkel med .zwo i bike/: importer til bibliotek, dra til kalender på dato.
+- Løp/svøm/styrke: bruk Workout Builder (HR/pace) eller lim inn struktur over.

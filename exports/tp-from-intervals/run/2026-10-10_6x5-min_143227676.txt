@@ -1,0 +1,43 @@
+# 6X5 min
+Date: 2026-10-10
+Sport: Run
+Planned load (Intervals): 93
+Duration (s): 4620
+
+## Description (from Intervals)
+### Fra treneren
+
+Du valgte hard igjen i dag — ok når puls var lav i går og recovery er grønn. **Standard: 5×3 min** (2 min pause). **Plan B: 6×2** / 1 min hvis du vil kortere drag. Avbryt til 4×3 ved rygg/isjas.
+
+---
+
+### Fra treneren
+
+William, etter 7×2 i går — du sier lav puls og god respons. Fint, men **kontrollert** i dag også.
+
+**5×3 min** hardt-kontrollert (RPE 7–8, puls ca. 155–165), **2 min** rolig jogg/gange mellom. Teknikk og pust — ikke jakt load.
+
+**Plan B:** **6×2 min** / 1 min pause hvis beina føles lettere enn forventet · **4×3** hvis rygg/isjas eller Garmin recovery ikke grønn før start.
+
+Oppvarming 20 min (5 jogg + 5 mobilitet). Nedtrapping 10 min.
+
+---
+
+- Press lap 20m Z2 HR hr=lap
+
+Main Set 6x
+- 5m 100-110% LTHR
+- 2m 81-89% LTHR
+
+- Cooldown 15m 75-85% LTHR
+
+## Structure
+- 20:00 Press lap HR None-Nonehr_zone
+Main Set 6x x6
+  - 5:00 Step HR 100-110%lthr
+  - 2:00 Step HR 81-89%lthr
+- 15:00 Cooldown HR 75-85%lthr
+
+## TrainingPeaks
+- Sykkel med .zwo i bike/: importer til bibliotek, dra til kalender på dato.
+- Løp/svøm/styrke: bruk Workout Builder (HR/pace) eller lim inn struktur over.

@@ -247,7 +247,7 @@ Generated from Intervals.icu calendar **{args.start}** … **{args.end}** (plann
 Kjør på nytt etter endringer i Intervals:
 
 ```bash
-python3 scripts/export_intervals_plan_to_tp.py --start 2026-11-01 -o exports/tp-from-intervals
+python3 scripts/export_intervals_plan_to_tp.py --start 2026-09-01 --end 2026-10-31 -o exports/tp-from-intervals
 ```
 """,
         encoding="utf-8",

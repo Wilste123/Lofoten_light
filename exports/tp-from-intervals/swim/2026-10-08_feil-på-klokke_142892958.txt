@@ -1,0 +1,9 @@
+# Feil på klokke
+Date: 2026-10-08
+Sport: Swim
+Planned load (Intervals): —
+Duration (s): 2400
+
+## TrainingPeaks
+- Sykkel med .zwo i bike/: importer til bibliotek, dra til kalender på dato.
+- Løp/svøm/styrke: bruk Workout Builder (HR/pace) eller lim inn struktur over.

@@ -1,0 +1,25 @@
+# 6X5 min
+Date: 2026-10-20
+Sport: Run
+Planned load (Intervals): 62
+Duration (s): 4620
+
+## Description (from Intervals)
+- Press lap 20m Z2 HR hr=lap
+
+Main Set 6x
+- 5m 87-92% LTHR
+- 2m 75%-80% LTHR
+
+- Cooldown 15m 75-85% LTHR
+
+## Structure
+- 20:00 Press lap HR None-Nonehr_zone
+Main Set 6x x6
+  - 5:00 Step HR 87-92%lthr
+  - 2:00 Step HR 75-80%lthr
+- 15:00 Cooldown HR 75-85%lthr
+
+## TrainingPeaks
+- Sykkel med .zwo i bike/: importer til bibliotek, dra til kalender på dato.
+- Løp/svøm/styrke: bruk Workout Builder (HR/pace) eller lim inn struktur over.

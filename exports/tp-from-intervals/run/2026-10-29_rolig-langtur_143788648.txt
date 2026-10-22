@@ -1,0 +1,15 @@
+# Rolig langtur
+Date: 2026-10-29
+Sport: Run
+Planned load (Intervals): 108
+Duration (s): 5400
+
+## Description (from Intervals)
+-90m z2
+
+## Structure
+- 90:00 Step power 2power_zone
+
+## TrainingPeaks
+- Sykkel med .zwo i bike/: importer til bibliotek, dra til kalender på dato.
+- Løp/svøm/styrke: bruk Workout Builder (HR/pace) eller lim inn struktur over.

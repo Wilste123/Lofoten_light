@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>2026-09-28 — Sykkel lett — erstatter svøm (finger)</name>
+  <description>### Fra treneren — Eksport fra Intervals.icu → TP bibliotek (FTP 210 W i TP).</description>
+  <sportType>bike</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="2400" Power="0.5250" pace="0">
+      <textevent message="Step" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

@@ -1,0 +1,36 @@
+# Løp easy + strides (R02)
+Date: 2026-09-27
+Sport: Run
+Planned load (Intervals): 46
+Duration (s): 3150
+
+## Description (from Intervals)
+### Fra treneren
+
+Easy med seks korte steg på slutten. Strides = 15 sekunder raskere steg, ikke sprint. Hoveddelen skal være 134–147.
+
+Plan B: dropp strides, behold 40 min rolig.
+
+---
+
+- Warmup 10m 81-89% LTHR
+
+- 30m 81-89% LTHR
+
+Strides 6x
+- 15s 95% LTHR
+- 60s 81-89% LTHR
+
+- Cooldown 5m 75-80% LTHR
+
+## Structure
+- 10:00 Warmup HR 81-89%lthr
+- 30:00 Step HR 81-89%lthr
+Strides 6x x6
+  - 0:15 Step HR None-None%lthr
+  - 1:00 Step HR 81-89%lthr
+- 5:00 Cooldown HR 75-80%lthr
+
+## TrainingPeaks
+- Sykkel med .zwo i bike/: importer til bibliotek, dra til kalender på dato.
+- Løp/svøm/styrke: bruk Workout Builder (HR/pace) eller lim inn struktur over.

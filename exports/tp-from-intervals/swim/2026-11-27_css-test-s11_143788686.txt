@@ -1,0 +1,12 @@
+# CSS-test (S11)
+Date: 2026-11-27
+Sport: Swim
+Planned load (Intervals): 51
+Duration (s): 3300
+
+## Description (from Intervals)
+# S11 — CSS-test (ca. 55 min)
+
+## TrainingPeaks
+- Sykkel med .zwo i bike/: importer til bibliotek, dra til kalender på dato.
+- Løp/svøm/styrke: bruk Workout Builder (HR/pace) eller lim inn struktur over.

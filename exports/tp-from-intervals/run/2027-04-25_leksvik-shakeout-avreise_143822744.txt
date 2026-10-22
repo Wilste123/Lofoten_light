@@ -1,0 +1,21 @@
+# Leksvik — shakeout + avreise
+Date: 2027-04-25
+Sport: Run
+Planned load (Intervals): 48
+Duration (s): 4500
+
+## Description (from Intervals)
+### Fra treneren
+
+Søndag lett + ukesopp. 30 min maks. Snakketest hele veien.
+
+---
+
+- 30m 75-80% LTHR
+
+## Structure
+- 30:00 Step HR 75-80%lthr
+
+## TrainingPeaks
+- Sykkel med .zwo i bike/: importer til bibliotek, dra til kalender på dato.
+- Løp/svøm/styrke: bruk Workout Builder (HR/pace) eller lim inn struktur over.

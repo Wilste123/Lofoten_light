@@ -1,0 +1,27 @@
+# Løp trail lett (R03)
+Date: 2027-04-13
+Sport: Run
+Planned load (Intervals): 72
+Duration (s): 5400
+
+## Description (from Intervals)
+### Fra treneren
+
+Kortere trail før FTP-uke. Rolig puls som vanlig.
+
+---
+
+- Warmup 8m 81-89% LTHR
+
+- 42m 81-89% LTHR
+
+- Cooldown 5m 75-80% LTHR
+
+## Structure
+- 8:00 Warmup HR 81-89%lthr
+- 42:00 Step HR 81-89%lthr
+- 5:00 Cooldown HR 75-80%lthr
+
+## TrainingPeaks
+- Sykkel med .zwo i bike/: importer til bibliotek, dra til kalender på dato.
+- Løp/svøm/styrke: bruk Workout Builder (HR/pace) eller lim inn struktur over.

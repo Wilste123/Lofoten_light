@@ -1,0 +1,22 @@
+# Erik-svøm-drills
+Date: 2026-11-01
+Sport: Swim
+Planned load (Intervals): 42
+Duration (s): 3600
+
+## Description (from Intervals)
+Med svømmeføtter:
+
+Øvelse // Distanse // Fokus
+Fingerslep // 4x50m // Avslappet, Høy albue
+Catch-up / overlapp // 2x50m // Timing og balanse
+Enarmscrawl // 4x50m // Rotasjon Og kontroll
+
+500m hoveddel
+10x50m
+
+100-200 ned
+
+## TrainingPeaks
+- Sykkel med .zwo i bike/: importer til bibliotek, dra til kalender på dato.
+- Løp/svøm/styrke: bruk Workout Builder (HR/pace) eller lim inn struktur over.

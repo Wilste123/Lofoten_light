@@ -1,0 +1,12 @@
+# Svøm aerob 1500 (S04)
+Date: 2026-12-18
+Sport: Swim
+Planned load (Intervals): 139
+Duration (s): 12600
+
+## Description (from Intervals)
+Kontinuerlig 1500 etter oppvarming. Negativ split i hodet — start rolig.
+
+## TrainingPeaks
+- Sykkel med .zwo i bike/: importer til bibliotek, dra til kalender på dato.
+- Løp/svøm/styrke: bruk Workout Builder (HR/pace) eller lim inn struktur over.

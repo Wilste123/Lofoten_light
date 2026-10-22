@@ -1,0 +1,18 @@
+# Svøm 8x100 hard (S12)
+Date: 2026-11-02
+Sport: Swim
+Planned load (Intervals): 56
+Duration (s): 3300
+
+## Description (from Intervals)
+William, **svøm-kvalitet** uten CSS: 8×100 @ **RPE 7** (hard men jevn), **15 s** pause. Fokus utpust og lengde per drag.
+
+Oppvarming 400 + 4×50 bygg. Nedkjøring 200.
+
+**Med CSS:** kjør som 10×100 @ CSS (S05) med 8 drag.
+
+Plan B: 6×100 @ RPE 6.
+
+## TrainingPeaks
+- Sykkel med .zwo i bike/: importer til bibliotek, dra til kalender på dato.
+- Løp/svøm/styrke: bruk Workout Builder (HR/pace) eller lim inn struktur over.

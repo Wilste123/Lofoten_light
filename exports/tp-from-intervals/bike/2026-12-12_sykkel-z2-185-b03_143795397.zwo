@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>2026-12-12 — Sykkel Z2 185 (B03)</name>
+  <description>Base aerobic — Power = andel av sykkel-FTP. Sett FTP under TrainingPeaks Innstillinger → Soner. — Eksport fra Intervals.icu → TP bibliotek (FTP 210 W i TP).</description>
+  <sportType>bike</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="900" Power="0.5500" pace="0">
+      <textevent message="Warm-up + 3x30s fast pedals" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="5400" Power="0.7000" pace="0">
+      <textevent message="Z2 — start fueling at 20 min" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="900" Power="0.4500" pace="0">
+      <textevent message="Cool-down" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

@@ -1,0 +1,35 @@
+# Løp tempo 4x5 min
+Date: 2026-12-13
+Sport: Run
+Planned load (Intervals): 84
+Duration (s): 3600
+
+## Description (from Intervals)
+### Fra treneren
+
+William, **tempo-kvalitet**. 4×5 min @ **RPE 7** (ca. halvmaraton-følelse / 88–92 % LTHR), **2 min** lett jogg mellom.
+
+Oppvarming 15 min. Nedkjøring 10 min.
+
+Plan B: 3×5 min. Ikke samme uke som 5×3 **og** elghufs — da 3×5.
+
+---
+
+- Warmup 15m 81-89% LTHR
+
+Main Set 4x
+- 5m 88-92% LTHR
+- 2m 81-89% LTHR
+
+- Cooldown 10m 75-85% LTHR
+
+## Structure
+- 15:00 Warmup HR 81-89%lthr
+Main Set 4x x4
+  - 5:00 Step HR 88-92%lthr
+  - 2:00 Step HR 81-89%lthr
+- 10:00 Cooldown HR 75-85%lthr
+
+## TrainingPeaks
+- Sykkel med .zwo i bike/: importer til bibliotek, dra til kalender på dato.
+- Løp/svøm/styrke: bruk Workout Builder (HR/pace) eller lim inn struktur over.

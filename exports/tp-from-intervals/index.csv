@@ -1,0 +1,91 @@
+date,type,name,load,duration_sec,file
+2026-11-01,Swim,Erik-svøm-drills,42,3600,swim/2026-11-01_erik-svøm-drills_147056154.txt
+2026-11-02,Swim,Svøm 8x100 hard (S12),56,3300,swim/2026-11-02_svøm-8x100-hard-s12_143788650.txt
+2026-11-02,WeightTraining,"Styrke hjemme — rygg, isjas, ankel",18,2100,strength/2026-11-02_styrke-hjemme-rygg-isjas-ankel_143788651.txt
+2026-11-03,Run,Løp 5x2 bakke (R-HILL),78,3300,run/2026-11-03_løp-5x2-bakke-r-hill_143788652.txt
+2026-11-04,Ride,FTP-test,86,5100,bike/2026-11-04_ftp-test_143788653.zwo
+2026-11-05,WeightTraining,Styrke på 3T — maskiner,25,2700,strength/2026-11-05_styrke-på-3t-maskiner_143788654.txt
+2026-11-06,Run,6x3min,79,3780,run/2026-11-06_6x3min_146534790.txt
+2026-11-06,Swim,Svøm aerob 1500 (S04),152,5400,swim/2026-11-06_svøm-aerob-1500-s04_143788655.txt
+2026-11-07,Ride,Sykkel sweet spot 2x20,108,6000,bike/2026-11-07_sykkel-sweet-spot-2x20_143788659.zwo
+2026-11-07,Run,Løp trail lett 70 (R03),48,3300,run/2026-11-07_løp-trail-lett-70-r03_147100240.txt
+2026-11-08,Run,Løp trail lett 70 (R03),55,4200,run/2026-11-08_løp-trail-lett-70-r03_143788661.txt
+2026-11-09,Swim,Svøm 8x100 hard (S12),56,3300,swim/2026-11-09_svøm-8x100-hard-s12_143788662.txt
+2026-11-09,WeightTraining,"Styrke hjemme — rygg, isjas, ankel",18,2100,strength/2026-11-09_styrke-hjemme-rygg-isjas-ankel_143788663.txt
+2026-11-10,Run,Elghufs 4x3 (OPV),99,4200,run/2026-11-10_elghufs-4x3-opv_143788664.txt
+2026-11-11,Ride,Sykkel sweet spot 3x15,85,4800,bike/2026-11-11_sykkel-sweet-spot-3x15_143788665.zwo
+2026-11-12,WeightTraining,Styrke på 3T — maskiner,25,2700,strength/2026-11-12_styrke-på-3t-maskiner_143788667.txt
+2026-11-13,Run,6x3min,79,3780,run/2026-11-13_6x3min_146534792.txt
+2026-11-13,Swim,Svøm CSS 10x100 (S05),63,3600,swim/2026-11-13_svøm-css-10x100-s05_143788668.txt
+2026-11-14,Ride,Sykkel Z2 195 (B02),63,5400,bike/2026-11-14_sykkel-z2-195-b02_143788669.zwo
+2026-11-15,Run,Løp long easy 85 (R04),75,5100,run/2026-11-15_løp-long-easy-85-r04_143788670.txt
+2026-11-16,Swim,Svøm recovery (S09),66,9000,swim/2026-11-16_svøm-recovery-s09_143788671.txt
+2026-11-17,Run,Løp easy 35 (R01),28,2100,run/2026-11-17_løp-easy-35-r01_143788672.txt
+2026-11-18,Ride,Sykkel sweet spot 2x20 (lett),77,4500,bike/2026-11-18_sykkel-sweet-spot-2x20-lett_143788673.zwo
+2026-11-19,WeightTraining,Styrke recovery — hjemme,15,1680,strength/2026-11-19_styrke-recovery-hjemme_143788676.txt
+2026-11-20,Run,6x3min,79,3780,run/2026-11-20_6x3min_146534794.txt
+2026-11-20,Swim,Svøm 8x100 lett-hard (S12),52,3000,swim/2026-11-20_svøm-8x100-lett-hard-s12_143788677.txt
+2026-11-21,Ride,Sykkel Z2 80,18,2700,bike/2026-11-21_sykkel-z2-80_143788678.zwo
+2026-11-22,Run,Løp easy 40 + ukesopp,32,2400,run/2026-11-22_løp-easy-40-ukesopp_143788680.txt
+2026-11-23,Swim,Svøm teknikk A (S01),86,8100,swim/2026-11-23_svøm-teknikk-a-s01_143788681.txt
+2026-11-23,WeightTraining,"Styrke hjemme — rygg, isjas, ankel",18,2100,strength/2026-11-23_styrke-hjemme-rygg-isjas-ankel_143788682.txt
+2026-11-24,Run,Løp 5x2 bakke (R-HILL),78,3300,run/2026-11-24_løp-5x2-bakke-r-hill_143788683.txt
+2026-11-25,Ride,Sykkel sweet spot 3x15,85,4800,bike/2026-11-25_sykkel-sweet-spot-3x15_143788684.zwo
+2026-11-26,WeightTraining,Styrke på 3T — maskiner,25,2700,strength/2026-11-26_styrke-på-3t-maskiner_143788685.txt
+2026-11-27,Swim,CSS-test (S11),51,3300,swim/2026-11-27_css-test-s11_143788686.txt
+2026-11-28,Ride,Sykkel sweet spot 2x20,77,4500,bike/2026-11-28_sykkel-sweet-spot-2x20_143788687.zwo
+2026-11-29,Run,Løp long easy 85 (R04),75,5100,run/2026-11-29_løp-long-easy-85-r04_143788688.txt
+2026-11-30,Swim,Svøm 8x100 hard (S12),56,3300,swim/2026-11-30_svøm-8x100-hard-s12_143788690.txt
+2026-11-30,WeightTraining,"Styrke hjemme — rygg, isjas, ankel",18,2100,strength/2026-11-30_styrke-hjemme-rygg-isjas-ankel_143795380.txt
+2026-12-01,Run,Løp tempo 4x5 min,84,3600,run/2026-12-01_løp-tempo-4x5-min_143795381.txt
+2026-12-02,Ride,Sykkel sweet spot 3x15,85,4800,bike/2026-12-02_sykkel-sweet-spot-3x15_143795382.zwo
+2026-12-03,WeightTraining,Styrke på 3T — maskiner,25,2700,strength/2026-12-03_styrke-på-3t-maskiner_143795383.txt
+2026-12-04,Swim,Svøm CSS 10x100 (S05),63,3600,swim/2026-12-04_svøm-css-10x100-s05_143795384.txt
+2026-12-05,Ride,Sykkel Z2 195 (B03),89,7200,bike/2026-12-05_sykkel-z2-195-b03_143795386.zwo
+2026-12-06,Run,Løp long easy 85 (R04),75,5100,run/2026-12-06_løp-long-easy-85-r04_143795387.txt
+2026-12-07,Swim,Svøm teknikk A (S01),92,8700,swim/2026-12-07_svøm-teknikk-a-s01_143795390.txt
+2026-12-07,WeightTraining,"Styrke hjemme — rygg, isjas, ankel",18,2100,strength/2026-12-07_styrke-hjemme-rygg-isjas-ankel_143795391.txt
+2026-12-08,Run,Løp 5x3 intervall,78,3300,run/2026-12-08_løp-5x3-intervall_143795393.txt
+2026-12-09,Ride,Sykkel sweet spot 3x15,85,4800,bike/2026-12-09_sykkel-sweet-spot-3x15_143795394.zwo
+2026-12-10,WeightTraining,Styrke på 3T — maskiner,25,2700,strength/2026-12-10_styrke-på-3t-maskiner_143795395.txt
+2026-12-11,Swim,Svøm CSS 10x100 (S05),63,3600,swim/2026-12-11_svøm-css-10x100-s05_143795396.txt
+2026-12-12,Ride,Sykkel Z2 185 (B03),89,7200,bike/2026-12-12_sykkel-z2-185-b03_143795397.zwo
+2026-12-13,Run,Løp tempo 4x5 min,84,3600,run/2026-12-13_løp-tempo-4x5-min_143795399.txt
+2026-12-14,Swim,Svøm 8x100 hard (S12),56,3300,swim/2026-12-14_svøm-8x100-hard-s12_143795402.txt
+2026-12-14,WeightTraining,"Styrke hjemme — rygg, isjas, ankel",18,2100,strength/2026-12-14_styrke-hjemme-rygg-isjas-ankel_143795404.txt
+2026-12-15,Run,Løp 5x2 bakke (R-HILL),78,3300,run/2026-12-15_løp-5x2-bakke-r-hill_143795406.txt
+2026-12-16,Ride,Sykkel sweet spot 2x20,77,4500,bike/2026-12-16_sykkel-sweet-spot-2x20_143795407.zwo
+2026-12-17,WeightTraining,Styrke på 3T — maskiner,25,2700,strength/2026-12-17_styrke-på-3t-maskiner_143795408.txt
+2026-12-18,Swim,Svøm aerob 1500 (S04),139,12600,swim/2026-12-18_svøm-aerob-1500-s04_143795409.txt
+2026-12-19,Ride,Sykkel sweet spot 3x15,85,4800,bike/2026-12-19_sykkel-sweet-spot-3x15_143795411.zwo
+2026-12-20,Run,Løp long easy 100 (R04),86,6000,run/2026-12-20_løp-long-easy-100-r04_143795412.txt
+2026-12-21,Swim,Svøm CSS 10x100 (S05),63,3600,swim/2026-12-21_svøm-css-10x100-s05_143795414.txt
+2026-12-21,WeightTraining,"Styrke hjemme — rygg, isjas, ankel",18,2100,strength/2026-12-21_styrke-hjemme-rygg-isjas-ankel_143795416.txt
+2026-12-22,Run,Elghufs 4x3 (OPV),99,4200,run/2026-12-22_elghufs-4x3-opv_143795417.txt
+2026-12-23,Ride,Sykkel Z2 210 (B03),89,7200,bike/2026-12-23_sykkel-z2-210-b03_143795418.zwo
+2026-12-24,WeightTraining,Styrke på 3T — maskiner,25,2700,strength/2026-12-24_styrke-på-3t-maskiner_143795424.txt
+2026-12-25,Swim,Svøm CSS 10x100 (S05),63,3600,swim/2026-12-25_svøm-css-10x100-s05_143795425.txt
+2026-12-26,Ride,Sykkel sweet spot 2x20,77,4500,bike/2026-12-26_sykkel-sweet-spot-2x20_143795426.zwo
+2026-12-27,Run,Løp long easy 145 (R04),122,8700,run/2026-12-27_løp-long-easy-145-r04_143795427.txt
+2026-12-28,Swim,Svøm 8x100 lett (S12),56,3300,swim/2026-12-28_svøm-8x100-lett-s12_143795430.txt
+2026-12-28,WeightTraining,Styrke recovery — hjemme,15,1800,strength/2026-12-28_styrke-recovery-hjemme_143795431.txt
+2026-12-29,Run,Løp 5x2 bakke (R-HILL),78,3300,run/2026-12-29_løp-5x2-bakke-r-hill_143795432.txt
+2026-12-30,Ride,Sykkel sweet spot 2x20 (jule),77,4500,bike/2026-12-30_sykkel-sweet-spot-2x20-jule_143795434.zwo
+2026-12-31,Swim,Svøm CSS 10x100 (S05),50,3300,swim/2026-12-31_svøm-css-10x100-s05_143795435.txt
+2027-04-12,Swim,Svøm CSS 10x100 (S05),62,4200,swim/2027-04-12_svøm-css-10x100-s05_143822694.txt
+2027-04-12,WeightTraining,"Styrke hjemme — rygg, isjas, ankel",18,2100,strength/2027-04-12_styrke-hjemme-rygg-isjas-ankel_143822697.txt
+2027-04-13,Run,Løp trail lett (R03),72,5400,run/2027-04-13_løp-trail-lett-r03_143822702.txt
+2027-04-14,Ride,Sykkel sweet spot 2x20 (pre-leir),77,4500,bike/2027-04-14_sykkel-sweet-spot-2x20-pre-leir_143822705.zwo
+2027-04-15,Swim,Svøm teknikk A (S01),42,3900,swim/2027-04-15_svøm-teknikk-a-s01_143822708.txt
+2027-04-15,WeightTraining,Styrke lett recovery (ST03),15,1800,strength/2027-04-15_styrke-lett-recovery-st03_143822710.txt
+2027-04-16,Ride,Leksvik — ankomst lett sykkel,18,2700,bike/2027-04-16_leksvik-ankomst-lett-sykkel_143822714.zwo
+2027-04-17,Ride,Leksvik — lang sykkel Z2 (4:30),89,7200,bike/2027-04-17_leksvik-lang-sykkel-z2-430_143822716.zwo
+2027-04-18,Run,Leksvik — long easy løp,100,6900,run/2027-04-18_leksvik-long-easy-løp_143822719.txt
+2027-04-19,Ride,Leksvik — lett sykkel / tur (man),18,2700,bike/2027-04-19_leksvik-lett-sykkel-tur-man_143822722.zwo
+2027-04-20,Ride,Leksvik — sykkel Z2 steady (3:45),89,7200,bike/2027-04-20_leksvik-sykkel-z2-steady-345_143822726.zwo
+2027-04-21,Run,Leksvik — løp 5x3 intervall,78,5700,run/2027-04-21_leksvik-løp-5x3-intervall_143822729.txt
+2027-04-22,Swim,Leksvik — svøm teknikk (Trondheim),58,5400,swim/2027-04-22_leksvik-svøm-teknikk-trondheim_143822731.txt
+2027-04-23,Ride,Leksvik — lang sykkel Z2 #2 (4:45),89,7200,bike/2027-04-23_leksvik-lang-sykkel-z2-2-445_143822737.zwo
+2027-04-24,Ride,Leksvik — brick sykkel Z2,89,7200,bike/2027-04-24_leksvik-brick-sykkel-z2_143822739.zwo
+2027-04-24,Run,Leksvik — brick løp easy,30,2100,run/2027-04-24_leksvik-brick-løp-easy_143822742.txt
+2027-04-25,Run,Leksvik — shakeout + avreise,48,4500,run/2027-04-25_leksvik-shakeout-avreise_143822744.txt

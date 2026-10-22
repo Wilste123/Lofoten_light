@@ -1,0 +1,16 @@
+# Svøm CSS 10x100 (S05)
+Date: 2026-11-13
+Sport: Swim
+Planned load (Intervals): 63
+Duration (s): 3600
+
+## Description (from Intervals)
+William, **ukas svøm-kvalitet** (krever CSS fra test). 10×100 @ CSS, **10 s** pause (siste 2 kan +5 s). RPE 7–8 på dragene.
+
+Oppvarming 400 lett + 4×50 bygg. Nedkjøring 200.
+
+**Uten CSS ennå:** 3×500 aerob (S03) i stedet.
+
+## TrainingPeaks
+- Sykkel med .zwo i bike/: importer til bibliotek, dra til kalender på dato.
+- Løp/svøm/styrke: bruk Workout Builder (HR/pace) eller lim inn struktur over.

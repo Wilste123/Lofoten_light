@@ -1,0 +1,31 @@
+# Elghufs 4x3 (OPV)
+Date: 2026-12-22
+Sport: Run
+Planned load (Intervals): 99
+Duration (s): 4200
+
+## Description (from Intervals)
+### Fra treneren
+
+OPV elghufs: bratt bakke, staver, lange steg — ikke vanlig motbakkesprint. I drag: puls rundt 155–163. Plan B: 3 drag. Stopp hvis rygg eller isjasnerven sier fra.
+
+---
+
+- Warmup 15m 75-85% LTHR
+
+Main Set 4x
+- 3m 94-99% LTHR
+- 3m 70-75% LTHR
+
+- Cooldown 10m 75-85% LTHR
+
+## Structure
+- 15:00 Warmup HR 75-85%lthr
+Main Set 4x x4
+  - 3:00 Step HR 94-99%lthr
+  - 3:00 Step HR 70-75%lthr
+- 10:00 Cooldown HR 75-85%lthr
+
+## TrainingPeaks
+- Sykkel med .zwo i bike/: importer til bibliotek, dra til kalender på dato.
+- Løp/svøm/styrke: bruk Workout Builder (HR/pace) eller lim inn struktur over.

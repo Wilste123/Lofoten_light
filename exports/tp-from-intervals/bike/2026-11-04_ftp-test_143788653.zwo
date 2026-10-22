@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>2026-11-04 — FTP-test</name>
+  <description>Conservative ramp — note best 1 min power; update profile — Power = andel av sykkel-FTP. Sett FTP under TrainingPeaks In — Eksport fra Intervals.icu → TP bibliotek (FTP 210 W i TP).</description>
+  <sportType>bike</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="900" Power="0.4500" pace="0">
+      <textevent message="oppvarming" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="90" Power="0.9500" pace="0">
+      <textevent message="spike" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="0.5000" pace="0">
+      <textevent message="pause" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="90" Power="0.9500" pace="0">
+      <textevent message="spike" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="60" Power="0.5000" pace="0">
+      <textevent message="pause" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0.4500" pace="0">
+      <textevent message="oppvarming" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="1800" Power="0.4500" pace="0">
+      <textevent message="t" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

@@ -1,0 +1,38 @@
+# Løp 5x2 bakke (R-HILL)
+Date: 2026-11-03
+Sport: Run
+Planned load (Intervals): 78
+Duration (s): 3300
+
+## Description (from Intervals)
+### Fra treneren
+
+William, 45 min totalt. Uke 1-kvalitet — utfordrende men kontrollert (~85–90 % av det du *kunne* gitt på 2 min, ikke all-out). Teknikk og pust. Bakke er ok hvis du har; flat grus går også.
+
+Oppvarming: 5 min lett jogg, deretter 5 min med dynamisk mobilitet (høye kneløft, bakspark, hofte) — rolig jogg/gå mellom.
+
+Etter 5×2: 5 min lett jogg, deretter 5 min statisk tøy (hamstring, quad, legg). Stopp hvis rygg/isjas eller legg endrer teknikk. Plan B: 4×2. ST01 lørdag morgen som planlagt.
+
+---
+
+- Warmup 5m 81-89% LTHR
+
+- 5m 81-89% LTHR
+
+Main Set 5x
+- 2m 94-99% LTHR
+- 1m 81-89% LTHR
+
+- Cooldown 10m 75-85% LTHR
+
+## Structure
+- 5:00 Warmup HR 81-89%lthr
+- 5:00 Step HR 81-89%lthr
+Main Set 5x x5
+  - 2:00 Step HR 94-99%lthr
+  - 1:00 Step HR 81-89%lthr
+- 10:00 Cooldown HR 75-85%lthr
+
+## TrainingPeaks
+- Sykkel med .zwo i bike/: importer til bibliotek, dra til kalender på dato.
+- Løp/svøm/styrke: bruk Workout Builder (HR/pace) eller lim inn struktur over.

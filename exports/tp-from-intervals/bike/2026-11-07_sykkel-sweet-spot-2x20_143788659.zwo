@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>2026-11-07 — Sykkel sweet spot 2x20</name>
+  <description>Time-efficient threshold development — Power = andel av sykkel-FTP. Sett FTP under TrainingPeaks Innstillinger → Soner. — Eksport fra Intervals.icu → TP bibliotek (FTP 210 W i TP).</description>
+  <sportType>bike</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="900" Power="0.5500" pace="0">
+      <textevent message="Warm-up" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="1200" Power="0.9000" pace="0">
+      <textevent message="Sweet spot block 1" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="300" Power="0.5000" pace="0">
+      <textevent message="Recovery" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="1200" Power="0.9000" pace="0">
+      <textevent message="Sweet spot block 2" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="300" Power="0.4500" pace="0">
+      <textevent message="Cool-down" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="1200" Power="0.9000" pace="0">
+      <textevent message="Sweet spot block 2" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="900" Power="0.4500" pace="0">
+      <textevent message="Cool-down" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

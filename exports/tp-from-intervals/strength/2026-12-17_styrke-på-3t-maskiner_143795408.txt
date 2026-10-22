@@ -1,0 +1,48 @@
+# Styrke på 3T — maskiner
+Date: 2026-12-17
+Sport: WeightTraining
+Planned load (Intervals): 25
+Duration (s): 2700
+
+## Description (from Intervals)
+William — denne gjør du på 3T, ikke hjemme. Sett av ca. 45 minutter. Ta med drikke og sko du står støtt i.
+
+Før du starter: Rygg og isjasnerven skal være rolig i dag. Hvis du har kribling eller «nerve-trekk» fra ryggen — dropp beinpress og leg curl, ta bare øvre del + calf, og skriv til meg.
+
+Oppvarming (5–7 min)
+- Sykkelergometer eller rask gange: lett, du skal kunne prate.
+- 10 kontrollerte knebøy uten vekt (dybde du tåler uten ryggsmerte).
+- 10 skuldercircles bakover.
+
+Hoveddel — maskiner, 2–3 min pause mellom sett. Siste sett skal føles ca. 7 av 10 anstrengelse, ikke failure.
+
+1. Beinpress maskin — 3 sett × 12 repetisjoner
+   Føtter litt bredere enn hoften, press jevnt, ikke lås kne helt i topp. Rygg mot pute hele tiden.
+
+2. Ro maskin (sittende) — 3 × 12
+   Trekk skulderblad sammen, ikke sving med kroppen.
+
+3. Brystpress maskin — 3 × 10
+   Kontrollert ned, ikke smell vektene.
+
+4. Hofteabduksjon maskin (sete utad) — 3 × 15
+   Bra for bekkenstabilitet og løp. Rolig tempo.
+
+5. Leg curl sittende (lett) — 2 × 12
+   Kun hvis 0 økning av isjas/rygg under og etter. Hvis nerven reagerer: hopp over helt.
+
+6. Calf i Smith eller på step — 3 × 12 per bein
+   Full bevegelse, 2 sek opp, 2 sek ned. Hold i rekkverk for balanse.
+
+Kjerne gjør du hjemme mandager — ikke planke-maskin her.
+
+Avslutning (3 min)
+Lett tøying hofte flexor 45 sek per side — ikke aggressiv forward fold mot gulvet.
+
+Plan B (travelt, 25 min): Beinpress 2×12, ro 2×12, hofteabduksjon 2×15, calf 2×12.
+
+Etter økta: Skriv kort i Intervals: følte rygg/isjas noe? Hvilke vekter (ca.) på beinpress?
+
+## TrainingPeaks
+- Sykkel med .zwo i bike/: importer til bibliotek, dra til kalender på dato.
+- Løp/svøm/styrke: bruk Workout Builder (HR/pace) eller lim inn struktur over.

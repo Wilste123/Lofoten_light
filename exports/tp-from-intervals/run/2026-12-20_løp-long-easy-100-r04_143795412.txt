@@ -1,0 +1,27 @@
+# Løp long easy 100 (R04)
+Date: 2026-12-20
+Sport: Run
+Planned load (Intervals): 86
+Duration (s): 6000
+
+## Description (from Intervals)
+### Fra treneren
+
+Litt lengre — fortsatt easy. Test fuel etter ca. 60 min hvis du vil.
+
+---
+
+- Warmup 10m 81-89% LTHR
+
+- 65m 81-89% LTHR
+
+- Cooldown 5m 75-80% LTHR
+
+## Structure
+- 10:00 Warmup HR 81-89%lthr
+- 65:00 Step HR 81-89%lthr
+- 5:00 Cooldown HR 75-80%lthr
+
+## TrainingPeaks
+- Sykkel med .zwo i bike/: importer til bibliotek, dra til kalender på dato.
+- Løp/svøm/styrke: bruk Workout Builder (HR/pace) eller lim inn struktur over.

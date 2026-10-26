@@ -55,6 +55,14 @@ python3 scripts/intervals_push_calendar.py --start 2026-09-28
 | Alle økter | `plans/csv/trainingdojo-4uker-2026-09-28.csv` |
 | Sykkel-ZWO på dato | `plans/csv/sykkel-zwo-kalender-4uker.csv` |
 | Ukentlige notater | `plans/csv/trainingdojo-uke-notater-4uker-opv.csv` |
+| Volum-checkpoints (okt–des) | `plans/csv/intervals-volum-checkpoints-okt-des2026.csv` |
+
+Kun volum-NOTEs (uten økter):
+
+```bash
+python3 scripts/intervals_push_calendar.py --start 2026-09-28 --notes-only \
+  --notes plans/csv/intervals-volum-checkpoints-okt-des2026.csv
+```
 
 Sykkel/løp/svøm får **ZWO** når fil finnes i `workouts/zwo/`. Styrke: CSV peker på `workouts/planned/strength/*.txt` — push-scriptet legger inn **full coach-tekst** (etter `---` i filen). `external_id` `ll-agent-…` gjør re-push tryggere (`upsert=true`).
 
@@ -93,11 +101,18 @@ python3 scripts/intervals_push_calendar.py --start 2026-10-26 \
    python3 scripts/fetch_intervals_wellness.py --days 7 \
      -o data/intervals/exports/uke-wellness.csv
    python3 scripts/analyze_intervals_wellness.py data/intervals/exports/uke-wellness.csv
+   python3 scripts/compute_readiness.py data/intervals/exports/uke-wellness.csv
    ```
+
+   **TB-Score (totalbelastning):** `scripts/compute_readiness.py` — se `docs/athlete/readiness-totalbelastning.md`. Valgfri `--push-readiness` skriver score til Intervals `readiness`-felt.
 
    **BIA / smartvekt (push):** `plans/csv/intervals-bia-daily.csv` og `intervals-bia-ukesnitt.csv` → `scripts/push_intervals_wellness.py` (vekt + `bodyFat` + vann/FFM i `comments`). Se `docs/athlete/kroppssammensetning-smartvekt.md`.
 
    **Wellness** (søvn, hvilepuls, HRV, vekt, readiness, subjektivt) kommer fra Garmin/klokke **og/eller** push over. API: `GET /athlete/0/wellness.csv?oldest=&newest=`.
+
+   **Hva som typisk synker fra Garmin (William okt 2026):** `sleepSecs`, `sleepScore`, `sleepQuality`, `restingHR`, `hrv`, `steps`, `weight`/`bodyFat` (smartvekt/BIA), `ctl`/`atl` på wellness-raden, subjektive felt hvis du fyller dem i Intervals/Garmin (`soreness`, `stress`, `fatigue`, `mood`, `motivation`). Kolonner som `bedTime`/`wakeUpTime`, `kcalConsumed`, `readiness` kan være **tomme** avhengig av klokke/app — da er **søvntimer** fra klokke det vi stoler på.
+
+   **Hva som *ikke* kommer automatisk:** jobb/deadline, snus, koffein/alkohol (med mindre du logger), aktivt kaloriunderskudd, rygg-triggere, plan vs faktisk intensitet (må sammenligne kalender + aktivitet). **Svøm:** pace/laps = Garmin Connect; **load/timer** = Intervals (husk ignore velocity på svøm).
 
 4. **Cloud Agent:** Legg `INTERVALS_API_KEY` som **secret** i Cursor-miljøet hvis du vil at agenten skal hente uten manuell CSV. Uten secret: last ned **activities.csv** fra Intervals (eller kjør fetch lokalt) og legg i `data/intervals/exports/` / lim inn i chat.
 

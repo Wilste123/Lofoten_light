@@ -1,0 +1,22 @@
+name: Løpeintervaller 5×3 min
+sport: run
+intervals_target: HR
+---
+William, etter 7×2 i går — du sier lav puls og god respons. Fint, men **kontrollert** i dag også.
+
+**5×3 min** hardt-kontrollert (RPE 7–8, puls ca. 155–165), **2 min** rolig jogg/gange mellom. Teknikk og pust — ikke jakt load.
+
+**Plan B:** **6×2 min** / 1 min pause hvis beina føles lettere enn forventet · **4×3** hvis rygg/isjas eller Garmin recovery ikke grønn før start.
+
+Oppvarming 10 min (5 jogg + 5 mobilitet). Nedtrapping 10 min.
+
+---intervals---
+- Warmup 5m 81-89% LTHR
+
+- 5m 81-89% LTHR
+
+Main Set 5x
+- 3m 94-99% LTHR
+- 2m 81-89% LTHR
+
+- Cooldown 10m 75-85% LTHR

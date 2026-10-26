@@ -3,7 +3,7 @@ day,sport,subtype,title,duration_minutes,tss,description,phase,external_suffix,s
 1,Strength,general,"Styrke hjemme — rygg, isjas, ankel",35,18,workouts/planned/strength/ST04-prehab-rygg-isjas-hjemme.txt,re-etablering,st04,18:00
 2,Run,endurance,Løp easy 40 (R01),40,40,workouts/planned/run/R01-easy-40.txt,re-etablering,,
 3,Bike,endurance,Sykkel Z2 90 (B02),90,55,workouts/planned/bike/endurance-90.txt,re-etablering,,
-4,Strength,general,Styrke på 3T — maskiner,45,25,workouts/planned/strength/ST01-base-3t.txt,re-etablering,,18:00
+4,Run,intervals,Løpeintervaller 5×2 min,45,50,workouts/planned/run/R-HILL-5x2-reetablering.txt,re-etablering,,
 5,Run,recovery,Gå/lett løp — erstatter svøm (finger),40,30,workouts/planned/other/PLANB-svom-finger-fre.txt,re-etablering,,
 6,Bike,recovery,Sykkel recovery 45 (B01),45,28,workouts/planned/bike/recovery-spin-45.txt,re-etablering,,
 7,Run,endurance,Løp easy + strides (R02),50,45,workouts/planned/run/R02-easy-55-strides.txt,re-etablering,,

@@ -1,8 +1,11 @@
 .cache/
 data/trainingpeaks/exports/*
 !data/trainingpeaks/exports/.gitkeep
-data/intervals/exports/*
-!data/intervals/exports/.gitkeep
+# Ephemeral pack fetches stay ignored; dated dumps + latest/ are committed.
+data/intervals/exports/pack-*.csv
+data/intervals/exports/**/pack-*.csv
+data/context/*
+!data/context/.gitkeep
 *.env
 docs/trainingpeaks/api-credentials.md
 __pycache__/

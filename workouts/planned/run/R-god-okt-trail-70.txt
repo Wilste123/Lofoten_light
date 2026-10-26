@@ -1,0 +1,14 @@
+name: Løp god økt terreng 70
+sport: run
+intervals_target: HR
+---
+Søndagens «god økt» = **varighet og terreng**, ikke ny VO2-smell. Z2 samtale, puls 134–147 snitt, bakker ok å gå.
+
+Plan B: 55 min flat. Dropp hvis lørdagens sykkel + gårsdagens intervaller sitter som stein — da 40 min easy.
+
+---intervals---
+- Warmup 10m 81-89% LTHR
+
+- 50m 81-89% LTHR
+
+- Cooldown 10m 75-85% LTHR

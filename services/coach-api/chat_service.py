@@ -14,6 +14,7 @@ from typing import Any
 
 from pathlib import Path
 
+from context_pack import pack_for_system_prompt
 from knowledge_ctx import knowledge_selection_meta, load_knowledge_bundle, session_query_text
 from profile import load_profile_md
 
@@ -57,6 +58,8 @@ Stemme (OPV / agent-modus) — selvsikker og anbefalingsorientert:
 - Ingen Pondus/tool-loop. Én LLM-respons. Ingen tom motivasjon / corporate PT-blogg.
 - Wellness (søvn/HRV/RHR/CTL): signaler, ikke fasit — vei inn, ikke omskriv hele planen etter ett tall.
 - Ingen medisinsk diagnose. Ved smerte/GI: tilpass råd, anbefal fagperson ved behov.
+- Knowledge-first: kun athlete/knowledge/snapshot/melding. Ingen web search / internett-coaching.
+  Mangler fakta → skriv «mangler» — ikke fyll fra nettet.
 """.strip()
 
 # Prescription quality bar — closes the «ChatGPT essay / thin template» failure mode.
@@ -247,6 +250,11 @@ def build_system_prompt(
         mode="chat",
         total_budget=6500,
     )
+    context_pack_md = pack_for_system_prompt(
+        knowledge_dir,
+        athlete=athlete,
+        overview_stub=overview_stub,
+    )
     overview_json = json.dumps(overview_stub or {}, ensure_ascii=False)
     atype = athlete.get("athlete_type") or "(ikke satt)"
     sess = athlete.get("sessions_per_week")
@@ -289,9 +297,13 @@ Kjerne:
 - app_plan i snapshot = lagret plan. Når has_plan: ikke late som du «ikke har spesifisert økter».
 - «Hva har jeg denne uka?» → sessions.planlagt/today/upcoming. «Hva har jeg gjort?» → kun gjennomført (ICU).
 - Respekter allowed_disciplines + sessions_per_week + skadenotat.
+- Knowledge-first: bruk Context pack + Knowledge + snapshot. Ingen web search. Si «mangler» ved hull.
 {focused_bullets}
 {_PRESCRIPTION_PROTOCOL_NB}
 {_WRITE_PROTOCOL_NB}
+
+## Context pack (knowledge-first)
+{context_pack_md}
 
 ## Profil
 {profile_md}
@@ -2533,6 +2545,8 @@ def call_llm(
 
     Cursor Composer is not available via API from this app — use OPENAI_MODEL
     (default gpt-4o) for quality closer to agent-modus coaching.
+
+    No tools / web_search — grounding is system prompt context pack + knowledge only.
     """
     if not api_key:
         return (
@@ -2554,6 +2568,7 @@ def call_llm(
             messages.append({"role": m["role"], "content": m["content"]})
     messages.append({"role": "user", "content": user_message})
 
+    # No tools= — never enable browsing / web_search.
     # Slightly warmer + longer than mini defaults — OPV prescriptions need room.
     resp = client.chat.completions.create(
         model=use_model,

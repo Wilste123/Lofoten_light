@@ -33,6 +33,7 @@ from athlete_type import (
     propose_type_update,
 )
 from athlete_constraints import ICU_SYNC_WEEKS, validate_workouts_against_constraints
+from context_pack import build_context_pack
 from chat_service import (
     apply_workout_defaults,
     build_system_prompt,
@@ -1500,6 +1501,49 @@ def get_me(x_athlete_id: str | None = Header(default=None)) -> dict[str, Any]:
             "opt_in": bool(athlete.get("notify_email")),
             "email_set": bool(athlete.get("email")),
             "resend_configured": resend_configured(),
+        },
+    }
+
+
+@app.get("/v1/context/pack")
+def get_context_pack(x_athlete_id: str | None = Header(default=None)) -> dict[str, Any]:
+    """Knowledge-first context pack (rethink parity) for debug / Claude export.
+
+    Chat already injects a compact pack into the system prompt; this endpoint
+    returns the full markdown. No web search — disk knowledge + athlete + light overview.
+    """
+    aid = _require_athlete(x_athlete_id)
+    with db_session(config.get_db()) as conn:
+        athlete = get_athlete(conn, aid)
+        if not athlete:
+            raise HTTPException(404, "Utøver ikke funnet")
+        secrets = get_athlete_secrets(conn, aid)
+        plan_blocks = list_plan_blocks(conn, aid)
+        stored_planned = list_planned_sessions(conn, aid)
+    overview = _overview_payload(athlete, secrets)
+    linked = secrets_public_view(secrets)
+    overview["app_plan"] = plan_summary_for_chat(
+        athlete,
+        planned_sessions=stored_planned,
+        plan_blocks=plan_blocks,
+        intervals_connected=bool(linked.get("connected")),
+        icu_sync_weeks=ICU_SYNC_WEEKS,
+    )
+    pack = build_context_pack(
+        config.KNOWLEDGE_DIR,
+        athlete=athlete,
+        overview_stub=overview,
+        include_overview_json=True,
+    )
+    return {
+        "markdown": pack["markdown"],
+        "meta": {
+            "generated_at": pack["generated_at"],
+            "missing": pack["missing"],
+            "paths_used": pack["paths_used"],
+            "chars": pack["chars"],
+            "knowledge_first": True,
+            "web_search": False,
         },
     }
 

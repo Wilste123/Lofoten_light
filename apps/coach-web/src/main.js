@@ -1331,6 +1331,40 @@ async function sendCoachMessage(message, { sessionId = null } = {}) {
   return api('/v1/chat', { method: 'POST', body })
 }
 
+/** Dashboard CTA → Coach tab with deterministic week/ICU prompts. */
+async function runCoachPromptFromUi(message) {
+  const text = (message || '').trim()
+  if (!text || state.busy) return
+  state.tab = 'coach'
+  state.chatDraft = ''
+  state.workoutProposal = null
+  state.workoutRemoval = null
+  state.athleteTypeProposal = null
+  state.agreementsProposal = null
+  state.ukesopp = null
+  state.weekCheck = null
+  state.workoutSync.pending = null
+  state.workoutSync.error = ''
+  state.workoutSync.message = ''
+  state.messages.push({ role: 'user', content: text })
+  state.busy = true
+  state.error = ''
+  render()
+  try {
+    const data = await sendCoachMessage(text)
+    state.messages.push({ role: 'assistant', content: data.reply })
+    applyChatResponse(data, { mirrorToMain: false })
+  } catch (err) {
+    state.error = err.message || 'Chat feilet'
+    state.messages.pop()
+  } finally {
+    state.busy = false
+    render()
+    const log = document.getElementById('chat-log')
+    if (log) log.scrollTop = log.scrollHeight
+  }
+}
+
 function renderChat() {
   const draft = state.chatDraft || ''
   const empty = `<p class="muted">Skriv til ${escapeHtml(state.athlete.coach_display_name)} — eller åpne en økt under Økter. Spør f.eks. «hva har jeg denne uka?».</p>`
@@ -2021,6 +2055,56 @@ function renderLoadCard(dash) {
     </section>`
 }
 
+function renderReadinessStrip(dash) {
+  const r = dash?.readiness
+  if (!r) {
+    return `
+      <div class="section-block readiness-strip" data-testid="readiness-strip">
+        <div class="section-head"><h2>TB-Score / uke</h2></div>
+        <p class="muted tight">Koble Intervals under Du for TB-Score. Eller spør Coach «sjekk uka mi».</p>
+        <div class="sync-actions">
+          <button type="button" class="btn secondary" id="dash-week-check-btn">Sjekk uka mi</button>
+        </div>
+      </div>`
+  }
+  const tb = r.tb || {}
+  const week = r.week || {}
+  const tbLine =
+    tb.available && tb.tb_score != null
+      ? `<p><strong>TB-Score ${escapeHtml(String(tb.tb_score))}/100</strong> · ${escapeHtml(tb.band || '')}${
+          tb.tsb != null ? ` · TSB ${escapeHtml(String(tb.tsb))}` : ''
+        }</p>`
+      : `<p class="muted tight">TB-Score ikke tilgjengelig${tb.note ? ` — ${escapeHtml(String(tb.note))}` : ''}.</p>`
+  const planB = tb.plan_b_nb
+    ? `<p class="muted tight">${escapeHtml(String(tb.plan_b_nb))}</p>`
+    : tb.recommendation
+      ? `<p class="muted tight">${escapeHtml(String(tb.recommendation))}</p>`
+      : ''
+  const weekLine =
+    week.week_start && week.sessions_planned != null
+      ? `<p class="muted tight">Denne uka (${escapeHtml(week.week_start)}–${escapeHtml(week.week_end || '')}): <strong>${escapeHtml(String(week.sessions_done ?? 0))} / ${escapeHtml(String(week.sessions_planned))}</strong> planlagte${
+          week.compliance_pct != null ? ` (${escapeHtml(String(week.compliance_pct))} %)` : ''
+        }</p>`
+      : week.week_start
+        ? `<p class="muted tight">Uke ${escapeHtml(week.week_start)}–${escapeHtml(week.week_end || '')} — åpne Coach for detalj.</p>`
+        : ''
+  return `
+    <div class="section-block readiness-strip" data-testid="readiness-strip">
+      <div class="section-head">
+        <h2>TB-Score / uke</h2>
+        <span class="badge ${tb.available ? 'badge-live' : 'badge-off'}">${tb.available ? 'Live' : '—'}</span>
+      </div>
+      ${tbLine}
+      ${planB}
+      ${weekLine}
+      <p class="muted tight">${escapeHtml(r.cta_nb || 'Spør Coach «sjekk uka mi» for full analyse.')}</p>
+      <div class="sync-actions">
+        <button type="button" class="btn btn-primary" id="dash-week-check-btn">Sjekk uka mi</button>
+        <button type="button" class="btn secondary" id="dash-icu-compare-btn">App vs Intervals</button>
+      </div>
+    </div>`
+}
+
 function renderDashboard() {
   const dash = state.dashboard
   const o = state.overview || {}
@@ -2054,6 +2138,7 @@ function renderDashboard() {
       <h2>Treningsstatus</h2>
       <p class="muted">${escapeHtml(dash.uplift_line || 'Timer, søvn og sesongmål — app-beregnet.')}</p>
     </div>
+    ${renderReadinessStrip(dash)}
     ${renderPeriodPicker(dash)}
     ${renderLoadCard(dash)}
     ${renderSleepCard(dash.sleep, dash.wellness_fetch_error, dash.wellness_fetch_error_detail, sleepLabel)}
@@ -2391,17 +2476,35 @@ function renderSessionDetail() {
       </header>
 
       <section class="section-block coach-block">
-        <h3>Struktur</h3>
+        <h3>Full resept</h3>
         ${
           structureHtml
             ? `<div class="session-structure">${structureHtml}</div>`
-            : coachBody
-              ? `<pre class="coach-desc">${escapeHtml(coachBody)}</pre>`
-              : `<p class="muted">Ingen steg lagret på denne økten ennå.</p>`
+            : d.prescription_nb
+              ? `<pre class="coach-desc prescription-nb">${escapeHtml(d.prescription_nb)}</pre>`
+              : coachBody
+                ? `<pre class="coach-desc">${escapeHtml(coachBody)}</pre>`
+                : `<p class="muted">Ingen steg lagret på denne økten ennå.</p>`
         }
         ${
-          structureHtml && coachBody
-            ? `<details class="coach-raw"><summary>Full beskrivelse</summary><pre class="coach-desc">${escapeHtml(coachBody)}</pre></details>`
+          (d.plan_b || []).length
+            ? `<div class="session-plan-b"><p class="plan-kicker">Plan B</p><ul>${(d.plan_b || [])
+                .map((b) => `<li>${escapeHtml(String(b))}</li>`)
+                .join('')}</ul></div>`
+            : ''
+        }
+        ${
+          (d.risk || []).length
+            ? `<div class="session-risk"><p class="plan-kicker">Risiko</p><ul>${(d.risk || [])
+                .map((b) => `<li>${escapeHtml(String(b))}</li>`)
+                .join('')}</ul></div>`
+            : ''
+        }
+        ${
+          structureHtml && (coachBody || d.prescription_nb)
+            ? `<details class="coach-raw"><summary>Full beskrivelse</summary><pre class="coach-desc">${escapeHtml(
+                coachBody || d.prescription_nb || '',
+              )}</pre></details>`
             : ''
         }
       </section>
@@ -3396,6 +3499,13 @@ function bindApp() {
     await refreshDashboard()
     state.busy = false
     render()
+  })
+
+  document.getElementById('dash-week-check-btn')?.addEventListener('click', () => {
+    void runCoachPromptFromUi('sjekk uka mi')
+  })
+  document.getElementById('dash-icu-compare-btn')?.addEventListener('click', () => {
+    void runCoachPromptFromUi('sammenlign app vs Intervals-kalender denne uka')
   })
 
   document.getElementById('copy-username')?.addEventListener('click', async () => {

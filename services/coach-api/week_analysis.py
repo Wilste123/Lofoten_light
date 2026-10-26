@@ -291,3 +291,162 @@ def filter_sessions_by_week(
         if start <= d <= end:
             out.append(s)
     return out
+
+
+def session_plan_b_and_risk(s: dict[str, Any]) -> dict[str, list[str]]:
+    """Per-session Plan B / risk lines for Økter detail."""
+    text = str(s.get("description") or "")
+    plan_b: list[str] = []
+    risk: list[str] = []
+    for m in re.finditer(r"Plan\s*B\s*:\s*([^\n]+)", text, re.IGNORECASE):
+        plan_b.append(m.group(0).strip()[:240])
+    for m in re.finditer(
+        r"(?:Ukerisiko|Weekly\s*risk|Risiko)\s*:\s*([^\n]+)",
+        text,
+        re.IGNORECASE,
+    ):
+        risk.append(m.group(0).strip()[:240])
+    return {"plan_b": plan_b[:3], "risk": risk[:2]}
+
+
+def partition_merged_calendar(
+    merged: list[dict[str, Any]],
+) -> dict[str, list[dict[str, Any]]]:
+    """Split merged app∪ICU rows by sync_status for coach compare."""
+    from plan_calendar_merge import (
+        SYNC_INTERVALS_ONLY,
+        SYNC_PLANNED_NOT_SYNCED,
+        SYNC_SYNCED,
+    )
+
+    buckets: dict[str, list[dict[str, Any]]] = {
+        SYNC_SYNCED: [],
+        SYNC_PLANNED_NOT_SYNCED: [],
+        SYNC_INTERVALS_ONLY: [],
+    }
+    for s in merged or []:
+        st = str(s.get("sync_status") or SYNC_PLANNED_NOT_SYNCED)
+        buckets.setdefault(st, []).append(s)
+    return buckets
+
+
+def compare_icu_vs_app_nb(
+    merged: list[dict[str, Any]],
+    *,
+    week_start: str,
+    week_end: str,
+    intervals_linked: bool,
+    app_only_planned: list[dict[str, Any]] | None = None,
+    max_lines: int = 8,
+) -> dict[str, Any]:
+    """Deep calendar truth: app SoT vs ICU WORKOUT — read-only coach payload.
+
+    Returns Norwegian reply bits + structured buckets. Never implies a write.
+    """
+    from plan_calendar_merge import (
+        SYNC_INTERVALS_ONLY,
+        SYNC_PLANNED_NOT_SYNCED,
+        SYNC_SYNCED,
+    )
+
+    parts = partition_merged_calendar(merged)
+    synced = parts.get(SYNC_SYNCED) or []
+    app_only = parts.get(SYNC_PLANNED_NOT_SYNCED) or []
+    icu_only = parts.get(SYNC_INTERVALS_ONLY) or []
+
+    def _line(s: dict[str, Any]) -> str:
+        day = str(s.get("session_date") or s.get("date") or "")[:10]
+        name = (s.get("name") or s.get("intervals_name") or "Økt").strip()
+        sport = (s.get("sport") or s.get("discipline") or "").strip()
+        src = s.get("source_kind_nb") or s.get("source_kind") or ""
+        bits = [day, name]
+        if sport:
+            bits.append(f"({sport})")
+        if src:
+            bits.append(f"[{src}]")
+        return " · ".join(bits)
+
+    sections: list[str] = []
+    if not intervals_linked:
+        sections.append(
+            "Intervals ikke koblet — sammenligning begrenset til app-plan (SoT)."
+        )
+        rows = list(app_only_planned or merged or [])
+        if rows:
+            sections.append("App-plan:")
+            for s in rows[:max_lines]:
+                sections.append(f"  - {_line(s)}")
+        else:
+            sections.append("Ingen økter i app-planen for vinduet.")
+    else:
+        sections.append(
+            f"Kalender-sannhet {week_start}–{week_end} "
+            "(app SoT vs Intervals WORKOUT — kun lesing):"
+        )
+        sections.append(
+            f"Matched app↔ICU: {len(synced)} · "
+            f"kun app: {len(app_only)} · "
+            f"kun Intervals: {len(icu_only)}"
+        )
+        if synced:
+            sections.append("Matched:")
+            for s in synced[:max_lines]:
+                sections.append(f"  - {_line(s)}")
+        if app_only:
+            sections.append("Kun i app (ikke synket):")
+            for s in app_only[:max_lines]:
+                sections.append(f"  - {_line(s)}")
+        if icu_only:
+            sections.append(
+                "Kun på Intervals (ofte ditt utkast — endres ikke uten at du ber):"
+            )
+            for s in icu_only[:max_lines]:
+                sections.append(f"  - {_line(s)}")
+        if not synced and not app_only and not icu_only:
+            sections.append("Ingen WORKOUT i vinduet.")
+
+    # Name/date mismatches between app-only and ICU-only same day
+    drift: list[str] = []
+    icu_by_day: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for s in icu_only:
+        day = str(s.get("session_date") or s.get("date") or "")[:10]
+        if day:
+            icu_by_day[day].append(s)
+    for s in app_only:
+        day = str(s.get("session_date") or s.get("date") or "")[:10]
+        peers = icu_by_day.get(day) or []
+        if not peers:
+            continue
+        app_name = (s.get("name") or "").strip().lower()
+        for p in peers:
+            icu_name = (p.get("name") or p.get("intervals_name") or "").strip().lower()
+            if app_name and icu_name and app_name != icu_name:
+                drift.append(
+                    f"{day}: app «{s.get('name')}» vs ICU «{p.get('name') or p.get('intervals_name')}»"
+                )
+                break
+    if drift:
+        sections.append("Avvik samme dag (navn/innhold — sjekk manuelt):")
+        for d in drift[:5]:
+            sections.append(f"  - {d}")
+
+    presc_pool = list(synced) + list(icu_only) + list(app_only)
+    prescriptions = quality_prescriptions_nb(presc_pool, max_sessions=3)
+    plan_b = extract_plan_b_lines(presc_pool)
+    risk = extract_weekly_risk_lines(presc_pool)
+
+    return {
+        "synced": synced,
+        "app_only": app_only,
+        "icu_only": icu_only,
+        "counts": {
+            "synced": len(synced),
+            "app_only": len(app_only),
+            "icu_only": len(icu_only),
+        },
+        "drift_lines": drift[:5],
+        "reply_lines": sections,
+        "prescriptions": prescriptions,
+        "plan_b": plan_b,
+        "risk": risk,
+    }

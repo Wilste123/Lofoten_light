@@ -940,6 +940,19 @@ def session_detail_payload(
     builder_steps = item.get("builder_steps")
     if not builder_steps:
         builder_steps = builder_steps_from_structure(structure)
+    # Full quality prescription (warmup/main/cooldown) — same as week-check / agent-modus
+    prescription_nb = None
+    plan_b_lines: list[str] = []
+    risk_lines: list[str] = []
+    try:
+        from week_analysis import format_session_prescription_nb, session_plan_b_and_risk
+
+        prescription_nb = format_session_prescription_nb(item)
+        meta = session_plan_b_and_risk(item)
+        plan_b_lines = list(meta.get("plan_b") or [])
+        risk_lines = list(meta.get("risk") or [])
+    except Exception:  # noqa: BLE001 — soft-fail; detail still works
+        prescription_nb = None
     return {
         "session": item,
         "library_key": key,
@@ -951,11 +964,17 @@ def session_detail_payload(
         "builder_steps": builder_steps,
         "builder_step_types": list(BUILDER_STEP_TYPES),
         "builder_step_labels": dict(BUILDER_STEP_LABELS),
+        "prescription_nb": prescription_nb,
+        "plan_b": plan_b_lines,
+        "risk": risk_lines,
         "coach_block": {
             "title": "Fra treneren",
             "body": desc or None,
             "steps": steps,
             "structure": structure,
+            "prescription_nb": prescription_nb,
+            "plan_b": plan_b_lines,
+            "risk": risk_lines,
         },
         "status": (item.get("completion") or {}).get("status"),
         "editable_fields": {

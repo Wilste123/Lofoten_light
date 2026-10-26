@@ -131,6 +131,8 @@ def find_local_icu() -> dict[str, Path | None]:
         files: list[Path] = []
         for pat in patterns:
             files.extend(ICU_DIR.glob(pat))
+            files.extend(ICU_DIR.glob(f"latest/{pat}"))
+            files.extend(ICU_DIR.glob(f"20*/{pat}"))
         files = [f for f in files if f.is_file() and f.stat().st_size > 0]
         if not files:
             return None
@@ -139,10 +141,21 @@ def find_local_icu() -> dict[str, Path | None]:
 
     return {
         "activities": newest(
-            ("pack-activities-*.csv", "*activit*.csv", "uke*.csv", "*-activities*.csv")
+            (
+                "pack-activities-*.csv",
+                "activities.csv",
+                "*activit*.csv",
+                "uke*.csv",
+                "*-activities*.csv",
+            )
         ),
         "wellness": newest(
-            ("pack-wellness-*.csv", "*wellness*.csv", "wellness-latest.csv")
+            (
+                "pack-wellness-*.csv",
+                "wellness.csv",
+                "*wellness*.csv",
+                "wellness-latest.csv",
+            )
         ),
     }
 

@@ -361,7 +361,9 @@ def test_workout_preview_confirm_flow(client):
                     "description": "Rolig",
                     "start_time": "07:00",
                 }
-            ]
+            ],
+            # Opt-in: default prepare_intervals_sync is False (app-only save)
+            "prepare_intervals_sync": True,
         },
     )
     assert preview.status_code == 200, preview.text

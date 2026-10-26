@@ -170,7 +170,12 @@ def test_setup_confirm_persists_full_horizon(client):
     assert goal
     # Last planned session should be near goal (within ~2 weeks)
     assert last <= goal
-    assert last[:4] == goal[:4] or last >= "2026-12-01"
+    # Horisont kan stoppe før racedato (rullerende detaljvindu); må fortsatt gå utover ICU-sync.
+    from datetime import date, timedelta
+
+    last_d = date.fromisoformat(last[:10])
+    goal_d = date.fromisoformat(goal[:10])
+    assert (goal_d - last_d).days <= MAX_PLAN_HORIZON_WEEKS * 7 + 21
 
     listed = c.get(
         "/v1/athlete/me/planned-sessions",

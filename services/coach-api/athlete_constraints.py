@@ -67,8 +67,10 @@ LABELS_NO: dict[str, str] = {
 # Intervals WORKOUT push window (near-term only — not the app plan horizon).
 MAX_WORKOUT_WEEKS = 2
 ICU_SYNC_WEEKS = MAX_WORKOUT_WEEKS
-# App-owned planned_sessions: season_start → goal_race (capped for safety).
+# Grovplan span (meso blocks) season_start → goal_race (capped for safety).
 MAX_PLAN_HORIZON_WEEKS = 78
+# Detaljplan: concrete planned_sessions (~1 month rolling). Not full year.
+DETALJ_PLAN_WEEKS = 4
 
 # Sensible default sessions/week when not stated (None = no hard cap / use template)
 DEFAULT_SESSIONS: dict[str, int | None] = {
@@ -214,12 +216,32 @@ def infer_allowed_disciplines(
 ) -> list[str]:
     """Explicit list → conversation cues → athlete_type default."""
     draft = draft or {}
-    explicit = normalize_disciplines(draft.get("allowed_disciplines"))
-    if explicit:
-        return explicit
-
     blob = _blob(draft, text)
     atype = normalize_athlete_type(athlete_type or draft.get("athlete_type")) or TYPE_GENERAL
+    explicit = normalize_disciplines(draft.get("allowed_disciplines"))
+
+    swim_difficulty = bool(
+        re.search(
+            r"(?:svøm|swim).{0,40}(?:vanskelig|kan ikke|dårlig|sliter|hate)|"
+            r"kan ikke svømme|ikke svøm(?:me|ming)?",
+            blob,
+        )
+    )
+    run_strength_cue = bool(
+        re.search(r"(løp|lop|run).{0,20}(og|&|\+)\s*(styrke|strength)", blob)
+        or re.search(r"(kun|bare|only)\s+(løp|lop|running|run)", blob)
+        or re.search(r"løp-fokus|run.?focus", blob)
+    )
+    # LLM sometimes ships swim+bike+run; override when athlete asked run+strength / swim hard.
+    if explicit:
+        has_swim = DISC_SWIM in explicit
+        if has_swim and (swim_difficulty or run_strength_cue) and not re.search(
+            r"triatlon|triathlon|lofoten|ironman", blob
+        ):
+            return [DISC_RUN, DISC_STRENGTH] if DISC_STRENGTH in explicit or run_strength_cue else [
+                d for d in explicit if d != DISC_SWIM
+            ] or [DISC_RUN, DISC_STRENGTH]
+        return explicit
 
     # Strong "only X" agreements beat type defaults
     only_run_strength = bool(
@@ -238,14 +260,42 @@ def infer_allowed_disciplines(
             r"(kun|bare)\s+(løping|løpe|running).{0,30}(styrke|strength)",
             blob,
         )
+        # «løp og styrke» + swim as difficulty (not focus) — QA onboarding gap
+        or (
+            re.search(r"(løp|lop|run).{0,20}(og|&|\+)\s*(styrke|strength)", blob)
+            and swim_difficulty
+        )
+        or (
+            re.search(r"(løp|lop|run).{0,20}(og|&|\+)\s*(styrke|strength)", blob)
+            and not re.search(r"triatlon|triathlon|lofoten", blob)
+            and not re.search(
+                r"(?:svøm|swim).{0,20}(?:fokus|hoved|økter)|basseng.*fokus",
+                blob,
+            )
+        )
     )
+    positive_multi = bool(
+        re.search(r"triatlon|triathlon|lofoten|ironman|norseman|brick", blob)
+    )
+    # Bare mention of «svømming er vanskelig» must NOT block HM → run+strength.
     if only_run_strength or (
         atype in (TYPE_HALF_MARATHON, TYPE_MARATHON, TYPE_RUNNER)
-        and re.search(r"halv\s*maraton|half[\s-]?marathon|maraton|løper", blob)
-        and not re.search(r"triatlon|triathlon|svøm|sykkel|lofoten", blob)
+        and re.search(r"halv\s*maraton|half[\s-]?marathon|maraton|løper|løp", blob)
+        and not positive_multi
+        and (
+            swim_difficulty
+            or not re.search(
+                r"(?:svøm|swim).{0,20}(?:fokus|hoved)|basseng.*fokus|\bsykkel\b.*\bløp\b",
+                blob,
+            )
+        )
     ):
-        # Runners default to run+strength unless they ask for more
-        if re.search(r"\bsykkel\b|\bbike\b", blob) and not only_run_strength:
+        # Runners default to run+strength unless they ask for more bike volume
+        if (
+            re.search(r"\bsykkel\b|\bbike\b", blob)
+            and not only_run_strength
+            and not swim_difficulty
+        ):
             return [DISC_RUN, DISC_BIKE, DISC_STRENGTH]
         return [DISC_RUN, DISC_STRENGTH]
 
@@ -469,10 +519,17 @@ def validate_workouts_against_constraints(
     ok = len(rejected) == 0 and len(accepted) == len(workouts)
     ask = None
     if not ok and not accepted and workouts:
-        ask = (
-            "Avtalen blokkerer forslaget. Bekreft endring av disipliner/økter-per-uke "
-            "via agreements_update, eller foreslå innenfor avtalen."
-        )
+        if cap_hit:
+            ask = (
+                "Avtalt antall økter/uke er fylt. Tilby erstatning av eksisterende "
+                "økt(er) på de datoene (replace), eller endre økter-per-uke via "
+                "agreements_update — ikke dead-end."
+            )
+        else:
+            ask = (
+                "Avtalen blokkerer forslaget. Bekreft endring av disipliner/økter-per-uke "
+                "via agreements_update, eller foreslå innenfor avtalen."
+            )
     return {
         "ok": ok,
         "accepted": accepted,

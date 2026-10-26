@@ -122,7 +122,12 @@ main {
   grid-template-columns: repeat(5, 1fr);
 }
 
-.tabs.tabs-five button {
+.tabs.tabs-six {
+  grid-template-columns: repeat(6, 1fr);
+}
+
+.tabs.tabs-five button,
+.tabs.tabs-six button {
   font-size: 0.68rem;
   padding: 0.55rem 0.15rem;
   letter-spacing: 0;
@@ -721,6 +726,202 @@ button.linkish:hover {
   border-top: 1px dashed var(--line);
 }
 
+.plan-month-calendar .cal-month-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cal-month-title {
+  font-weight: 600;
+  min-width: 10rem;
+  text-align: center;
+  text-transform: capitalize;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-top: 0.75rem;
+}
+
+.cal-dow {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-align: center;
+  padding: 0.25rem 0;
+}
+
+.cal-day {
+  min-height: 3.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg1);
+  color: var(--text);
+  padding: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  cursor: pointer;
+  font: inherit;
+}
+
+.cal-day-out {
+  opacity: 0.35;
+}
+
+.cal-day-today {
+  border-color: var(--accent);
+}
+
+.cal-day-selected {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.cal-day-num {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.cal-dots {
+  display: flex;
+  gap: 0.15rem;
+  justify-content: center;
+  font-size: 0.65rem;
+  letter-spacing: 0.02em;
+  margin-top: auto;
+}
+
+.cal-dot-synced {
+  color: #3ecf8e;
+}
+
+.cal-dot-unsynced {
+  color: #f0a030;
+}
+
+.cal-dot-icu {
+  color: #7aa2ff;
+}
+
+.cal-legend {
+  white-space: nowrap;
+}
+
+.cal-sync-tag {
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+.cal-source-tag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  opacity: 0.9;
+  margin-right: 0.25rem;
+}
+
+.cal-source-coach {
+  color: #3ecf8e;
+}
+
+.cal-source-agent {
+  color: #c9a227;
+}
+
+.cal-source-manual {
+  color: #9aa4b2;
+}
+
+.cal-source-app {
+  color: #7aa2ff;
+}
+
+.cal-source-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.cal-source-filter.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.ukesopp-q li {
+  margin-bottom: 0.65rem;
+}
+
+.ukesopp-q-label {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.ukesopp-answer {
+  width: 100%;
+  min-height: 2.5rem;
+  resize: vertical;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.5rem;
+}
+
+.cal-week-quality {
+  margin: 0.5rem 0 0.75rem;
+  padding: 0.5rem 0.65rem;
+  border-left: 3px solid var(--accent, #1a6b4a);
+  background: color-mix(in srgb, var(--accent, #1a6b4a) 8%, transparent);
+}
+
+.cal-sync-planned_not_synced {
+  color: #f0a030;
+}
+
+.cal-sync-synced {
+  color: #3ecf8e;
+}
+
+.cal-sync-intervals_only {
+  color: #7aa2ff;
+}
+
+.cal-side {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+
+.cal-scope-actions {
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.cal-sync-confirm {
+  margin-top: 1rem;
+}
+
+@media (min-width: 720px) {
+  .plan-month-calendar {
+    display: grid;
+    grid-template-columns: 1fr minmax(220px, 280px);
+    gap: 1rem;
+    align-items: start;
+  }
+
+  .plan-month-calendar .cal-side {
+    margin-top: 2.5rem;
+    border-top: none;
+    border-left: 1px solid var(--line);
+    padding-left: 1rem;
+  }
+}
+
 .horizon-scroll {
   max-height: 22rem;
   overflow-y: auto;
@@ -1164,6 +1365,31 @@ button.linkish:hover {
   gap: 0.75rem;
 }
 
+.readiness-strip {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+  background: color-mix(in srgb, var(--accent) 7%, var(--bg2));
+}
+
+.readiness-strip .sync-actions {
+  margin-top: 0.65rem;
+}
+
+.session-plan-b,
+.session-risk {
+  margin-top: 0.65rem;
+  font-size: 0.88rem;
+}
+
+.session-plan-b ul,
+.session-risk ul {
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.prescription-nb {
+  max-height: 22rem;
+}
+
 .structure-phase {
   padding: 0.65rem 0.75rem;
   border-radius: calc(var(--radius) - 2px);
@@ -1327,6 +1553,7 @@ button.linkish:hover {
   --chart-strength: #b08d3a;
   --chart-ctl: #7eb8a0;
   --chart-atl: #c4a06a;
+  --chart-tsb: #8b7ec8;
 }
 
 .chart-block .section-head {
@@ -1499,6 +1726,179 @@ button.linkish:hover {
   background: var(--chart-atl);
 }
 
+.chart-legend-item .swatch.tsb {
+  background: var(--chart-tsb, #8b7ec8);
+}
+
+.chart-legend-item .swatch.planned {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--muted) 0 3px,
+    transparent 3px 6px
+  );
+  border: 1px solid var(--muted);
+}
+
+.chart-line-tsb {
+  stroke: var(--chart-tsb, #8b7ec8);
+  stroke-width: 1.5;
+}
+
+.chart-line.is-planned {
+  opacity: 0.85;
+}
+
+.chart-kind-planned {
+  font-style: italic;
+}
+
+.chart-line-tb-morgen {
+  stroke: #2563eb;
+  stroke-width: 1.6;
+}
+
+.chart-line-tb-kveld {
+  stroke: #c45c26;
+  stroke-width: 1.6;
+}
+
+.chart-legend-item .swatch.tb-morgen {
+  background: #2563eb;
+}
+
+.chart-legend-item .swatch.tb-kveld {
+  background: #c45c26;
+}
+
+.tb-band-green {
+  fill: #22c55e;
+  opacity: 0.12;
+}
+
+.tb-band-yellow {
+  fill: #eab308;
+  opacity: 0.14;
+}
+
+.chart-h-fill.tb-comp.is-green {
+  background: #16a34a;
+}
+
+.chart-h-fill.tb-comp.is-yellow {
+  background: #ca8a04;
+}
+
+.chart-h-fill.tb-comp.is-red {
+  background: #dc2626;
+}
+
+.chart-h-fill.zone-fill {
+  background: var(--accent, #1a6b4a);
+}
+
+.chart-line-watts {
+  stroke: #1a6b4a;
+  stroke-width: 1.5;
+}
+
+.chart-line-hr {
+  stroke: #c45c4a;
+  stroke-width: 1.4;
+}
+
+.chart-legend-item .swatch.watts {
+  background: #1a6b4a;
+}
+
+.chart-legend-item .swatch.hr {
+  background: #c45c4a;
+}
+
+.chart-hr-axis {
+  fill: #c45c4a;
+}
+
+.tight-head h3 {
+  font-size: 0.95rem;
+  margin: 0.75rem 0 0.35rem;
+}
+
+.session-analysis-card .chart {
+  margin: 0.5rem 0;
+}
+
+.acwr-block {
+  margin-top: 0.35rem;
+}
+
+.acwr-track {
+  position: relative;
+  display: flex;
+  height: 0.85rem;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+}
+
+.acwr-zone.ok {
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.acwr-zone.elevated {
+  background: color-mix(in srgb, #c4a035 70%, transparent);
+}
+
+.acwr-zone.high {
+  background: color-mix(in srgb, var(--danger) 65%, transparent);
+}
+
+.acwr-marker {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 3px;
+  margin-left: -1.5px;
+  background: var(--text);
+  border-radius: 1px;
+  box-shadow: 0 0 0 1px var(--bg0);
+}
+
+.acwr-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+}
+
+.beta-hero .lead.tight {
+  margin-top: 0.35rem;
+}
+
+.cite-list {
+  margin: 0.5rem 0 0;
+  padding-left: 1.15rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.cite-list .cite-id {
+  font-family: ui-monospace, monospace;
+  font-size: 0.72rem;
+  color: var(--text);
+}
+
+.coach-note {
+  margin: 0.5rem 0;
+  padding: 0.55rem 0.65rem;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
 @media (max-width: 420px) {
   .chart-h-row {
     grid-template-columns: 3.6rem 1fr 2.8rem;
@@ -1506,6 +1906,10 @@ button.linkish:hover {
 
   .chart-bars {
     gap: 0.12rem;
+  }
+
+  .tabs.tabs-six button {
+    font-size: 0.62rem;
   }
 }
 
@@ -1668,4 +2072,104 @@ button.linkish:hover {
 .btn.danger-outline {
   border-color: color-mix(in srgb, #c45c26 55%, transparent);
   color: #e8a07a;
+}
+
+
+/* Visual øktbygger */
+.builder-panel { margin-top: 0.75rem; }
+.builder-steps { display: flex; flex-direction: column; gap: 0.4rem; margin: 0.5rem 0; }
+.builder-step {
+  display: grid;
+  grid-template-columns: 7rem 4.5rem 1fr 1.2fr auto;
+  gap: 0.35rem;
+  align-items: center;
+}
+.builder-step input, .builder-step select {
+  width: 100%;
+  font-size: 0.9rem;
+}
+.builder-live { margin-top: 0.65rem; padding-top: 0.5rem; border-top: 1px solid var(--border, #ddd); }
+.builder-preview { margin: 0.25rem 0; padding-left: 1.1rem; }
+.chart-bar.is-planned { opacity: 0.55; background: repeating-linear-gradient(
+  -45deg, var(--accent), var(--accent) 4px, transparent 4px, transparent 8px
+); }
+.chart-bar.is-executed { background: var(--accent); }
+.chart-kind { margin: 0 0 0.25rem; }
+
+/* Coach ticker — unread strip (athlete_events); never auto-apply */
+.ticker-strip {
+  margin: 0 1.1rem 0.5rem;
+  padding: 0.55rem 0.7rem 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--bg2) 88%, var(--accent) 12%);
+}
+.ticker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+.ticker-label {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ticker-dismiss {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+.ticker-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.ticker-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg1);
+  color: var(--text);
+  padding: 0.45rem 0.55rem;
+  cursor: pointer;
+}
+.ticker-item:hover {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+}
+.ticker-kind {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  font-weight: 600;
+}
+.ticker-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.ticker-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.72rem;
+}
+
+@media (max-width: 640px) {
+  .builder-step {
+    grid-template-columns: 1fr 1fr;
+  }
+  .builder-step .builder-note { grid-column: 1 / -1; }
 }

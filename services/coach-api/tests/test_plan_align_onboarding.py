@@ -56,6 +56,25 @@ def test_goal_year_2028_sets_season_end_in_2028():
     assert (race - start).days > 400
 
 
+def test_goal_month_juni_2027_not_default_sep():
+    """QA: «halvmaraton juni 2027» must not land on 2027-09-15."""
+    today = date(2026, 10, 3)
+    inferred = infer_goal_race_date(
+        goal_text="halvmaraton juni 2027",
+        today=today,
+    )
+    assert inferred == date(2027, 6, 15)
+    inferred2 = infer_goal_race_date(
+        goal_text="Lofoten Half Extreme august 2027",
+        today=today,
+    )
+    assert inferred2 == date(2027, 8, 15)
+    # Day + month + year
+    assert infer_goal_race_date(
+        goal_text="løp 11. mai 2028", today=today
+    ) == date(2028, 5, 11)
+
+
 def test_trained_4x_week_no_reetablering_title():
     kdir = config.KNOWLEDGE_DIR
     prev = build_setup_preview(

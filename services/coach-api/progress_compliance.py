@@ -75,7 +75,8 @@ _PAGE_LIMIT = 100
 # paired_event_id links completed activity → calendar event (Intervals truth)
 _ACTIVITY_FIELDS = (
     "id,type,sport,name,moving_time,elapsed_time,duration,start_date_local,"
-    "paired_event_id"
+    "paired_event_id,icu_training_load,training_load,icu_tss,tss,"
+    "icu_intensity,intensity"
 )
 _FETCH_TIMEOUT = 12
 _CACHE_TTL_SEC = 120
@@ -385,16 +386,9 @@ def _auth_headers(api_key: str) -> dict[str, str]:
 
 
 def _http_get_json(url: str, api_key: str, *, timeout: int = _FETCH_TIMEOUT) -> Any:
-    req = urllib.request.Request(
-        url,
-        method="GET",
-        headers=_auth_headers(api_key),
-    )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        raw = resp.read().decode("utf-8", errors="replace")
-    if not raw:
-        return []
-    return json.loads(raw)
+    from icu_http import http_get_json
+
+    return http_get_json(url, _auth_headers(api_key), timeout=timeout)
 
 
 def fetch_intervals_activities_page(
@@ -641,4 +635,6 @@ def public_block(b: dict[str, Any] | None) -> dict[str, Any] | None:
         "end_date": b.get("end_date"),
         "weekly_hours": b.get("weekly_hours"),
         "sort_order": b.get("sort_order") or 0,
+        "plan_b": b.get("plan_b") or "",
+        "weekly_risk": b.get("weekly_risk") or "",
     }

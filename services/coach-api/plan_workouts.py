@@ -20,6 +20,7 @@ so Plan-tab withdraw stays scoped (CLI seed uses ``ll-agent-…``).
 
 from __future__ import annotations
 
+import re
 import sys
 from datetime import date, timedelta
 from pathlib import Path
@@ -136,6 +137,16 @@ def monday_of(day: date) -> date:
     return day - timedelta(days=day.weekday())
 
 
+def public_planned_session_row(row: dict[str, Any]) -> dict[str, Any]:
+    """Normalize session_date for JSON + calendar UI."""
+    d = dict(row)
+    sd = d.get("session_date") or d.get("date")
+    if hasattr(sd, "isoformat"):
+        sd = sd.isoformat()
+    d["session_date"] = str(sd or "")[:10]
+    return d
+
+
 def week_bounds(
     week_start: date | str | None = None,
     *,
@@ -145,12 +156,30 @@ def week_bounds(
     today = today or date.today()
     if week_start is None or week_start == "" or week_start == "this_week":
         start = monday_of(today)
+    elif str(week_start).strip().lower() in ("next_week", "neste_uke"):
+        start = monday_of(today) + timedelta(days=7)
     elif isinstance(week_start, date):
         start = monday_of(week_start)
     else:
         parsed = parse_iso_date(str(week_start)[:10])
         start = monday_of(parsed or today)
     return start, start + timedelta(days=6)
+
+
+def filter_planned_sessions_date_range(
+    sessions: list[dict[str, Any]],
+    range_start: date,
+    range_end: date,
+) -> list[dict[str, Any]]:
+    """Sessions with session_date inside [range_start, range_end] (inclusive)."""
+    if range_end < range_start:
+        return []
+    out: list[dict[str, Any]] = []
+    for s in sessions:
+        d = parse_iso_date(str(s.get("session_date") or "")[:10])
+        if d and range_start <= d <= range_end:
+            out.append(s)
+    return out
 
 
 def filter_planned_sessions_icu_window(
@@ -217,15 +246,231 @@ def icu_events_from_planned_sessions(
     athlete: dict[str, Any] | None = None,
     weeks: int = DEFAULT_WORKOUT_WEEKS,
     today: date | None = None,
+    sync_range_start: date | None = None,
+    sync_range_end: date | None = None,
     repo_root: Path | None = None,
     module_file: Path | None = None,
 ) -> list[dict[str, Any]]:
     """Build ICU WORKOUT events from stored planned_sessions (near window)."""
     today = today or date.today()
-    window = filter_planned_sessions_icu_window(
-        sessions, today=today, weeks=weeks
-    )
+    if sync_range_start and sync_range_end:
+        window = filter_planned_sessions_date_range(
+            sessions, sync_range_start, sync_range_end
+        )
+    else:
+        window = filter_planned_sessions_icu_window(
+            sessions, today=today, weeks=weeks
+        )
     if not window:
+        return []
+    return icu_events_from_session_rows(
+        window,
+        athlete=athlete,
+        repo_root=repo_root,
+        module_file=module_file,
+        mark_from_stored=True,
+    )
+
+
+def _steps_to_icu_intervals_block(
+    steps: list[dict[str, Any]],
+    *,
+    sport: str = "run",
+) -> str:
+    """Serialize builder steps → Intervals.icu parser syntax (same as planned/*.txt)."""
+    from sessions_service import normalize_builder_steps
+
+    norm = normalize_builder_steps(steps)
+    if not norm:
+        return ""
+    lthr = sport in ("run", "løp", "lop")
+    pace = sport in ("swim", "svøm", "svom")
+    lines: list[str] = []
+    i = 0
+    while i < len(norm):
+        s = norm[i]
+        stype = s.get("type") or "work"
+        dur = s.get("duration_minutes")
+        intens = str(s.get("intensity") or "").strip()
+        note = str(s.get("note") or "").strip()
+        # Detect Nx work+recover pairs → Main Set Nx
+        if (
+            stype == "work"
+            and dur
+            and i + 1 < len(norm)
+            and (norm[i + 1].get("type") == "recover")
+            and norm[i + 1].get("duration_minutes")
+        ):
+            work_dur = int(dur)
+            rec_dur = int(norm[i + 1]["duration_minutes"])
+            reps = 0
+            j = i
+            while (
+                j + 1 < len(norm)
+                and norm[j].get("type") == "work"
+                and int(norm[j].get("duration_minutes") or 0) == work_dur
+                and norm[j + 1].get("type") == "recover"
+                and int(norm[j + 1].get("duration_minutes") or 0) == rec_dur
+            ):
+                reps += 1
+                j += 2
+            if reps >= 2:
+                work_pct = intens or (
+                    "90-95% LTHR" if lthr else ("100-105%" if pace else "Z4")
+                )
+                if lthr and "LTHR" not in work_pct.upper() and "%" in work_pct:
+                    work_pct = f"{work_pct} LTHR"
+                rec_pct = "70-75% LTHR" if lthr else (
+                    "easy" if not pace else "recovery"
+                )
+                lines.append(f"Main Set {reps}x")
+                lines.append(f"- {work_dur}m {work_pct}")
+                lines.append(f"- {rec_dur}m {rec_pct}")
+                lines.append("")
+                i = j
+                continue
+            # Single work+recover — fall through as flat steps
+        label = {
+            "warmup": "Warmup",
+            "cooldown": "Cooldown",
+            "work": "",
+            "recover": "",
+        }.get(stype, "")
+        bits: list[str] = []
+        if dur:
+            bits.append(f"{int(dur)}m")
+        if intens:
+            pct = intens
+            if lthr and "%" in pct and "LTHR" not in pct.upper():
+                pct = f"{pct} LTHR"
+            bits.append(pct)
+        elif lthr and stype == "warmup":
+            bits.append("75-85% LTHR")
+        elif lthr and stype == "cooldown":
+            bits.append("75-85% LTHR")
+        if note and note.lower() not in " ".join(bits).lower():
+            bits.append(note)
+        body = " ".join(bits) if bits else (note or stype)
+        if label:
+            lines.append(f"- {label} {body}")
+        else:
+            lines.append(f"- {body}")
+        lines.append("")
+        i += 1
+    return "\n".join(lines).strip()
+
+
+def _nxm_from_text(text: str) -> tuple[int, int] | None:
+    """Parse 6x2 / 6×2 / 6 x 2 min interval prescription."""
+    m = re.search(
+        r"(\d+)\s*[x×]\s*(\d+)\s*(?:min(?:utt(?:er)?)?|m)?\b",
+        text or "",
+        re.IGNORECASE,
+    )
+    if not m:
+        return None
+    return int(m.group(1)), int(m.group(2))
+
+
+def chat_workout_icu_description(workout: dict[str, Any]) -> str:
+    """Clean coach text + ---intervals--- block for build_workout_event.
+
+    Never embeds raw workouts JSON. Prefers planned_path, then steps, then
+    NxM / prose structure — same Intervals syntax as workouts/planned/**.
+    """
+    import re as _re
+
+    planned_path = str(workout.get("planned_path") or "").strip()
+    raw_desc = str(workout.get("description") or "").strip()
+    # Strip JSON dumps that polluted chat→ICU descriptions
+    if '"workouts"' in raw_desc or raw_desc.lstrip().startswith("{"):
+        raw_desc = _re.sub(
+            r"```.*?```", "", raw_desc, flags=_re.DOTALL
+        )
+        raw_desc = _re.sub(
+            r"\{\s*\"workouts\"\s*:[\s\S]*\}", "", raw_desc
+        ).strip()
+    if planned_path.startswith("workouts/planned/"):
+        # Cursor/CLI path: description carries library path for resolve_*
+        coach = raw_desc if raw_desc and "workouts/planned/" not in raw_desc else ""
+        return f"{planned_path}\n{coach}".strip() if coach else planned_path
+    if "workouts/planned/" in raw_desc:
+        return raw_desc
+
+    steps = workout.get("steps") or workout.get("steps_json")
+    if isinstance(steps, str) and steps.strip().startswith("["):
+        try:
+            import json as _json
+
+            steps = _json.loads(steps)
+        except Exception:  # noqa: BLE001
+            steps = None
+    sport = str(workout.get("sport") or "run").strip().lower()
+    name = str(workout.get("name") or "Økt").strip()
+    coach_bits = [b for b in (name, raw_desc) if b and "---intervals---" not in b]
+    coach = "\n\n".join(dict.fromkeys(coach_bits))  # dedupe preserve order
+
+    if "---intervals---" in raw_desc:
+        return raw_desc
+
+    intervals = ""
+    if isinstance(steps, list) and steps:
+        intervals = _steps_to_icu_intervals_block(steps, sport=sport)
+    if not intervals:
+        nxm = _nxm_from_text(f"{name}\n{raw_desc}")
+        if nxm and sport in ("run", "løp", "lop", "swim", "svøm", "svom", "bike"):
+            reps, mins = nxm
+            if sport in ("run", "løp", "lop"):
+                intervals = (
+                    f"- Warmup 10m 75-85% LTHR\n\n"
+                    f"Main Set {reps}x\n"
+                    f"- {mins}m 90-95% LTHR\n"
+                    f"- {mins}m 70-75% LTHR\n\n"
+                    f"- Cooldown 10m 75-85% LTHR"
+                )
+            else:
+                intervals = (
+                    f"- Warmup 10m\n\n"
+                    f"Main Set {reps}x\n"
+                    f"- {mins}m\n"
+                    f"- {max(1, mins // 2)}m easy\n\n"
+                    f"- Cooldown 5m"
+                )
+    if not intervals:
+        # Steady structure from duration — still ICU step syntax, not JSON dump
+        try:
+            dur = int(float(workout.get("duration_minutes") or 0))
+        except (TypeError, ValueError):
+            dur = 0
+        if dur > 0 and sport in ("run", "løp", "lop"):
+            warm = min(10, max(5, dur // 6))
+            cool = min(10, max(5, dur // 8))
+            main = max(5, dur - warm - cool)
+            intervals = (
+                f"- Warmup {warm}m 75-85% LTHR\n\n"
+                f"- {main}m 81-89% LTHR\n\n"
+                f"- Cooldown {cool}m 75-80% LTHR"
+            )
+        elif dur > 0:
+            intervals = f"- {dur}m Z2"
+
+    if not intervals:
+        return coach[:2000]
+    if coach:
+        return f"{coach}\n\n---intervals---\n{intervals}"
+    return f"---intervals---\n{intervals}"
+
+
+def icu_events_from_session_rows(
+    sessions: list[dict[str, Any]],
+    *,
+    athlete: dict[str, Any] | None = None,
+    repo_root: Path | None = None,
+    module_file: Path | None = None,
+    mark_from_stored: bool = False,
+) -> list[dict[str, Any]]:
+    """Build ICU WORKOUT events via CLI ``build_workout_event`` (Cursor path)."""
+    if not sessions:
         return []
     build_fn = _import_build_workout_event(module_file=module_file)
     root = Path(repo_root or _workouts_root(module_file=module_file))
@@ -235,15 +480,36 @@ def icu_events_from_planned_sessions(
             f"Mangler øktbibliotek under {root}/workouts/planned "
             "(Docker må COPY workouts/ — sjekk .dockerignore)."
         )
-    first = min(
+    dates = [
         d
-        for d in (parse_iso_date(str(s.get("session_date") or "")[:10]) for s in window)
+        for d in (
+            parse_iso_date(str(s.get("session_date") or s.get("date") or "")[:10])
+            for s in sessions
+        )
         if d
-    )
-    plan_start = monday_of(first)
+    ]
+    if not dates:
+        return []
+    plan_start = monday_of(min(dates))
     events: list[dict[str, Any]] = []
-    for i, session in enumerate(window):
-        row = planned_session_to_csv_row(session, plan_start=plan_start, index=i)
+    for i, session in enumerate(sessions):
+        # Normalize chat workouts → planned_session shape
+        row_session = dict(session)
+        if not row_session.get("session_date") and row_session.get("date"):
+            row_session["session_date"] = str(row_session["date"])[:10]
+        if not row_session.get("name") and row_session.get("title"):
+            row_session["name"] = row_session["title"]
+        # Prefer structured ICU description (path or ---intervals---)
+        desc = chat_workout_icu_description(row_session)
+        row_session["description"] = desc
+        if desc.startswith("workouts/planned/") or "workouts/planned/" in desc:
+            # Keep planned_path for csv mapper
+            m = re.search(r"(workouts/planned/[^\s]+)", desc)
+            if m:
+                row_session["planned_path"] = m.group(1)
+        row = planned_session_to_csv_row(
+            row_session, plan_start=plan_start, index=i
+        )
         if not row:
             continue
         try:
@@ -256,7 +522,7 @@ def icu_events_from_planned_sessions(
             )
         except Exception as exc:
             raise RuntimeError(
-                f"Økt-bygger feilet for lagret økt {i + 1} "
+                f"Økt-bygger feilet for økt {i + 1} "
                 f"({row.get('title') or row.get('sport') or '?'}): {format_exc_nb(exc)}"
             ) from exc
         day = parse_iso_date(str(ev.get("start_date_local") or "")[:10])
@@ -272,7 +538,8 @@ def icu_events_from_planned_sessions(
         ev["_sport"] = (row.get("sport") or "").lower()
         ev["_planned"] = row.get("description")
         ev["_has_zwo"] = bool(ev.get("file_contents"))
-        ev["_from_stored"] = True
+        if mark_from_stored:
+            ev["_from_stored"] = True
         try:
             ev["_duration_minutes"] = int(float(row.get("duration_minutes") or 0))
         except (TypeError, ValueError):
@@ -280,6 +547,46 @@ def icu_events_from_planned_sessions(
         personalize_icu_event(ev, athlete)
         events.append(ev)
     return events
+
+
+def icu_events_from_chat_workouts(
+    workouts: list[dict[str, Any]],
+    *,
+    athlete: dict[str, Any] | None = None,
+    repo_root: Path | None = None,
+    module_file: Path | None = None,
+) -> list[dict[str, Any]]:
+    """Chat / UI workout dicts → same ICU events as Plan Sync / Cursor agent.
+
+    Uses ``scripts/intervals_push_calendar.build_workout_event`` — not the thin
+    description-only stub. Name, duration, moving_time, and ---intervals--- /
+    planned-path structure stay aligned with the confirmed session.
+    """
+    sessions: list[dict[str, Any]] = []
+    for w in workouts:
+        if not isinstance(w, dict):
+            continue
+        sessions.append(
+            {
+                "session_date": str(w.get("date") or w.get("session_date") or "")[:10],
+                "name": str(w.get("name") or "").strip(),
+                "sport": str(w.get("sport") or "other").strip().lower(),
+                "duration_minutes": w.get("duration_minutes"),
+                "description": w.get("description") or "",
+                "planned_path": w.get("planned_path") or "",
+                "start_time": str(w.get("start_time") or "07:00")[:5] or "07:00",
+                "external_id": w.get("external_id") or "",
+                "steps": w.get("steps") or w.get("steps_json"),
+                "phase": w.get("phase") or "",
+            }
+        )
+    return icu_events_from_session_rows(
+        sessions,
+        athlete=athlete,
+        repo_root=repo_root,
+        module_file=module_file,
+        mark_from_stored=False,
+    )
 
 
 def build_week_adjust_sessions(
@@ -537,18 +844,12 @@ def persistable_plan_payload(
     signals: dict[str, bool] | None = None,
     today: date | None = None,
 ) -> dict[str, Any]:
-    """Used by setup/adjust confirm: meso blocks already given; build sessions."""
-    built = build_planned_session_dicts(
+    """Setup/adjust confirm: grovplan blocks + detaljplan (~DETAIL_WEEKS) sessions."""
+    from two_tier_plan import build_two_tier_plan_payload
+
+    return build_two_tier_plan_payload(
         blocks, athlete=athlete, signals=signals, today=today
     )
-    return {
-        **built,
-        "horizon_note_nb": (
-            f"App-plan: {built['count']} økter over {built['weeks']} uker "
-            f"(til måldato {built.get('goal_race_date') or '—'}). "
-            f"Intervals WORKOUT-sync: første {ICU_SYNC_WEEKS} uker etter Sync-bekreftelse."
-        ),
-    }
 
 # Session row: weekday 0=Mon … 6=Sun, then CSV fields for build_workout_event
 # Optional trailing purpose_nb used for coach rationale (not pushed to ICU CSV).
@@ -1728,13 +2029,16 @@ def build_plan_sync_bundle(
     allow_degraded: bool = False,
     module_file: Path | None = None,
     planned_sessions: list[dict[str, Any]] | None = None,
+    sync_range_start: date | None = None,
+    sync_range_end: date | None = None,
 ) -> dict[str, Any]:
     """NOTES (meso) + WORKOUTs via CLI builder — one sync payload.
 
     Prefer stored ``planned_sessions`` (app SoT) for the near-term ICU window when
     present; otherwise regenerate from library templates. WORKOUT horizon hard-
-    capped at ``ICU_SYNC_WEEKS`` (2). When ``allow_degraded`` is True (setup
-    Forhåndsvis), missing builder/workouts yields notes-only + ``error``.
+    capped at ``ICU_SYNC_WEEKS`` (2) unless ``sync_range_start/end`` set (calendar
+    scope). When ``allow_degraded`` is True (setup Forhåndsvis), missing builder/
+    workouts yields notes-only + ``error``.
     """
     weeks = max(1, min(int(weeks or DEFAULT_WORKOUT_WEEKS), MAX_WORKOUT_WEEKS))
     signals = signals or signals_from_athlete(athlete)
@@ -1749,6 +2053,8 @@ def build_plan_sync_bundle(
                 athlete=athlete,
                 weeks=weeks,
                 today=today,
+                sync_range_start=sync_range_start,
+                sync_range_end=sync_range_end,
                 repo_root=repo_root,
                 module_file=module_file,
             )

@@ -87,18 +87,54 @@ def infer_athlete_type(
     """Heuristic primary discipline from conversation + draft + optional signals."""
     draft = draft or {}
     explicit = str(draft.get("athlete_type") or "").strip().lower().replace(" ", "_")
-    if explicit in VALID_TYPES:
-        return _pack(explicit, source="draft")
-
     blob = draft_blob(draft, text)
     signals = signals or {}
+
+    # Draft triathlete must not win over clear run/HM goals without multisport cues.
+    # QA: setup LLM set triathlete despite «halvmaraton + løp/styrke, svømming vanskelig».
+    draft_tri_override = False
+    if explicit in (TYPE_TRIATHLETE, TYPE_BEGINNER_MULTI):
+        hm_or_run = bool(
+            re.search(
+                r"halv\s*maraton|half[\s-]?marathon|\b21\s*km\b|\b21k\b|"
+                r"\bmaraton\b|marathon|\bløper\b|\bløping\b|\brunner\b",
+                blob,
+            )
+        )
+        real_multi = bool(
+            re.search(
+                r"triatlon|triathlon|half\s*extreme|lofoten|ironman|halviron|"
+                r"norseman|brick|flersport|alle tre",
+                blob,
+            )
+        ) or bool(signals.get("multisport"))
+        if hm_or_run and not real_multi:
+            draft_tri_override = True
+        else:
+            return _pack(explicit, source="draft")
+    elif explicit in VALID_TYPES:
+        return _pack(explicit, source="draft")
+
+    swim_difficulty = bool(
+        re.search(
+            r"(?:svøm|swim).{0,40}(?:vanskelig|kan ikke|dårlig|sliter|hate)|"
+            r"kan ikke svømme|ikke svøm(?:me|ming)?|"
+            r"(?:uten|no)\s+(?:svøm|swim)",
+            blob,
+        )
+    )
 
     # Explicit race / discipline cues (order matters — more specific first)
     if re.search(
         r"halv\s*maraton|half[\s-]?marathon|\b21\s*km\b|\b21k\b|hm\b",
         blob,
     ):
-        return _pack(TYPE_HALF_MARATHON, source="goal_half_marathon")
+        return _pack(
+            TYPE_HALF_MARATHON,
+            source="goal_half_marathon_over_draft_tri"
+            if draft_tri_override
+            else "goal_half_marathon",
+        )
     if re.search(r"\bmaraton\b|marathon|\b42\s*km\b|\b42k\b", blob) and not re.search(
         r"halv|half", blob
     ):
@@ -115,13 +151,19 @@ def infer_athlete_type(
         blob,
     ) and not re.search(r"triatlon|triathlon|lofoten", blob):
         return _pack(TYPE_CYCLIST, source="bike_focus")
-    if re.search(
-        r"\bsvømmer\b|\bsvømming\b|open water|basseng.*fokus|swim focus",
-        blob,
-    ) and not re.search(r"triatlon|triathlon|lofoten", blob):
+    if (
+        re.search(
+            r"\bsvømmer\b|open water|basseng.*fokus|swim focus|"
+            r"(?:hovedidrett|fokus).{0,20}(?:svøm|swim)",
+            blob,
+        )
+        and not swim_difficulty
+        and not re.search(r"triatlon|triathlon|lofoten|halv\s*maraton|løp\s+og\s+styrke", blob)
+    ):
         return _pack(TYPE_SWIMMER, source="swim_focus")
     if re.search(
-        r"\bløper\b|\bløping\b|\brunner\b|running|jogge|5\s*km|10\s*km|trail.?løp",
+        r"\bløper\b|\bløping\b|\brunner\b|running|jogge|5\s*km|10\s*km|trail.?løp|"
+        r"løp\s+og\s+styrke|løp-fokus|run.?focus",
         blob,
     ) and not re.search(r"triatlon|triathlon|lofoten|sykkel.*og.*løp", blob):
         return _pack(TYPE_RUNNER, source="run_focus")

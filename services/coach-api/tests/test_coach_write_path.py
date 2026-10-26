@@ -25,13 +25,17 @@ import config
 import main as main_mod
 from athlete_constraints import ICU_SYNC_WEEKS
 from chat_service import (
+    extract_workout_proposal,
     infer_plan_update_fallback,
     infer_workout_proposal_fallback,
+    plan_week_target_from_message,
+    reconcile_workout_sports,
     reopen_pending_write_reply,
     sanitize_unconfirmed_write_claims,
     user_confirms_pending_write,
     user_requests_intervals_plan_sync,
     user_requests_plan_adjust,
+    user_requests_plan_week_build,
     user_requests_session_change,
     write_intent_kind,
 )
@@ -129,6 +133,85 @@ def _stored_sync_bundle(*, workouts=4):
     }
 
 
+def test_lag_plan_neste_uke_triggers_plan_path():
+    msg = "Lag en plan for neste uke"
+    assert user_requests_plan_week_build(msg)
+    assert user_requests_plan_adjust(msg)
+    assert write_intent_kind(msg) == "plan"
+    fb = infer_plan_update_fallback(msg)
+    assert fb and fb["scope"] == "week"
+    assert fb.get("week_start") == "next_week"
+    assert plan_week_target_from_message(msg) == "next_week"
+
+
+def test_day_swap_and_lett_uke_open_plan_card_intent():
+    """QA: day swap / lett uke must hit plan_adjust fallback (confirm card), not prose-only."""
+    for msg in (
+        "Bytt tirsdag → onsdag (foreldremøte)",
+        "Kan du bytte tirsdag til onsdag?",
+        "flytt tirsdagsøkta til onsdag",
+    ):
+        assert user_requests_plan_adjust(msg), msg
+        assert write_intent_kind(msg) == "plan", msg
+        fb = infer_plan_update_fallback(msg)
+        assert fb and fb["scope"] == "week", msg
+        assert fb.get("day_swap") is True, msg
+        assert fb.get("ease_load") is False, msg
+
+    for msg in (
+        "Sliten — lett uke",
+        "Jeg er sliten, kan vi ha en lett uke?",
+        "lette neste økter pga høy belastning",
+    ):
+        assert user_requests_plan_adjust(msg), msg
+        assert write_intent_kind(msg) == "plan", msg
+        fb = infer_plan_update_fallback(msg)
+        assert fb and fb["scope"] == "week", msg
+        assert fb.get("ease_load") is True, msg
+
+
+def test_uke_replace_and_uka_scope_intents():
+    """QA BLOCKED: erstatt uka / juster uka → week confirm card, not full/prose."""
+    from chat_service import (
+        user_requests_dont_touch_calendar,
+        user_requests_intervals_review,
+        user_wants_week_rebuild,
+    )
+
+    for msg in (
+        "erstatt uka",
+        "erstatt hele uka",
+        "juster uka",
+        "juster denne uka",
+        "bygg om uken",
+        "oppdater uka",
+    ):
+        assert user_requests_plan_adjust(msg), msg
+        fb = infer_plan_update_fallback(msg)
+        assert fb and fb["scope"] == "week", (msg, fb)
+        assert user_wants_week_rebuild(msg), msg
+
+    assert user_requests_dont_touch_calendar("ikke rør kalenderen — bare lagre")
+    assert user_requests_dont_touch_calendar("uten å synce til intervals")
+    assert not user_requests_dont_touch_calendar("legg inn økt i morgen")
+
+    assert user_requests_intervals_review("sjekk Intervals-kalenderen min")
+    assert user_requests_intervals_review("gjennomgå hva som ligger på ICU denne uka")
+    assert not user_requests_intervals_review("sync planen til intervals")
+
+
+def test_reconcile_wrong_fence_sport_swim_for_run():
+    reply = (
+        "Forslag:\n```workout_proposal\n"
+        '{"workouts":[{"name":"løpetur rolig","date":"2026-10-04",'
+        '"sport":"swim","duration_minutes":40,"description":"rolig"}]}\n```'
+    )
+    _disp, prop = extract_workout_proposal(reply)
+    assert prop and prop["workouts"][0]["sport"] == "swim"
+    fixed = reconcile_workout_sports(prop, "legg inn rolig løp i morgen 40 min")
+    assert fixed["workouts"][0]["sport"] == "run"
+
+
 def test_intent_detect_create_tomorrow_and_weekend():
     assert user_requests_session_change("kan du lage en økt for i morgen")
     assert user_requests_session_change("lage en økt i morgen 40 min")
@@ -188,7 +271,7 @@ def test_ok_after_prose_write_reopens_card_not_llm_success():
     assert user_confirms_pending_write("oppdater", [offer]) is True
     reply, prop, plan = reopen_pending_write_reply([offer], today=date(2026, 10, 1))
     assert prop and prop.get("workouts")
-    assert "ikke oppdatert" in reply.lower() or "bekreft" in reply.lower()
+    assert "kort" in reply.lower() or "forhåndsvis" in reply.lower()
     assert "jeg har oppdatert" not in reply.lower()
     assert plan is None
 
@@ -228,6 +311,35 @@ def test_chat_create_tomorrow_always_attaches_proposal(client):
     low = (body.get("reply") or "").lower()
     assert "jeg har oppdatert" not in low
     assert "synket" not in low or "ikke" in low
+
+
+def test_chat_lag_plan_neste_uke_skips_llm_and_uses_sot(client):
+    c, _a, _db = client
+    setup = _confirm_setup(c, username="neste-uke")
+    aid = setup["athlete"]["id"]
+    headers = {"X-Athlete-Id": aid}
+    with (
+        patch("main.call_llm") as llm,
+        patch(
+            "main.resolve_wellness_bundle",
+            return_value={"recovery_signals": {"available": False}},
+        ),
+    ):
+        r = c.post(
+            "/v1/chat",
+            headers=headers,
+            json={"message": "Lag en plan for neste uke"},
+        )
+    llm.assert_not_called()
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body.get("week_plan_from_sot") is True
+    prop = body.get("plan_proposal") or {}
+    low = (body.get("reply") or "").lower()
+    assert prop.get("scope") == "week" or "allerede" in low or "kalender" in low
+    low = (body.get("reply") or "").lower()
+    assert "hvilke dager" not in low
+    assert "trenger jeg litt mer informasjon" not in low
 
 
 def test_chat_adjust_fri_sun_attaches_week_plan(client):

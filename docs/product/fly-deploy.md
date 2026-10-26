@@ -62,6 +62,17 @@ Seed er idempotent (`SEED_ON_BOOT=1`). Volume beholdes.
 fly logs --app lofoten-coach
 fly ssh console --app lofoten-coach
 # inne: ls /data && ls /data/athletes
+curl -sS https://lofoten-coach.fly.dev/health
+# db_ok:false → DATABASE_URL/sslmode; se "db boot FAILED" i logs
+```
+
+### Stuck loading etter Supabase
+
+Hvis Fly sier machine up men nettleseren spinner: ofte `psycopg.connect` hang uten timeout i `lifespan` (mangler `sslmode=require` / feil pooler). Fix er i `db_backend.normalize_pg_url` + degraded boot. Sett:
+
+```bash
+fly secrets set DATABASE_URL='postgresql://…?sslmode=require' --app lofoten-coach
+fly deploy --app lofoten-coach --image …   # eller fra branch supabase
 ```
 
 ## Kostnad

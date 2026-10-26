@@ -74,6 +74,8 @@ Høy **kronisk** belastning (bygget over tid) **beskytter** ved moderat hard tre
 3. **TP CTL/ATL/TSB** — tolk med salt
 4. HRV (valgfritt) — trend, ikke panikk på én dag
 
+**App Beta:** ATL:CTL-bånd 1.3 soft / 1.5 hard (samme som ticker) — soft signal, Human Coach bekreft før planendring. Kilder: IOC 2016, Gabbett 2016 (`kilder/referanser.md`).
+
 ## Øvelse for agenten
 
 Når William ber om «hard uke»: regn foreslått timer mot snitt siste 3 uker. Hvis >10–15 % økning uten recovery-kontekst — **juster ned** og forklar på 2 setninger.

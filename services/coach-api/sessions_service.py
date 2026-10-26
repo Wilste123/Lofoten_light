@@ -259,6 +259,34 @@ def normalize_activity(act: dict[str, Any]) -> dict[str, Any] | None:
         or act.get("sport")
         or "Aktivitet"
     )
+    # Load / intensity for week analysis + TB (agent-modus parity)
+    training_load = None
+    for key in (
+        "icu_training_load",
+        "TrainingLoad",
+        "training_load",
+        "icu_tss",
+        "tss",
+        "load",
+    ):
+        raw = act.get(key)
+        if raw is None or raw == "":
+            continue
+        try:
+            training_load = round(float(raw), 1)
+            break
+        except (TypeError, ValueError):
+            continue
+    intensity = None
+    for key in ("icu_intensity", "intensity", "if", "icu_intensity_factor"):
+        raw = act.get(key)
+        if raw is None or raw == "":
+            continue
+        try:
+            intensity = float(raw)
+            break
+        except (TypeError, ValueError):
+            continue
     return {
         "id": f"act:{aid}",
         "external_id": aid,
@@ -271,6 +299,8 @@ def normalize_activity(act: dict[str, Any]) -> dict[str, Any] | None:
         "discipline_label": _disc_label(disc),
         "type": act.get("type") or act.get("sport"),
         "duration_hours": _duration_hours(act),
+        "training_load": training_load,
+        "intensity": intensity,
         "category": None,
         "calendar_role": "completed_activity",
         "training_status": "completed",
@@ -542,6 +572,128 @@ def structure_to_description(structure: dict[str, Any] | None) -> str:
     return "\n".join(lines).strip()
 
 
+# Visual øktbygger step types (first-class JSON on planned_sessions.steps_json)
+BUILDER_STEP_TYPES = ("warmup", "work", "recover", "cooldown")
+BUILDER_STEP_LABELS = {
+    "warmup": "Oppvarming",
+    "work": "Arbeid",
+    "recover": "Pause / restit",
+    "cooldown": "Nedkjøling",
+}
+
+
+def normalize_builder_steps(raw: list[Any] | None) -> list[dict[str, Any]]:
+    """Validate/normalize visual builder steps."""
+    out: list[dict[str, Any]] = []
+    for i, item in enumerate(raw or []):
+        if not isinstance(item, dict):
+            continue
+        stype = str(item.get("type") or "work").strip().lower()
+        if stype in ("main", "hoveddel", "interval", "intervals"):
+            stype = "work"
+        if stype in ("rest", "pause", "recovery"):
+            stype = "recover"
+        if stype not in BUILDER_STEP_TYPES:
+            stype = "work"
+        try:
+            dur = item.get("duration_minutes")
+            dur_i = int(float(dur)) if dur is not None and str(dur).strip() != "" else None
+        except (TypeError, ValueError):
+            dur_i = None
+        intensity = str(
+            item.get("intensity") or item.get("zone") or item.get("rpe") or ""
+        ).strip()[:80]
+        note = str(item.get("note") or item.get("text") or item.get("label") or "").strip()[
+            :200
+        ]
+        dist = str(item.get("distance") or "").strip()[:40]
+        out.append(
+            {
+                "id": str(item.get("id") or f"s{i+1}"),
+                "type": stype,
+                "duration_minutes": dur_i,
+                "distance": dist or None,
+                "intensity": intensity or None,
+                "note": note or None,
+                "sort_order": int(item.get("sort_order") if item.get("sort_order") is not None else i),
+            }
+        )
+    out.sort(key=lambda x: x.get("sort_order") or 0)
+    for i, s in enumerate(out):
+        s["sort_order"] = i
+    return out
+
+
+def builder_steps_to_description(steps: list[dict[str, Any]] | None) -> str:
+    """Serialize builder steps → text description (Intervals / legacy)."""
+    norm = normalize_builder_steps(steps)
+    if not norm:
+        return ""
+    by_type: dict[str, list[str]] = {t: [] for t in BUILDER_STEP_TYPES}
+    for s in norm:
+        bits = []
+        if s.get("duration_minutes"):
+            bits.append(f"{s['duration_minutes']} min")
+        if s.get("distance"):
+            bits.append(str(s["distance"]))
+        if s.get("intensity"):
+            bits.append(str(s["intensity"]))
+        if s.get("note"):
+            bits.append(str(s["note"]))
+        line = " · ".join(bits) if bits else BUILDER_STEP_LABELS.get(s["type"], s["type"])
+        by_type.setdefault(s["type"], []).append(line)
+    lines: list[str] = []
+    for t in BUILDER_STEP_TYPES:
+        items = by_type.get(t) or []
+        if not items:
+            continue
+        lines.append(f"{BUILDER_STEP_LABELS[t]}:")
+        for it in items:
+            lines.append(f"- {it}")
+        lines.append("")
+    return "\n".join(lines).strip()
+
+
+def builder_steps_from_structure(structure: dict[str, Any] | None) -> list[dict[str, Any]]:
+    """Best-effort migrate legacy phase structure → builder steps."""
+    if not structure:
+        return []
+    map_phase = {
+        "warmup": "warmup",
+        "main": "work",
+        "cooldown": "cooldown",
+        "other": "work",
+    }
+    raw: list[dict[str, Any]] = []
+    i = 0
+    for phase in structure.get("phases") or []:
+        pid = map_phase.get(str(phase.get("id") or ""), "work")
+        for item in phase.get("items") or []:
+            text = str(item).strip()
+            if not text:
+                continue
+            # Try pull leading minutes
+            m = re.match(r"^(\d+)\s*(?:min|m)\b", text, re.I)
+            dur = int(m.group(1)) if m else None
+            raw.append(
+                {
+                    "id": f"mig{i}",
+                    "type": pid,
+                    "duration_minutes": dur,
+                    "note": text,
+                    "sort_order": i,
+                }
+            )
+            i += 1
+    return normalize_builder_steps(raw)
+
+
+def total_builder_duration(steps: list[dict[str, Any]] | None) -> int | None:
+    norm = normalize_builder_steps(steps)
+    total = sum(int(s["duration_minutes"]) for s in norm if s.get("duration_minutes"))
+    return total or None
+
+
 def library_key_for(session: dict[str, Any]) -> str:
     """Stable key for library grouping (template identity, not calendar day)."""
     eid = str(session.get("external_id") or "").strip()
@@ -785,6 +937,22 @@ def session_detail_payload(
     desc = item.get("description") or ""
     structure = item.get("structure") or parse_session_structure(desc)
     steps = item.get("steps") or structure.get("flat_steps") or []
+    builder_steps = item.get("builder_steps")
+    if not builder_steps:
+        builder_steps = builder_steps_from_structure(structure)
+    # Full quality prescription (warmup/main/cooldown) — same as week-check / agent-modus
+    prescription_nb = None
+    plan_b_lines: list[str] = []
+    risk_lines: list[str] = []
+    try:
+        from week_analysis import format_session_prescription_nb, session_plan_b_and_risk
+
+        prescription_nb = format_session_prescription_nb(item)
+        meta = session_plan_b_and_risk(item)
+        plan_b_lines = list(meta.get("plan_b") or [])
+        risk_lines = list(meta.get("risk") or [])
+    except Exception:  # noqa: BLE001 — soft-fail; detail still works
+        prescription_nb = None
     return {
         "session": item,
         "library_key": key,
@@ -793,11 +961,20 @@ def session_detail_payload(
         "description": desc or None,
         "steps": steps,
         "structure": structure,
+        "builder_steps": builder_steps,
+        "builder_step_types": list(BUILDER_STEP_TYPES),
+        "builder_step_labels": dict(BUILDER_STEP_LABELS),
+        "prescription_nb": prescription_nb,
+        "plan_b": plan_b_lines,
+        "risk": risk_lines,
         "coach_block": {
             "title": "Fra treneren",
             "body": desc or None,
             "steps": steps,
             "structure": structure,
+            "prescription_nb": prescription_nb,
+            "plan_b": plan_b_lines,
+            "risk": risk_lines,
         },
         "status": (item.get("completion") or {}).get("status"),
         "editable_fields": {
@@ -807,9 +984,10 @@ def session_detail_payload(
             "duration_minutes": (
                 int(round(float(item["duration_hours"]) * 60))
                 if item.get("duration_hours") is not None
-                else None
+                else item.get("duration_minutes")
             ),
             "description": desc,
+            "builder_steps": builder_steps,
             "warmup": "\n".join(
                 (next((p for p in structure.get("phases") or [] if p.get("id") == "warmup"), {})).get(
                     "items"
@@ -934,9 +1112,14 @@ def planned_session_to_public(
         "description": desc,
         "description_preview": _preview_text(desc or "", 160),
         "start_time": start_time,
-        "editable": eid.startswith(WORKOUT_EXTERNAL_PREFIX) or eid.startswith("ll-coach-"),
+        "editable": True,  # app planned_sessions — visual builder SoT
         "source": "planned_sessions",
         "app_planned": True,
+        "planned_row_id": row.get("id"),
+        "plan_tier": row.get("plan_tier") or "detalj",
+        "builder_steps": row.get("steps")
+        if isinstance(row.get("steps"), list)
+        else None,
         "planned_path": row.get("planned_path") or row.get("description") or None,
         "phase": row.get("phase") or None,
     }
@@ -1354,6 +1537,10 @@ def _slim_session(item: dict[str, Any]) -> dict[str, Any]:
     }
     if item.get("duration_hours") is not None:
         out["duration_hours"] = item.get("duration_hours")
+    if item.get("training_load") is not None:
+        out["training_load"] = item.get("training_load")
+    if item.get("intensity") is not None:
+        out["intensity"] = item.get("intensity")
     if item.get("category"):
         out["category"] = item.get("category")
     if item.get("calendar_role"):
@@ -1362,6 +1549,10 @@ def _slim_session(item: dict[str, Any]) -> dict[str, Any]:
         out["training_status"] = item.get("training_status")
     if item.get("match_method"):
         out["match_method"] = item.get("match_method")
+    # Short preview so week-check / chat can show structure without full body
+    preview = item.get("description_preview")
+    if preview:
+        out["description_preview"] = preview
     comp = item.get("completion") or {}
     if comp.get("status"):
         out["completion_status"] = comp.get("status")

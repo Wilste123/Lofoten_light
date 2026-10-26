@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import re
 import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -93,6 +94,11 @@ def build_workout_event(
     if tss and str(tss).strip().isdigit():
         ev["icu_training_load"] = int(tss)
 
+    # Inline ---intervals--- / step lines from chat or builder (same syntax as planned/*.txt).
+    has_inline_structure = "---intervals---" in description or bool(
+        re.search(r"(?m)^(?:Main Set\s+\d+x|\s*-\s+\d+m\b)", description)
+    )
+
     if zwo_path and zwo_path.is_file():
         ev["filename"] = zwo_path.name
         ev["file_contents"] = zwo_path.read_text(encoding="utf-8")
@@ -102,10 +108,36 @@ def build_workout_event(
             ev["type"] = "Swim"
         elif sport_key == "bike":
             ev["type"] = "Ride"
-    elif sport_key in ("run", "swim", "bike") and duration_min > 0:
-        # Fallback: simple steady block in Intervals workout text
+    elif (
+        sport_key in ("run", "swim", "bike")
+        and duration_min > 0
+        and not has_inline_structure
+    ):
+        # Fallback: simple steady block only when no structured steps exist.
         pct = "Z2 HR" if sport_key != "bike" else "68%"
         ev["description"] = f"- {duration_min}m {pct}\n\n{description}".strip()
+    elif has_inline_structure and "---intervals---" in description:
+        # Same shape as format_planned_session_for_intervals (Cursor/CLI path).
+        head, intervals = description.split("---intervals---", 1)
+        coach = (
+            head.split("---", 1)[-1].strip() if "---" in head else head.strip()
+        )
+        # Drop yaml-ish headers if present
+        coach_lines = [
+            ln
+            for ln in coach.splitlines()
+            if not re.match(r"^[a-z_]+:\s", ln) and ln.strip() != "---"
+        ]
+        coach = "\n".join(coach_lines).strip()
+        intervals = intervals.strip()
+        if coach:
+            ev["description"] = f"### Fra treneren\n\n{coach}\n\n---\n\n{intervals}"
+        else:
+            ev["description"] = intervals
+        if sport_key == "run":
+            ev["target"] = "HR"
+        elif sport_key == "swim":
+            ev["target"] = "PACE"
 
     if sport_key == "strength":
         body = resolve_strength_description(description, repo_root)

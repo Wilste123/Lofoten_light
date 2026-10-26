@@ -403,8 +403,13 @@ def build_period_training_payload(
     fetch_error: bool = False,
     fetch_error_detail: str | None = None,
     daily_hours: list[dict[str, Any]] | None = None,
+    planned_daily_hours: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Assemble period training summary (no season targets)."""
+    """Assemble period training summary (no season targets).
+
+    Executed volume = ICU activities only. Optional ``planned_daily_hours``
+    (from DB planned_sessions) is charted separately as *planlagt*.
+    """
     rows = _discipline_rows(hours, session_counts)
     total_h = round(sum(float(r["hours"]) for r in rows), 1)
     total_sessions = (
@@ -415,6 +420,13 @@ def build_period_training_payload(
     days = (end - start).days + 1
     daily = daily_hours if daily_hours is not None else hours_by_day([], start, end)
     volume = bucket_volume_series(daily)
+    volume["series_kind"] = "executed"
+    volume["label_nb"] = "Gjennomført (ICU-aktiviteter)"
+    planned_volume = None
+    if planned_daily_hours is not None:
+        planned_volume = bucket_volume_series(planned_daily_hours)
+        planned_volume["series_kind"] = "planned"
+        planned_volume["label_nb"] = "Planlagt (planned_sessions)"
     payload: dict[str, Any] = {
         "window": {"start": start.isoformat(), "end": end.isoformat()},
         "days": days,
@@ -425,14 +437,25 @@ def build_period_training_payload(
         "daily_hours": daily,
         "charts": {
             "volume": volume,
+            "volume_planned": planned_volume,
             "by_discipline": [
                 {"id": r["id"], "label": r["label"], "hours": r["hours"]}
                 for r in rows
             ],
+            "truth": {
+                "executed": "intervals_activities",
+                "planned": "planned_sessions",
+                "ctl_atl": "intervals_wellness",
+                "note_nb": (
+                    "Gjennomført volum = ICU-aktiviteter. "
+                    "Fremtid = planned_sessions (planlagt). "
+                    "CTL/ATL = Intervals wellness — ikke LLM-inventerte tall."
+                ),
+            },
         },
         "note": (
-            "Treningsdata for valgt periode (aktiviteter fra Intervals). "
-            "Ikke det samme som sesongmål / compliance."
+            "Treningsdata for valgt periode: gjennomført = Intervals-aktiviteter. "
+            "Planlagt volum (hvis vist) = app planned_sessions — merket planlagt."
         ),
     }
     if fetch_error:
@@ -488,19 +511,100 @@ def empty_period_training(
     )
 
 
+def planned_sessions_to_daily_hours(
+    sessions: list[dict[str, Any]] | None,
+    start: date,
+    end: date,
+    *,
+    today: date | None = None,
+) -> list[dict[str, Any]]:
+    """Future (and optional today+) planned volume from DB — never counts as completed.
+
+    Only includes session_date >= today (planlagt forward). Past planned rows are
+    ignored here so charts never treat uncompleted WORKOUTs as volume truth.
+    """
+    today = today or date.today()
+    if end < start:
+        start, end = end, start
+    by_day: dict[str, dict[str, Any]] = {}
+    day = start
+    while day <= end:
+        iso = day.isoformat()
+        by_day[iso] = {
+            "date": iso,
+            "hours": 0.0,
+            "by_discipline": _empty_disc(),
+            "series_kind": "planned",
+        }
+        day += timedelta(days=1)
+
+    for row in sessions or []:
+        raw = str(row.get("session_date") or row.get("date") or "")[:10]
+        if not raw:
+            continue
+        try:
+            d = date.fromisoformat(raw)
+        except ValueError:
+            continue
+        if d < today or d < start or d > end:
+            continue
+        iso = d.isoformat()
+        if iso not in by_day:
+            continue
+        try:
+            dur_m = row.get("duration_minutes")
+            hours = float(dur_m) / 60.0 if dur_m is not None else 0.0
+        except (TypeError, ValueError):
+            hours = 0.0
+        sport = str(row.get("sport") or row.get("discipline") or "other").lower()
+        disc = map_activity_type(sport) or "bike"
+        if disc not in by_day[iso]["by_discipline"]:
+            disc = "bike"
+        by_day[iso]["hours"] = round(float(by_day[iso]["hours"]) + hours, 3)
+        by_day[iso]["by_discipline"][disc] = round(
+            float(by_day[iso]["by_discipline"].get(disc) or 0) + hours, 3
+        )
+
+    return [by_day[k] for k in sorted(by_day.keys())]
+
+
 def resolve_period_training(
     secrets: dict[str, Any] | None,
     start: date,
     end: date,
+    *,
+    planned_sessions: list[dict[str, Any]] | None = None,
+    today: date | None = None,
 ) -> dict[str, Any]:
     """Fetch Intervals activities for [start, end] and aggregate hours.
 
     Soft-fail: linked + error → zeros + fetch_error; no credentials → demo.
+    Planned forward volume comes from ``planned_sessions`` (DB), labeled planlagt.
     """
+    today = today or date.today()
+    planned_daily = planned_sessions_to_daily_hours(
+        planned_sessions, start, end, today=today
+    )
+
     key = ((secrets or {}).get("intervals_api_key") or "").strip()
     aid = ((secrets or {}).get("intervals_athlete_id") or "").strip()
     if not key or not aid:
-        return demo_period_training(start, end)
+        demo = demo_period_training(start, end)
+        # Still attach real planned series when DB rows exist (never invent CTL)
+        demo["charts"]["volume_planned"] = bucket_volume_series(planned_daily)
+        demo["charts"]["volume_planned"]["series_kind"] = "planned"
+        demo["charts"]["volume_planned"]["label_nb"] = "Planlagt (planned_sessions)"
+        demo["charts"]["truth"] = {
+            "executed": "demo",
+            "planned": "planned_sessions",
+            "ctl_atl": "intervals_wellness",
+            "note_nb": (
+                "Demo for gjennomført (ikke koblet). "
+                "Planlagt = planned_sessions. CTL/ATL kun fra ICU wellness."
+            ),
+        }
+        demo["planned_daily_hours"] = planned_daily
+        return demo
 
     try:
         activities = fetch_intervals_activities(
@@ -509,7 +613,7 @@ def resolve_period_training(
         completed = sum_hours_by_discipline(activities)
         counts = count_sessions_by_discipline(activities)
         daily = hours_by_day(activities, start, end)
-        return build_period_training_payload(
+        payload = build_period_training_payload(
             start=start,
             end=end,
             hours=completed,
@@ -517,7 +621,10 @@ def resolve_period_training(
             source="intervals",
             activity_count=len(activities),
             daily_hours=daily,
+            planned_daily_hours=planned_daily,
         )
+        payload["planned_daily_hours"] = planned_daily
+        return payload
     except (
         urllib.error.URLError,
         urllib.error.HTTPError,
@@ -529,10 +636,15 @@ def resolve_period_training(
         detail = str(exc) or exc.__class__.__name__
         if isinstance(exc, urllib.error.HTTPError):
             detail = f"HTTP {exc.code}"
-        return empty_period_training(
+        empty = empty_period_training(
             start,
             end,
             source="intervals",
             fetch_error=True,
             fetch_error_detail=detail,
         )
+        empty["charts"]["volume_planned"] = bucket_volume_series(planned_daily)
+        empty["charts"]["volume_planned"]["series_kind"] = "planned"
+        empty["charts"]["volume_planned"]["label_nb"] = "Planlagt (planned_sessions)"
+        empty["planned_daily_hours"] = planned_daily
+        return empty

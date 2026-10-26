@@ -77,18 +77,14 @@ def fetch_wellness(
             if hit and (time.time() - hit[0]) < _CACHE_TTL_SEC:
                 return list(hit[1])
 
+    from icu_http import http_get_json
+
     qs = urllib.parse.urlencode({"oldest": oldest[:10], "newest": newest[:10]})
     url = f"{API_BASE}/athlete/{aid}/wellness?{qs}"
-    req = urllib.request.Request(url, method="GET", headers=_auth_headers(key))
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        raw = resp.read().decode("utf-8", errors="replace")
-    if not raw:
-        rows: list[dict[str, Any]] = []
-    else:
-        data = json.loads(raw)
-        if isinstance(data, dict):
-            data = data.get("wellness") or data.get("data") or []
-        rows = [r for r in data if isinstance(r, dict)] if isinstance(data, list) else []
+    data = http_get_json(url, _auth_headers(key), timeout=timeout)
+    if isinstance(data, dict):
+        data = data.get("wellness") or data.get("data") or []
+    rows = [r for r in data if isinstance(r, dict)] if isinstance(data, list) else []
 
     if use_cache:
         with _cache_lock:

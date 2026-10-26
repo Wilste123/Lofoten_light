@@ -14,6 +14,9 @@
 
 ## Belastning / skade / intensitet
 
+- Banister EW et al. A systems model of training for athletic performance. Aust J Sports Med 1975 — impulse–response (fitness/fatigue).
+- Morton RH, Fitz-Clarke JR, Banister EW. Modeling human performance in running. J Appl Physiol 1990;69:1171–1177.
+- Hellard P et al. Assessing the limitations of the Banister model in monitoring training. J Sports Sci 2006 — bred CI / ill-conditioning.
 - Gabbett TJ. Training-injury prevention paradox. BJSM 2016. https://bjsm.bmj.com/content/50/5/273
 - Soligard T et al. IOC consensus: load in sport and risk of injury. BJSM 2016 (PDF i `external/`).
 - Seiler S. What is best practice for training intensity…? Int J Sports Physiol Perform 2010.
@@ -26,6 +29,8 @@
 - Watson AM. Sleep and athletic performance. Curr Sports Med Rep 2017.
 
 Science for Sport — ACWR: https://www.scienceforsport.com/acutechronic-workload-ratio/
+
+**App (Beta):** CTL/ATL/TSB-projeksjon og ACWR-bånd i coach-web Beta-fane siterer Banister-familien + IOC/Gabbett + Seiler — se `load-and-intensity.md` § CTL/ATL og `skader/belastningsstyring-acwr.md`. TSB er ferskhetsindikator, ikke race-fasit.
 
 ## Målrealisme / dose
 

@@ -1,6 +1,12 @@
 import {
+  renderAcwrRiskBar,
+  renderBetaLoadTrajectory,
   renderDisciplineBars,
+  renderIntensityZones,
   renderLoadLines,
+  renderSessionStreams,
+  renderTbComponents,
+  renderTbTrend,
   renderVolumeBars,
   volumeBucketTitle,
 } from './charts.js'
@@ -12,6 +18,19 @@ import {
   readSetupForm,
   renderSetupWizard,
 } from './setup.js'
+import {
+  addMonths,
+  buildMonthGrid,
+  calendarDotsHtml,
+  defaultMonthKeyForSessions,
+  monthKeyFromDate,
+  monthLabelNb,
+  monthRange,
+  sessionIsoDate,
+  sessionsByDate,
+  toIsoDate,
+  weekRangeFromDate,
+} from './plan-calendar.js'
 
 const API = import.meta.env.VITE_API_URL || ''
 const STORAGE_KEY = 'lofoten_athlete_id'
@@ -53,6 +72,8 @@ const state = {
     busy: false,
     error: '',
   },
+  /** Visual øktbygger steps (warmup/work/recover/cooldown) */
+  builderSteps: [],
   /** Edit form open by default for coach-editable sessions */
   sessionEditOpen: true,
   chatDraft: '',
@@ -63,6 +84,18 @@ const state = {
     total: 0,
     plan_horizon_weeks: null,
     goal_race_date: null,
+    error: '',
+  },
+  planCalendar: {
+    month: monthKeyFromDate(),
+    selectedDate: null,
+    syncScopeLabel: '',
+    sourceFilter: 'all', // all | coach | agent | manual | app
+  },
+  tpSync: {
+    busy: false,
+    pending: null,
+    message: '',
     error: '',
   },
   intervals: {
@@ -86,8 +119,28 @@ const state = {
   athleteTypeProposal: null,
   /** Chat → negotiated training agreements (confirm → PATCH Du) */
   agreementsProposal: null,
+  /** Sunday ukesopp prompt (questions only — no auto write) */
+  ukesopp: null,
+  ukesoppAnswerDrafts: {},
+  ukesoppSaveMessage: '',
+  ukesoppSaveError: '',
+  /** Deterministic week check card (load / TB / Plan B — no Intervals write) */
+  weekCheck: null,
+  /** Sunday coach-rapport markdown (from chat or Dashboard) */
+  coachReport: null,
+  /** Intervals→TP zip card */
+  tpExport: null,
+  /** Inline Dashboard coach-rapport markdown */
+  dashCoachReportMd: '',
+  dashCoachReportBusy: false,
+  dashTpExportBusy: false,
+  /** Øktanalyse card (chat / Dashboard / session detail) */
+  sessionAnalysis: null,
+  sessionAnalysisBusy: false,
   /** Du → plan adjust preview (local blocks; Intervals only after Sync confirm) */
   planAdjust: null,
+  /** Selected ids when weekly cap requires replace */
+  replaceSessionIds: [],
   profileSavedForCoach: false,
   workoutSync: {
     pending: null,
@@ -109,6 +162,15 @@ const state = {
   /** Du → restart setup: 0 idle, 1 first confirm, 2 type SLETT */
   resetConfirm: 0,
   resetDeleteIcu: false,
+  /** Coach ticker — athlete_events unread strip */
+  ticker: {
+    events: [],
+    unread_count: 0,
+    error: '',
+  },
+  /** Beta forecasts (experimental) */
+  beta: null,
+  betaError: '',
   busy: false,
   intervalsBusy: false,
   intervalsStatus: '',
@@ -188,6 +250,7 @@ function clearSessionLocal() {
   }
   state.resetConfirm = 0
   state.resetDeleteIcu = false
+  state.ticker = { events: [], unread_count: 0, error: '' }
   state.error = ''
   state.intervalsError = ''
   state.planError = ''
@@ -229,11 +292,13 @@ async function api(path, { method = 'GET', body, athleteId, timeoutMs } = {}) {
   const id =
     athleteId === undefined ? getAthleteId() : athleteId || null
   if (id) headers['X-Athlete-Id'] = id
-  const ctrl = typeof timeoutMs === 'number' ? new AbortController() : null
+  // Default timeout so a wedged API (bad DATABASE_URL hang) cannot leave the
+  // UI on a blank/#app forever — bootstrap and login always fail-fast.
+  const ms =
+    typeof timeoutMs === 'number' ? timeoutMs : DEFAULT_API_TIMEOUT_MS
+  const ctrl = ms > 0 ? new AbortController() : null
   const timer =
-    ctrl && timeoutMs > 0
-      ? setTimeout(() => ctrl.abort(), timeoutMs)
-      : null
+    ctrl && ms > 0 ? setTimeout(() => ctrl.abort(), ms) : null
   let res
   try {
     res = await fetch(`${API}${path}`, {
@@ -244,7 +309,9 @@ async function api(path, { method = 'GET', body, athleteId, timeoutMs } = {}) {
     })
   } catch (err) {
     if (err?.name === 'AbortError') {
-      throw new Error('Tidsavbrudd — prøv igjen')
+      throw new Error(
+        'Tidsavbrudd mot API — sjekk at tjenesten svarer (/health) og DATABASE_URL/sslmode.',
+      )
     }
     throw err
   } finally {
@@ -261,13 +328,19 @@ async function api(path, { method = 'GET', body, athleteId, timeoutMs } = {}) {
           : typeof detail === 'object' && detail && detail.message
             ? String(detail.message)
             : data.message || data.error || `Feil ${res.status}`
-    throw new Error(msg)
+    const err = new Error(msg)
+    err.detail = typeof detail === 'object' && detail && !Array.isArray(detail) ? detail : data
+    throw err
   }
   return data
 }
 
 /** Client wall budget for Intervals save/verify — must exceed server soft-verify (~5s). */
 const INTERVALS_CLIENT_TIMEOUT_MS = 10000
+/** Default fetch budget — prevents infinite spinner when Fly/API/DB is wedged. */
+const DEFAULT_API_TIMEOUT_MS = 15000
+/** Slightly longer for reconnect bootstrap (login + enterApp fan-out). */
+const BOOTSTRAP_API_TIMEOUT_MS = 20000
 
 function setAccent(color) {
   document.documentElement.style.setProperty('--accent', color || ACCENTS[0])
@@ -331,6 +404,7 @@ async function enterApp(athlete, { welcome } = {}) {
     refreshPlannedSessions(),
     refreshDashboard(),
     refreshSessions(),
+    refreshTicker(),
   ])
   render()
 }
@@ -364,6 +438,7 @@ async function loginSession({ username, athleteId, inviteToken } = {}) {
     method: 'POST',
     body,
     athleteId: null,
+    timeoutMs: BOOTSTRAP_API_TIMEOUT_MS,
   })
   if (!data.athlete) {
     throw new Error(
@@ -403,6 +478,8 @@ async function bootstrap() {
   if (fromUser || fromQuery) {
     state.busy = true
     state.error = ''
+    state.gate = 'login'
+    render()
     try {
       const session = fromUser
         ? await loginSession({ username: fromUser })
@@ -435,6 +512,13 @@ async function bootstrap() {
     return
   }
 
+  // Show a real gate immediately — blank #app looked like an infinite spinner
+  // when /v1/session/login hung on a wedged Postgres lifespan.
+  state.busy = true
+  state.error = ''
+  state.gate = 'login'
+  state.login.athlete_id = id
+  render()
   try {
     const session = await loginWithId(id)
     await enterAfterLogin(session)
@@ -444,6 +528,7 @@ async function bootstrap() {
     state.gate = 'login'
     state.login.athlete_id = id
     state.error = err.message || 'Ukjent profil'
+    state.busy = false
     render()
   }
 }
@@ -481,6 +566,27 @@ async function refreshSessions() {
   }
 }
 
+async function refreshTicker({ refresh = true } = {}) {
+  try {
+    const qs = new URLSearchParams({
+      limit: '12',
+      refresh: refresh ? 'true' : 'false',
+    })
+    const data = await api(`/v1/athlete/me/events?${qs.toString()}`)
+    state.ticker = {
+      events: data.events || [],
+      unread_count: data.unread_count || 0,
+      error: '',
+      email_notify: data.email_notify || null,
+    }
+  } catch (err) {
+    state.ticker = {
+      ...(state.ticker || { events: [], unread_count: 0 }),
+      error: err.message || 'Ticker feilet',
+    }
+  }
+}
+
 async function refreshPlanBlocks() {
   try {
     const data = await api('/v1/athlete/me/plan-blocks')
@@ -492,12 +598,33 @@ async function refreshPlanBlocks() {
 
 async function refreshPlannedSessions() {
   try {
-    const data = await api('/v1/athlete/me/planned-sessions')
+    const data = await api(
+      '/v1/athlete/me/planned-sessions?merge_intervals=true',
+    )
+    const sessions = (data.sessions || []).map((s) => ({
+      ...s,
+      session_date: sessionIsoDate(s),
+    }))
+    const total = data.total ?? sessions.length
+    const monthKey = defaultMonthKeyForSessions(sessions)
+    if (monthKey) {
+      state.planCalendar.month = monthKey
+      if (!state.planCalendar.selectedDate) {
+        const today = toIsoDate(new Date())
+        const upcoming = sessions
+          .map((s) => sessionIsoDate(s))
+          .filter((d) => d >= today)
+          .sort()
+        if (upcoming.length) state.planCalendar.selectedDate = upcoming[0]
+      }
+    }
     state.plannedSessions = {
-      sessions: data.sessions || [],
-      total: data.total ?? (data.sessions || []).length,
+      sessions,
+      total,
       plan_horizon_weeks: data.plan_horizon_weeks ?? null,
       goal_race_date: data.goal_race_date || null,
+      sync_summary: data.sync_summary || null,
+      intervals_connected: data.intervals_connected ?? null,
       error: '',
     }
   } catch (err) {
@@ -508,6 +635,16 @@ async function refreshPlannedSessions() {
       goal_race_date: null,
       error: err.message || 'Kunne ikke hente planlagte økter',
     }
+  }
+}
+
+async function refreshBeta() {
+  try {
+    state.beta = await api('/v1/beta/forecasts?lookback_days=90&horizon_days=28')
+    state.betaError = ''
+  } catch (err) {
+    state.beta = null
+    state.betaError = err.message || 'Beta-prognoser feilet'
   }
 }
 
@@ -554,6 +691,7 @@ function render() {
         <p>Hei ${escapeHtml(a.display_name)} — Lofoten-coach</p>
       </div>
     </header>
+    ${renderTickerStrip()}
     <main>
       <section class="panel ${state.tab === 'coach' ? 'active' : ''}" data-panel="coach">
         ${renderChat()}
@@ -567,19 +705,54 @@ function render() {
       <section class="panel ${state.tab === 'okter' ? 'active' : ''}" data-panel="okter">
         ${renderOkterTab()}
       </section>
+      <section class="panel ${state.tab === 'beta' ? 'active' : ''}" data-panel="beta">
+        ${renderBetaTab()}
+      </section>
       <section class="panel ${state.tab === 'du' ? 'active' : ''}" data-panel="du">
         ${renderDu()}
       </section>
     </main>
-    <nav class="tabs tabs-five" aria-label="Hovedfaner">
+    <nav class="tabs tabs-six" aria-label="Hovedfaner">
       <button type="button" data-tab="coach" class="${state.tab === 'coach' ? 'active' : ''}">Coach</button>
       <button type="button" data-tab="dashboard" class="${state.tab === 'dashboard' ? 'active' : ''}">Dashboard</button>
       <button type="button" data-tab="plan" class="${state.tab === 'plan' ? 'active' : ''}">Plan</button>
       <button type="button" data-tab="okter" class="${state.tab === 'okter' ? 'active' : ''}">Økter</button>
+      <button type="button" data-tab="beta" class="${state.tab === 'beta' ? 'active' : ''}">Beta</button>
       <button type="button" data-tab="du" class="${state.tab === 'du' ? 'active' : ''}">Du</button>
     </nav>
   `
   bindApp()
+}
+
+function renderTickerStrip() {
+  const t = state.ticker || { events: [], unread_count: 0 }
+  const unread = (t.events || []).filter((e) => e && e.unread)
+  if (!unread.length && !t.error) {
+    return ''
+  }
+  const items = (unread.length ? unread : t.events || [])
+    .slice(0, 4)
+    .map((e) => {
+      const kind = escapeHtml(e.kind || '')
+      const title = escapeHtml(e.title || e.kind || 'Hendelse')
+      return `
+        <button type="button" class="ticker-item" data-ticker-id="${escapeHtml(e.id || '')}" data-ticker-kind="${kind}">
+          <span class="ticker-kind">${kind}</span>
+          <span class="ticker-title">${title}</span>
+        </button>`
+    })
+    .join('')
+  return `
+    <div class="ticker-strip" role="region" aria-label="Coach-varsler">
+      <div class="ticker-head">
+        <span class="ticker-label">Varsler${t.unread_count ? ` · ${t.unread_count}` : ''}</span>
+        <button type="button" class="ticker-dismiss" id="ticker-read-all">Merk lest</button>
+      </div>
+      <div class="ticker-items">${items}</div>
+      ${t.error ? `<p class="error tight">${escapeHtml(t.error)}</p>` : ''}
+      <p class="muted tight ticker-hint">Trykk åpner bekreft/plan — aldri auto-apply eller auto-sync.</p>
+    </div>
+  `
 }
 
 function renderEntry() {
@@ -1061,7 +1234,26 @@ function applyChatResponse(data, { mirrorToMain = false, userText = '' } = {}) {
   if (data.workout_proposal?.workouts?.length) {
     state.workoutProposal = data.workout_proposal
     state.workoutRemoval = null
+    if (data.workout_proposal.replace_required) {
+      state.replaceSessionIds = [
+        ...(data.workout_proposal.replace_session_ids ||
+          data.workout_replace_proposal?.replace_session_ids ||
+          []),
+      ]
+    }
     if (data.proposal_hint) toast(data.proposal_hint)
+  }
+  if (data.workout_replace_proposal?.workouts?.length && !data.workout_proposal?.workouts?.length) {
+    state.workoutProposal = {
+      workouts: data.workout_replace_proposal.workouts,
+      replace_required: true,
+      replace_candidates: data.workout_replace_proposal.replace_candidates || [],
+      replace_session_ids: data.workout_replace_proposal.replace_session_ids || [],
+    }
+    state.replaceSessionIds = [...(data.workout_replace_proposal.replace_session_ids || [])]
+    if (data.proposal_hint || data.workout_replace_proposal.message) {
+      toast(data.proposal_hint || data.workout_replace_proposal.message)
+    }
   }
   if (data.workout_removal) {
     state.workoutRemoval = data.workout_removal
@@ -1075,13 +1267,37 @@ function applyChatResponse(data, { mirrorToMain = false, userText = '' } = {}) {
     state.agreementsProposal = data.agreements_proposal
     if (data.agreements_hint) toast(data.agreements_hint)
   }
-  const planProp = data.plan_proposal
+  if (data.ukesopp?.questions?.length) {
+    state.ukesopp = data.ukesopp
+    state.ukesoppAnswerDrafts = {}
+    state.ukesoppSaveMessage = ''
+    state.ukesoppSaveError = ''
+  } else if (data.ukesopp === null) {
+    state.ukesopp = null
+  }
+  if (data.week_check) {
+    state.weekCheck = data.week_check
+    state.ukesopp = null
+  }
+  if (data.coach_report?.markdown) {
+    state.coachReport = data.coach_report
+  }
+  if (data.session_analysis) {
+    state.sessionAnalysis = data.session_analysis
+  }
+  if (data.tp_export) {
+    state.tpExport = data.tp_export
+  }
+  const planProp = data.plan_roll || data.plan_proposal
   const planHasFull = Boolean(planProp?.plan_blocks?.length)
   const planHasWeek = planProp?.scope === 'week' && Array.isArray(planProp?.sessions)
+  const planHasRoll =
+    (planProp?.op === 'plan_roll' || planProp?.scope === 'detalj') &&
+    Array.isArray(planProp?.sessions)
   const planHasError = Boolean(planProp?.error)
-  if (planHasFull || planHasWeek || planHasError) {
+  if (planHasFull || planHasWeek || planHasRoll || planHasError) {
     state.planAdjust = planProp
-    if (planHasFull || planHasWeek) state.agreementsProposal = null
+    if (planHasFull || planHasWeek || planHasRoll) state.agreementsProposal = null
     if (data.plan_hint) toast(data.plan_hint)
   }
   // Existing plan → Intervals near-window sync (no new week inventing).
@@ -1103,7 +1319,25 @@ function applyChatResponse(data, { mirrorToMain = false, userText = '' } = {}) {
   // Never toast «done» from prose-only writes — card or honest block only.
   if (data.write_blocked_no_card) {
     toast('Ingenting lagret — mangler bekreftelseskort')
-  } else if (data.pending_write_reopen && !data.workout_proposal?.workouts?.length && !planHasWeek && !planHasFull) {
+  } else if (data.confirm_push_done || data.write_success) {
+    const saved = data.planned_sessions_saved
+    const pushed = data.pushed
+    const msg =
+      data.reply ||
+      (saved
+        ? `${saved} økt(er) lagret i planen${pushed ? ` · ${pushed} på Intervals` : ''}`
+        : 'Bekreftet')
+    toast(msg)
+    state.workoutProposal = null
+    state.workoutSync.pending = null
+    state.workoutSync.message = msg
+  } else if (
+    data.pending_write_reopen &&
+    !data.workout_proposal?.workouts?.length &&
+    !planHasWeek &&
+    !planHasFull &&
+    !planHasRoll
+  ) {
     toast('Ingenting oppdatert — bekreft via kortet eller gjenta forespørselen')
   }
   if (mirrorToMain && userText) {
@@ -1119,6 +1353,125 @@ async function sendCoachMessage(message, { sessionId = null } = {}) {
   const body = { message }
   if (sessionId) body.session_id = sessionId
   return api('/v1/chat', { method: 'POST', body })
+}
+
+async function loadDashCoachReport() {
+  if (state.dashCoachReportBusy) return
+  state.dashCoachReportBusy = true
+  state.error = ''
+  render()
+  try {
+    const data = await api('/v1/readiness?ritual=true')
+    state.dashCoachReportMd = data.markdown || data.note || 'Ingen rapport.'
+  } catch (err) {
+    state.error = err.message || 'Coach-rapport feilet'
+    state.dashCoachReportMd = ''
+  } finally {
+    state.dashCoachReportBusy = false
+    render()
+  }
+}
+
+async function loadSessionAnalysis({ sessionId = null, latest = false } = {}) {
+  if (state.sessionAnalysisBusy) return
+  state.sessionAnalysisBusy = true
+  state.error = ''
+  render()
+  try {
+    const path = sessionId
+      ? `/v1/sessions/${encodeURIComponent(sessionId)}/analysis`
+      : '/v1/analysis/latest'
+    const data = await api(path)
+    state.sessionAnalysis = data
+    if (!data?.available) {
+      toast(data?.note || 'Ingen økt å analysere')
+    }
+  } catch (err) {
+    state.error = err.message || 'Øktanalyse feilet'
+    state.sessionAnalysis = {
+      available: false,
+      note: err.message || 'Øktanalyse feilet',
+      written_to_intervals: false,
+    }
+  } finally {
+    state.sessionAnalysisBusy = false
+    render()
+  }
+}
+
+async function downloadTpExportZip(path) {
+  if (state.dashTpExportBusy) return
+  state.dashTpExportBusy = true
+  state.error = ''
+  render()
+  try {
+    const url = `${API}${path || '/v1/exports/tp-from-intervals.zip'}`
+    const headers = {}
+    const id = getAthleteId()
+    if (id) headers['X-Athlete-Id'] = id
+    const res = await fetch(url, { headers })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      const detail = data.detail
+      throw new Error(
+        typeof detail === 'string' ? detail : data.message || `Eksport feilet (${res.status})`,
+      )
+    }
+    const blob = await res.blob()
+    const cd = res.headers.get('Content-Disposition') || ''
+    const match = /filename="?([^"]+)"?/i.exec(cd)
+    const filename = match?.[1] || 'tp-from-intervals.zip'
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(a.href)
+    toast('TP-zip lastet ned — importer manuelt i TP / TrainingDojo')
+  } catch (err) {
+    state.error = err.message || 'TP-eksport feilet'
+  } finally {
+    state.dashTpExportBusy = false
+    render()
+  }
+}
+
+/** Dashboard CTA → Coach tab with deterministic week/ICU prompts. */
+async function runCoachPromptFromUi(message) {
+  const text = (message || '').trim()
+  if (!text || state.busy) return
+  state.tab = 'coach'
+  state.chatDraft = ''
+  state.workoutProposal = null
+  state.workoutRemoval = null
+  state.athleteTypeProposal = null
+  state.agreementsProposal = null
+  state.ukesopp = null
+  state.weekCheck = null
+  state.coachReport = null
+  state.sessionAnalysis = null
+  state.tpExport = null
+  state.workoutSync.pending = null
+  state.workoutSync.error = ''
+  state.workoutSync.message = ''
+  state.messages.push({ role: 'user', content: text })
+  state.busy = true
+  state.error = ''
+  render()
+  try {
+    const data = await sendCoachMessage(text)
+    state.messages.push({ role: 'assistant', content: data.reply })
+    applyChatResponse(data, { mirrorToMain: false })
+  } catch (err) {
+    state.error = err.message || 'Chat feilet'
+    state.messages.pop()
+  } finally {
+    state.busy = false
+    render()
+    const log = document.getElementById('chat-log')
+    if (log) log.scrollTop = log.scrollHeight
+  }
 }
 
 function renderChat() {
@@ -1146,8 +1499,10 @@ function renderChat() {
     const wc = syncPending.workouts_count
     const nc = syncPending.notes_count
     const meta =
-      wc != null || nc != null
-        ? `${wc ?? 0} økter + ${nc ?? 0} noter · nærvindu ${syncPending.weeks ?? 2} uker`
+      wc != null
+        ? Number(nc) > 0
+          ? `${wc} økter + ${nc} noter · nærvindu ${syncPending.weeks ?? 2} uker`
+          : `${wc} økter fra planned_sessions · nærvindu ${syncPending.weeks ?? 2} uker (uten grovplan-noter)`
         : `${syncPending.count || 0} hendelser`
     proposalCard = `
       <div class="confirm-card" role="dialog" aria-label="Bekreft Intervals-sync">
@@ -1243,10 +1598,13 @@ function renderChat() {
       </div>`
   } else if (
     state.planAdjust?.plan_blocks?.length ||
-    (state.planAdjust?.scope === 'week' && state.planAdjust?.sessions)
+    (state.planAdjust?.scope === 'week' && state.planAdjust?.sessions) ||
+    ((state.planAdjust?.op === 'plan_roll' || state.planAdjust?.scope === 'detalj') &&
+      state.planAdjust?.sessions)
   ) {
     const pa = state.planAdjust
     const isWeek = pa.scope === 'week'
+    const isRoll = pa.op === 'plan_roll' || pa.scope === 'detalj'
     const sync = pa.intervals_sync || {}
     const csum =
       pa.constraints_summary_nb ||
@@ -1257,13 +1615,15 @@ function renderChat() {
       pa.horizon_note_nb ||
       (isWeek
         ? 'Kirurgisk ukejustering — resten av planen beholdes.'
-        : 'App-plan til måldato; Intervals WORKOUT kun nærvindu.')
-    const readiness = pa.readiness_hints || {}
+        : isRoll
+          ? 'Neste detaljvindu — grovplan beholdes. Intervals først etter Sync.'
+          : 'App-plan til måldato; Intervals WORKOUT kun nærvindu.')
+    const readiness = pa.readiness_hints || pa.readiness || {}
     const readyNote =
       pa.readiness_note_nb ||
       readiness.summary_nb ||
       ''
-    const rows = isWeek
+    const rows = isWeek || isRoll
       ? (pa.sessions || [])
           .slice(0, 12)
           .map(
@@ -1284,23 +1644,35 @@ function renderChat() {
       .slice(0, 8)
       .map((e) => `<li>${escapeHtml(e.preview_no || e.name || '')}</li>`)
       .join('')
-    const sessN = isWeek ? pa.count : pa.planned_sessions_count
+    const sessN = isWeek || isRoll ? pa.count || pa.planned_sessions_count : pa.planned_sessions_count
     const hzW = pa.plan_horizon_weeks
+    const title = isWeek
+      ? 'Foreslått ukejustering'
+      : isRoll
+        ? 'Rull videre — neste detaljplan'
+        : 'Foreslått planjustering'
+    const confirmLabel = isWeek ? 'Bekreft uke' : isRoll ? 'Bekreft neste detalj' : 'Bekreft ny plan'
     proposalCard = `
-      <div class="confirm-card workout-proposal-card" aria-label="Justert grovplan">
-        <p><strong>${isWeek ? 'Foreslått ukejustering' : 'Foreslått planjustering'}</strong></p>
-        <p class="muted tight">${escapeHtml(pa.confirm_hint || (isWeek ? 'Bekreft for å erstatte kun denne uka.' : 'Bekreft for å lagre meso-blokker + økter til måldato lokalt — ikke auto-sync til Intervals.'))}</p>
+      <div class="confirm-card workout-proposal-card" aria-label="${escapeHtml(title)}">
+        <p><strong>${escapeHtml(title)}</strong></p>
+        <p class="muted tight">${escapeHtml(pa.confirm_hint || pa.message || (isWeek ? 'Bekreft for å erstatte kun denne uka.' : 'Bekreft for å lagre meso-blokker + økter til måldato lokalt — ikke auto-sync til Intervals.'))}</p>
         ${csum ? `<p class="muted tight">${escapeHtml(csum)}</p>` : ''}
         <p class="muted tight">${escapeHtml(horizon)}</p>
         ${isWeek && pa.week_start ? `<p class="muted tight">${escapeHtml(pa.week_start)}–${escapeHtml(pa.week_end || '')}${pa.ease_load ? ' · lett uke' : ''}.</p>` : ''}
-        ${sessN != null ? `<p class="muted tight">${escapeHtml(String(sessN))} økter${isWeek ? ' i uka' : ` i app-plan${hzW != null ? ` (~${escapeHtml(String(hzW))} uker)` : ''}`}</p>` : ''}
+        ${isRoll && pa.detalj_start ? `<p class="muted tight">${escapeHtml(pa.detalj_start)}–${escapeHtml(pa.detalj_end || '')} (~${escapeHtml(String(pa.detalj_weeks || 4))} uker).</p>` : ''}
+        ${sessN != null ? `<p class="muted tight">${escapeHtml(String(sessN))} økter${isWeek ? ' i uka' : isRoll ? ' i neste detalj' : ` i app-plan${hzW != null ? ` (~${escapeHtml(String(hzW))} uker)` : ''}`}</p>` : ''}
         ${pa.unchanged_note_nb ? `<p class="muted tight">${escapeHtml(pa.unchanged_note_nb)}</p>` : ''}
         ${readyNote ? `<p class="muted tight">Readiness: ${escapeHtml(readyNote)}</p>` : ''}
-        ${!isWeek && sync.workouts_count != null ? `<p class="muted tight">${escapeHtml(String(sync.workouts_count))} WORKOUT i Intervals-nærvindu (${escapeHtml(String(pa.icu_sync_weeks || sync.weeks || 2))} uker).</p>` : ''}
+        ${!isWeek && !isRoll && sync.workouts_count != null ? `<p class="muted tight">${escapeHtml(String(sync.workouts_count))} WORKOUT i Intervals-nærvindu (${escapeHtml(String(pa.icu_sync_weeks || sync.weeks || 2))} uker).</p>` : ''}
         <ul class="sync-sample">${rows}</ul>
         ${wprev ? `<p class="plan-kicker">Intervals nærvindu (WORKOUT)</p><ul class="sync-sample">${wprev}</ul>` : ''}
+        ${
+          state.intervals?.connected
+            ? `<label class="muted tight prepare-sync-opt"><input type="checkbox" id="plan-prepare-icu-sync" /> Også forbered Sync til Intervals (valgfritt — ikke auto)</label>`
+            : ''
+        }
         <div class="sync-actions">
-          <button type="button" class="btn btn-primary" id="plan-adjust-confirm-btn" ${state.busy ? 'disabled' : ''}>${isWeek ? 'Bekreft uke' : 'Bekreft ny plan'}</button>
+          <button type="button" class="btn btn-primary" id="plan-adjust-confirm-btn" ${state.busy ? 'disabled' : ''}>${escapeHtml(confirmLabel)}</button>
           <button type="button" class="btn secondary" id="plan-adjust-dismiss-btn">Avvis</button>
         </div>
         ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
@@ -1314,19 +1686,156 @@ function renderChat() {
           }</li>`,
       )
       .join('')
+    const replaceNeeded = Boolean(proposal.replace_required)
+    const candidates = proposal.replace_candidates || []
+    const selected = new Set(state.replaceSessionIds || proposal.replace_session_ids || [])
+    const replaceList = replaceNeeded
+      ? `<p class="muted tight"><strong>Uka er full</strong> — velg økt(er) å erstatte (samme dato prioriteres):</p>
+        <ul class="sync-sample replace-candidates">${candidates
+          .map((c) => {
+            const id = String(c.id || '')
+            const checked = selected.has(id) ? 'checked' : ''
+            return `<li><label class="replace-pick"><input type="checkbox" class="replace-session-cb" value="${escapeHtml(id)}" ${checked}/> <strong>${escapeHtml(c.session_date || '')}</strong> · ${escapeHtml(c.name || '')}${c.same_date ? ' · samme dato' : ''}</label></li>`
+          })
+          .join('') || '<li class="muted">Ingen kandidater denne uka</li>'}</ul>`
+      : ''
     proposalCard = `
       <div class="confirm-card workout-proposal-card" aria-label="Foreslått økt">
-        <p><strong>Foreslått økt til planen</strong></p>
+        <p><strong>${replaceNeeded ? 'Erstatt økt i planen' : 'Foreslått økt til planen'}</strong></p>
         <p class="muted tight">Ingenting er lagret ennå — forhåndsvis, deretter bekreft. Lagrer i app-planen${
-          state.intervals.connected ? '; synces til Intervals hvis du bekrefter sync.' : ' (koble Intervals under Du for Sync).'
+          state.intervals.connected
+            ? '; «Bekreft og push» lagrer og synker samme økt til Intervals (CLI-struktur).'
+            : ' (koble Intervals under Du for Sync).'
         }</p>
+        ${replaceList}
         <ul class="sync-sample">${rows}</ul>
+        ${
+          state.intervals.connected && !replaceNeeded
+            ? `<label class="muted tight prepare-sync-opt"><input type="checkbox" id="workout-prepare-icu-sync" /> Forbered Sync til Intervals i forhåndsvisning (valgfritt)</label>`
+            : ''
+        }
         <div class="sync-actions">
-          <button type="button" class="btn btn-primary" id="workout-preview-btn" ${state.workoutSync.busy ? 'disabled' : ''}>Forhåndsvis lagring</button>
+          <button type="button" class="btn btn-primary" id="workout-preview-btn" ${state.workoutSync.busy || (replaceNeeded && !(state.replaceSessionIds || []).length) ? 'disabled' : ''}>${replaceNeeded ? 'Forhåndsvis erstatning' : 'Forhåndsvis lagring'}</button>
+          ${
+            state.intervals.connected && !replaceNeeded
+              ? `<button type="button" class="btn secondary" id="workout-confirm-push-btn" ${state.workoutSync.busy ? 'disabled' : ''}>Bekreft og push til Intervals</button>`
+              : ''
+          }
           <button type="button" class="btn secondary" id="workout-dismiss-btn" ${state.workoutSync.busy ? 'disabled' : ''}>Avvis</button>
         </div>
         ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
         ${state.workoutSync.message ? `<p class="intervals-status is-ok">${escapeHtml(state.workoutSync.message)}</p>` : ''}
+      </div>`
+  } else if (state.weekCheck) {
+    const w = state.weekCheck
+    const tb = w.tb || {}
+    const load = w.load || {}
+    const tbLine =
+      tb.available && tb.tb_score != null
+        ? `<p><strong>TB-Score ${escapeHtml(String(tb.tb_score))}/100</strong> · ${escapeHtml(tb.band || '')}</p>`
+        : `<p class="muted tight">TB-Score ikke tilgjengelig${tb.note ? ` (${escapeHtml(String(tb.note))})` : ''}.</p>`
+    const loadLine =
+      load.hours != null || load.load != null
+        ? `<p class="muted tight">Belastning: ~${escapeHtml(String(load.hours ?? '—'))} t · load ~${escapeHtml(String(load.load ?? '—'))} (${escapeHtml(String(load.sessions ?? 0))} aktiviteter)</p>`
+        : ''
+    const planB = (w.plan_b || [])
+      .slice(0, 3)
+      .map((b) => `<li>${escapeHtml(String(b))}</li>`)
+      .join('')
+    const risk = (w.risk || [])
+      .slice(0, 2)
+      .map((b) => `<li>${escapeHtml(String(b))}</li>`)
+      .join('')
+    const presc = (w.prescriptions || [])
+      .slice(0, 3)
+      .map((block) => `<pre class="sync-sample week-check-presc">${escapeHtml(String(block))}</pre>`)
+      .join('')
+    const src =
+      w.calendar_source === 'intervals'
+        ? 'Kilde: Intervals-kalender + aktiviteter'
+        : 'Kilde: app-plan'
+    proposalCard = `
+      <div class="confirm-card workout-proposal-card" aria-label="Ukesjekk">
+        <p><strong>Ukesjekk ${escapeHtml(w.week_start || '')}–${escapeHtml(w.week_end || '')}</strong></p>
+        <p class="muted tight">${escapeHtml(src)}. Ingen Intervals-push.</p>
+        ${
+          w.compliance_pct != null
+            ? `<p class="muted tight">Compliance: ${escapeHtml(String(w.sessions_done ?? 0))}/${escapeHtml(String(w.sessions_planned ?? 0))} (${escapeHtml(String(w.compliance_pct))} %)</p>`
+            : ''
+        }
+        ${tbLine}
+        ${loadLine}
+        ${planB ? `<p class="muted tight">Plan B</p><ul class="sync-sample">${planB}</ul>` : ''}
+        ${risk ? `<p class="muted tight">Ukerisiko</p><ul class="sync-sample">${risk}</ul>` : ''}
+        ${presc ? `<p class="muted tight">Kvalitetsøkter</p>${presc}` : ''}
+        <div class="sync-actions">
+          <button type="button" class="btn secondary" id="week-check-dismiss-btn">Skjul</button>
+        </div>
+      </div>`
+  } else if (state.sessionAnalysis) {
+    proposalCard = renderSessionAnalysisCard(state.sessionAnalysis, {
+      dismissId: 'session-analysis-dismiss-btn',
+    })
+  } else if (state.coachReport?.markdown) {
+    const cr = state.coachReport
+    proposalCard = `
+      <div class="confirm-card workout-proposal-card" aria-label="Coach-rapport" data-testid="coach-report-card">
+        <p><strong>Coach-rapport (søndagsritual)</strong></p>
+        <p class="muted tight">Samme TB-motor som agent. TB-trend på Dashboard · ingen Intervals-write.</p>
+        <pre class="sync-sample week-check-presc">${escapeHtml(String(cr.markdown).slice(0, 4000))}</pre>
+        <div class="sync-actions">
+          <button type="button" class="btn btn-primary" id="coach-report-ukesopp-btn">Start ukesopp</button>
+          <button type="button" class="btn secondary" id="coach-report-analyse-btn">Analyser siste økt</button>
+          <button type="button" class="btn secondary" id="coach-report-dismiss-btn">Skjul</button>
+        </div>
+      </div>`
+  } else if (state.tpExport) {
+    const t = state.tpExport
+    proposalCard = `
+      <div class="confirm-card workout-proposal-card" aria-label="TP-eksport" data-testid="tp-export-card">
+        <p><strong>Intervals → TrainingPeaks</strong></p>
+        <p class="muted tight">${escapeHtml(t.start || '')} … ${escapeHtml(t.end || '')}. Kun filer — ingen TP-write.</p>
+        ${
+          t.available
+            ? `<p class="muted tight">${escapeHtml(String((t.meta && t.meta.workouts) ?? 0))} økter · ${escapeHtml(String((t.meta && t.meta.zwo) ?? 0))} ZWO · ${escapeHtml(String((t.meta && t.meta.strength) ?? 0))} styrke</p>`
+            : `<p class="error">${escapeHtml(t.note || 'Ikke tilgjengelig')}</p>`
+        }
+        <div class="sync-actions">
+          ${
+            t.available && t.download_path
+              ? `<button type="button" class="btn btn-primary" id="tp-export-download-btn">Last ned zip</button>`
+              : ''
+          }
+          <button type="button" class="btn secondary" id="tp-export-dismiss-btn">Skjul</button>
+        </div>
+      </div>`
+  } else if (state.ukesopp?.questions?.length) {
+    const u = state.ukesopp
+    const drafts = state.ukesoppAnswerDrafts || {}
+    const qs = (u.questions || [])
+      .map(
+        (q, i) => `<li>
+          <label class="ukesopp-q-label"><strong>${i + 1}.</strong> ${escapeHtml(q)}</label>
+          <textarea class="ukesopp-answer" data-ukesopp-i="${i}" rows="2" placeholder="Kort svar…">${escapeHtml(drafts[i] || '')}</textarea>
+        </li>`,
+      )
+      .join('')
+    const hint = u.completed_hint
+      ? `<p class="muted tight">${escapeHtml(u.completed_hint)}</p>`
+      : ''
+    proposalCard = `
+      <div class="confirm-card workout-proposal-card" aria-label="Ukesopp">
+        <p><strong>Ukesopp ${escapeHtml(u.week_start || '')}–${escapeHtml(u.week_end || '')}</strong></p>
+        <p class="muted tight">Lagre svar i appen (ikke Intervals-push).</p>
+        ${u.planned_count != null ? `<p class="muted tight">${escapeHtml(String(u.planned_count))} planlagte økter i uka.</p>` : ''}
+        ${hint}
+        <ol class="sync-sample ukesopp-q">${qs}</ol>
+        <div class="sync-actions">
+          <button type="button" class="btn btn-primary" id="ukesopp-save-btn">Lagre svar</button>
+          <button type="button" class="btn secondary" id="ukesopp-dismiss-btn">Skjul</button>
+        </div>
+        ${state.ukesoppSaveMessage ? `<p class="intervals-status is-ok">${escapeHtml(state.ukesoppSaveMessage)}</p>` : ''}
+        ${state.ukesoppSaveError ? `<p class="error">${escapeHtml(state.ukesoppSaveError)}</p>` : ''}
       </div>`
   } else if (state.workoutSync.message) {
     proposalCard = `<p class="intervals-status is-ok">${escapeHtml(state.workoutSync.message)}</p>`
@@ -1477,6 +1986,8 @@ function renderPlanStrip(o) {
         <h3>${escapeHtml(cur.title || 'Uten tittel')}</h3>
         <p class="plan-theme">${escapeHtml(cur.theme || '—')}</p>
         <p class="muted tight">${escapeHtml(cur.start_date || '?')} – ${escapeHtml(cur.end_date || '?')}${cur.weekly_hours != null ? ` · ${formatHours(cur.weekly_hours)} t/uke` : ''}</p>
+        ${cur.plan_b ? `<p class="muted tight"><strong>Plan B:</strong> ${escapeHtml(cur.plan_b)}</p>` : ''}
+        ${cur.weekly_risk ? `<p class="muted tight"><strong>Ukerisiko:</strong> ${escapeHtml(cur.weekly_risk)}</p>` : ''}
       </div>`
     : `<div class="plan-current">
         <p class="plan-kicker">Grovplan</p>
@@ -1506,7 +2017,7 @@ function renderPlanStrip(o) {
         ${curHtml}
         ${nextHtml}
       </div>
-      <p class="muted tight plan-footnote">Detaljer i Intervals — her bare grovplan / bulk.</p>
+      <p class="muted tight plan-footnote">Økter i kalenderen under — sync per uke/måned.</p>
     </section>`
 }
 
@@ -1633,6 +2144,7 @@ function renderLoadCard(dash) {
   const hours = dash.hours || training
   const charts = training.charts || {}
   const volume = charts.volume || { bars: [], bucket: 'day' }
+  const volumePlanned = charts.volume_planned || null
   const discBars =
     charts.by_discipline ||
     (training.disciplines || hours.disciplines || []).map((d) => ({
@@ -1641,6 +2153,7 @@ function renderLoadCard(dash) {
       hours: d.hours != null ? d.hours : d.completed_hours,
     }))
   const loadSeries = load.series || {}
+  const truthNote = charts.truth?.note_nb || load.note || training.note || ''
   const badge =
     training.source === 'intervals' || hours.source === 'intervals'
       ? `<span class="badge badge-live">Intervals</span>`
@@ -1656,27 +2169,171 @@ function renderLoadCard(dash) {
   const actCount = training.activity_count ?? hours.activity_count
   const label = periodLabelFromDash(dash)
   const volTitle = volumeBucketTitle(volume.bucket)
+  const plannedBlock =
+    volumePlanned && (volumePlanned.bars || []).some((b) => Number(b.hours) > 0)
+      ? `<section class="section-block chart-block" data-testid="chart-volume-planned" aria-label="Planlagt volum">
+      <div class="section-head"><h2>Planlagt volum (fremover)</h2></div>
+      ${renderVolumeBars({ ...volumePlanned, series_kind: 'planned' })}
+    </section>`
+      : ''
   return `
     <section class="section-block" data-testid="period-training">
       <div class="section-head"><h2>Trening (${escapeHtml(label)})</h2>${badge}</div>
-      <div class="stat-row"><span>Totalt</span><span>${total != null ? `${formatHours(total)} t` : '—'}${actCount != null ? ` · ${actCount} økter` : ''}</span></div>
+      <div class="stat-row"><span>Totalt gjennomført</span><span>${total != null ? `${formatHours(total)} t` : '—'}${actCount != null ? ` · ${actCount} økter` : ''}</span></div>
       <div class="stat-row"><span>CTL</span><span>${wl.ctl != null ? wl.ctl : '—'}</span></div>
       <div class="stat-row"><span>ATL</span><span>${wl.atl != null ? wl.atl : '—'}</span></div>
       <div class="stat-row"><span>Readiness</span><span>${wl.readiness != null ? wl.readiness : '—'}</span></div>
-      <p class="muted tight">${escapeHtml(load.note || training.note || '')}</p>
+      <p class="muted tight">${escapeHtml(truthNote)}</p>
     </section>
     <section class="section-block chart-block" data-testid="chart-volume" aria-label="${escapeHtml(volTitle)}">
-      <div class="section-head"><h2>${escapeHtml(volTitle)}</h2></div>
-      ${renderVolumeBars(volume)}
+      <div class="section-head"><h2>${escapeHtml(volTitle)} — gjennomført</h2></div>
+      ${renderVolumeBars({ ...volume, series_kind: 'executed' })}
     </section>
+    ${plannedBlock}
     <section class="section-block chart-block" data-testid="chart-discipline" aria-label="Timer per disiplin">
-      <div class="section-head"><h2>Per disiplin</h2></div>
+      <div class="section-head"><h2>Per disiplin (gjennomført)</h2></div>
       ${renderDisciplineBars(discBars)}
     </section>
     <section class="section-block chart-block" data-testid="chart-load" aria-label="Belastning CTL ATL">
       <div class="section-head"><h2>Belastning (CTL / ATL)</h2></div>
+      <p class="muted tight">Kun Intervals wellness — ingen inventerte fremtidstall.</p>
       ${renderLoadLines(loadSeries)}
     </section>`
+}
+
+function renderReadinessChartsBlock(dash) {
+  const charts = dash?.readiness_charts
+  if (!charts) {
+    return ''
+  }
+  const comps = charts.components_chart || {}
+  return `
+    <section class="section-block chart-block" data-testid="chart-tb-trend" aria-label="TB-Score trend">
+      <div class="section-head"><h2>TB-trend (14 dager)</h2></div>
+      <p class="muted tight">${escapeHtml(charts.note_nb || 'Regenerert server-side — ingen PNG i git.')}</p>
+      ${renderTbTrend(charts)}
+      ${
+        comps.available
+          ? `<div class="section-head tight-head"><h3>Komponenter (siste)</h3></div>${renderTbComponents(comps)}`
+          : ''
+      }
+    </section>`
+}
+
+function renderSessionAnalysisCard(analysis, { dismissId = 'session-analysis-dismiss-btn' } = {}) {
+  if (!analysis) return ''
+  const a = analysis
+  const summary = a.summary || {}
+  const iv = a.intervals || {}
+  const dist = a.distribution || {}
+  const graph = a.graph || {}
+  const title = summary.name
+    ? `${summary.name}${summary.date ? ` · ${summary.date}` : ''}`
+    : 'Øktanalyse'
+  if (!a.available) {
+    return `
+      <div class="confirm-card workout-proposal-card" aria-label="Øktanalyse" data-testid="session-analysis-card">
+        <p><strong>Øktanalyse</strong></p>
+        <p class="muted tight">${escapeHtml(a.note || a.feedback_nb || 'Ikke tilgjengelig')}</p>
+        <div class="sync-actions">
+          <button type="button" class="btn secondary" id="${escapeHtml(dismissId)}">Skjul</button>
+        </div>
+      </div>`
+  }
+  const laps = (iv.laps || [])
+    .slice(0, 8)
+    .map((lap) => {
+      const bits = [
+        lap.name || `Drag ${lap.n}`,
+        lap.duration_s != null ? `${Math.round(lap.duration_s / 60)} min` : null,
+        lap.avg_watts != null ? `${lap.avg_watts} W` : null,
+        lap.avg_hr != null ? `${lap.avg_hr} bpm` : null,
+        lap.vs_target_pct != null ? `${lap.vs_target_pct} % target` : null,
+      ].filter(Boolean)
+      return `<li>${escapeHtml(bits.join(' · '))}</li>`
+    })
+    .join('')
+  return `
+    <div class="confirm-card workout-proposal-card session-analysis-card" aria-label="Øktanalyse" data-testid="session-analysis-card">
+      <p><strong>Øktanalyse</strong> — ${escapeHtml(title)}</p>
+      <p class="muted tight">Les-only · Intervals streams/laps · ingen sync.</p>
+      ${renderSessionStreams(graph)}
+      ${iv.available && iv.verdict_nb ? `<p class="muted tight"><strong>Intervaller:</strong> ${escapeHtml(iv.verdict_nb)}</p>` : ''}
+      ${laps ? `<ul class="sync-sample">${laps}</ul>` : ''}
+      ${dist.available ? `<div class="section-head tight-head"><h3>Signing / intensitet</h3></div>${renderIntensityZones(dist)}` : ''}
+      <pre class="sync-sample week-check-presc">${escapeHtml(String(a.feedback_nb || '').slice(0, 2500))}</pre>
+      <div class="sync-actions">
+        <button type="button" class="btn secondary" id="${escapeHtml(dismissId)}">Skjul</button>
+      </div>
+    </div>`
+}
+
+function renderReadinessStrip(dash) {
+  const r = dash?.readiness
+  const reportBlock = state.dashCoachReportMd
+    ? `<pre class="sync-sample week-check-presc" data-testid="dash-coach-report">${escapeHtml(String(state.dashCoachReportMd).slice(0, 5000))}</pre>`
+    : ''
+  const analysisInline =
+    state.tab === 'dashboard' && state.sessionAnalysis
+      ? renderSessionAnalysisCard(state.sessionAnalysis, {
+          dismissId: 'dash-session-analysis-dismiss-btn',
+        })
+      : ''
+  if (!r) {
+    return `
+      <div class="section-block readiness-strip" data-testid="readiness-strip">
+        <div class="section-head"><h2>TB-Score / uke</h2></div>
+        <p class="muted tight">Koble Intervals under Du for TB-Score. Eller spør Coach «sjekk uka mi».</p>
+        <div class="sync-actions">
+          <button type="button" class="btn secondary" id="dash-week-check-btn">Sjekk uka mi</button>
+          <button type="button" class="btn secondary" id="dash-session-analysis-btn" ${state.sessionAnalysisBusy ? 'disabled' : ''}>Analyser siste økt</button>
+          <button type="button" class="btn secondary" id="dash-coach-report-btn" ${state.dashCoachReportBusy ? 'disabled' : ''}>Coach-rapport</button>
+        </div>
+        ${reportBlock}
+        ${analysisInline}
+      </div>`
+  }
+  const tb = r.tb || {}
+  const week = r.week || {}
+  const tbLine =
+    tb.available && tb.tb_score != null
+      ? `<p><strong>TB-Score ${escapeHtml(String(tb.tb_score))}/100</strong> · ${escapeHtml(tb.band || '')}${
+          tb.tsb != null ? ` · TSB ${escapeHtml(String(tb.tsb))}` : ''
+        }</p>`
+      : `<p class="muted tight">TB-Score ikke tilgjengelig${tb.note ? ` — ${escapeHtml(String(tb.note))}` : ''}.</p>`
+  const planB = tb.plan_b_nb
+    ? `<p class="muted tight">${escapeHtml(String(tb.plan_b_nb))}</p>`
+    : tb.recommendation
+      ? `<p class="muted tight">${escapeHtml(String(tb.recommendation))}</p>`
+      : ''
+  const weekLine =
+    week.week_start && week.sessions_planned != null
+      ? `<p class="muted tight">Denne uka (${escapeHtml(week.week_start)}–${escapeHtml(week.week_end || '')}): <strong>${escapeHtml(String(week.sessions_done ?? 0))} / ${escapeHtml(String(week.sessions_planned))}</strong> planlagte${
+          week.compliance_pct != null ? ` (${escapeHtml(String(week.compliance_pct))} %)` : ''
+        }</p>`
+      : week.week_start
+        ? `<p class="muted tight">Uke ${escapeHtml(week.week_start)}–${escapeHtml(week.week_end || '')} — åpne Coach for detalj.</p>`
+        : ''
+  return `
+    <div class="section-block readiness-strip" data-testid="readiness-strip">
+      <div class="section-head">
+        <h2>TB-Score / uke</h2>
+        <span class="badge ${tb.available ? 'badge-live' : 'badge-off'}">${tb.available ? 'Live' : '—'}</span>
+      </div>
+      ${tbLine}
+      ${planB}
+      ${weekLine}
+      <p class="muted tight">${escapeHtml(r.cta_nb || 'Spør Coach «sjekk uka mi» for full analyse.')}</p>
+      <div class="sync-actions">
+        <button type="button" class="btn btn-primary" id="dash-week-check-btn">Sjekk uka mi</button>
+        <button type="button" class="btn secondary" id="dash-session-analysis-btn" ${state.sessionAnalysisBusy ? 'disabled' : ''}>Analyser siste økt</button>
+        <button type="button" class="btn secondary" id="dash-coach-report-btn" ${state.dashCoachReportBusy ? 'disabled' : ''}>Coach-rapport</button>
+        <button type="button" class="btn secondary" id="dash-icu-compare-btn">App vs Intervals</button>
+        <button type="button" class="btn secondary" id="dash-tp-export-btn" ${state.dashTpExportBusy ? 'disabled' : ''}>Last ned TP-zip</button>
+      </div>
+      ${reportBlock}
+      ${analysisInline}
+    </div>`
 }
 
 function renderDashboard() {
@@ -1693,28 +2350,57 @@ function renderDashboard() {
   const progressForSection = { progress: dash.compliance || {} }
   const sleepLabel = periodLabelFromDash(dash)
   const sc4 = dash.session_compliance_4w
+  const wc = dash.week_compliance
+  const listHtml = (title, lines) => {
+    const items = (lines || []).slice(0, 10)
+    if (!items.length) return `<p class="muted tight">${escapeHtml(title)}: (ingen)</p>`
+    return `<p class="muted tight"><strong>${escapeHtml(title)}</strong></p><ul class="sync-sample">${items
+      .map((ln) => `<li>${escapeHtml(String(ln))}</li>`)
+      .join('')}</ul>`
+  }
+  const weekHtml = wc
+    ? `<p class="muted tight">Denne uka (${escapeHtml(wc.week_start || '')}–${escapeHtml(wc.week_end || '')}): <strong>${escapeHtml(String(wc.sessions_done ?? 0))} / ${escapeHtml(String(wc.sessions_planned ?? 0))}</strong>${
+        wc.compliance_pct != null ? ` (${escapeHtml(String(wc.compliance_pct))} %)` : ''
+      } · mangler ${escapeHtml(String(wc.sessions_missed ?? 0))}.</p>
+      ${listHtml('Ikke gjennomført', wc.missed_lines)}
+      ${listHtml('Logget', wc.done_lines)}
+      <p class="muted tight">${escapeHtml(wc.note_nb || '')}</p>`
+    : `<p class="muted tight">Ukedetalj ikke lastet — koble Intervals eller spør Coach «hva mangler jeg».</p>`
   const sc4Html =
     sc4 && sc4.sessions_planned != null
-      ? `<p class="muted tight">4-ukers økt-compliance: <strong>${sc4.sessions_done ?? 0} / ${sc4.sessions_planned}</strong> planlagte WORKOUT matchet til ICU-aktiviteter${
-          sc4.compliance_pct != null ? ` (${sc4.compliance_pct} %)` : ''
-        }. NOTE teller ikke.</p>`
-      : ''
+      ? `<div class="section-block compliance-week-block" data-testid="week-compliance-block">
+          <div class="section-head"><h2>Planlagt vs gjennomført</h2></div>
+          ${weekHtml}
+          <p class="muted tight">4-ukers: <strong>${sc4.sessions_done ?? 0} / ${sc4.sessions_planned}</strong>${
+            sc4.compliance_pct != null ? ` (${sc4.compliance_pct} %)` : ''
+          }.</p>
+          <div class="sync-actions">
+            <button type="button" class="btn secondary" id="dash-compliance-gap-btn">Hva mangler jeg</button>
+          </div>
+        </div>`
+      : `<div class="section-block compliance-week-block" data-testid="week-compliance-block">
+          <div class="section-head"><h2>Planlagt vs gjennomført</h2></div>
+          ${weekHtml}
+          <p class="muted tight">Koble Intervals under Du for ærlig økt-compliance (aktiviteter ≠ NOTES).</p>
+        </div>`
   return `
     <div class="tab-hero">
       <p class="brand-mark">Dashboard</p>
       <h2>Treningsstatus</h2>
       <p class="muted">${escapeHtml(dash.uplift_line || 'Timer, søvn og sesongmål — app-beregnet.')}</p>
     </div>
+    ${renderReadinessStrip(dash)}
+    ${renderReadinessChartsBlock(dash)}
     ${renderPeriodPicker(dash)}
     ${renderLoadCard(dash)}
     ${renderSleepCard(dash.sleep, dash.wellness_fetch_error, dash.wellness_fetch_error_detail, sleepLabel)}
     ${renderBodyCard(dash.body, dash.body_hidden || !dash.show_body_metrics)}
+    ${sc4Html}
     <p class="compliance-banner" role="note">
       <strong>Sesongmål &amp; compliance</strong> er uavhengig av periodevalget over.
       Beregnes i appen (aktiviteter vs sesongmål) og <em>skrives ikke</em> til Intervals.
     </p>
     ${renderProgressSection(progressForSection)}
-    ${sc4Html}
     ${renderFormCard({ ...(dash.form || {}), ...o })}
     ${renderPlanStrip(o)}
   `
@@ -1928,14 +2614,18 @@ function renderSessionDetail() {
     )
     .join('')
   const structureHtml = renderSessionStructure(d.structure || d.coach_block?.structure, d.steps)
+  const builderSteps = state.builderSteps || d.builder_steps || fields.builder_steps || []
+  if (!state.builderSteps && builderSteps.length) {
+    state.builderSteps = builderSteps.map((s, i) => ({ ...s, sort_order: i }))
+  }
   const coachBody = d.coach_block?.body || d.description || ''
   const occChips = formatDateChips(d.dates || [])
   const chatBubbles = renderChatBubbles(
     state.sessionChat.messages,
-    `<p class="muted">F.eks. «kan vi kutte hovedsettet?» eller «gjør den mer spesifikk for Lofoten».</p>`,
+    `<p class="muted">F.eks. «kan vi kutte hovedsettet?» eller «legg til 3×8 min Z3».</p>`,
   )
   const editOpen = state.sessionEditOpen
-  const canEdit = Boolean(d.editable)
+  const canEdit = Boolean(d.editable) || Boolean(s.app_planned)
   const sportOpts = [
     ['bike', 'Sykkel'],
     ['run', 'Løp'],
@@ -1959,6 +2649,61 @@ function renderSessionDetail() {
     )
     .join('')
 
+  const stepTypeOpts = (selected) =>
+    [
+      ['warmup', 'Oppvarming'],
+      ['work', 'Arbeid'],
+      ['recover', 'Pause'],
+      ['cooldown', 'Nedkjøling'],
+    ]
+      .map(
+        ([v, lab]) =>
+          `<option value="${v}" ${selected === v ? 'selected' : ''}>${lab}</option>`,
+      )
+      .join('')
+
+  const liveSteps = state.builderSteps || []
+  const liveTotal = liveSteps.reduce(
+    (acc, st) => acc + (Number(st.duration_minutes) || 0),
+    0,
+  )
+  const builderRows = liveSteps
+    .map((st, i) => {
+      return `
+      <div class="builder-step" data-step-index="${i}">
+        <select class="builder-type" data-field="type" aria-label="Stegtype">${stepTypeOpts(st.type || 'work')}</select>
+        <input class="builder-dur" data-field="duration_minutes" type="number" min="0" placeholder="min" value="${
+          st.duration_minutes != null ? escapeHtml(String(st.duration_minutes)) : ''
+        }" aria-label="Varighet minutter" />
+        <input class="builder-intensity" data-field="intensity" placeholder="RPE/sone" value="${escapeHtml(
+          st.intensity || '',
+        )}" aria-label="Intensitet" />
+        <input class="builder-note" data-field="note" placeholder="Notat" value="${escapeHtml(
+          st.note || '',
+        )}" aria-label="Notat" />
+        <button type="button" class="btn btn-sm secondary builder-remove" data-remove-step="${i}" aria-label="Fjern steg">×</button>
+      </div>`
+    })
+    .join('')
+
+  const builderPreview = liveSteps.length
+    ? `<ol class="builder-preview">${liveSteps
+        .map((st) => {
+          const lab =
+            { warmup: 'WU', work: 'Work', recover: 'Rec', cooldown: 'CD' }[st.type] ||
+            st.type
+          const bits = [
+            lab,
+            st.duration_minutes != null ? `${st.duration_minutes} min` : null,
+            st.intensity || null,
+            st.note || null,
+          ].filter(Boolean)
+          return `<li>${escapeHtml(bits.join(' · '))}</li>`
+        })
+        .join('')}</ol>
+      <p class="muted tight">Sum: <strong>${liveTotal}</strong> min</p>`
+    : `<p class="muted tight">Ingen steg ennå — legg til warmup/work/recover/cooldown.</p>`
+
   return `
     <div class="session-detail-view has-sticky-chat" id="session-detail">
       <div class="section-head">
@@ -1980,27 +2725,78 @@ function renderSessionDetail() {
           s.duration_hours != null ? ` · ${formatHours(s.duration_hours)} t` : ''
         }${s.editable ? ' · coach-økt' : ''}</p>
         <div class="date-chip-row detail-dates" aria-label="Planlagte datoer">${occChips}</div>
+        ${
+          s.kind === 'activity' || String(s.id || '').startsWith('act:')
+            ? `<div class="sync-actions">
+          <button type="button" class="btn btn-primary" id="session-analyse-btn" ${state.sessionAnalysisBusy ? 'disabled' : ''}>Analyser økt</button>
+        </div>`
+            : ''
+        }
       </header>
+      ${
+        state.sessionAnalysis &&
+        (state.sessionAnalysis.session_id === s.id ||
+          state.sessionAnalysis.activity_id === s.external_id ||
+          String(s.id || '').includes(String(state.sessionAnalysis.activity_id || '')))
+          ? renderSessionAnalysisCard(state.sessionAnalysis, {
+              dismissId: 'session-detail-analysis-dismiss-btn',
+            })
+          : ''
+      }
 
       <section class="section-block coach-block">
-        <h3>Struktur</h3>
+        <h3>Full resept</h3>
         ${
           structureHtml
             ? `<div class="session-structure">${structureHtml}</div>`
-            : coachBody
-              ? `<pre class="coach-desc">${escapeHtml(coachBody)}</pre>`
-              : `<p class="muted">Ingen steg lagret på denne økten ennå.</p>`
+            : d.prescription_nb
+              ? `<pre class="coach-desc prescription-nb">${escapeHtml(d.prescription_nb)}</pre>`
+              : coachBody
+                ? `<pre class="coach-desc">${escapeHtml(coachBody)}</pre>`
+                : `<p class="muted">Ingen steg lagret på denne økten ennå.</p>`
         }
         ${
-          structureHtml && coachBody
-            ? `<details class="coach-raw"><summary>Full beskrivelse</summary><pre class="coach-desc">${escapeHtml(coachBody)}</pre></details>`
+          (d.plan_b || []).length
+            ? `<div class="session-plan-b"><p class="plan-kicker">Plan B</p><ul>${(d.plan_b || [])
+                .map((b) => `<li>${escapeHtml(String(b))}</li>`)
+                .join('')}</ul></div>`
+            : ''
+        }
+        ${
+          (d.risk || []).length
+            ? `<div class="session-risk"><p class="plan-kicker">Risiko</p><ul>${(d.risk || [])
+                .map((b) => `<li>${escapeHtml(String(b))}</li>`)
+                .join('')}</ul></div>`
+            : ''
+        }
+        ${
+          structureHtml && (coachBody || d.prescription_nb)
+            ? `<details class="coach-raw"><summary>Full beskrivelse</summary><pre class="coach-desc">${escapeHtml(
+                coachBody || d.prescription_nb || '',
+              )}</pre></details>`
             : ''
         }
       </section>
 
       ${
         canEdit
-          ? `<section class="section-block">
+          ? `<section class="section-block builder-panel" id="oktbygger-section" aria-label="Øktbygger">
+        <div class="section-head">
+          <h3>Øktbygger</h3>
+          <button type="button" class="btn btn-sm secondary" id="builder-add-step">+ Steg</button>
+        </div>
+        <p class="muted tight">Steg med type, varighet og intensitet (steps_json). Lagre i plan først — Sync til Intervals er valgfritt.</p>
+        <div id="builder-steps" class="builder-steps">${builderRows || ''}</div>
+        <div class="builder-live" aria-live="polite">
+          <h4 class="tight">Forhåndsvis struktur</h4>
+          ${builderPreview}
+        </div>
+        <div class="row-actions">
+          <button type="button" class="btn btn-primary" id="builder-save-plan" ${state.workoutSync.busy ? 'disabled' : ''}>Lagre i plan</button>
+        </div>
+        <p class="muted tight">Human Coach: lagring i DB først. Intervals skrives først etter Sync-bekreftelse.</p>
+      </section>
+      <section class="section-block">
         <div class="section-head">
           <h3>Rediger økt</h3>
           <button type="button" class="btn btn-sm secondary" id="toggle-session-edit">${editOpen ? 'Skjul' : 'Åpne felter'}</button>
@@ -2034,20 +2830,21 @@ function renderSessionDetail() {
               <input id="edit_start" name="start_time" value="${escapeHtml(fields.start_time || '07:00')}" />
             </div>
           </div>
-          <div class="structure-edit">
+          <details class="coach-raw">
+            <summary>Klassisk tekststeg (valgfritt)</summary>
             <div class="field">
-              <label for="edit_warmup">Oppvarming (én linje per steg)</label>
-              <textarea id="edit_warmup" name="warmup" rows="2" placeholder="Warmup 10m Z2">${escapeHtml(fields.warmup || '')}</textarea>
+              <label for="edit_warmup">Oppvarming</label>
+              <textarea id="edit_warmup" name="warmup" rows="2">${escapeHtml(fields.warmup || '')}</textarea>
             </div>
             <div class="field">
-              <label for="edit_main">Hoveddel / intervaller</label>
-              <textarea id="edit_main" name="main" rows="4" placeholder="5x 3 min Z4 / 2 min soft">${escapeHtml(fields.main || '')}</textarea>
+              <label for="edit_main">Hoveddel</label>
+              <textarea id="edit_main" name="main" rows="3">${escapeHtml(fields.main || '')}</textarea>
             </div>
             <div class="field">
               <label for="edit_cooldown">Nedkjøling</label>
-              <textarea id="edit_cooldown" name="cooldown" rows="2" placeholder="Cooldown 10m">${escapeHtml(fields.cooldown || '')}</textarea>
+              <textarea id="edit_cooldown" name="cooldown" rows="2">${escapeHtml(fields.cooldown || '')}</textarea>
             </div>
-          </div>
+          </details>
           <details class="coach-raw">
             <summary>Rå beskrivelse (valgfri overstyring)</summary>
             <div class="field">
@@ -2057,11 +2854,11 @@ function renderSessionDetail() {
           </details>
           <input type="hidden" name="external_id" value="${escapeHtml(fields.external_id || '')}" />
           <div class="row-actions">
-            <button type="submit" class="btn btn-primary" ${state.workoutSync.busy ? 'disabled' : ''}>Forhåndsvis endring</button>
+            <button type="submit" class="btn secondary" ${state.workoutSync.busy ? 'disabled' : ''}>Forhåndsvis Intervals</button>
           </div>
-          <p class="muted tight">Skriver til Intervals først etter bekreftelse (samme flyt som chat).</p>
+          <p class="muted tight">Intervals-forhåndsvisning krever tilkobling under Du.</p>
         </form>`
-            : `<p class="muted tight">Endre tittel, dato, steg — eller spør coach under.</p>`
+            : `<p class="muted tight">Endre tittel, dato, sport — eller bruk Øktbygger over.</p>`
         }
       </section>`
           : `<p class="muted tight">Aktiviteter fra Intervals er skrivebeskyttet her — logg status under.</p>`
@@ -2114,6 +2911,96 @@ function renderSessionDetail() {
     </div>`
 }
 
+function renderBetaTab() {
+  const b = state.beta
+  if (state.betaError && !b) {
+    return `
+      <div class="tab-hero">
+        <p class="brand-mark">Beta <span class="badge badge-demo">eksperimentell</span></p>
+        <h2>Prognoser</h2>
+        <p class="error">${escapeHtml(state.betaError)}</p>
+      </div>`
+  }
+  if (!b) {
+    return `
+      <div class="tab-hero">
+        <p class="brand-mark">Beta <span class="badge badge-demo">eksperimentell</span></p>
+        <h2>Prognoser</h2>
+        <p class="muted">Laster CTL/ATL/TSB og risikobånd…</p>
+      </div>`
+  }
+  const load = b.load_now || {}
+  const chart = b.charts?.ctl_atl_tsb || {}
+  const bands = b.charts?.acwr_bands || {}
+  const race = b.race_form || {}
+  const vol = b.volume || {}
+  const sc = b.scenario_ease
+  const cites = b.citations || []
+  const citeHtml = cites
+    .map(
+      (c) =>
+        `<li><span class="cite-id">${escapeHtml(c.id || '')}</span> — ${escapeHtml(c.cite || '')}${
+          c.note ? ` <em class="muted">(${escapeHtml(c.note)})</em>` : ''
+        }</li>`
+    )
+    .join('')
+  const scenarioHtml = sc
+    ? `<section class="section-block" data-testid="beta-scenario">
+        <div class="section-head"><h2>${escapeHtml(sc.title_nb || 'Scenario')}</h2></div>
+        <p class="muted tight">${escapeHtml(sc.note_nb || '')}</p>
+        <div class="stat-row"><span>CTL slutt (plan)</span><span>${sc.baseline_end?.ctl ?? '—'}</span></div>
+        <div class="stat-row"><span>CTL slutt (−20 %)</span><span>${sc.eased_end?.ctl ?? '—'}</span></div>
+        <p class="coach-note">Kun forslag. Trykk «Åpne i Coach» — ingen auto-omskrivning av plan.</p>
+        <button type="button" class="btn secondary" id="beta-open-coach">Åpne i Coach</button>
+      </section>`
+    : ''
+  return `
+    <div class="tab-hero beta-hero">
+      <p class="brand-mark">Beta <span class="badge badge-demo">eksperimentell</span></p>
+      <h2>Avanserte prognoser</h2>
+      <p class="lead tight">CTL/ATL/TSB, overload-risiko og race-form — evidensbaserte soft signals. Human Coach bekrefter før handling.</p>
+    </div>
+    <section class="section-block" data-testid="beta-load-now">
+      <div class="section-head"><h2>Load nå</h2></div>
+      <div class="stat-row"><span>CTL</span><span>${load.ctl != null ? load.ctl : '—'}</span></div>
+      <div class="stat-row"><span>ATL</span><span>${load.atl != null ? load.atl : '—'}</span></div>
+      <div class="stat-row"><span>TSB</span><span>${load.tsb != null ? load.tsb : '—'}</span></div>
+      <div class="stat-row"><span>ATL:CTL</span><span>${load.acwr != null ? Number(load.acwr).toFixed(2) : '—'}</span></div>
+      <p class="muted tight">${escapeHtml(b.truth?.note_nb || '')}</p>
+    </section>
+    <section class="section-block chart-block" data-testid="beta-chart-trajectory" aria-label="CTL ATL TSB">
+      <div class="section-head"><h2>CTL / ATL / TSB</h2></div>
+      ${renderBetaLoadTrajectory(chart)}
+      <p class="muted tight">${escapeHtml(chart.note_nb || '')}</p>
+    </section>
+    <section class="section-block" data-testid="beta-acwr">
+      <div class="section-head"><h2>Overload / akutt:kronisk</h2></div>
+      ${renderAcwrRiskBar(bands)}
+    </section>
+    <section class="section-block" data-testid="beta-race-form">
+      <div class="section-head"><h2>Race-form mot mål</h2></div>
+      <div class="stat-row"><span>Måldato</span><span>${escapeHtml(race.goal_race_date || '—')}</span></div>
+      <div class="stat-row"><span>Dager igjen</span><span>${race.days_to_goal != null ? race.days_to_goal : '—'}</span></div>
+      <div class="stat-row"><span>Confidence</span><span>${escapeHtml(race.confidence || '—')}</span></div>
+      <div class="stat-row"><span>Proj. CTL på mål</span><span>${race.projected_ctl_at_goal != null ? race.projected_ctl_at_goal : '—'}</span></div>
+      <p class="coach-note">${escapeHtml(race.summary_nb || '')}</p>
+      <p class="muted tight">${escapeHtml(race.confidence_band_nb || '')}</p>
+    </section>
+    <section class="section-block" data-testid="beta-volume">
+      <div class="section-head"><h2>Volum: gjennomført vs planlagt</h2></div>
+      <div class="stat-row"><span>Gjennomført (lookback)</span><span>${vol.executed_hours_lookback != null ? `${vol.executed_hours_lookback} t` : '—'}</span></div>
+      <div class="stat-row"><span>Planlagt (horizon)</span><span>${vol.planned_hours_horizon != null ? `${vol.planned_hours_horizon} t` : '—'}</span></div>
+      <p class="muted tight">${escapeHtml(vol.note_nb || '')}</p>
+    </section>
+    ${scenarioHtml}
+    <section class="section-block beta-footnotes" data-testid="beta-citations">
+      <div class="section-head"><h2>Kilder</h2></div>
+      <p class="muted tight">${escapeHtml(b.coach_notes_nb || '')}</p>
+      <ol class="cite-list">${citeHtml}</ol>
+    </section>
+  `
+}
+
 function renderOkterTab() {
   if (state.sessionDetail) {
     return renderSessionDetail()
@@ -2161,7 +3048,7 @@ function renderOkterTab() {
     <div class="tab-hero">
       <p class="brand-mark">Økter</p>
       <h2>Bibliotek &amp; detalj</h2>
-      <p class="muted">Trykk en økt for steg, coach-chat og logg. Endringer til Intervals krever bekreftelse.</p>
+      <p class="muted">Trykk en økt for Øktbygger, steg, coach-chat og logg. Endringer til Intervals krever bekreftelse.</p>
     </div>
     <div class="view-toggle" role="tablist" aria-label="Visning">
       <button type="button" class="chip ${view === 'library' ? 'active' : ''}" data-sessions-view="library">Bibliotek</button>
@@ -2205,8 +3092,10 @@ function renderSyncPanel() {
     const nc = pending.notes_count
     const zc = pending.zwo_count
     const meta =
-      wc != null || nc != null
-        ? `${wc ?? 0} økter${zc != null ? ` (${zc} ZWO)` : ''} + ${nc ?? 0} noter`
+      wc != null
+        ? Number(nc) > 0
+          ? `${wc} økter${zc != null ? ` (${zc} ZWO)` : ''} + ${nc} noter`
+          : `${wc} økter${zc != null ? ` (${zc} ZWO)` : ''} fra planned_sessions (uten grovplan-noter)`
         : `${pending.count} hendelser`
     confirmHtml = `
       <div class="confirm-card" role="dialog" aria-label="Bekreft Intervals-sync">
@@ -2266,66 +3155,153 @@ function renderPlanTab() {
     </div>
     ${renderPlanStrip(o)}
     ${renderPlanBlocksEditor()}
-    ${renderPlannedHorizon()}
+    ${renderPlanMonthCalendar()}
     ${renderSyncPanel()}
   `
 }
 
-function renderPlannedHorizon() {
+function renderPlanMonthCalendar() {
   const ps = state.plannedSessions || {}
   const sessions = ps.sessions || []
   const total = ps.total ?? sessions.length
-  const byWeek = new Map()
-  for (const s of sessions) {
-    const day = String(s.session_date || '').slice(0, 10)
-    if (!day) continue
-    const d = new Date(`${day}T12:00:00`)
-    if (Number.isNaN(d.getTime())) continue
-    const mon = new Date(d)
-    mon.setDate(d.getDate() - ((d.getDay() + 6) % 7))
-    const key = mon.toISOString().slice(0, 10)
-    if (!byWeek.has(key)) byWeek.set(key, [])
-    byWeek.get(key).push(s)
-  }
-  const weekKeys = [...byWeek.keys()].sort()
-  const weekBlocks = weekKeys
-    .map((wk) => {
-      const rows = byWeek
-        .get(wk)
-        .map(
-          (s) =>
-            `<li><span class="dim">${escapeHtml(String(s.session_date || '').slice(0, 10))}</span> · ${escapeHtml(s.name || 'Økt')} · ${escapeHtml(s.sport || '')}${
-              s.duration_minutes != null ? ` · ${escapeHtml(String(s.duration_minutes))} min` : ''
-            }</li>`,
-        )
-        .join('')
-      const end = new Date(`${wk}T12:00:00`)
-      end.setDate(end.getDate() + 6)
-      const endStr = end.toISOString().slice(0, 10)
-      return `
-        <div class="horizon-week">
-          <p class="plan-kicker">Uke ${escapeHtml(wk)} – ${escapeHtml(endStr)}</p>
-          <ul class="horizon-session-list">${rows}</ul>
-        </div>`
+  const monthKey = state.planCalendar.month || monthKeyFromDate()
+  const byDate = sessionsByDate(sessions)
+  const cells = buildMonthGrid(monthKey, byDate)
+  const selected = state.planCalendar.selectedDate
+  const sourceFilter = state.planCalendar.sourceFilter || 'all'
+  const filterBySource = (list) =>
+    sourceFilter === 'all'
+      ? list
+      : list.filter((s) => (s.source_kind || 'app') === sourceFilter)
+  const selectedSessions = filterBySource(selected ? byDate.get(selected) || [] : [])
+  const weekdays = ['Man', 'Tir', 'Ons', 'Tor', 'Fre', 'Lør', 'Søn']
+  const head = weekdays.map((w) => `<div class="cal-dow">${w}</div>`).join('')
+  const todayIso = toIsoDate(new Date())
+  const grid = cells
+    .map((c) => {
+      const filtered = filterBySource(c.sessions)
+      const n = filtered.length
+      const sel = selected === c.iso ? ' cal-day-selected' : ''
+      const out = c.inMonth ? '' : ' cal-day-out'
+      const isToday = c.iso === todayIso ? ' cal-day-today' : ''
+      const dots = n > 0 ? calendarDotsHtml(filtered) : ''
+      return `<button type="button" class="cal-day${sel}${out}${isToday}" data-cal-day="${escapeHtml(c.iso)}" ${
+        c.inMonth ? '' : 'tabindex="-1"'
+      }>
+        <span class="cal-day-num">${c.day}</span>${dots}
+      </button>`
     })
+    .join('')
+  const selList = selectedSessions
+    .map(
+      (s) =>
+        `<li>${escapeHtml(s.name || 'Økt')} · ${escapeHtml(s.sport || '')}${
+          s.duration_minutes != null ? ` · ${s.duration_minutes} min` : ''
+        }${
+          s.source_kind_nb
+            ? ` <span class="cal-source-tag cal-source-${escapeHtml(s.source_kind || 'app')}">${escapeHtml(s.source_kind_nb)}</span>`
+            : ''
+        }${
+          s.sync_status_nb
+            ? ` <span class="cal-sync-tag cal-sync-${escapeHtml(s.sync_status || 'unknown')}">${escapeHtml(s.sync_status_nb)}</span>`
+            : ''
+        }</li>`,
+    )
+    .join('')
+  const weekQ = ps.week_quality || {}
+  const planBBits = (weekQ.plan_b || []).map((t) => escapeHtml(t)).join('<br/>')
+  const riskBits = (weekQ.weekly_risk || []).map((t) => escapeHtml(t)).join('<br/>')
+  const weekQualityHtml =
+    planBBits || riskBits
+      ? `<div class="cal-week-quality">
+          ${planBBits ? `<p class="muted tight"><strong>Plan B (uke)</strong><br/>${planBBits}</p>` : ''}
+          ${riskBits ? `<p class="muted tight"><strong>Ukerisiko</strong><br/>${riskBits}</p>` : ''}
+        </div>`
+      : ''
+  const sourceFilters = [
+    ['all', 'Alle'],
+    ['coach', 'Coach'],
+    ['agent', 'Agent'],
+    ['manual', 'Manuell'],
+    ['app', 'App'],
+  ]
+    .map(
+      ([id, label]) =>
+        `<button type="button" class="btn btn-sm secondary cal-source-filter${
+          sourceFilter === id ? ' is-active' : ''
+        }" data-source-filter="${id}">${label}</button>`,
+    )
     .join('')
   const metaBits = []
   if (total) metaBits.push(`${total} økter`)
   if (ps.plan_horizon_weeks) metaBits.push(`~${ps.plan_horizon_weeks} uker`)
-  if (ps.goal_race_date) metaBits.push(`til ${ps.goal_race_date}`)
+  if (ps.goal_race_date) metaBits.push(`mål ${ps.goal_race_date}`)
+  const scopeHint = state.planCalendar.syncScopeLabel
+    ? `<p class="muted tight">Sync-vindu: <strong>${escapeHtml(state.planCalendar.syncScopeLabel)}</strong></p>`
+    : ''
+  const tpPending = state.tpSync.pending
+  const tpConfirm =
+    tpPending?.pending_id
+      ? `<div class="confirm-card cal-sync-confirm">
+          <p><strong>${escapeHtml(tpPending.message_nb || 'Bekreft TrainingPeaks (beta)')}</strong></p>
+          <p class="muted tight">${escapeHtml(String(tpPending.workouts_count || 0))} økter</p>
+          <div class="sync-actions">
+            <button type="button" class="btn btn-primary" id="tp-sync-confirm-yes" ${state.tpSync.busy ? 'disabled' : ''}>Ja, push til TP</button>
+            <button type="button" class="btn secondary" id="tp-sync-confirm-no" ${state.tpSync.busy ? 'disabled' : ''}>Avbryt</button>
+          </div>
+          ${state.tpSync.error ? `<p class="error">${escapeHtml(state.tpSync.error)}</p>` : ''}
+        </div>`
+      : ''
   return `
-    <div class="section-block">
+    <div class="section-block plan-month-calendar">
       <div class="section-head">
-        <h2>Økter til måldato</h2>
+        <h2>Treningskalender</h2>
+        <div class="cal-month-nav">
+          <button type="button" class="btn btn-sm secondary" id="cal-prev-month" aria-label="Forrige måned">‹</button>
+          <span class="cal-month-title">${escapeHtml(monthLabelNb(monthKey))}</span>
+          <button type="button" class="btn btn-sm secondary" id="cal-next-month" aria-label="Neste måned">›</button>
+        </div>
       </div>
-      <p class="muted tight">App-plan (SQLite) — hele horisonten. Intervals får kun nærvindu ved Sync.</p>
+      <p class="muted tight">App-plan + Intervals-WORKOUTs. <span class="cal-legend"><span class="cal-dot cal-dot-synced">•</span> synket</span> · <span class="cal-legend"><span class="cal-dot cal-dot-unsynced">•</span> ikke synket</span> · <span class="cal-legend"><span class="cal-dot cal-dot-icu">•</span> kun Intervals</span>. Kilde: coach / agent / manuell. Sync <strong>uke/måned</strong> pusher app → Intervals.</p>
+      <div class="cal-source-filters" role="group" aria-label="Filtrer kilde">${sourceFilters}</div>
       ${metaBits.length ? `<p class="muted tight">${escapeHtml(metaBits.join(' · '))}</p>` : ''}
-      ${ps.error ? `<p class="error">${escapeHtml(ps.error)}</p>` : ''}
       ${
-        weekBlocks
-          ? `<div class="horizon-scroll" tabindex="0" aria-label="Planlagte økter">${weekBlocks}</div>`
-          : `<p class="muted">Ingen lagrede økter ennå — bekreft setup eller planjustering først.</p>`
+        !total && (state.planBlocks || []).length
+          ? `<p class="muted tight">Grovplan finnes, men ingen lagrede økter ennå — bekreft planjustering eller «rull videre» i Coach.</p>`
+          : ''
       }
+      ${
+        total && !cells.some((c) => c.inMonth && c.sessions.length)
+          ? `<p class="muted tight">Ingen økter i denne måneden — bruk ‹ › for å bla til uker med plan.</p>`
+          : ''
+      }
+      ${ps.error ? `<p class="error">${escapeHtml(ps.error)}</p>` : ''}
+      ${scopeHint}
+      ${weekQualityHtml}
+      <div class="cal-grid" role="grid" aria-label="Månedskalender">
+        ${head}
+        ${grid}
+      </div>
+      <div class="cal-side">
+        <p class="plan-kicker">${selected ? `Dag ${escapeHtml(selected)}` : 'Velg en dag'}</p>
+        ${
+          selected
+            ? `<ul class="horizon-session-list">${selList || '<li class="muted">Ingen økter</li>'}</ul>`
+            : '<p class="muted tight">Klikk en dag for økter og uke-sync.</p>'
+        }
+        <div class="sync-actions cal-scope-actions">
+          <button type="button" class="btn btn-sm" id="cal-sync-week" ${
+            !selected || !state.intervals.connected ? 'disabled' : ''
+          }>Sync uke → Intervals</button>
+          <button type="button" class="btn btn-sm secondary" id="cal-sync-month" ${
+            !state.intervals.connected ? 'disabled' : ''
+          }>Sync måned → Intervals</button>
+          <button type="button" class="btn btn-sm secondary" id="cal-sync-week-tp" ${
+            !selected ? 'disabled' : ''
+          } title="Krever TP-cookie (beta API)">Sync uke → TP β</button>
+        </div>
+      </div>
+      ${tpConfirm}
     </div>`
 }
 
@@ -2339,6 +3315,8 @@ function renderPlanBlocksEditor() {
           <div class="field"><label>Uketimer</label><input name="weekly_hours" type="number" step="0.5" value="${b.weekly_hours ?? ''}" /></div>
         </div>
         <div class="field"><label>Tema</label><input name="theme" value="${escapeHtml(b.theme || '')}" /></div>
+        <div class="field"><label>Plan B</label><input name="plan_b" value="${escapeHtml(b.plan_b || '')}" placeholder="Hvis sliten / vær / tid …" /></div>
+        <div class="field"><label>Ukerisiko</label><input name="weekly_risk" value="${escapeHtml(b.weekly_risk || '')}" placeholder="Én setning — hva kan gå galt" /></div>
         <div class="grid-2">
           <div class="field"><label>Start</label><input name="start_date" type="date" value="${escapeHtml(b.start_date || '')}" /></div>
           <div class="field"><label>Slutt</label><input name="end_date" type="date" value="${escapeHtml(b.end_date || '')}" /></div>
@@ -2396,6 +3374,20 @@ function renderDu() {
           </div>
         </details>
         <div class="field"><label>Navn</label><input name="display_name" value="${escapeHtml(a.display_name || '')}" /></div>
+        <div class="field">
+          <label for="du_email">E-post (valgfritt)</label>
+          <input id="du_email" name="email" type="email" autocomplete="email"
+            value="${escapeHtml(a.email || '')}"
+            placeholder="deg@example.com" />
+          <p class="muted tight">Brukes kun til sparsomme ticker-varsler (sync, roll, CTL) — aldri spam.</p>
+        </div>
+        <div class="field">
+          <label class="toggle-label">
+            <input type="checkbox" name="notify_email" ${a.notify_email ? 'checked' : ''} />
+            E-postvarsler (opt-in)
+          </label>
+          <p class="muted tight">Krever e-post + Fly-secret <code>RESEND_API_KEY</code>. Uten nøkkel lagres valget, men sendes ikke.</p>
+        </div>
         <div class="grid-2">
           <div class="field"><label>Trener</label><input name="coach_display_name" value="${escapeHtml(a.coach_display_name || '')}" /></div>
           <div class="field"><label>Personlighet</label><select name="coach_personality">${pers}</select></div>
@@ -2601,19 +3593,125 @@ function bindApp() {
       if (state.tab === 'dashboard') {
         await refreshOverview()
         await refreshDashboard()
+        await refreshTicker({ refresh: true })
+      }
+      if (state.tab === 'coach') {
+        await refreshTicker({ refresh: false })
       }
       if (state.tab === 'plan') {
         await refreshOverview()
         await refreshPlanBlocks()
+        await refreshPlannedSessions()
         await refreshIntervals()
       }
       if (state.tab === 'okter') {
         await refreshIntervals()
         await refreshSessions()
       }
+      if (state.tab === 'beta') {
+        await refreshBeta()
+      }
       if (state.tab === 'du') {
         await refreshIntervals()
       }
+      render()
+    })
+  })
+
+  document.getElementById('beta-open-coach')?.addEventListener('click', () => {
+    const sc = state.beta?.scenario_ease
+    const draft =
+      sc?.note_nb ||
+      'Beta-scenario: vurdere å lette ~20 % neste 2 uker. Kun forslag — bekreft før lagring.'
+    state.tab = 'coach'
+    state.chatDraft = draft
+    state.error = ''
+    render()
+  })
+
+  document.getElementById('ticker-read-all')?.addEventListener('click', async () => {
+    try {
+      await api('/v1/athlete/me/events/read-all', { method: 'POST', body: {} })
+      await refreshTicker({ refresh: false })
+    } catch (err) {
+      state.ticker = {
+        ...(state.ticker || { events: [], unread_count: 0 }),
+        error: err.message || 'Kunne ikke merke lest',
+      }
+    }
+    render()
+  })
+
+  document.querySelectorAll('[data-ticker-id]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.tickerId
+      const kind = btn.dataset.tickerKind || ''
+      const ev = (state.ticker?.events || []).find((e) => e.id === id)
+      const action = ev?.payload?.action || ''
+      try {
+        if (id) {
+          await api(`/v1/athlete/me/events/${encodeURIComponent(id)}/read`, {
+            method: 'POST',
+            body: {},
+          })
+        }
+      } catch {
+        /* soft */
+      }
+      // Open confirm/plan surfaces — never auto-apply / auto-sync
+      if (action === 'open_plan' || kind === 'sessions_saved' || kind === 'sync_ok') {
+        state.tab = 'plan'
+        await refreshPlannedSessions()
+      } else if (
+        action === 'open_roll' ||
+        action === 'open_ease' ||
+        action === 'open_coach' ||
+        kind === 'roll_forward_due' ||
+        kind === 'ctl_overload' ||
+        kind === 'weekly_cap_replace' ||
+        kind === 'sync_fail' ||
+        kind === 'readiness_soft'
+      ) {
+        state.tab = 'coach'
+        // Tap opens a real proposal card when possible (Human Coach preview — not apply).
+        let seed = ''
+        if (kind === 'ctl_overload' || action === 'open_ease') {
+          seed = 'lette denne uka'
+        } else if (kind === 'roll_forward_due' || action === 'open_roll') {
+          seed = 'rull videre'
+        } else if (kind === 'weekly_cap_replace') {
+          seed = 'legg inn økt i morgen'
+        } else if (ev?.payload?.message) {
+          toast(ev.payload.message)
+        }
+        if (seed && !state.busy) {
+          state.chatDraft = ''
+          state.messages.push({ role: 'user', content: seed })
+          state.busy = true
+          render()
+          try {
+            const data = await sendCoachMessage(seed)
+            state.messages.push({ role: 'assistant', content: data.reply || '…' })
+            applyChatResponse(data, { mirrorToMain: false })
+            toast(
+              kind === 'roll_forward_due' || action === 'open_roll'
+                ? 'Roll-forslag åpnet — bekreft kortet (ingen auto-apply).'
+                : kind === 'weekly_cap_replace'
+                  ? 'Ukeskap — erstatningskort åpnet (forhåndsvis → bekreft).'
+                  : 'Lett-uke-forslag åpnet — bekreft kortet (ingen auto-apply).',
+            )
+          } catch (err) {
+            state.messages.pop()
+            state.chatDraft = seed
+            toast(err.message || 'Kunne ikke åpne forslag — send meldingen manuelt.')
+          } finally {
+            state.busy = false
+          }
+        }
+      } else {
+        state.tab = 'coach'
+      }
+      await refreshTicker({ refresh: false })
       render()
     })
   })
@@ -2672,6 +3770,61 @@ function bindApp() {
     render()
   })
 
+  document.getElementById('dash-week-check-btn')?.addEventListener('click', () => {
+    void runCoachPromptFromUi('sjekk uka mi')
+  })
+  document.getElementById('dash-session-analysis-btn')?.addEventListener('click', () => {
+    void loadSessionAnalysis({ latest: true })
+  })
+  document.getElementById('dash-session-analysis-dismiss-btn')?.addEventListener('click', () => {
+    state.sessionAnalysis = null
+    render()
+  })
+  document.getElementById('dash-icu-compare-btn')?.addEventListener('click', () => {
+    void runCoachPromptFromUi('sammenlign app vs Intervals-kalender denne uka')
+  })
+  document.getElementById('dash-compliance-gap-btn')?.addEventListener('click', () => {
+    void runCoachPromptFromUi('hva mangler jeg')
+  })
+  document.getElementById('dash-coach-report-btn')?.addEventListener('click', () => {
+    void loadDashCoachReport()
+  })
+  document.getElementById('dash-tp-export-btn')?.addEventListener('click', () => {
+    void downloadTpExportZip()
+  })
+  document.getElementById('coach-report-ukesopp-btn')?.addEventListener('click', () => {
+    state.coachReport = null
+    void runCoachPromptFromUi('ukesopp')
+  })
+  document.getElementById('coach-report-analyse-btn')?.addEventListener('click', () => {
+    state.coachReport = null
+    void loadSessionAnalysis({ latest: true })
+  })
+  document.getElementById('coach-report-dismiss-btn')?.addEventListener('click', () => {
+    state.coachReport = null
+    render()
+  })
+  document.getElementById('session-analysis-dismiss-btn')?.addEventListener('click', () => {
+    state.sessionAnalysis = null
+    render()
+  })
+  document.getElementById('session-detail-analysis-dismiss-btn')?.addEventListener('click', () => {
+    state.sessionAnalysis = null
+    render()
+  })
+  document.getElementById('session-analyse-btn')?.addEventListener('click', () => {
+    const sid = state.sessionDetail?.session?.id
+    if (sid) void loadSessionAnalysis({ sessionId: sid })
+  })
+  document.getElementById('tp-export-download-btn')?.addEventListener('click', () => {
+    const path = state.tpExport?.download_path
+    if (path) void downloadTpExportZip(path)
+  })
+  document.getElementById('tp-export-dismiss-btn')?.addEventListener('click', () => {
+    state.tpExport = null
+    render()
+  })
+
   document.getElementById('copy-username')?.addEventListener('click', async () => {
     const username = state.athlete?.username || ''
     if (!username) return
@@ -2713,6 +3866,11 @@ function bindApp() {
     state.workoutRemoval = null
     state.athleteTypeProposal = null
     state.agreementsProposal = null
+    state.ukesopp = null
+    state.weekCheck = null
+    state.coachReport = null
+    state.sessionAnalysis = null
+    state.tpExport = null
     state.workoutSync.pending = null
     state.workoutSync.error = ''
     state.workoutSync.message = ''
@@ -2740,6 +3898,7 @@ function bindApp() {
   document.getElementById('workout-dismiss-btn')?.addEventListener('click', () => {
     state.workoutProposal = null
     state.workoutRemoval = null
+    state.replaceSessionIds = []
     state.workoutSync.pending = null
     state.workoutSync.message = 'Forslag avvist'
     state.workoutSync.error = ''
@@ -2754,6 +3913,72 @@ function bindApp() {
   document.getElementById('agreements-dismiss-btn')?.addEventListener('click', () => {
     state.agreementsProposal = null
     render()
+  })
+
+  document.getElementById('week-check-dismiss-btn')?.addEventListener('click', () => {
+    state.weekCheck = null
+    render()
+  })
+  document.getElementById('ukesopp-dismiss-btn')?.addEventListener('click', () => {
+    state.ukesopp = null
+    state.ukesoppAnswerDrafts = {}
+    state.ukesoppSaveMessage = ''
+    state.ukesoppSaveError = ''
+    render()
+  })
+
+  document.querySelectorAll('.ukesopp-answer').forEach((el) => {
+    el.addEventListener('input', () => {
+      const i = el.getAttribute('data-ukesopp-i')
+      if (i == null) return
+      state.ukesoppAnswerDrafts = {
+        ...(state.ukesoppAnswerDrafts || {}),
+        [i]: el.value,
+      }
+    })
+  })
+
+  document.getElementById('ukesopp-save-btn')?.addEventListener('click', async () => {
+    const u = state.ukesopp
+    if (!u?.week_start || !u?.week_end) return
+    const answers = (u.questions || []).map((_, i) => {
+      const el = document.querySelector(`.ukesopp-answer[data-ukesopp-i="${i}"]`)
+      return (el?.value || state.ukesoppAnswerDrafts?.[i] || '').trim()
+    })
+    if (!answers.some(Boolean)) {
+      state.ukesoppSaveError = 'Skriv minst ett svar før lagring'
+      state.ukesoppSaveMessage = ''
+      render()
+      return
+    }
+    state.busy = true
+    state.ukesoppSaveError = ''
+    state.ukesoppSaveMessage = ''
+    render()
+    try {
+      const data = await api('/v1/ukesopp/save', {
+        method: 'POST',
+        body: {
+          week_start: u.week_start,
+          week_end: u.week_end,
+          answers,
+        },
+      })
+      state.ukesoppSaveMessage =
+        data.message_nb || 'Ukesopp lagret i appen (ikke Intervals).'
+      state.ukesopp = null
+      state.ukesoppAnswerDrafts = {}
+      try {
+        await refreshTicker()
+      } catch {
+        /* soft */
+      }
+    } catch (err) {
+      state.ukesoppSaveError = err.message || 'Kunne ikke lagre ukesopp'
+    } finally {
+      state.busy = false
+      render()
+    }
   })
 
   document.getElementById('agreements-confirm-btn')?.addEventListener('click', async () => {
@@ -2807,15 +4032,35 @@ function bindApp() {
     const pa = state.planAdjust
     if (!pa) return
     const isWeek = pa.scope === 'week'
-    if (!isWeek && !pa.plan_blocks?.length) return
-    if (isWeek && !pa.sessions?.length) return
+    const isRoll = pa.op === 'plan_roll' || pa.scope === 'detalj'
+    if (!isWeek && !isRoll && !pa.plan_blocks?.length) return
+    if ((isWeek || isRoll) && !pa.sessions?.length) return
     state.busy = true
     state.workoutSync.error = ''
     render()
     try {
-      const prepareSync = Boolean(state.intervals?.connected)
+      // Default: lagre kun i app. Opt-in checkbox for Intervals-forberedelse.
+      const prepareSync = Boolean(
+        document.getElementById('plan-prepare-icu-sync')?.checked,
+      )
       let data
-      if (isWeek) {
+      if (isRoll) {
+        data = await api('/v1/athlete/me/plan/roll/confirm', {
+          method: 'POST',
+          body: {
+            detalj_start: pa.detalj_start,
+            detalj_end: pa.detalj_end,
+            sessions: pa.sessions,
+            readiness: pa.readiness || {},
+            prepare_intervals_sync: prepareSync,
+          },
+        })
+      } else if (isWeek) {
+        const ready = pa.readiness_hints || pa.readiness || {}
+        const reason =
+          pa.reason ||
+          ready.summary_nb ||
+          (pa.ease_load ? 'Lett uke bekreftet' : '')
         data = await api('/v1/athlete/me/plan/week-adjust/confirm', {
           method: 'POST',
           body: {
@@ -2824,6 +4069,8 @@ function bindApp() {
             sessions: pa.sessions,
             ease_load: Boolean(pa.ease_load),
             prepare_intervals_sync: prepareSync,
+            reason,
+            readiness: ready,
           },
         })
       } else {
@@ -2838,7 +4085,9 @@ function bindApp() {
       }
       if (data.athlete) state.athlete = data.athlete
       state.planAdjust = null
-      state.workoutSync.message = data.message || (isWeek ? 'Uke oppdatert' : 'Plan oppdatert')
+      state.workoutSync.message =
+        data.message ||
+        (isRoll ? 'Neste detalj lagret' : isWeek ? 'Uke oppdatert' : 'Plan oppdatert')
       toast(state.workoutSync.message)
       await refreshPlanBlocks()
       await refreshPlannedSessions()
@@ -2928,25 +4177,108 @@ function bindApp() {
     }
   })
 
+  document.querySelectorAll('.replace-session-cb').forEach((el) => {
+    el.addEventListener('change', () => {
+      state.replaceSessionIds = [...document.querySelectorAll('.replace-session-cb:checked')].map(
+        (cb) => cb.value,
+      )
+      render()
+    })
+  })
+
   document.getElementById('workout-preview-btn')?.addEventListener('click', async () => {
     const workouts = state.workoutProposal?.workouts
     if (!workouts?.length || state.workoutSync.busy) return
+    const replaceNeeded = Boolean(state.workoutProposal?.replace_required)
+    const replaceIds = state.replaceSessionIds || state.workoutProposal?.replace_session_ids || []
+    if (replaceNeeded && !replaceIds.length) {
+      state.workoutSync.error = 'Velg minst én økt å erstatte'
+      render()
+      return
+    }
     state.workoutSync.busy = true
     state.workoutSync.error = ''
     state.workoutSync.message = 'Lager forhåndsvisning…'
     render()
     try {
+      const prepareSync = Boolean(
+        document.getElementById('workout-prepare-icu-sync')?.checked,
+      )
       const data = await api('/v1/athlete/me/intervals/workouts/preview', {
         method: 'POST',
         body: {
           workouts,
-          prepare_intervals_sync: Boolean(state.intervals?.connected),
+          prepare_intervals_sync: prepareSync,
+          replace_session_ids: replaceIds,
         },
       })
       state.workoutSync.pending = data
       state.workoutSync.message = data.message || 'Bekreft lagring'
     } catch (err) {
       state.workoutSync.error = err.message || 'Forhåndsvisning feilet'
+      state.workoutSync.message = ''
+      // Cap-hit without replace may return structured detail — surface candidates
+      const detail = err.detail || err.body || null
+      if (detail?.replace_candidates?.length) {
+        state.workoutProposal = {
+          ...(state.workoutProposal || {}),
+          workouts: state.workoutProposal?.workouts || workouts,
+          replace_required: true,
+          replace_candidates: detail.replace_candidates,
+          replace_session_ids: detail.replace_candidates
+            .filter((c) => c.same_date)
+            .map((c) => c.id)
+            .slice(0, workouts.length),
+        }
+        state.replaceSessionIds = [...(state.workoutProposal.replace_session_ids || [])]
+      }
+    } finally {
+      state.workoutSync.busy = false
+      render()
+    }
+  })
+
+  document.getElementById('workout-confirm-push-btn')?.addEventListener('click', async () => {
+    // One-shot: preview → confirm the *same* card workouts (CLI builder, not library stub).
+    const workouts = state.workoutProposal?.workouts
+    if (!workouts?.length || state.workoutSync.busy) return
+    state.workoutSync.busy = true
+    state.workoutSync.error = ''
+    state.workoutSync.message = 'Lagrer og pusher…'
+    render()
+    try {
+      const prev = await api('/v1/athlete/me/intervals/workouts/preview', {
+        method: 'POST',
+        body: {
+          workouts,
+          prepare_intervals_sync: true,
+          replace_session_ids: state.replaceSessionIds || [],
+        },
+      })
+      if (!prev?.pending_id) throw new Error('Mangler pending_id fra forhåndsvisning')
+      const data = await api('/v1/athlete/me/intervals/calendar/confirm', {
+        method: 'POST',
+        body: { pending_id: prev.pending_id },
+      })
+      const n = data.pushed ?? 0
+      const saved = data.planned_sessions_saved ?? workouts.length
+      state.workoutSync.pending = null
+      state.workoutProposal = null
+      state.workoutSync.message = `${saved} økt(er) lagret i planen${n ? ` · ${n} på Intervals` : ''}`
+      toast(state.workoutSync.message)
+      state.messages = [
+        ...state.messages,
+        { role: 'assistant', content: `Bekreftet: ${state.workoutSync.message}.` },
+      ]
+      try {
+        await refreshPlannedSessions()
+        await refreshSessions()
+        await refreshDashboard()
+      } catch {
+        /* soft */
+      }
+    } catch (err) {
+      state.workoutSync.error = err.message || 'Bekreft og push feilet'
       state.workoutSync.message = ''
     } finally {
       state.workoutSync.busy = false
@@ -2985,6 +4317,17 @@ function bindApp() {
             ? `${saved} økt(er) lagret i planen${n ? ` · ${n} på Intervals` : ''}`
             : `${n} økt(er) lagt på Intervals-kalenderen`
       toast(state.workoutSync.message)
+      // Keep coach chat aligned with toast — never leave «har ikke oppdatert» after success.
+      state.messages = [
+        ...state.messages,
+        {
+          role: 'assistant',
+          content:
+            data.op === 'delete'
+              ? state.workoutSync.message
+              : `Bekreftet: ${state.workoutSync.message}.`,
+        },
+      ]
       try {
         await refreshPlannedSessions()
         await refreshSessions()
@@ -3027,7 +4370,23 @@ function bindApp() {
     try {
       const data = await api(`/v1/sessions/${encodeURIComponent(sessionId)}`)
       state.sessionDetail = data
-      state.sessionEditOpen = Boolean(data.editable)
+      state.sessionEditOpen = Boolean(data.editable) || Boolean(data.session?.app_planned)
+      let steps = (data.builder_steps || data.editable_fields?.builder_steps || []).map((s, i) => ({
+        ...s,
+        sort_order: i,
+      }))
+      // Seed a minimal Øktbygger so the panel is never empty for editable sessions
+      if (
+        (data.editable || data.session?.app_planned) &&
+        (!steps || !steps.length)
+      ) {
+        steps = [
+          { type: 'warmup', duration_minutes: 10, intensity: 'Z1–Z2', note: '', sort_order: 0 },
+          { type: 'work', duration_minutes: 30, intensity: 'Z2', note: '', sort_order: 1 },
+          { type: 'cooldown', duration_minutes: 5, intensity: 'lett', note: '', sort_order: 2 },
+        ]
+      }
+      state.builderSteps = steps
       state.sessionChat = {
         messages: [],
         draft: '',
@@ -3090,6 +4449,93 @@ function bindApp() {
     render()
   })
 
+  function readBuilderStepsFromDom() {
+    const rows = [...document.querySelectorAll('.builder-step')]
+    return rows.map((row, i) => ({
+      id: `s${i + 1}`,
+      type: row.querySelector('[data-field="type"]')?.value || 'work',
+      duration_minutes: (() => {
+        const v = row.querySelector('[data-field="duration_minutes"]')?.value
+        return v ? Number(v) : null
+      })(),
+      intensity: row.querySelector('[data-field="intensity"]')?.value || null,
+      note: row.querySelector('[data-field="note"]')?.value || null,
+      sort_order: i,
+    }))
+  }
+
+  document.getElementById('builder-add-step')?.addEventListener('click', () => {
+    state.builderSteps = [
+      ...(state.builderSteps || []),
+      {
+        id: `s${Date.now()}`,
+        type: 'work',
+        duration_minutes: 10,
+        intensity: '',
+        note: '',
+        sort_order: (state.builderSteps || []).length,
+      },
+    ]
+    render()
+  })
+  document.querySelectorAll('[data-remove-step]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const i = Number(btn.getAttribute('data-remove-step'))
+      state.builderSteps = (state.builderSteps || []).filter((_, idx) => idx !== i)
+      render()
+    })
+  })
+  document.querySelectorAll('.builder-step [data-field]').forEach((el) => {
+    el.addEventListener('change', () => {
+      state.builderSteps = readBuilderStepsFromDom()
+      render()
+    })
+  })
+  document.getElementById('builder-save-plan')?.addEventListener('click', async () => {
+    const detail = state.sessionDetail?.session
+    if (!detail?.id || state.workoutSync.busy) return
+    const form = document.getElementById('session-edit-form')
+    if (!form) return
+    const fd = new FormData(form)
+    const steps = readBuilderStepsFromDom()
+    if (!steps.length) {
+      toast('Legg til minst ett steg før lagring')
+      return
+    }
+    const durationRaw = String(fd.get('duration_minutes') || '').trim()
+    const payload = {
+      name: String(fd.get('name') || '').trim(),
+      date: String(fd.get('date') || '').trim().slice(0, 10),
+      sport: String(fd.get('sport') || 'other'),
+      start_time: String(fd.get('start_time') || '07:00'),
+      external_id: String(fd.get('external_id') || '') || null,
+      steps,
+      prepare_intervals_sync: false,
+    }
+    if (durationRaw) payload.duration_minutes = Number(durationRaw)
+    state.workoutSync.busy = true
+    state.workoutSync.error = ''
+    render()
+    try {
+      const data = await api(`/v1/sessions/${encodeURIComponent(detail.id)}/builder/confirm`, {
+        method: 'POST',
+        body: payload,
+      })
+      toast(data.message || 'Lagret i planen')
+      if (data.intervals_pending) {
+        state.workoutSync.pending = data.intervals_pending
+      }
+      state.sessionDetail = await api(`/v1/sessions/${encodeURIComponent(detail.id)}`)
+      state.builderSteps = data.builder_steps || state.builderSteps
+    } catch (err) {
+      state.workoutSync.error = err.message || 'Lagring feilet'
+      toast(state.workoutSync.error)
+    } finally {
+      state.workoutSync.busy = false
+      render()
+    }
+  })
+
   document.getElementById('session-edit-form')?.addEventListener('submit', async (e) => {
     e.preventDefault()
     const detail = state.sessionDetail?.session
@@ -3123,6 +4569,9 @@ function bindApp() {
         description = `${head}\n\n---\n\n${description}`
       }
     }
+    const steps = (typeof readBuilderStepsFromDom === 'function')
+      ? readBuilderStepsFromDom()
+      : (state.builderSteps || [])
     const payload = {
       name: String(fd.get('name') || '').trim(),
       date: String(fd.get('date') || '').trim().slice(0, 10),
@@ -3130,6 +4579,7 @@ function bindApp() {
       description,
       start_time: String(fd.get('start_time') || '07:00'),
       external_id: String(fd.get('external_id') || '') || null,
+      steps,
     }
     if (durationRaw) payload.duration_minutes = Number(durationRaw)
     state.workoutSync.busy = true
@@ -3296,6 +4746,8 @@ function bindApp() {
       season_start_date: String(fd.get('season_start_date') || '') || null,
       goal_race_date: String(fd.get('goal_race_date') || '') || null,
       show_body_metrics: fd.get('show_body_metrics') === 'on',
+      email: String(fd.get('email') || '').trim(),
+      notify_email: fd.get('notify_email') === 'on',
     }
   }
 
@@ -3405,6 +4857,8 @@ function bindApp() {
         start_date: wrap.querySelector('[name="start_date"]')?.value || null,
         end_date: wrap.querySelector('[name="end_date"]')?.value || null,
         weekly_hours: numOrNull(wrap.querySelector('[name="weekly_hours"]')?.value),
+        plan_b: wrap.querySelector('[name="plan_b"]')?.value || '',
+        weekly_risk: wrap.querySelector('[name="weekly_risk"]')?.value || '',
       }
       state.busy = true
       state.planError = ''
@@ -3538,17 +4992,23 @@ function bindApp() {
     }
   })
 
-  const runSyncPreview = async (op) => {
+  const runSyncPreview = async (op, scope = null) => {
     if (state.sync.busy || !state.intervals.connected) return
     state.sync.busy = true
     state.sync.error = ''
     state.sync.message = ''
     state.sync.pending = null
+    if (scope?.label) state.planCalendar.syncScopeLabel = scope.label
     render()
     try {
+      const body = { op, include_notes: false }
+      if (scope?.start && scope?.end) {
+        body.start = scope.start
+        body.end = scope.end
+      }
       const data = await api('/v1/athlete/me/intervals/calendar/preview', {
         method: 'POST',
-        body: { op },
+        body,
         timeoutMs: 20000,
       })
       state.sync.pending = data
@@ -3560,6 +5020,106 @@ function bindApp() {
       render()
     }
   }
+
+  const runTpSyncPreview = async (scope) => {
+    if (state.tpSync.busy || !scope?.start || !scope?.end) return
+    state.tpSync.busy = true
+    state.tpSync.error = ''
+    state.tpSync.pending = null
+    if (scope.label) state.planCalendar.syncScopeLabel = scope.label
+    render()
+    try {
+      const data = await api('/v1/athlete/me/trainingpeaks/beta/calendar/preview', {
+        method: 'POST',
+        body: { start: scope.start, end: scope.end, include_notes: false },
+        timeoutMs: 25000,
+      })
+      state.tpSync.pending = data
+      state.tpSync.message = data.message_nb || 'Bekreft TP'
+    } catch (err) {
+      state.tpSync.error = err.message || 'TP forhåndsvisning feilet'
+    } finally {
+      state.tpSync.busy = false
+      render()
+    }
+  }
+
+  document.getElementById('cal-prev-month')?.addEventListener('click', () => {
+    state.planCalendar.month = addMonths(state.planCalendar.month, -1)
+    render()
+  })
+  document.getElementById('cal-next-month')?.addEventListener('click', () => {
+    state.planCalendar.month = addMonths(state.planCalendar.month, 1)
+    render()
+  })
+  document.querySelectorAll('[data-cal-day]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const iso = btn.getAttribute('data-cal-day')
+      if (!iso) return
+      state.planCalendar.selectedDate = iso
+      render()
+    })
+  })
+  document.querySelectorAll('[data-source-filter]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-source-filter')
+      if (!id) return
+      state.planCalendar.sourceFilter = id
+      render()
+    })
+  })
+  document.getElementById('cal-sync-week')?.addEventListener('click', () => {
+    const d = state.planCalendar.selectedDate
+    const range = weekRangeFromDate(d)
+    if (!range) return
+    runSyncPreview('push', {
+      ...range,
+      label: `Uke ${range.start} – ${range.end}`,
+    })
+  })
+  document.getElementById('cal-sync-month')?.addEventListener('click', () => {
+    const range = monthRange(state.planCalendar.month)
+    if (!range) return
+    runSyncPreview('push', {
+      ...range,
+      label: `Måned ${range.start} – ${range.end}`,
+    })
+  })
+  document.getElementById('cal-sync-week-tp')?.addEventListener('click', () => {
+    const d = state.planCalendar.selectedDate
+    const range = weekRangeFromDate(d)
+    if (!range) return
+    runTpSyncPreview({
+      ...range,
+      label: `TP uke ${range.start} – ${range.end}`,
+    })
+  })
+  document.getElementById('tp-sync-confirm-no')?.addEventListener('click', () => {
+    state.tpSync.pending = null
+    render()
+  })
+  document.getElementById('tp-sync-confirm-yes')?.addEventListener('click', async () => {
+    const pending = state.tpSync.pending
+    if (!pending?.pending_id || state.tpSync.busy) return
+    state.tpSync.busy = true
+    state.tpSync.error = ''
+    render()
+    try {
+      const data = await api('/v1/athlete/me/trainingpeaks/beta/calendar/confirm', {
+        method: 'POST',
+        body: { pending_id: pending.pending_id },
+        timeoutMs: 120000,
+      })
+      state.tpSync.pending = null
+      state.tpSync.message = `TP: ${data.pushed}/${data.attempted} økter`
+      toast(state.tpSync.message)
+    } catch (err) {
+      state.tpSync.error = err.message || 'TP sync feilet'
+    } finally {
+      state.tpSync.busy = false
+      render()
+    }
+  })
 
   document.getElementById('sync-push')?.addEventListener('click', () => runSyncPreview('push'))
   document.getElementById('sync-delete')?.addEventListener('click', () => runSyncPreview('delete'))
@@ -3670,5 +5230,5 @@ function bindApp() {
 }
 
 bootstrap().catch((err) => {
-  app.innerHTML = `<div class="onboarding"><h1>Kunne ikke starte</h1><p class="error">${escapeHtml(err.message)}</p><p class="muted">Sjekk at coach-api kjører på port 8000.</p></div>`
+  app.innerHTML = `<div class="onboarding"><h1>Kunne ikke starte</h1><p class="error">${escapeHtml(err.message)}</p><p class="muted">Sjekk /health og DATABASE_URL (sslmode=require for Supabase). coach-api må svare på samme origin.</p></div>`
 })

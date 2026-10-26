@@ -586,6 +586,47 @@ _WEEK_CHECK_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Sunday / agent coach-rapport (TB markdown) — not ukesopp questions
+_COACH_REPORT_RE = re.compile(
+    r"(?:"
+    r"coach[- ]?rapport|"
+    r"tb[- ]?(?:score\s+)?rapport|"
+    r"søndagsrapport|"
+    r"readiness[- ]?rapport|"
+    r"generer\s+(?:coach[- ]?)?rapport|"
+    r"vis\s+(?:meg\s+)?(?:tb|readiness|coach[- ]?rapport)|"
+    r"sunday\s+report|"
+    r"coach\s+report"
+    r")",
+    re.IGNORECASE,
+)
+
+# Intervals → TP file export (zip / ZWO) — never TP write API
+_TP_EXPORT_RE = re.compile(
+    r"(?:"
+    r"eksport(?:er)?\s+(?:til\s+)?(?:tp|training\s*peaks)|"
+    r"(?:intervals|icu).{0,30}(?:til|→|->)\s*(?:tp|training\s*peaks)|"
+    r"(?:tp|training\s*peaks).{0,20}(?:eksport|export|zip|zwo)|"
+    r"last\s+ned\s+(?:tp[- ]?)?(?:zip|zwo|eksport)|"
+    r"export\s+(?:to\s+)?(?:tp|trainingpeaks)|"
+    r"tp[- ]?from[- ]?intervals"
+    r")",
+    re.IGNORECASE,
+)
+
+# Thin: «hva mangler jeg» → compliance focus (week missed list)
+_COMPLIANCE_GAP_RE = re.compile(
+    r"(?:"
+    r"hva\s+mangler\s+jeg|"
+    r"hvilke\s+økter\s+(?:mangler|har\s+jeg\s+ikke)|"
+    r"ikke\s+gjennomført|"
+    r"planlagt\s+vs\s+(?:gjort|gjennomført|logget)|"
+    r"compliance\s+(?:denne\s+)?(?:uka|uken)|"
+    r"missed\s+sessions?"
+    r")",
+    re.IGNORECASE,
+)
+
 # Sync existing app plan → Intervals (not invent a new week).
 _INTERVALS_PLAN_SYNC_INTENT_RE = re.compile(
     r"(?:"
@@ -969,6 +1010,49 @@ def user_requests_week_check(message: str) -> bool:
     return bool(_WEEK_CHECK_RE.search(text))
 
 
+def user_requests_coach_report(message: str) -> bool:
+    """True for Sunday / TB coach-rapport (markdown ritual)."""
+    text = (message or "").strip()
+    if not text:
+        return False
+    if user_requests_intervals_plan_sync(text):
+        return False
+    if user_requests_confirm_and_push(text):
+        return False
+    # Prefer full week-check when both could match
+    if user_requests_week_check(text):
+        return False
+    return bool(_COACH_REPORT_RE.search(text))
+
+
+def user_requests_tp_export(message: str) -> bool:
+    """True for Intervals→TP zip export (files only, no TP write)."""
+    text = (message or "").strip()
+    if not text:
+        return False
+    if user_requests_intervals_plan_sync(text):
+        return False
+    if user_requests_confirm_and_push(text):
+        return False
+    return bool(_TP_EXPORT_RE.search(text))
+
+
+def user_requests_compliance_gap(message: str) -> bool:
+    """True for «hva mangler jeg» / planned vs logged focus."""
+    text = (message or "").strip()
+    if not text:
+        return False
+    if user_requests_intervals_plan_sync(text):
+        return False
+    if user_requests_confirm_and_push(text):
+        return False
+    if user_requests_week_check(text):
+        return False
+    if user_requests_coach_report(text):
+        return False
+    return bool(_COMPLIANCE_GAP_RE.search(text))
+
+
 UKESOPP_QUESTIONS_NB = (
     "Kontinuitet: Hvor mange planlagte økter fullførte du (X/Y)? Hva droppet du?",
     "Belastning: Hvordan føltes totalvolumet (lett / passe / hardt)? Søvn/stress?",
@@ -1030,6 +1114,124 @@ def ukesopp_reply_nb(
         "Når du har svart, kan jeg foreslå justering (preview → bekreft) — "
         "ikke Intervals-push uten at du ber om det."
     )
+    return "\n".join(bits)
+
+
+def coach_report_reply_nb(
+    *,
+    name: str,
+    markdown: str,
+    available: bool,
+    note: str | None = None,
+) -> str:
+    """Short chat wrapper around Sunday coach-rapport markdown."""
+    bits = [
+        f"Hei {name} — coach-rapport (samme motor som agent søndagsritual).",
+        "Ingen grafer i web; ingen Intervals-write.",
+        "",
+    ]
+    if not available:
+        bits.append(note or "TB-Score ikke tilgjengelig — koble Intervals under Du.")
+        bits.append("")
+        bits.append("Du kan fortsatt kjøre **ukesopp** eller **sjekk uka mi**.")
+        return "\n".join(bits)
+    # Keep reply readable in chat; full markdown also in card payload
+    body = (markdown or "").strip()
+    if len(body) > 3500:
+        body = body[:3400].rstrip() + "\n\n… (full tekst i kortet / Dashboard)"
+    bits.append(body)
+    bits.append("")
+    bits.append("Neste: **ukesopp** for spørsmål, eller last ned TP-zip fra Dashboard.")
+    return "\n".join(bits)
+
+
+def tp_export_reply_nb(
+    *,
+    name: str,
+    start: str,
+    end: str,
+    available: bool,
+    meta: dict[str, Any] | None = None,
+    note: str | None = None,
+) -> str:
+    """Explain Intervals→TP zip (manual import, no TP API write)."""
+    bits = [
+        f"Hei {name} — Intervals → TrainingPeaks eksport ({start} … {end}).",
+        "Appen lager **filer** (zip). Ingen auto-write til TrainingPeaks.",
+        "",
+    ]
+    if not available:
+        bits.append(note or "Intervals ikke koblet — koble under Du først.")
+        return "\n".join(bits)
+    m = meta or {}
+    bits.append(
+        f"Pakke: {m.get('workouts', 0)} økter "
+        f"({m.get('zwo', 0)} ZWO, {m.get('strength', 0)} styrke-CSV, "
+        f"{m.get('txt_fallback', 0)} tekst-fallback)."
+    )
+    bits.append("")
+    bits.append("Last ned via knappen under / Dashboard «Last ned TP-zip».")
+    bits.append(
+        "Sykkel: Library → Import `.zwo`. "
+        "Løp/svøm: importer som sykkel → Build → bytt sport → % terskel. "
+        "Styrke: trainingdojo.app/import."
+    )
+    bits.append("")
+    bits.append(
+        "CLI: `python3 scripts/export_intervals_plan_to_tp.py "
+        f"--start {start} --end {end}`"
+    )
+    return "\n".join(bits)
+
+
+def compliance_gap_reply_nb(
+    *,
+    name: str,
+    week_start: str,
+    week_end: str,
+    compliance: dict[str, Any],
+    intervals_linked: bool,
+) -> str:
+    """Focused planned-vs-logged reply for Dashboard/chat."""
+    bits = [
+        f"Hei {name} — planlagt vs logget {week_start}–{week_end}.",
+        "",
+    ]
+    if not intervals_linked:
+        bits.append(
+            "Intervals er ikke koblet — jeg kan ikke matche WORKOUT mot aktiviteter. "
+            "Koble under Du."
+        )
+        return "\n".join(bits)
+    planned = int(compliance.get("sessions_planned") or 0)
+    done = int(compliance.get("sessions_done") or 0)
+    pct = compliance.get("compliance_pct")
+    pct_s = f" ({pct} %)" if pct is not None else ""
+    bits.append(f"Økt-compliance: **{done} / {planned}**{pct_s}.")
+    bits.append(compliance.get("note_nb") or "")
+    bits.append("")
+    missed = compliance.get("missed_lines") or []
+    bits.append(f"Ikke gjennomført ({len(missed)}):")
+    if missed:
+        bits.extend(f"- {ln}" for ln in missed[:12])
+    else:
+        bits.append("- (ingen åpne hull i vinduet)")
+    bits.append("")
+    done_lines = compliance.get("done_lines") or []
+    bits.append(f"Logget ({len(done_lines)}):")
+    if done_lines:
+        bits.extend(f"- {ln}" for ln in done_lines[:10])
+    else:
+        bits.append("- (ingen aktiviteter matchet)")
+    roll = compliance.get("rolling_compliance_4w") or {}
+    if roll.get("sessions_planned"):
+        bits.append("")
+        bits.append(
+            f"4 uker: {roll.get('sessions_done', 0)} / {roll.get('sessions_planned')} "
+            f"({roll.get('compliance_pct')} %)."
+        )
+    bits.append("")
+    bits.append("Full analyse: **sjekk uka mi**. Søndag: **coach-rapport** / **ukesopp**.")
     return "\n".join(bits)
 
 

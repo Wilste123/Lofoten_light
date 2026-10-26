@@ -122,6 +122,14 @@ const state = {
   ukesoppSaveError: '',
   /** Deterministic week check card (load / TB / Plan B — no Intervals write) */
   weekCheck: null,
+  /** Sunday coach-rapport markdown (from chat or Dashboard) */
+  coachReport: null,
+  /** Intervals→TP zip card */
+  tpExport: null,
+  /** Inline Dashboard coach-rapport markdown */
+  dashCoachReportMd: '',
+  dashCoachReportBusy: false,
+  dashTpExportBusy: false,
   /** Du → plan adjust preview (local blocks; Intervals only after Sync confirm) */
   planAdjust: null,
   /** Selected ids when weekly cap requires replace */
@@ -1264,6 +1272,12 @@ function applyChatResponse(data, { mirrorToMain = false, userText = '' } = {}) {
     state.weekCheck = data.week_check
     state.ukesopp = null
   }
+  if (data.coach_report?.markdown) {
+    state.coachReport = data.coach_report
+  }
+  if (data.tp_export) {
+    state.tpExport = data.tp_export
+  }
   const planProp = data.plan_roll || data.plan_proposal
   const planHasFull = Boolean(planProp?.plan_blocks?.length)
   const planHasWeek = planProp?.scope === 'week' && Array.isArray(planProp?.sessions)
@@ -1331,6 +1345,61 @@ async function sendCoachMessage(message, { sessionId = null } = {}) {
   return api('/v1/chat', { method: 'POST', body })
 }
 
+async function loadDashCoachReport() {
+  if (state.dashCoachReportBusy) return
+  state.dashCoachReportBusy = true
+  state.error = ''
+  render()
+  try {
+    const data = await api('/v1/readiness?ritual=true')
+    state.dashCoachReportMd = data.markdown || data.note || 'Ingen rapport.'
+  } catch (err) {
+    state.error = err.message || 'Coach-rapport feilet'
+    state.dashCoachReportMd = ''
+  } finally {
+    state.dashCoachReportBusy = false
+    render()
+  }
+}
+
+async function downloadTpExportZip(path) {
+  if (state.dashTpExportBusy) return
+  state.dashTpExportBusy = true
+  state.error = ''
+  render()
+  try {
+    const url = `${API}${path || '/v1/exports/tp-from-intervals.zip'}`
+    const headers = {}
+    const id = getAthleteId()
+    if (id) headers['X-Athlete-Id'] = id
+    const res = await fetch(url, { headers })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      const detail = data.detail
+      throw new Error(
+        typeof detail === 'string' ? detail : data.message || `Eksport feilet (${res.status})`,
+      )
+    }
+    const blob = await res.blob()
+    const cd = res.headers.get('Content-Disposition') || ''
+    const match = /filename="?([^"]+)"?/i.exec(cd)
+    const filename = match?.[1] || 'tp-from-intervals.zip'
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(a.href)
+    toast('TP-zip lastet ned — importer manuelt i TP / TrainingDojo')
+  } catch (err) {
+    state.error = err.message || 'TP-eksport feilet'
+  } finally {
+    state.dashTpExportBusy = false
+    render()
+  }
+}
+
 /** Dashboard CTA → Coach tab with deterministic week/ICU prompts. */
 async function runCoachPromptFromUi(message) {
   const text = (message || '').trim()
@@ -1343,6 +1412,8 @@ async function runCoachPromptFromUi(message) {
   state.agreementsProposal = null
   state.ukesopp = null
   state.weekCheck = null
+  state.coachReport = null
+  state.tpExport = null
   state.workoutSync.pending = null
   state.workoutSync.error = ''
   state.workoutSync.message = ''
@@ -1661,6 +1732,38 @@ function renderChat() {
         ${presc ? `<p class="muted tight">Kvalitetsøkter</p>${presc}` : ''}
         <div class="sync-actions">
           <button type="button" class="btn secondary" id="week-check-dismiss-btn">Skjul</button>
+        </div>
+      </div>`
+  } else if (state.coachReport?.markdown) {
+    const cr = state.coachReport
+    proposalCard = `
+      <div class="confirm-card workout-proposal-card" aria-label="Coach-rapport" data-testid="coach-report-card">
+        <p><strong>Coach-rapport (søndagsritual)</strong></p>
+        <p class="muted tight">Samme TB-motor som agent. Ingen grafer · ingen Intervals-write.</p>
+        <pre class="sync-sample week-check-presc">${escapeHtml(String(cr.markdown).slice(0, 4000))}</pre>
+        <div class="sync-actions">
+          <button type="button" class="btn btn-primary" id="coach-report-ukesopp-btn">Start ukesopp</button>
+          <button type="button" class="btn secondary" id="coach-report-dismiss-btn">Skjul</button>
+        </div>
+      </div>`
+  } else if (state.tpExport) {
+    const t = state.tpExport
+    proposalCard = `
+      <div class="confirm-card workout-proposal-card" aria-label="TP-eksport" data-testid="tp-export-card">
+        <p><strong>Intervals → TrainingPeaks</strong></p>
+        <p class="muted tight">${escapeHtml(t.start || '')} … ${escapeHtml(t.end || '')}. Kun filer — ingen TP-write.</p>
+        ${
+          t.available
+            ? `<p class="muted tight">${escapeHtml(String((t.meta && t.meta.workouts) ?? 0))} økter · ${escapeHtml(String((t.meta && t.meta.zwo) ?? 0))} ZWO · ${escapeHtml(String((t.meta && t.meta.strength) ?? 0))} styrke</p>`
+            : `<p class="error">${escapeHtml(t.note || 'Ikke tilgjengelig')}</p>`
+        }
+        <div class="sync-actions">
+          ${
+            t.available && t.download_path
+              ? `<button type="button" class="btn btn-primary" id="tp-export-download-btn">Last ned zip</button>`
+              : ''
+          }
+          <button type="button" class="btn secondary" id="tp-export-dismiss-btn">Skjul</button>
         </div>
       </div>`
   } else if (state.ukesopp?.questions?.length) {
@@ -2057,6 +2160,9 @@ function renderLoadCard(dash) {
 
 function renderReadinessStrip(dash) {
   const r = dash?.readiness
+  const reportBlock = state.dashCoachReportMd
+    ? `<pre class="sync-sample week-check-presc" data-testid="dash-coach-report">${escapeHtml(String(state.dashCoachReportMd).slice(0, 5000))}</pre>`
+    : ''
   if (!r) {
     return `
       <div class="section-block readiness-strip" data-testid="readiness-strip">
@@ -2064,7 +2170,9 @@ function renderReadinessStrip(dash) {
         <p class="muted tight">Koble Intervals under Du for TB-Score. Eller spør Coach «sjekk uka mi».</p>
         <div class="sync-actions">
           <button type="button" class="btn secondary" id="dash-week-check-btn">Sjekk uka mi</button>
+          <button type="button" class="btn secondary" id="dash-coach-report-btn" ${state.dashCoachReportBusy ? 'disabled' : ''}>Coach-rapport</button>
         </div>
+        ${reportBlock}
       </div>`
   }
   const tb = r.tb || {}
@@ -2100,8 +2208,11 @@ function renderReadinessStrip(dash) {
       <p class="muted tight">${escapeHtml(r.cta_nb || 'Spør Coach «sjekk uka mi» for full analyse.')}</p>
       <div class="sync-actions">
         <button type="button" class="btn btn-primary" id="dash-week-check-btn">Sjekk uka mi</button>
+        <button type="button" class="btn secondary" id="dash-coach-report-btn" ${state.dashCoachReportBusy ? 'disabled' : ''}>Coach-rapport</button>
         <button type="button" class="btn secondary" id="dash-icu-compare-btn">App vs Intervals</button>
+        <button type="button" class="btn secondary" id="dash-tp-export-btn" ${state.dashTpExportBusy ? 'disabled' : ''}>Last ned TP-zip</button>
       </div>
+      ${reportBlock}
     </div>`
 }
 
@@ -2119,17 +2230,37 @@ function renderDashboard() {
   const progressForSection = { progress: dash.compliance || {} }
   const sleepLabel = periodLabelFromDash(dash)
   const sc4 = dash.session_compliance_4w
+  const wc = dash.week_compliance
+  const listHtml = (title, lines) => {
+    const items = (lines || []).slice(0, 10)
+    if (!items.length) return `<p class="muted tight">${escapeHtml(title)}: (ingen)</p>`
+    return `<p class="muted tight"><strong>${escapeHtml(title)}</strong></p><ul class="sync-sample">${items
+      .map((ln) => `<li>${escapeHtml(String(ln))}</li>`)
+      .join('')}</ul>`
+  }
+  const weekHtml = wc
+    ? `<p class="muted tight">Denne uka (${escapeHtml(wc.week_start || '')}–${escapeHtml(wc.week_end || '')}): <strong>${escapeHtml(String(wc.sessions_done ?? 0))} / ${escapeHtml(String(wc.sessions_planned ?? 0))}</strong>${
+        wc.compliance_pct != null ? ` (${escapeHtml(String(wc.compliance_pct))} %)` : ''
+      } · mangler ${escapeHtml(String(wc.sessions_missed ?? 0))}.</p>
+      ${listHtml('Ikke gjennomført', wc.missed_lines)}
+      ${listHtml('Logget', wc.done_lines)}
+      <p class="muted tight">${escapeHtml(wc.note_nb || '')}</p>`
+    : `<p class="muted tight">Ukedetalj ikke lastet — koble Intervals eller spør Coach «hva mangler jeg».</p>`
   const sc4Html =
     sc4 && sc4.sessions_planned != null
-      ? `<div class="section-block compliance-week-block">
+      ? `<div class="section-block compliance-week-block" data-testid="week-compliance-block">
           <div class="section-head"><h2>Planlagt vs gjennomført</h2></div>
-          <p class="muted tight">4-ukers økt-compliance: <strong>${sc4.sessions_done ?? 0} / ${sc4.sessions_planned}</strong> planlagte WORKOUT matchet til ICU-aktiviteter${
+          ${weekHtml}
+          <p class="muted tight">4-ukers: <strong>${sc4.sessions_done ?? 0} / ${sc4.sessions_planned}</strong>${
             sc4.compliance_pct != null ? ` (${sc4.compliance_pct} %)` : ''
           }.</p>
-          <p class="muted tight">NOTE og planlagt uten aktivitet = ikke gjennomført. Spør Coach «sjekk uka mi» for ukesdetalj.</p>
+          <div class="sync-actions">
+            <button type="button" class="btn secondary" id="dash-compliance-gap-btn">Hva mangler jeg</button>
+          </div>
         </div>`
-      : `<div class="section-block compliance-week-block">
+      : `<div class="section-block compliance-week-block" data-testid="week-compliance-block">
           <div class="section-head"><h2>Planlagt vs gjennomført</h2></div>
+          ${weekHtml}
           <p class="muted tight">Koble Intervals under Du for ærlig økt-compliance (aktiviteter ≠ NOTES).</p>
         </div>`
   return `
@@ -3507,6 +3638,31 @@ function bindApp() {
   document.getElementById('dash-icu-compare-btn')?.addEventListener('click', () => {
     void runCoachPromptFromUi('sammenlign app vs Intervals-kalender denne uka')
   })
+  document.getElementById('dash-compliance-gap-btn')?.addEventListener('click', () => {
+    void runCoachPromptFromUi('hva mangler jeg')
+  })
+  document.getElementById('dash-coach-report-btn')?.addEventListener('click', () => {
+    void loadDashCoachReport()
+  })
+  document.getElementById('dash-tp-export-btn')?.addEventListener('click', () => {
+    void downloadTpExportZip()
+  })
+  document.getElementById('coach-report-ukesopp-btn')?.addEventListener('click', () => {
+    state.coachReport = null
+    void runCoachPromptFromUi('ukesopp')
+  })
+  document.getElementById('coach-report-dismiss-btn')?.addEventListener('click', () => {
+    state.coachReport = null
+    render()
+  })
+  document.getElementById('tp-export-download-btn')?.addEventListener('click', () => {
+    const path = state.tpExport?.download_path
+    if (path) void downloadTpExportZip(path)
+  })
+  document.getElementById('tp-export-dismiss-btn')?.addEventListener('click', () => {
+    state.tpExport = null
+    render()
+  })
 
   document.getElementById('copy-username')?.addEventListener('click', async () => {
     const username = state.athlete?.username || ''
@@ -3551,6 +3707,8 @@ function bindApp() {
     state.agreementsProposal = null
     state.ukesopp = null
     state.weekCheck = null
+    state.coachReport = null
+    state.tpExport = null
     state.workoutSync.pending = null
     state.workoutSync.error = ''
     state.workoutSync.message = ''

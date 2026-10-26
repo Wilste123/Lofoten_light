@@ -146,7 +146,73 @@ def readiness_dashboard_strip(
             "sessions_done": sessions_done,
             "compliance_pct": compliance_pct,
         },
-        "cta_nb": "Spør Coach «sjekk uka mi» for full load, Plan B og kvalitetsresepter.",
+        "cta_nb": (
+            "Åpne Coach-rapport (søndagsritual) eller spør «sjekk uka mi» "
+            "for load, Plan B og kvalitetsresepter."
+        ),
+        "written_to_intervals": False,
+    }
+
+
+def sunday_ritual_payload(
+    secrets: dict[str, Any] | None,
+    *,
+    activity_sessions: list[dict[str, Any]] | None = None,
+    week_completed: list[dict[str, Any]] | None = None,
+    week_planned: list[dict[str, Any]] | None = None,
+    week_compliance: dict[str, Any] | None = None,
+    today: date | None = None,
+) -> dict[str, Any]:
+    """Agent-style Sunday ritual: TB markdown + uke-compliance + ukesopp CTA.
+
+    No PNG. No Intervals write. Soft empty when wellness missing.
+    """
+    report = build_coach_report(
+        secrets,
+        activity_sessions=activity_sessions,
+        week_completed=week_completed,
+        week_planned=week_planned,
+        today=today,
+    )
+    wc = week_compliance or {}
+    md = report.get("markdown") or ""
+    if wc.get("sessions_planned") is not None:
+        pct = wc.get("compliance_pct")
+        pct_s = f" ({pct} %)" if pct is not None else ""
+        md += (
+            "\n## Planlagt vs gjennomført (denne uka)\n\n"
+            f"- Økter: **{wc.get('sessions_done', 0)} / {wc.get('sessions_planned', 0)}**"
+            f"{pct_s}\n"
+        )
+        missed = wc.get("missed_lines") or []
+        if missed:
+            md += "- Ikke gjennomført:\n"
+            for ln in missed[:8]:
+                md += f"  - {ln}\n"
+        done = wc.get("done_lines") or []
+        if done:
+            md += "- Logget:\n"
+            for ln in done[:8]:
+                md += f"  - {ln}\n"
+        md += f"\n_{(wc.get('note_nb') or '').strip()}_\n"
+    md += (
+        "\n## Neste steg (søndagsritual)\n\n"
+        "1. Les TB / Plan B over.\n"
+        "2. Spør Coach **ukesopp** — fire korte spørsmål (lagres i appen, ikke Intervals).\n"
+        "3. Ev. **sjekk uka mi** for full resept + load.\n"
+        "4. Intervals → TP: last ned zip under Dashboard (ingen auto-write til TP).\n"
+    )
+    return {
+        **report,
+        "markdown": md,
+        "week_compliance": wc or None,
+        "ritual": True,
+        "cta": {
+            "ukesopp_nb": "ukesopp",
+            "week_check_nb": "sjekk uka mi",
+            "tp_export_nb": "eksporter intervals til TP",
+        },
+        "plots": False,
         "written_to_intervals": False,
     }
 

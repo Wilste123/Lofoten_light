@@ -12,7 +12,7 @@ from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -63,9 +63,15 @@ from chat_service import (
     user_requests_intervals_review,
     user_requests_ukesopp,
     user_requests_week_check,
+    user_requests_coach_report,
+    user_requests_tp_export,
+    user_requests_compliance_gap,
     ukesopp_prompt_payload,
     ukesopp_reply_nb,
     week_check_summary_nb,
+    coach_report_reply_nb,
+    tp_export_reply_nb,
+    compliance_gap_reply_nb,
     UKESOPP_QUESTIONS_NB,
     plan_week_target_from_message,
     user_requests_plan_adjust,
@@ -2040,6 +2046,36 @@ def chat(
             overview=overview,
             intervals_ok=intervals_ok,
         )
+    # Sunday coach-rapport (TB markdown ritual) — before ukesopp.
+    if user_requests_coach_report(body.message):
+        return _chat_coach_report(
+            aid=aid,
+            athlete=athlete,
+            secrets=secrets,
+            sessions_bundle=sessions_bundle,
+            sessions_snap=sessions_snap,
+            overview=overview,
+            intervals_ok=intervals_ok,
+        )
+    # Planned vs logged gaps («hva mangler jeg»).
+    if user_requests_compliance_gap(body.message):
+        return _chat_compliance_gap(
+            aid=aid,
+            athlete=athlete,
+            secrets=secrets,
+            sessions_bundle=sessions_bundle,
+            sessions_snap=sessions_snap,
+            overview=overview,
+            intervals_ok=intervals_ok,
+        )
+    # Intervals → TP zip (files only; no TP write API).
+    if user_requests_tp_export(body.message):
+        return _chat_tp_export(
+            aid=aid,
+            athlete=athlete,
+            secrets=secrets,
+            overview=overview,
+        )
     # Sunday ukesopp — structured questions, no auto write/sync.
     if user_requests_ukesopp(body.message):
         return _chat_ukesopp(
@@ -2929,6 +2965,168 @@ def _chat_week_check(
         "written_to_intervals": False,
         "app_plan": overview.get("app_plan"),
         "sessions_in_context": True,
+    }
+
+
+def _chat_coach_report(
+    *,
+    aid: str,
+    athlete: dict[str, Any],
+    secrets: dict[str, Any] | None,
+    sessions_bundle: dict[str, Any],
+    sessions_snap: dict[str, Any],
+    overview: dict[str, Any],
+    intervals_ok: bool,
+) -> dict[str, Any]:
+    """Sunday ritual coach-rapport — TB markdown + week compliance CTA."""
+    from coach_report import sunday_ritual_payload
+    from week_analysis import build_week_compliance, filter_sessions_by_week
+
+    name = athlete.get("display_name") or "deg"
+    start, end = week_bounds("this_week", today=date.today())
+    rolling = sessions_snap.get("rolling_compliance_4w") or {}
+    wc = build_week_compliance(
+        sessions_bundle,
+        week_start=start,
+        week_end=end,
+        rolling_4w=rolling,
+    )
+    activity_sessions = list(sessions_bundle.get("completed") or []) + list(
+        sessions_bundle.get("recent") or []
+    )
+    week_completed = filter_sessions_by_week(
+        list(sessions_bundle.get("completed") or sessions_bundle.get("recent") or []),
+        start,
+        end,
+    )
+    week_planned = filter_sessions_by_week(
+        list(sessions_bundle.get("planned") or []), start, end
+    )
+    ritual = sunday_ritual_payload(
+        secrets,
+        activity_sessions=activity_sessions,
+        week_completed=week_completed,
+        week_planned=week_planned,
+        week_compliance=wc,
+    )
+    reply = coach_report_reply_nb(
+        name=name,
+        markdown=str(ritual.get("markdown") or ""),
+        available=bool(ritual.get("available")),
+        note=ritual.get("note"),
+    )
+    with db_session(config.get_db()) as conn:
+        add_message(conn, aid, "user", "coach-rapport")
+        asst = add_message(conn, aid, "assistant", reply)
+    return {
+        "reply": reply,
+        "message": asst,
+        "coach_report": {
+            "available": bool(ritual.get("available")),
+            "markdown": ritual.get("markdown"),
+            "tb": (ritual.get("tb") or {}),
+            "week_compliance": wc,
+            "ritual": True,
+            "cta": ritual.get("cta"),
+            "written_to_intervals": False,
+            "plots": False,
+        },
+        "confirm_required": False,
+        "written_to_intervals": False,
+        "app_plan": overview.get("app_plan"),
+        "intervals_linked": intervals_ok,
+    }
+
+
+def _chat_compliance_gap(
+    *,
+    aid: str,
+    athlete: dict[str, Any],
+    secrets: dict[str, Any] | None,
+    sessions_bundle: dict[str, Any],
+    sessions_snap: dict[str, Any],
+    overview: dict[str, Any],
+    intervals_ok: bool,
+) -> dict[str, Any]:
+    """Focused calendar-vs-logged compliance for chat."""
+    from week_analysis import build_week_compliance
+
+    name = athlete.get("display_name") or "deg"
+    start, end = week_bounds("this_week", today=date.today())
+    rolling = sessions_snap.get("rolling_compliance_4w") or {}
+    wc = build_week_compliance(
+        sessions_bundle,
+        week_start=start,
+        week_end=end,
+        rolling_4w=rolling,
+    )
+    reply = compliance_gap_reply_nb(
+        name=name,
+        week_start=start.isoformat(),
+        week_end=end.isoformat(),
+        compliance=wc,
+        intervals_linked=intervals_ok,
+    )
+    with db_session(config.get_db()) as conn:
+        add_message(conn, aid, "user", "hva mangler jeg")
+        asst = add_message(conn, aid, "assistant", reply)
+    return {
+        "reply": reply,
+        "message": asst,
+        "week_compliance": wc,
+        "confirm_required": False,
+        "written_to_intervals": False,
+        "app_plan": overview.get("app_plan"),
+        "intervals_linked": intervals_ok,
+    }
+
+
+def _chat_tp_export(
+    *,
+    aid: str,
+    athlete: dict[str, Any],
+    secrets: dict[str, Any] | None,
+    overview: dict[str, Any],
+) -> dict[str, Any]:
+    """Intervals→TP zip meta for chat — download via API, never TP write."""
+    from tp_export import default_export_range, export_tp_zip_for_athlete
+
+    name = athlete.get("display_name") or "deg"
+    start, end = default_export_range(today=date.today())
+    _blob, meta = export_tp_zip_for_athlete(secrets, start=start, end=end)
+    available = bool(meta.get("available"))
+    reply = tp_export_reply_nb(
+        name=name,
+        start=start,
+        end=end,
+        available=available,
+        meta=meta if available else None,
+        note=meta.get("note"),
+    )
+    with db_session(config.get_db()) as conn:
+        add_message(conn, aid, "user", "eksporter til TP")
+        asst = add_message(conn, aid, "assistant", reply)
+    download_path = (
+        f"/v1/exports/tp-from-intervals.zip?start={start}&end={end}"
+        if available
+        else None
+    )
+    return {
+        "reply": reply,
+        "message": asst,
+        "tp_export": {
+            "available": available,
+            "start": start,
+            "end": end,
+            "meta": {k: v for k, v in meta.items() if k != "note"} if available else meta,
+            "download_path": download_path,
+            "written_to_trainingpeaks": False,
+            "written_to_intervals": False,
+            "note": meta.get("note"),
+        },
+        "confirm_required": False,
+        "written_to_intervals": False,
+        "app_plan": overview.get("app_plan"),
     }
 
 
@@ -4158,9 +4356,10 @@ def dashboard(
         session_compliance_4w = None
     # TB-Score + this-week strip (agent-modus readiness — no chat required)
     readiness_strip: dict[str, Any] | None = None
+    week_compliance: dict[str, Any] | None = None
     try:
         from coach_report import readiness_dashboard_strip
-        from week_analysis import filter_sessions_by_week
+        from week_analysis import build_week_compliance
 
         mon, sun = week_bounds("this_week", today=date.today())
         week_planned_n = None
@@ -4168,29 +4367,15 @@ def dashboard(
         week_pct = None
         activity_for_tb: list[dict[str, Any]] = []
         if sess_bundle:
-            planned_w = filter_sessions_by_week(
-                list(sess_bundle.get("planned") or []), mon, sun
+            week_compliance = build_week_compliance(
+                sess_bundle,
+                week_start=mon,
+                week_end=sun,
+                rolling_4w=session_compliance_4w,
             )
-            completed_w = filter_sessions_by_week(
-                list(sess_bundle.get("completed") or sess_bundle.get("recent") or []),
-                mon,
-                sun,
-            )
-            missed_w = filter_sessions_by_week(
-                list(sess_bundle.get("planned_not_done") or []), mon, sun
-            )
-            week_planned_n = len(planned_w)
-            if week_planned_n and (missed_w or completed_w):
-                week_done_n = (
-                    max(0, week_planned_n - len(missed_w))
-                    if missed_w
-                    else min(len(completed_w), week_planned_n)
-                )
-                week_pct = round(
-                    min(100.0, 100.0 * float(week_done_n) / float(week_planned_n)), 1
-                )
-            else:
-                week_done_n = len(completed_w)
+            week_planned_n = week_compliance.get("sessions_planned")
+            week_done_n = week_compliance.get("sessions_done")
+            week_pct = week_compliance.get("compliance_pct")
             activity_for_tb = list(sess_bundle.get("completed") or []) + list(
                 sess_bundle.get("recent") or []
             )
@@ -4215,6 +4400,7 @@ def dashboard(
         )
     except Exception:  # noqa: BLE001
         readiness_strip = None
+        week_compliance = None
     # Back-compat: hours/load mirror period training (no season targets mixed in)
     hours = {
         "disciplines": [
@@ -4262,6 +4448,7 @@ def dashboard(
         "compliance_app_computed": True,
         "compliance_written_to_intervals": False,
         "session_compliance_4w": session_compliance_4w,
+        "week_compliance": week_compliance,
         "readiness": readiness_strip,
         "periodization": overview_data.get("periodization"),
         "form": {
@@ -4283,12 +4470,18 @@ def dashboard(
 @app.get("/v1/readiness")
 def get_readiness(
     x_athlete_id: str | None = Header(default=None),
+    ritual: bool = Query(
+        default=True,
+        description="Include Sunday-ritual markdown (compliance + ukesopp CTA)",
+    ),
 ) -> dict[str, Any]:
-    """TB-Score snapshot — same engine as ``scripts/generate_coach_report.py``.
+    """TB-Score / coach-rapport — same engine as ``scripts/generate_coach_report.py``.
 
     Soft-fails without Intervals. Never writes. No PNG plots.
+    Default includes Sunday-ritual sections (compliance + next steps).
     """
-    from coach_report import build_coach_report
+    from coach_report import build_coach_report, sunday_ritual_payload
+    from week_analysis import build_week_compliance, filter_sessions_by_week
 
     aid = _require_athlete(x_athlete_id)
     with db_session(config.get_db()) as conn:
@@ -4299,29 +4492,120 @@ def get_readiness(
     activity_sessions: list[dict[str, Any]] = []
     week_completed: list[dict[str, Any]] = []
     week_planned: list[dict[str, Any]] = []
+    week_compliance: dict[str, Any] | None = None
+    mon, sun = week_bounds("this_week", today=date.today())
     try:
-        from week_analysis import filter_sessions_by_week
-
         bundle = list_sessions(secrets, comps, past_days=28, future_days=7)
         activity_sessions = list(bundle.get("completed") or []) + list(
             bundle.get("recent") or []
         )
-        mon, sun = week_bounds("this_week", today=date.today())
         week_completed = filter_sessions_by_week(
             list(bundle.get("completed") or bundle.get("recent") or []), mon, sun
         )
         week_planned = filter_sessions_by_week(
             list(bundle.get("planned") or []), mon, sun
         )
+        week_compliance = build_week_compliance(
+            bundle,
+            week_start=mon,
+            week_end=sun,
+            rolling_4w=bundle.get("rolling_compliance_4w"),
+        )
     except Exception:  # noqa: BLE001
         pass
+    if ritual:
+        return sunday_ritual_payload(
+            secrets,
+            activity_sessions=activity_sessions,
+            week_completed=week_completed,
+            week_planned=week_planned,
+            week_compliance=week_compliance,
+        )
     report = build_coach_report(
         secrets,
         activity_sessions=activity_sessions,
         week_completed=week_completed,
         week_planned=week_planned,
     )
+    report["week_compliance"] = week_compliance
     return report
+
+
+@app.get("/v1/compliance/week")
+def get_week_compliance(
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """This-week calendar WORKOUT vs ICU-logged — same matching as week-check."""
+    from week_analysis import build_week_compliance
+
+    aid = _require_athlete(x_athlete_id)
+    with db_session(config.get_db()) as conn:
+        if not get_athlete(conn, aid):
+            raise HTTPException(404, "Utøver ikke funnet")
+        secrets = get_athlete_secrets(conn, aid)
+        comps = completions_by_external_id(conn, aid)
+    mon, sun = week_bounds("this_week", today=date.today())
+    try:
+        bundle = list_sessions(secrets, comps, past_days=28, future_days=7)
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "available": False,
+            "week_start": mon.isoformat(),
+            "week_end": sun.isoformat(),
+            "note": f"Kunne ikke hente sessions ({exc.__class__.__name__})",
+            "written_to_intervals": False,
+        }
+    wc = build_week_compliance(
+        bundle,
+        week_start=mon,
+        week_end=sun,
+        rolling_4w=bundle.get("rolling_compliance_4w"),
+    )
+    return {"available": True, **wc}
+
+
+@app.get("/v1/exports/tp-from-intervals.zip")
+def export_tp_from_intervals_zip(
+    x_athlete_id: str | None = Header(default=None),
+    start: str | None = Query(default=None, description="ISO start YYYY-MM-DD"),
+    end: str | None = Query(default=None, description="ISO end YYYY-MM-DD"),
+) -> Response:
+    """Download Intervals planned workouts as TP-import zip (ZWO + Dojo CSV).
+
+    Never writes to TrainingPeaks or Intervals — files only.
+    """
+    from tp_export import default_export_range, export_tp_zip_for_athlete
+
+    aid = _require_athlete(x_athlete_id)
+    with db_session(config.get_db()) as conn:
+        if not get_athlete(conn, aid):
+            raise HTTPException(404, "Utøver ikke funnet")
+        secrets = get_athlete_secrets(conn, aid)
+    if not start or not end:
+        start, end = default_export_range(today=date.today())
+    try:
+        date.fromisoformat(start)
+        date.fromisoformat(end)
+    except ValueError as exc:
+        raise HTTPException(400, "start/end må være YYYY-MM-DD") from exc
+    if end < start:
+        raise HTTPException(400, "end må være >= start")
+    blob, meta = export_tp_zip_for_athlete(secrets, start=start, end=end)
+    if not blob or not meta.get("available"):
+        raise HTTPException(
+            400,
+            meta.get("note") or "Kunne ikke lage TP-eksport (Intervals mangler?).",
+        )
+    filename = meta.get("filename") or f"tp-from-intervals-{start}_{end}.zip"
+    return Response(
+        content=blob,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "X-TP-Export-Workouts": str(meta.get("workouts", 0)),
+            "X-Written-To-TrainingPeaks": "false",
+        },
+    )
 
 
 @app.get("/v1/sessions/completions/recent")

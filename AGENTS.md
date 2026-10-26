@@ -37,6 +37,19 @@ Every plan must include:
 - Plan B for time/weather/injury
 - One sentence on **what could go wrong** this week
 
+## Knowledge-first (hard rule)
+
+**All advice must come from the repo knowledge base + William’s files — not the internet.**
+
+| Allowed | Forbidden |
+|---------|-----------|
+| `knowledge/` (via `knowledge/README.md`), `docs/athlete/`, `plans/`, `workouts/`, `data/context/context-pack.md`, Intervals fetch/scripts | Web search, generic internet coaching claims, “what most coaches say online” |
+| Cite a repo path when stating a method/rule | Unsourced intensity/volume tips |
+
+If pack/athlete/knowledge lack a fact: say **«mangler i knowledge/athlete»** — do not fill gaps from the open web.
+
+Daily rethink flow: build pack → `@data/context/context-pack.md` (+ `@knowledge/…` as needed) → answer from those sources only.
+
 ## Boundaries
 
 - **Fryst plan:** ikke endre eller re-push Intervals for build/deload okt 2026 før `2026-10-26` — se `plans/FROZEN-til-deload-2026-10-25.md`.
@@ -44,6 +57,7 @@ Every plan must include:
 - No live TP sync without credentials.
 - Do not invent Xtri-pondus facts without `docs/xtri/`.
 - Do not program Norseman / full Extreme volume unless William explicitly changes goals.
+- **No web-sourced coaching** (see Knowledge-first above).
 
 ## Tools
 

@@ -32,6 +32,10 @@ Packen leser bl.a.:
 4. Nøkkeløkter (`R-HILL-5x2`, myr, elghufs) + `workouts/index.md`
 5. ICU CSV 7–14d + `compute_readiness` TB-Score når data finnes
 
+## Knowledge-first
+
+Råd = `docs/athlete/` (William) + `knowledge/` (metode) + pack + Intervals. **Ikke** web search / generisk internett-coaching. Pack-headeren `SOURCES / RULES` sier det samme.
+
 ## Anbefaling
 
-**Context pack først** — ikke RAG/MCP. Se prosjekt-memo `docs/context-rethink.md`.
+**Context pack først** — ikke RAG/MCP. Se prosjekt-memo `docs/context-rethink.md` og [BRUK.md](BRUK.md).

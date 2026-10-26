@@ -306,16 +306,48 @@ def build_pack(*, fetch: bool, days: int, max_section: int) -> dict:
         }
     )
 
+    # Knowledge base pointers (methods/rules — not internet)
+    knowledge_parts: list[str] = []
+    for rel, cap in (
+        ("knowledge/README.md", 4000),
+        ("knowledge/coach/coach-filosofi.md", 5000),
+        ("knowledge/coach/kvalitetsnorm-toppidrett.md", 4000),
+        ("knowledge/coach/ukemaler.md", 4000),
+        ("knowledge/load-and-intensity.md", 3000),
+    ):
+        kp = ROOT / rel
+        kt = _read(kp, cap)
+        if kt:
+            knowledge_parts.append(f"### {rel}\n\n{kt.strip()}\n")
+        else:
+            missing.append(f"knowledge:{rel}")
+    if knowledge_parts:
+        sections.append(
+            {
+                "id": "knowledge",
+                "title": "6. Knowledge base (metoder / regler)",
+                "body": (
+                    "Råd om *hvordan* trene skal forankres her (eller andre filer under "
+                    "`knowledge/` som agenten leser eksplisitt) — **ikke** fra internett.\n\n"
+                    + "\n".join(knowledge_parts)
+                ),
+            }
+        )
+    else:
+        missing.append("knowledge:all")
+
     sections.append(
         {
             "id": "coach_rules",
-            "title": "6. Hard grounding-regel",
+            "title": "7. Hard grounding-regel",
             "body": (
-                "- Svar må referere konkrete felter fra denne packen "
-                "(økter, TB/load, avtaler, FTP/soner, ukeplan) **eller** si ærlig «mangler data».\n"
+                "- **Knowledge-first:** råd = `docs/athlete/` (ham) + `knowledge/` (metode) "
+                "+ denne packen + Intervals. **Ikke** web search / generisk internett-coaching.\n"
+                "- Svar må referere konkrete felter fra pack/knowledge "
+                "(økter, TB/load, avtaler, FTP/soner, ukeplan) **eller** si ærlig «mangler i repo».\n"
                 "- Ingen generisk VO₂-/PT-essay.\n"
                 "- Historisk FTP 410 W (2019) er **ikke** nåværende intensitet.\n"
-                "- Arbeidsmodell (pilot): plan i TP; fakta fra Intervals + denne repo-treet.\n"
+                "- Arbeidsmodell (pilot): plan i TP; fakta fra Intervals + dette repo-treet.\n"
             ),
         }
     )
@@ -323,13 +355,27 @@ def build_pack(*, fetch: bool, days: int, max_section: int) -> dict:
     md_parts = [
         "# Context pack — Lofoten coach (agent-modus tree)",
         "",
+        "## SOURCES / RULES (hard)",
+        "",
+        "**Allowed sources only:**",
+        "- `docs/athlete/` — fakta om William (profil, mål, skader, TB-config)",
+        "- `knowledge/` — kunnskapsbase (coach-filosofi, ukemaler, disipliner); start `knowledge/README.md`",
+        "- `plans/`, `workouts/` — ukeplan og øktbibliotek",
+        "- denne fila (`data/context/context-pack.md`)",
+        "- Intervals-fetch / lokale CSV under `data/intervals/exports/` (nær-vindu, TB/load)",
+        "",
+        "**Forbidden:** web search, generiske internett-coaching-påstander, «det folk sier online» "
+        "uten at det allerede ligger i `knowledge/` eller athlete-docs.",
+        "",
+        "Hvis noe mangler i tillatte kilder: skriv **«mangler i knowledge/athlete»** — ikke fyll fra nettet.",
+        "",
         f"- Generert: `{now}`",
         f"- Base: `rethink` ← `cursor/uke1-bakke-5x2-tor-634c`",
         f"- ICU fetch forsøkt: `{fetch}`",
         f"- ICU ok: `{icu_ok}`",
         f"- Manglende kilder: `{', '.join(missing) if missing else '(ingen)'}`",
         "",
-        "Bruk: les denne fila før coach-svar om uke / i morgen / load / TB.",
+        "Bruk: les denne fila (+ ev. mer under `knowledge/`) før coach-svar om uke / i morgen / load / TB.",
         "",
     ]
     for sec in sections:

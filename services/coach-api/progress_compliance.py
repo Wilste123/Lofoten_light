@@ -75,7 +75,8 @@ _PAGE_LIMIT = 100
 # paired_event_id links completed activity → calendar event (Intervals truth)
 _ACTIVITY_FIELDS = (
     "id,type,sport,name,moving_time,elapsed_time,duration,start_date_local,"
-    "paired_event_id"
+    "paired_event_id,icu_training_load,training_load,icu_tss,tss,"
+    "icu_intensity,intensity"
 )
 _FETCH_TIMEOUT = 12
 _CACHE_TTL_SEC = 120

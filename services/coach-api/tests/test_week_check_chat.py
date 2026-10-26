@@ -84,6 +84,15 @@ def test_week_check_chat_endpoint(client):
     with patch(
         "main.resolve_wellness_bundle",
         return_value={"recovery_signals": {"available": False, "note": "Ingen"}},
+    ), patch(
+        "tb_score.fetch_tb_for_athlete",
+        return_value={
+            "available": True,
+            "tb_score": 71,
+            "band": "gul",
+            "recommendation": "Plan B på intervall",
+            "plan_b_nb": "Plan B: Z2 i stedet for terskel",
+        },
     ):
         chat = client.post(
             "/v1/chat",
@@ -95,6 +104,11 @@ def test_week_check_chat_endpoint(client):
     assert body.get("written_to_intervals") is False
     assert "week_check" in body
     assert "Ukesjekk" in body.get("reply", "")
+    wc = body["week_check"]
+    assert wc.get("written_to_intervals") is False
+    assert "tb" in wc
+    assert "load" in wc
+    assert "TB-Score" in body.get("reply", "") or wc["tb"].get("tb_score") == 71
 
 
 def test_ukesopp_save_endpoint(client):

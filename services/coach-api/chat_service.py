@@ -1052,15 +1052,24 @@ def week_check_summary_nb(
     compliance_pct: float | None = None,
     sessions_planned: int = 0,
     sessions_done: int = 0,
+    calendar_source_line: str | None = None,
+    load_bits: list[str] | None = None,
+    tb_bits: list[str] | None = None,
+    plan_b_bits: list[str] | None = None,
+    risk_bits: list[str] | None = None,
+    prescription_blocks: list[str] | None = None,
 ) -> str:
-    """Deterministic «sjekk uka mi» reply — activities ≠ NOTES; honest when broken."""
+    """Deterministic «sjekk uka mi» — agent-modus style: load, TB, Plan B, prescriptions."""
     bits = [
         f"Ukesjekk {week_start}–{week_end}",
         "",
-        f"Hei {name}. Her er planlagt vs gjennomført "
+        f"Hei {name}. Planlagt vs gjennomført "
         "(gjennomført = ICU-aktiviteter; NOTE teller ikke).",
         "",
     ]
+    if calendar_source_line:
+        bits.append(calendar_source_line)
+        bits.append("")
     if not intervals_linked:
         bits.append(
             "Intervals er ikke koblet — jeg kan vise app-plan, "
@@ -1083,6 +1092,16 @@ def week_check_summary_nb(
         )
         bits.append("")
 
+    if load_bits:
+        bits.append("Belastning / intensitet:")
+        bits.extend(f"- {b}" for b in load_bits[:6])
+        bits.append("")
+
+    if tb_bits:
+        bits.append("TB-Score / readiness:")
+        bits.extend(f"- {b}" for b in tb_bits[:8])
+        bits.append("")
+
     bits.append(f"Planlagt ({len(planned_lines)}):")
     if planned_lines:
         bits.extend(f"- {ln}" for ln in planned_lines[:12])
@@ -1101,6 +1120,23 @@ def week_check_summary_nb(
     else:
         bits.append("- (ingen åpne hull)")
     bits.append("")
+
+    if prescription_blocks:
+        bits.append("Kvalitetsøkter (full resept — warmup / hoveddel / cooldown):")
+        bits.append("")
+        for block in prescription_blocks[:4]:
+            bits.append(block)
+            bits.append("")
+
+    if plan_b_bits:
+        bits.append("Plan B:")
+        bits.extend(f"- {b}" for b in plan_b_bits[:5])
+        bits.append("")
+    if risk_bits:
+        bits.append("Ukerisiko:")
+        bits.extend(f"- {b}" for b in risk_bits[:3])
+        bits.append("")
+
     bits.append("Wellness (signaler, ikke absolutt sannhet):")
     if wellness_bits:
         bits.extend(f"- {b}" for b in wellness_bits[:6])

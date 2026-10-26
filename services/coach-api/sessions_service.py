@@ -259,6 +259,34 @@ def normalize_activity(act: dict[str, Any]) -> dict[str, Any] | None:
         or act.get("sport")
         or "Aktivitet"
     )
+    # Load / intensity for week analysis + TB (agent-modus parity)
+    training_load = None
+    for key in (
+        "icu_training_load",
+        "TrainingLoad",
+        "training_load",
+        "icu_tss",
+        "tss",
+        "load",
+    ):
+        raw = act.get(key)
+        if raw is None or raw == "":
+            continue
+        try:
+            training_load = round(float(raw), 1)
+            break
+        except (TypeError, ValueError):
+            continue
+    intensity = None
+    for key in ("icu_intensity", "intensity", "if", "icu_intensity_factor"):
+        raw = act.get(key)
+        if raw is None or raw == "":
+            continue
+        try:
+            intensity = float(raw)
+            break
+        except (TypeError, ValueError):
+            continue
     return {
         "id": f"act:{aid}",
         "external_id": aid,
@@ -271,6 +299,8 @@ def normalize_activity(act: dict[str, Any]) -> dict[str, Any] | None:
         "discipline_label": _disc_label(disc),
         "type": act.get("type") or act.get("sport"),
         "duration_hours": _duration_hours(act),
+        "training_load": training_load,
+        "intensity": intensity,
         "category": None,
         "calendar_role": "completed_activity",
         "training_status": "completed",
@@ -1488,6 +1518,10 @@ def _slim_session(item: dict[str, Any]) -> dict[str, Any]:
     }
     if item.get("duration_hours") is not None:
         out["duration_hours"] = item.get("duration_hours")
+    if item.get("training_load") is not None:
+        out["training_load"] = item.get("training_load")
+    if item.get("intensity") is not None:
+        out["intensity"] = item.get("intensity")
     if item.get("category"):
         out["category"] = item.get("category")
     if item.get("calendar_role"):
@@ -1496,6 +1530,10 @@ def _slim_session(item: dict[str, Any]) -> dict[str, Any]:
         out["training_status"] = item.get("training_status")
     if item.get("match_method"):
         out["match_method"] = item.get("match_method")
+    # Short preview so week-check / chat can show structure without full body
+    preview = item.get("description_preview")
+    if preview:
+        out["description_preview"] = preview
     comp = item.get("completion") or {}
     if comp.get("status"):
         out["completion_status"] = comp.get("status")

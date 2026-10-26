@@ -2701,21 +2701,49 @@ def _chat_week_check(
     overview: dict[str, Any],
     intervals_ok: bool,
 ) -> dict[str, Any]:
-    """US-1: deterministic week analysis — plan vs ICU activities + wellness."""
+    """US-1: agent-style week analysis — load, TB, prescriptions, calendar truth."""
+    from tb_score import fetch_tb_for_athlete, tb_bits_nb
+    from week_analysis import (
+        calendar_source_label,
+        filter_sessions_by_week,
+        load_bits_nb,
+        quality_prescriptions_nb,
+        summarize_week_load,
+        week_risk_and_plan_b,
+    )
+
     week_key = plan_week_target_from_message(body_message)
     start, end = week_bounds(week_key, today=date.today())
     name = athlete.get("display_name") or "deg"
+    dont_touch = user_requests_dont_touch_calendar(body_message)
 
     planned_app = filter_planned_sessions_date_range(stored_planned, start, end)
-    planned_snap = _filter_snap_rows_by_week(
-        list(sessions_snap.get("planlagt") or []), start, end
+    # Full ICU/app sessions (with description) — not slim snap rows
+    planned_full = filter_sessions_by_week(
+        list(sessions_bundle.get("planned") or []), start, end
     )
-    # Prefer snap (merged) when Intervals linked; else app SoT
-    planned_rows = planned_snap if planned_snap else planned_app
-    completed_rows = _filter_snap_rows_by_week(
+    used_icu_calendar = bool(planned_full) and intervals_ok
+    # Calendar truth: Intervals WORKOUT when linked; else app SoT
+    if planned_full:
+        planned_rows = planned_full
+    elif planned_app:
+        planned_rows = planned_app
+    else:
+        planned_rows = _filter_snap_rows_by_week(
+            list(sessions_snap.get("planlagt") or []), start, end
+        )
+
+    completed_full = filter_sessions_by_week(
+        list(sessions_bundle.get("completed") or sessions_bundle.get("recent") or []),
+        start,
+        end,
+    )
+    completed_rows = completed_full or _filter_snap_rows_by_week(
         list(sessions_snap.get("gjennomfort") or []), start, end
     )
-    missed_rows = _filter_snap_rows_by_week(
+    missed_rows = filter_sessions_by_week(
+        list(sessions_bundle.get("planned_not_done") or []), start, end
+    ) or _filter_snap_rows_by_week(
         list(sessions_snap.get("ikke_gjennomfort") or []), start, end
     )
 
@@ -2765,6 +2793,62 @@ def _chat_week_check(
     except Exception as exc:  # noqa: BLE001 — soft-fail
         wellness_bits.append(f"Wellness utilgjengelig ({exc.__class__.__name__})")
 
+    load_summary = summarize_week_load(completed_rows, planned=planned_rows)
+    load_bits = load_bits_nb(load_summary)
+
+    # TB-Score from same scripts as agent-modus (soft-fail)
+    activity_for_tb = list(sessions_bundle.get("completed") or []) + list(
+        sessions_bundle.get("recent") or []
+    )
+    tb = fetch_tb_for_athlete(
+        secrets, wellness_days=28, activity_sessions=activity_for_tb
+    )
+    if tb.get("fetch_error"):
+        fetch_error = True
+    tb_lines = tb_bits_nb(tb)
+
+    risk = week_risk_and_plan_b(planned_rows, tb=tb)
+    plan_b_bits: list[str] = []
+    if risk.get("tb_plan_b"):
+        plan_b_bits.append(str(risk["tb_plan_b"]))
+    plan_b_bits.extend(str(x) for x in (risk.get("plan_b_lines") or [])[:4])
+    risk_bits = [str(x) for x in (risk.get("risk_lines") or [])[:3]]
+
+    # Prefer ICU descriptions; enrich thin ICU rows from app SoT by date+name
+    presc_source = list(planned_rows)
+    if planned_app:
+        app_by_day: dict[str, list[dict[str, Any]]] = {}
+        for s in planned_app:
+            day = str(s.get("session_date") or s.get("date") or "")[:10]
+            app_by_day.setdefault(day, []).append(s)
+        enriched: list[dict[str, Any]] = []
+        for s in presc_source:
+            desc = (s.get("description") or "").strip()
+            if desc and len(desc) > 40:
+                enriched.append(s)
+                continue
+            day = str(s.get("session_date") or s.get("date") or "")[:10]
+            match = None
+            for cand in app_by_day.get(day, []):
+                if (cand.get("description") or "").strip():
+                    match = cand
+                    break
+            if match:
+                merged = dict(s)
+                merged["description"] = match.get("description")
+                merged["name"] = merged.get("name") or match.get("name")
+                enriched.append(merged)
+            else:
+                enriched.append(s)
+        presc_source = enriched
+
+    prescriptions = quality_prescriptions_nb(presc_source, max_sessions=4)
+    cal_line = calendar_source_label(
+        intervals_linked=intervals_ok,
+        used_icu_calendar=used_icu_calendar,
+        dont_touch=dont_touch,
+    )
+
     reply = week_check_summary_nb(
         name=name,
         week_start=start.isoformat(),
@@ -2779,6 +2863,12 @@ def _chat_week_check(
         compliance_pct=compliance_pct,
         sessions_planned=sessions_planned,
         sessions_done=sessions_done,
+        calendar_source_line=cal_line,
+        load_bits=load_bits,
+        tb_bits=tb_lines,
+        plan_b_bits=plan_b_bits,
+        risk_bits=risk_bits,
+        prescription_blocks=prescriptions,
     )
     with db_session(config.get_db()) as conn:
         add_message(conn, aid, "user", body_message)
@@ -2797,6 +2887,19 @@ def _chat_week_check(
             "fetch_error": fetch_error,
             "rolling_compliance_4w": rolling,
             "written_to_intervals": False,
+            "calendar_source": "intervals" if used_icu_calendar else "app",
+            "dont_touch": dont_touch,
+            "load": load_summary,
+            "tb": {
+                "available": bool(tb.get("available")),
+                "tb_score": tb.get("tb_score"),
+                "band": tb.get("band"),
+                "plan_b_nb": tb.get("plan_b_nb"),
+                "recommendation": tb.get("recommendation"),
+            },
+            "plan_b": plan_b_bits,
+            "risk": risk_bits,
+            "prescriptions": prescriptions,
         },
         "confirm_required": False,
         "written_to_intervals": False,

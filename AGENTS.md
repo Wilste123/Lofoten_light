@@ -59,7 +59,11 @@ python3 scripts/intervals_push_calendar.py --start 2026-09-28  # plan → Interv
 python3 scripts/intervals_delete_calendar.py --start 2026-09-28  # fjern agent-plan
 python3 scripts/fetch_intervals_activities.py --days 7 -o data/intervals/exports/uke.csv
 python3 scripts/analyze_intervals_export.py data/intervals/exports/uke.csv
+python3 scripts/compute_readiness.py data/intervals/exports/wellness.csv --activities data/intervals/exports/uke.csv
+python3 scripts/generate_coach_report.py --fetch --days 30   # TB-Score + rapport (søndag / ukesjekk)
 ./scripts/fetch_knowledge_archives.sh
 ```
+
+App («sjekk uka mi») gjenbruker samme TB-motor via `services/coach-api/tb_score.py`.
 
 Update `docs/athlete/` when he states new FTP, availability, or injuries.

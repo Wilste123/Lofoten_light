@@ -43,33 +43,52 @@ HONEST_COACH_VOICE = """
 Du er hovedtrener — ikke kundeservice, ikke motivasjonsplakat, ikke et kort-API (ikke tippy).
 Stemme (OPV / agent-modus) — selvsikker og anbefalingsorientert:
 - Norsk, jordnær, korte setninger. Konkrete tall (min, %, RPE, watt når relevant). Én klar anbefaling.
-- Fakta (snapshot/profil/knowledge) → observasjon → anbefaling. Skill planlagt fra gjennomført.
-- Utfordre 2019-volum-tankning. Historisk FTP 410 W er IKKE dagens intensitet.
+- Fakta (snapshot/profil/knowledge/avtaler/skade/ukens plan/nærvindu-load) → observasjon → anbefaling.
+  Skill planlagt fra gjennomført. ALDRI finn opp en generisk «utøver» — bruk DENNE profilen.
+- Utfordre 2019-volum-tankning. Historisk FTP 410 W er IKKE dagens intensitet (bruk nå-FTP/RPE fra profil).
 - Når mål + erfaring/form/økter-uke ikke henger: si «dette er ikke realistisk slik det står nå»,
   begrunn kort, gi 2–4 konkrete alternativer (fra knowledge: maalrealisme, feil-og-fixes, load).
-- Ros kontinuitet og smarte valg — ikke hero-TSS. Plan B når tid/vær/energi er usikkert.
-- Be om 1–2 nøkkelspørsmål når du mangler info — ikke intervju.
+- Ros kontinuitet og smarte valg — ikke hero-TSS. Plan B én setning når tid/vær/energi er usikkert.
+- Maks ÉTT kort avklaringsspørsmål når info mangler — ELLER foreslå konkrete defaults (f.eks. i morgen 60 min).
+  Ikke dump blogginnlegg først. Ikke «Lykke til».
 - Når utøveren godtar et alternativ: bekreft avtalen eksplisitt i prosa; bruk agreements_update-fence
   KUN når de eksplisitt godtar/endrer avtale (så Human Coach-kortet kan lagre).
-- Samtale først: de fleste turer er sparring/analyse/råd UTEN kort. Ikke spam forhåndsvisning.
-- Ingen Pondus/tool-loop. Én LLM-respons. Ingen tom motivasjon.
+- Samtale først når de sparrer/analyserer UTEN å be om økt. Ikke spam forhåndsvisning.
+- Ingen Pondus/tool-loop. Én LLM-respons. Ingen tom motivasjon / corporate PT-blogg.
 - Wellness (søvn/HRV/RHR/CTL): signaler, ikke fasit — vei inn, ikke omskriv hele planen etter ett tall.
 - Ingen medisinsk diagnose. Ved smerte/GI: tilpass råd, anbefal fagperson ved behov.
 """.strip()
 
+# Prescription quality bar — closes the «ChatGPT essay / thin template» failure mode.
+_PRESCRIPTION_PROTOCOL_NB = """
+Øktforeskrivning (når utøveren ber om økt / super-økt / intervaller / «gi meg» / «foreslå» / «lag»):
+- Svar som resept, ikke essay. 2–4 tette setninger HVORFOR (research-cue + hans uke/load/skade/avtaler),
+  deretter kompakt struktur: Oppvarming (én linje) → Hoveddel (reps×tid @ intensitet) → Nedkjøling (én linje).
+- ALLTID emit ```workout_proposal``` med name, date, sport, duration_minutes, description
+  (og steps når intervaller). Mangler dato/varighet: DEFAULT i morgen + 55–70 min (VO2/kvalitet)
+  eller 40–50 min (rolig) — si defaults i prosa, ikke stopp for intervju.
+- «Super-økt» / høy payoff: intensitet som matcher claim. VO₂ = 4–6×3–5 min @ ~95–100 % vVO₂/HRmax-sone
+  eller sykkel ~106–120 % FTP (Midgley; knowledge sykkel/løp). Terskel = cruise @ ~FTP / terskelpuls —
+  IKKE 4×3 @ 90 % solgt som VO₂/superøkt. Si nei og korriger når intensiteten er for lav for claim.
+- Ikke gjenta stretch-/foam-/laundry-list hver tur. Ikke legg på styrke med mindre de ber eller
+  skadeprofil krever det. Ikke generisk VO₂+styrke-mal.
+- Bind til snapshot: avtaler, injury_notes, ukens fokus/app_plan, wellness/load nærvindu.
+""".strip()
+
 # Compact write protocol — only when athlete explicitly asks to change plan/calendar.
 _WRITE_PROTOCOL_NB = """
-Skrivemodus (KUN når utøveren eksplisitt ber om å legge inn / endre / synke / bygge om plan eller økt):
+Skrivemodus (KUN når utøveren eksplisitt ber om å legge inn / endre / synke / bygge om plan eller økt,
+ELLER ber om konkret økt/preskripsjon / super-økt / intervaller å kjøre):
 - App planned_sessions = planlagt; Intervals-aktiviteter = gjennomført. Du synker IKKE selv.
 - ALDRI si at noe er lagret/synket før utøveren bekrefter Human Coach-kortet.
 - Én fenced block når det trengs (ellers ingen fence):
-  • workout_proposal → {{"workouts":[{{"name","date","sport","duration_minutes","description","start_time"}}]}}
+  • workout_proposal → {{"workouts":[{{"name","date","sport","duration_minutes","description","start_time","steps?"}}]}}
   • workout_removal → {{"external_ids","dates","names"}} (kun ll-coach-*)
   • agreements_update → kun avtalte felt (sessions_per_week, goal_*, allowed_disciplines, agreements, reason)
   • athlete_type_update → {{"athlete_type","reason"}}
   • plan_update → {{"reason","rebuild","ease_load","scope":"week"|"full","week_start"?}}
 - Sync-forespørsel: prosa + app emitter Sync-kort — ALDRI workout_proposal/plan_update for sync.
-- Vanlig råd / «hva synes du» / analyse / sliten / spørsmål: BARE prosa — ingen fence, ingen kort.
+- Vanlig råd / «hva synes du» / analyse / sliten UTEN øktforespørsel: BARE prosa — ingen fence, ingen kort.
 """.strip()
 
 # Optional structured proposal the UI can preview→confirm onto Intervals.
@@ -246,11 +265,21 @@ def build_system_prompt(
             "- Hvis focused_session finnes: hold fokus på den økten til utøveren bytter tema.\n"
         )
 
+    injury = (athlete.get("injury_notes") or "").strip() or "(ingen)"
+    fitness = (athlete.get("fitness_notes") or "").strip() or "(ingen)"
+    schedule = (athlete.get("schedule_notes") or "").strip() or "(ingen)"
+    discs = athlete.get("allowed_disciplines") or []
+    disc_line = ", ".join(str(d) for d in discs[:8]) if discs else "(ikke satt)"
+
     return f"""Du er {coach}, personlig utholdenhetstrener for {name}.
 Språk: norsk. Tone: {hint}
 {HONEST_COACH_VOICE}
 Stil-notat: {athlete.get("coach_style_note") or "(ingen)"}
-Profiltype: {atype} | Frekvens: {sess_line} | Avtaler: {agr_line}
+Profiltype: {atype} | Frekvens: {sess_line} | Disipliner: {disc_line}
+Avtaler: {agr_line}
+Skade/begrensning: {injury[:400]}
+Form/fokus: {fitness[:400]}
+Schedule: {schedule[:300]}
 Tråd-minne (denne chatten — husk og bygg videre, ikke spør om igjen):
 {thread_mem}
 
@@ -261,6 +290,7 @@ Kjerne:
 - «Hva har jeg denne uka?» → sessions.planlagt/today/upcoming. «Hva har jeg gjort?» → kun gjennomført (ICU).
 - Respekter allowed_disciplines + sessions_per_week + skadenotat.
 {focused_bullets}
+{_PRESCRIPTION_PROTOCOL_NB}
 {_WRITE_PROTOCOL_NB}
 
 ## Profil
@@ -336,14 +366,21 @@ def knowledge_meta_for_chat(
     )
 
 
-def _clean_workout_dicts(workouts: list[Any]) -> list[dict[str, Any]]:
+def _clean_workout_dicts(
+    workouts: list[Any],
+    *,
+    require_date: bool = True,
+) -> list[dict[str, Any]]:
     cleaned: list[dict[str, Any]] = []
     for w in workouts:
         if not isinstance(w, dict):
             continue
         name = str(w.get("name") or "").strip()
         date_s = str(w.get("date") or "").strip()[:10]
-        if not name or not date_s:
+        if not name:
+            continue
+        # Allow date-less rows when caller will apply tomorrow-default (prescription).
+        if require_date and not date_s:
             continue
         sport = str(w.get("sport") or w.get("type") or "other").strip().lower()
         dur = w.get("duration_minutes")
@@ -399,7 +436,11 @@ def strip_workout_json_from_prose(text: str) -> str:
     return out.strip()
 
 
-def _parse_workouts_json_blob(raw: str) -> list[dict[str, Any]] | None:
+def _parse_workouts_json_blob(
+    raw: str,
+    *,
+    require_date: bool = True,
+) -> list[dict[str, Any]] | None:
     raw = (raw or "").strip()
     if not raw:
         return None
@@ -413,26 +454,35 @@ def _parse_workouts_json_blob(raw: str) -> list[dict[str, Any]] | None:
     workouts = data.get("workouts")
     if not isinstance(workouts, list) or not workouts:
         return None
-    cleaned = _clean_workout_dicts(workouts)
+    cleaned = _clean_workout_dicts(workouts, require_date=require_date)
     return cleaned or None
 
 
 def extract_workout_proposal(reply: str) -> tuple[str, dict[str, Any] | None]:
-    """Strip optional workout_proposal fence; return (display_text, proposal|None)."""
+    """Strip optional workout_proposal fence; return (display_text, proposal|None).
+
+    Date-less workouts are kept so ``apply_workout_defaults`` can fill tomorrow.
+    """
     if not reply:
         return "", None
     cleaned_workouts: list[dict[str, Any]] | None = None
     match = _WORKOUT_PROPOSAL_RE.search(reply)
     if match:
-        cleaned_workouts = _parse_workouts_json_blob(match.group(1) or "")
+        cleaned_workouts = _parse_workouts_json_blob(
+            match.group(1) or "", require_date=False
+        )
     if cleaned_workouts is None:
         gen = _GENERIC_WORKOUTS_FENCE_RE.search(reply)
         if gen:
-            cleaned_workouts = _parse_workouts_json_blob(gen.group(1) or "")
+            cleaned_workouts = _parse_workouts_json_blob(
+                gen.group(1) or "", require_date=False
+            )
     if cleaned_workouts is None:
         bare = _BARE_WORKOUTS_JSON_RE.search(reply)
         if bare:
-            cleaned_workouts = _parse_workouts_json_blob(bare.group(1) or "")
+            cleaned_workouts = _parse_workouts_json_blob(
+                bare.group(1) or "", require_date=False
+            )
 
     display = strip_workout_json_from_prose(reply)
     if not cleaned_workouts:
@@ -459,7 +509,37 @@ _SESSION_INTENT_RE = re.compile(
     r"add\s+(?:a\s+)?(?:workout|session)|"
     r"schedule|"
     r"create\s+(?:a\s+)?workout|"
-    r"make\s+(?:a\s+)?(?:workout|session)"
+    r"make\s+(?:a\s+)?(?:workout|session)|"
+    # Prescription / «super-økt» (agent-modus) — not talk-mode essays
+    r"super\s*[- ]?\s*økt|superøkt|"
+    r"gi\s+meg\s+(?:en\s+)?(?:økt|trening|kvalitet|intervall)|"
+    r"(?:forskningsbasert|research[- ]based).{0,40}(?:økt|trening|workout|intervall)|"
+    r"(?:økt|trening|workout).{0,40}(?:forskningsbasert|research[- ]based)|"
+    r"kvalitets\s*økt|vo2\s*[- ]?\s*økt|intervall\s*økt|"
+    r"preskri(?:ber|psjon)|"
+    r"kan\s+du\s+(?:gi|foreslå)\s+(?:meg\s+)?(?:en\s+)?(?:økt|trening|intervall)|"
+    r"(?:høy|stor)\s+payoff|"
+    r"skikkelig\s+(?:kvalitets)?økt|"
+    r"hard\s+(?:kvalitets)?økt\s+(?:i\s+dag|i\s+morgen|imorgen)"
+    r")",
+    re.IGNORECASE,
+)
+
+# Short follow-up after coach asked for date/duration / offered a prescription.
+_SPORT_ONLY_REPLY_RE = re.compile(
+    r"^\s*(?:"
+    r"løp(?:ing|e)?|run(?:ning)?|syk(?:kel|ling)?|bike|svøm(?:ming)?|swim|"
+    r"styrke|strength|ski|row(?:ing)?|roing"
+    r")\s*[!.?]*\s*$",
+    re.IGNORECASE,
+)
+
+_PRESCRIPTION_CONTEXT_RE = re.compile(
+    r"(?:"
+    r"bekreftbar\s+økt|dato\s*\+\s*varighet|forhåndsvisningskort|"
+    r"workout_proposal|super\s*[- ]?\s*økt|superøkt|"
+    r"oppvarming|hoveddel|nedkjøling|"
+    r"\d+\s*[x×]\s*\d+|vo2|ters?kel|intervall"
     r")",
     re.IGNORECASE,
 )
@@ -925,7 +1005,50 @@ def sanitize_unconfirmed_write_claims(
     return _HONEST_NO_WRITE_YET_NB
 
 
-def user_requests_session_change(message: str) -> bool:
+def user_requests_prescription(message: str) -> bool:
+    """True when athlete asks for a concrete workout / super-økt (not casual chat)."""
+    text = (message or "").strip()
+    if not text:
+        return False
+    if user_requests_intervals_plan_sync(text):
+        return False
+    return bool(_SESSION_INTENT_RE.search(text))
+
+
+def user_continues_prescription(
+    message: str,
+    history: list[dict[str, Any]] | None = None,
+) -> bool:
+    """True for short sport/date/duration replies after a prescription turn."""
+    text = (message or "").strip()
+    if not text or len(text) > 80:
+        return False
+    if user_requests_intervals_plan_sync(text):
+        return False
+    # Sport-only («løping») or bare duration / relative day
+    sport_only = bool(_SPORT_ONLY_REPLY_RE.match(text))
+    dur_only = bool(
+        re.fullmatch(
+            r"\s*(?:\d{1,3}\s*(?:min(?:utt(?:er)?)?|m)|"
+            r"(?:i\s+)?morgen|imorgen|i\s+dag|idag|"
+            r"man(?:dag)?|tir(?:sdag)?|ons(?:dag)?|tor(?:sdag)?|"
+            r"fre(?:dag)?|lør(?:dag)?|søn(?:dag)?)\s*[!.?]?\s*",
+            text,
+            re.IGNORECASE,
+        )
+    )
+    if not (sport_only or dur_only):
+        return False
+    last = _latest_assistant_text(history)
+    if not last:
+        return False
+    return bool(_PRESCRIPTION_CONTEXT_RE.search(last))
+
+
+def user_requests_session_change(
+    message: str,
+    history: list[dict[str, Any]] | None = None,
+) -> bool:
     """True when the athlete clearly asks to add/change a concrete session."""
     text = (message or "").strip()
     if not text:
@@ -933,7 +1056,9 @@ def user_requests_session_change(message: str) -> bool:
     # «Legg inn resten av planen i intervals» is plan-sync, not a new session.
     if user_requests_intervals_plan_sync(text):
         return False
-    return bool(_SESSION_INTENT_RE.search(text))
+    if _SESSION_INTENT_RE.search(text):
+        return True
+    return user_continues_prescription(text, history)
 
 
 def user_requests_plan_adjust(message: str) -> bool:
@@ -1423,7 +1548,10 @@ def confirm_write_success_reply_nb(
     return f"Bekreftet: {' · '.join(bits)}{sample}."
 
 
-def write_intent_kind(message: str) -> str | None:
+def write_intent_kind(
+    message: str,
+    history: list[dict[str, Any]] | None = None,
+) -> str | None:
     """Return 'sync' | 'session' | 'plan' | 'confirm_push' | None."""
     text = (message or "").strip()
     if not text:
@@ -1432,7 +1560,7 @@ def write_intent_kind(message: str) -> str | None:
         return "confirm_push"
     if user_requests_intervals_plan_sync(text):
         return "sync"
-    if user_requests_session_change(text):
+    if user_requests_session_change(text, history):
         return "session"
     if user_requests_plan_adjust(text):
         return "plan"
@@ -1472,12 +1600,15 @@ def user_accepts_agreement_change(message: str) -> bool:
     return bool(_AGREEMENT_ACCEPT_RE.search(text))
 
 
-def user_message_is_talk_mode(message: str) -> bool:
+def user_message_is_talk_mode(
+    message: str,
+    history: list[dict[str, Any]] | None = None,
+) -> bool:
     """True when this turn should stay prose-only (no unsolicited write cards)."""
     text = (message or "").strip()
     if not text:
         return True
-    if write_intent_kind(text):
+    if write_intent_kind(text, history):
         return False
     if user_accepts_agreement_change(text):
         return False
@@ -1492,14 +1623,21 @@ def user_message_is_talk_mode(message: str) -> bool:
     return True
 
 
-def should_offer_soft_plan_roll(message: str, *, explicit: bool = False) -> bool:
+def should_offer_soft_plan_roll(
+    message: str,
+    *,
+    explicit: bool = False,
+    history: list[dict[str, Any]] | None = None,
+) -> bool:
     """Soft roll cards only on explicit ask or clear plan-roll context — not every chat turn."""
     if explicit:
         return True
     text = (message or "").strip()
     if not text:
         return False
-    if user_message_is_talk_mode(text) and not _PLAN_ROLL_CONTEXT_RE.search(text):
+    if user_message_is_talk_mode(text, history) and not _PLAN_ROLL_CONTEXT_RE.search(
+        text
+    ):
         return False
     return bool(_PLAN_ROLL_CONTEXT_RE.search(text) or user_requests_plan_adjust(text))
 
@@ -1754,29 +1892,103 @@ def _relative_date_from_text(text: str, *, today: date) -> date | None:
     return None
 
 
+def _default_prescription_date(today: date | None = None) -> str:
+    """Tomorrow ISO date — default when athlete asks for an økt without a day."""
+    day0 = today or date.today()
+    return day0.fromordinal(day0.toordinal() + 1).isoformat()
+
+
+def _default_prescription_duration_minutes(
+    user_message: str,
+    reply: str,
+) -> int:
+    """55–70 quality / 40–50 easy — prefer quality when super-økt / VO2 language."""
+    blob = f"{user_message or ''}\n{reply or ''}".lower()
+    if re.search(
+        r"super\s*[- ]?\s*økt|superøkt|vo2|kvalitet|intervall|ters?kel|"
+        r"forskningsbasert|payoff|hard\s+økt",
+        blob,
+    ):
+        return 60
+    if re.search(r"rolig|easy|z2|restitusjon|recovery", blob):
+        return 45
+    return 55
+
+
+def apply_workout_defaults(
+    proposal: dict[str, Any] | None,
+    *,
+    user_message: str = "",
+    reply: str = "",
+    today: date | None = None,
+) -> dict[str, Any] | None:
+    """Fill missing date/duration so Human Coach preview can open."""
+    if not proposal or not isinstance(proposal.get("workouts"), list):
+        return proposal
+    day0 = today or date.today()
+    default_date = _default_prescription_date(day0)
+    default_dur = _default_prescription_duration_minutes(user_message, reply)
+    out_ws: list[dict[str, Any]] = []
+    changed = False
+    for w in proposal["workouts"]:
+        if not isinstance(w, dict):
+            continue
+        row = dict(w)
+        if not str(row.get("date") or "").strip():
+            row["date"] = default_date
+            changed = True
+        if row.get("duration_minutes") is None:
+            row["duration_minutes"] = default_dur
+            changed = True
+        if not str(row.get("name") or "").strip():
+            sport = str(row.get("sport") or "run").lower()
+            label = {
+                "run": "Løping",
+                "bike": "Sykkel",
+                "swim": "Svømming",
+                "strength": "Styrke",
+            }.get(sport, "Økt")
+            row["name"] = f"{label} {row.get('duration_minutes') or default_dur} min"
+            changed = True
+        out_ws.append(row)
+    if not out_ws:
+        return proposal
+    cleaned = _clean_workout_dicts(out_ws, require_date=True)
+    if not cleaned:
+        return proposal
+    result = {**proposal, "workouts": cleaned}
+    if changed:
+        result["defaults_applied"] = True
+    return result
+
+
 def infer_workout_proposal_fallback(
     user_message: str,
     reply: str,
     *,
     today: date | None = None,
+    history: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any] | None:
     """Recover a workout_proposal when the LLM forgot the fence.
 
     Only runs when the user clearly asked to add/change a session. Parses
     ISO dates / labeled fields from the assistant reply, then falls back to
-    duration/sport/relative day in the user message.
+    duration/sport/relative day in the user message. Missing date → tomorrow;
+    missing duration → quality/easy default (Human Coach preview path).
 
     Duration: prefer ``duration_minutes`` in any JSON remnant, labeled varighet,
     total/totalt, sum of structure minutes, or NxM estimate — never the first
     «Oppvarming 10 min» alone (that produced «Løping 10min» stubs).
     """
-    if not user_requests_session_change(user_message):
+    if not user_requests_session_change(user_message, history):
         return None
     day0 = today or date.today()
     # Prefer any workouts JSON still sitting in the reply (even without fence label).
     _disp, fenced = extract_workout_proposal(reply or "")
     if fenced and fenced.get("workouts"):
-        return fenced
+        return apply_workout_defaults(
+            fenced, user_message=user_message, reply=reply or "", today=day0
+        )
 
     date_s = None
     m_iso = _ISO_DATE_RE.search(reply or "") or _ISO_DATE_RE.search(user_message or "")
@@ -1788,16 +2000,20 @@ def infer_workout_proposal_fallback(
         )
         if rel:
             date_s = rel.isoformat()
+    # Prescription asks without a day → tomorrow (confirmable card, not interview).
     if not date_s:
-        return None
+        date_s = _default_prescription_date(day0)
 
     clean_reply = strip_workout_json_from_prose(reply or "")
-    blob = f"{clean_reply}\n{user_message or ''}"
+    # Include prior assistant turn for sport/structure when user only said «løping».
+    prior = _latest_assistant_text(history) if history else ""
+    blob = f"{clean_reply}\n{prior}\n{user_message or ''}"
 
     # Prefer sport from the athlete's message over assistant prose (avoids swim label on løp).
     sport = (
         (_sport_from_text(user_message) if _SPORT_WORD_RE.search(user_message or "") else None)
         or _sport_from_text(clean_reply)
+        or _sport_from_text(prior)
         or _sport_from_text(blob)
     )
     name = None
@@ -1831,20 +2047,43 @@ def infer_workout_proposal_fallback(
     dur_i = _infer_session_duration_minutes(
         clean_reply, user_message or "", labeled.get("duration")
     )
+    if dur_i is None:
+        dur_i = _infer_session_duration_minutes(prior, user_message or "", None)
+    if dur_i is None:
+        dur_i = _default_prescription_duration_minutes(user_message, reply or prior)
 
-    # Interval prescription in name (6x2) when present
+    # Interval prescription (6x2) when present; super-økt → real VO2 if missing.
     nxm = re.search(
         r"(\d+)\s*[x×]\s*(\d+)\s*(?:min(?:utt(?:er)?)?|m)?\b",
         blob,
         re.IGNORECASE,
     )
+    super_ask = bool(
+        re.search(
+            r"super\s*[- ]?\s*økt|superøkt|vo2|forskningsbasert|høy\s+payoff",
+            f"{user_message or ''}\n{prior}".lower(),
+        )
+    )
+    reps: int | None = int(nxm.group(1)) if nxm else None
+    mins: int | None = int(nxm.group(2)) if nxm else None
+    if (
+        reps is None
+        and super_ask
+        and (sport or "run") in ("run", "løp", "lop", None, "")
+    ):
+        reps, mins = 5, 3
+
     if not name:
-        if nxm:
-            name = f"Intervaller {nxm.group(1)}x{nxm.group(2)}"
+        if reps is not None and mins is not None:
+            name = (
+                f"VO2 {reps}x{mins} min"
+                if super_ask
+                else f"Intervaller {reps}x{mins}"
+            )
         else:
             sport_m = _SPORT_WORD_RE.search(user_message or "") or _SPORT_WORD_RE.search(
                 clean_reply or ""
-            )
+            ) or _SPORT_WORD_RE.search(prior or "")
             label = (sport_m.group(1) if sport_m else None) or {
                 "run": "Løping",
                 "bike": "Sykkel",
@@ -1859,7 +2098,7 @@ def infer_workout_proposal_fallback(
     description = (labeled.get("description") or "").strip()[:2000]
     if not description:
         struct_lines: list[str] = []
-        for raw in (clean_reply or "").splitlines():
+        for raw in (f"{clean_reply or ''}\n{prior}").splitlines():
             line = raw.strip()
             if not line:
                 continue
@@ -1873,25 +2112,39 @@ def infer_workout_proposal_fallback(
                 struct_lines.append(line)
         if struct_lines:
             description = "\n".join(struct_lines[:20])[:2000]
-        elif nxm:
+        elif reps is not None and mins is not None:
+            intensity = (
+                "~95–100% vVO2 / RPE 8–9, 2 min jog"
+                if super_ask
+                else "målintensitet"
+            )
             description = (
-                f"Oppvarming 10 min\n"
-                f"Hoveddel {nxm.group(1)}x{nxm.group(2)} min\n"
-                f"Nedkjøling 10 min"
+                f"Oppvarming 15 min easy + 4×20 s strides\n"
+                f"Hoveddel {reps}×{mins} min @ {intensity}\n"
+                f"Nedkjøling 10 min easy"
             )
 
     steps = None
-    if nxm and (sport or "run") in ("run", "løp", "lop"):
-        reps, mins = int(nxm.group(1)), int(nxm.group(2))
+    if (
+        reps is not None
+        and mins is not None
+        and (sport or "run") in ("run", "løp", "lop", None, "")
+    ):
+        work_int = "~95–100% vVO2" if super_ask else "Z4"
+        rec_min = 2 if super_ask and mins >= 3 else mins
         steps = [
-            {"type": "warmup", "duration_minutes": 10, "intensity": "Z2"},
+            {"type": "warmup", "duration_minutes": 15, "intensity": "Z2"},
         ]
         for _ in range(reps):
-            steps.append({"type": "work", "duration_minutes": mins, "intensity": "Z4"})
-            steps.append({"type": "recover", "duration_minutes": mins, "intensity": "Z1"})
+            steps.append(
+                {"type": "work", "duration_minutes": mins, "intensity": work_int}
+            )
+            steps.append(
+                {"type": "recover", "duration_minutes": rec_min, "intensity": "Z1"}
+            )
         steps.append({"type": "cooldown", "duration_minutes": 10, "intensity": "lett"})
-        if dur_i is None:
-            dur_i = 10 + reps * mins * 2 + 10
+        if dur_i is None or (super_ask and dur_i < 50):
+            dur_i = 15 + reps * (mins + rec_min) + 10
 
     payload: dict[str, Any] = {
         "name": name,
@@ -1907,7 +2160,10 @@ def infer_workout_proposal_fallback(
     cleaned = _clean_workout_dicts([payload])
     if not cleaned:
         return None
-    return {"workouts": cleaned, "inferred": True}
+    result: dict[str, Any] = {"workouts": cleaned, "inferred": True}
+    if date_s == _default_prescription_date(day0):
+        result["defaults_applied"] = True
+    return result
 
 
 def _infer_session_duration_minutes(

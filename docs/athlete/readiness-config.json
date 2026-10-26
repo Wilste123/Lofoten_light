@@ -1,0 +1,40 @@
+{
+  "version": 2,
+  "name": "TB-Score",
+  "description": "Tidspunkt-basert totalbelastning (snapshot --at). Subjektiv wellness default av — kan gaming.",
+  "timezone": "Europe/Oslo",
+  "sleep_target_hours": 7.5,
+  "baseline_window_days": 21,
+  "weights": {
+    "load_chronic": 0.3,
+    "recovery_time": 0.25,
+    "acute_window": 0.1,
+    "hrv": 0.22,
+    "rhr": 0.13,
+    "sleep": 0.1,
+    "subjective": 0
+  },
+  "recovery_hours": {
+    "load_tier_easy": 35,
+    "load_tier_moderate": 70,
+    "load_tier_hard": 120,
+    "hours_after_easy": 8,
+    "hours_after_moderate": 18,
+    "hours_after_hard": 30,
+    "hours_after_very_hard_base": 42,
+    "very_hard_extra_per_tss": 0.08
+  },
+  "acute_load": {
+    "load_24h_green": 80,
+    "load_24h_red": 180,
+    "min_hours_after_hard_session": 14,
+    "hard_session_tss": 90
+  },
+  "life_adjustments": {
+    "calorie_deficit_active": -6
+  },
+  "bands": {
+    "green_min": 78,
+    "yellow_min": 58
+  }
+}

@@ -120,6 +120,8 @@ const state = {
   ukesoppAnswerDrafts: {},
   ukesoppSaveMessage: '',
   ukesoppSaveError: '',
+  /** Deterministic week check card (load / TB / Plan B — no Intervals write) */
+  weekCheck: null,
   /** Du → plan adjust preview (local blocks; Intervals only after Sync confirm) */
   planAdjust: null,
   /** Selected ids when weekly cap requires replace */
@@ -1258,6 +1260,10 @@ function applyChatResponse(data, { mirrorToMain = false, userText = '' } = {}) {
   } else if (data.ukesopp === null) {
     state.ukesopp = null
   }
+  if (data.week_check) {
+    state.weekCheck = data.week_check
+    state.ukesopp = null
+  }
   const planProp = data.plan_roll || data.plan_proposal
   const planHasFull = Boolean(planProp?.plan_blocks?.length)
   const planHasWeek = planProp?.scope === 'week' && Array.isArray(planProp?.sessions)
@@ -1576,6 +1582,52 @@ function renderChat() {
         </div>
         ${state.workoutSync.error ? `<p class="error">${escapeHtml(state.workoutSync.error)}</p>` : ''}
         ${state.workoutSync.message ? `<p class="intervals-status is-ok">${escapeHtml(state.workoutSync.message)}</p>` : ''}
+      </div>`
+  } else if (state.weekCheck) {
+    const w = state.weekCheck
+    const tb = w.tb || {}
+    const load = w.load || {}
+    const tbLine =
+      tb.available && tb.tb_score != null
+        ? `<p><strong>TB-Score ${escapeHtml(String(tb.tb_score))}/100</strong> · ${escapeHtml(tb.band || '')}</p>`
+        : `<p class="muted tight">TB-Score ikke tilgjengelig${tb.note ? ` (${escapeHtml(String(tb.note))})` : ''}.</p>`
+    const loadLine =
+      load.hours != null || load.load != null
+        ? `<p class="muted tight">Belastning: ~${escapeHtml(String(load.hours ?? '—'))} t · load ~${escapeHtml(String(load.load ?? '—'))} (${escapeHtml(String(load.sessions ?? 0))} aktiviteter)</p>`
+        : ''
+    const planB = (w.plan_b || [])
+      .slice(0, 3)
+      .map((b) => `<li>${escapeHtml(String(b))}</li>`)
+      .join('')
+    const risk = (w.risk || [])
+      .slice(0, 2)
+      .map((b) => `<li>${escapeHtml(String(b))}</li>`)
+      .join('')
+    const presc = (w.prescriptions || [])
+      .slice(0, 3)
+      .map((block) => `<pre class="sync-sample week-check-presc">${escapeHtml(String(block))}</pre>`)
+      .join('')
+    const src =
+      w.calendar_source === 'intervals'
+        ? 'Kilde: Intervals-kalender + aktiviteter'
+        : 'Kilde: app-plan'
+    proposalCard = `
+      <div class="confirm-card workout-proposal-card" aria-label="Ukesjekk">
+        <p><strong>Ukesjekk ${escapeHtml(w.week_start || '')}–${escapeHtml(w.week_end || '')}</strong></p>
+        <p class="muted tight">${escapeHtml(src)}. Ingen Intervals-push.</p>
+        ${
+          w.compliance_pct != null
+            ? `<p class="muted tight">Compliance: ${escapeHtml(String(w.sessions_done ?? 0))}/${escapeHtml(String(w.sessions_planned ?? 0))} (${escapeHtml(String(w.compliance_pct))} %)</p>`
+            : ''
+        }
+        ${tbLine}
+        ${loadLine}
+        ${planB ? `<p class="muted tight">Plan B</p><ul class="sync-sample">${planB}</ul>` : ''}
+        ${risk ? `<p class="muted tight">Ukerisiko</p><ul class="sync-sample">${risk}</ul>` : ''}
+        ${presc ? `<p class="muted tight">Kvalitetsøkter</p>${presc}` : ''}
+        <div class="sync-actions">
+          <button type="button" class="btn secondary" id="week-check-dismiss-btn">Skjul</button>
+        </div>
       </div>`
   } else if (state.ukesopp?.questions?.length) {
     const u = state.ukesopp
@@ -3388,6 +3440,7 @@ function bindApp() {
     state.athleteTypeProposal = null
     state.agreementsProposal = null
     state.ukesopp = null
+    state.weekCheck = null
     state.workoutSync.pending = null
     state.workoutSync.error = ''
     state.workoutSync.message = ''
@@ -3432,6 +3485,10 @@ function bindApp() {
     render()
   })
 
+  document.getElementById('week-check-dismiss-btn')?.addEventListener('click', () => {
+    state.weekCheck = null
+    render()
+  })
   document.getElementById('ukesopp-dismiss-btn')?.addEventListener('click', () => {
     state.ukesopp = null
     state.ukesoppAnswerDrafts = {}

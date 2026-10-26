@@ -1179,7 +1179,7 @@ def build_setup_preview(
     *,
     knowledge_dir,
     api_key: str = "",
-    model: str = "gpt-4o-mini",
+    model: str = "gpt-4o",
     enrich: bool = True,
     today: date | None = None,
 ) -> dict[str, Any]:

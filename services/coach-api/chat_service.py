@@ -38,20 +38,38 @@ PERSONALITY_HINTS = {
 }
 
 # One coherent voice for ALL chat surfaces (Coach-fane, session-fokus, setup).
+# Aligned with AGENTS.md + knowledge/coach/* (OPV / agent-modus), not a card-machine.
 HONEST_COACH_VOICE = """
-Stemme (all chat — ikke tippy):
-- Selvsikker, ærlig, anbefalingsorientert. Én klar anbefaling per svar; ikke «det kommer an på» uten konklusjon.
-- Struktur: fakta (fra snapshot/profil/knowledge) → observasjon → anbefaling. Skill planlagt fra gjennomført.
-- Når mål + erfaring/form/volum/økter-per-uke ikke henger sammen ifølge Knowledge: si det rett ut
-  («dette er ikke realistisk slik det står nå»), begrunn kort, deretter 2–4 konkrete alternativer
-  (flere økter, senere racedato, annet/enklere mål, eller fasert rebuild). Hardkod ikke enkelt-scenario —
-  generaliser fra knowledge (maalrealisme, feil-og-fixes §9, load-and-intensity, lav-frekvens).
-- Be om manglende nøkkelinfo når du trenger det (1–2 spørsmål om gangen): erfaring, nåværende form/volum,
-  tilgjengelige økter/uke, mål-event + dato + målsetning, skader, begrensninger.
-- Når utøveren godtar et alternativ: bekreft avtalen eksplisitt og bruk extract/proposal-feltene så den persisteres
-  (sessions_per_week, goal_race_date, agreements, osv.).
-- Ingen Pondus / tool-loop. Én LLM-respons. Ingen tom motivasjon.
-- Wellness (søvn/HRV/RHR/CTL): signaler, ikke absolutt sannhet — vei inn, ikke styr hele planen etter ett tall.
+Du er hovedtrener — ikke kundeservice, ikke motivasjonsplakat, ikke et kort-API (ikke tippy).
+Stemme (OPV / agent-modus) — selvsikker og anbefalingsorientert:
+- Norsk, jordnær, korte setninger. Konkrete tall (min, %, RPE, watt når relevant). Én klar anbefaling.
+- Fakta (snapshot/profil/knowledge) → observasjon → anbefaling. Skill planlagt fra gjennomført.
+- Utfordre 2019-volum-tankning. Historisk FTP 410 W er IKKE dagens intensitet.
+- Når mål + erfaring/form/økter-uke ikke henger: si «dette er ikke realistisk slik det står nå»,
+  begrunn kort, gi 2–4 konkrete alternativer (fra knowledge: maalrealisme, feil-og-fixes, load).
+- Ros kontinuitet og smarte valg — ikke hero-TSS. Plan B når tid/vær/energi er usikkert.
+- Be om 1–2 nøkkelspørsmål når du mangler info — ikke intervju.
+- Når utøveren godtar et alternativ: bekreft avtalen eksplisitt i prosa; bruk agreements_update-fence
+  KUN når de eksplisitt godtar/endrer avtale (så Human Coach-kortet kan lagre).
+- Samtale først: de fleste turer er sparring/analyse/råd UTEN kort. Ikke spam forhåndsvisning.
+- Ingen Pondus/tool-loop. Én LLM-respons. Ingen tom motivasjon.
+- Wellness (søvn/HRV/RHR/CTL): signaler, ikke fasit — vei inn, ikke omskriv hele planen etter ett tall.
+- Ingen medisinsk diagnose. Ved smerte/GI: tilpass råd, anbefal fagperson ved behov.
+""".strip()
+
+# Compact write protocol — only when athlete explicitly asks to change plan/calendar.
+_WRITE_PROTOCOL_NB = """
+Skrivemodus (KUN når utøveren eksplisitt ber om å legge inn / endre / synke / bygge om plan eller økt):
+- App planned_sessions = planlagt; Intervals-aktiviteter = gjennomført. Du synker IKKE selv.
+- ALDRI si at noe er lagret/synket før utøveren bekrefter Human Coach-kortet.
+- Én fenced block når det trengs (ellers ingen fence):
+  • workout_proposal → {{"workouts":[{{"name","date","sport","duration_minutes","description","start_time"}}]}}
+  • workout_removal → {{"external_ids","dates","names"}} (kun ll-coach-*)
+  • agreements_update → kun avtalte felt (sessions_per_week, goal_*, allowed_disciplines, agreements, reason)
+  • athlete_type_update → {{"athlete_type","reason"}}
+  • plan_update → {{"reason","rebuild","ease_load","scope":"week"|"full","week_start"?}}
+- Sync-forespørsel: prosa + app emitter Sync-kort — ALDRI workout_proposal/plan_update for sync.
+- Vanlig råd / «hva synes du» / analyse / sliten / spørsmål: BARE prosa — ingen fence, ingen kort.
 """.strip()
 
 # Optional structured proposal the UI can preview→confirm onto Intervals.
@@ -134,6 +152,39 @@ def _athlete_query_blob(athlete: dict[str, Any], extra: str = "") -> str:
     return " ".join(p for p in parts if p)
 
 
+def session_thread_memory(
+    history: list[dict[str, Any]] | None,
+    *,
+    max_lines: int = 8,
+) -> str:
+    """Compact in-session agreements / decisions from recent turns (multi-turn memory)."""
+    lines: list[str] = []
+    for msg in reversed(list(history or [])[-20:]):
+        role = (msg.get("role") or "").strip()
+        text = (msg.get("content") or "").strip()
+        if not text or role not in ("user", "assistant"):
+            continue
+        low = text.lower()
+        if not re.search(
+            r"\bavtal(?:t|er|e)\b|\bvi\s+tar\b|\bok[,]?\s+da\b|"
+            r"sessions_per_week|økter/uke|måldato|ikke\s+rør|"
+            r"don'?t\s+touch|plan\s*b|ukerisiko|ftp\s*\d+",
+            low,
+        ):
+            continue
+        who = "Utøver" if role == "user" else "Trener"
+        compact = strip_workout_json_from_prose(text).replace("\n", " ")
+        compact = re.sub(r"\s+", " ", compact).strip()[:220]
+        if compact:
+            lines.append(f"- {who}: {compact}")
+        if len(lines) >= max_lines:
+            break
+    if not lines:
+        return "(ingen ekstra tråd-avtaler i denne chatten ennå)"
+    lines.reverse()  # chronological
+    return "\n".join(lines)
+
+
 def build_system_prompt(
     athlete: dict[str, Any],
     knowledge_dir,
@@ -143,14 +194,19 @@ def build_system_prompt(
     query_text: str = "",
     focused_session: dict[str, Any] | None = None,
     user_message: str = "",
+    history: list[dict[str, Any]] | None = None,
 ) -> str:
     """Single coach system prompt for main chat and Økter detail chat.
 
     Session focus only extends knowledge retrieval + a few regler bullets —
     no separate prompt builder. Honest voice via HONEST_COACH_VOICE.
     """
-    personality = athlete.get("coach_personality") or "direkte"
-    hint = PERSONALITY_HINTS.get(personality, PERSONALITY_HINTS["direkte"])
+    personality = (athlete.get("coach_personality") or "direkte").strip().lower()
+    # Prefer OPV lean for default/direkte — closer to agent-modus.
+    if personality in ("direkte", "opv", ""):
+        hint = PERSONALITY_HINTS["opv"]
+    else:
+        hint = PERSONALITY_HINTS.get(personality, PERSONALITY_HINTS["opv"])
     coach = athlete.get("coach_display_name") or "Trener"
     name = athlete.get("display_name") or "utøveren"
     # Never Path(".") — that can pick up another athlete's on-disk profile by accident.
@@ -178,100 +234,34 @@ def build_system_prompt(
     sess_line = f"{sess} økter/uke" if sess else "(ikke avtalt)"
     agreements = athlete.get("agreements") or []
     agr_line = "; ".join(str(a) for a in agreements[:12]) if agreements else "(ingen)"
+    thread_mem = session_thread_memory(history)
     if focused:
         focused_bullets = (
-            "- focused_session finnes i snapshotet: utøveren er i økt-detaljvisning. "
-            "Svar konkret om DEN økten (beskrivelse/steg/struktur). Ikke bytt tema uten at de ber om det. Samme ærlige stemme.\n"
-            "- Bruk knowledge for sporten/økttypen (intervaller, soner, Plan B). "
-            "Ved workout_proposal: konkrete Warmup / Main / Cooldown-steg; behold dato med mindre de ber om å flytte.\n"
-            "- Hvis de ber om hardere/lengre økt som bryter knowledge eller skaderegler: si nei, kort hvorfor, bedre alternativ.\n"
+            "- focused_session i snapshot: utøveren er i økt-detalj. Svar om DEN økten. "
+            "Ved eksplisitt endring: workout_proposal med Warmup/Main/Cooldown + Plan B.\n"
+            "- Hardere/lengre enn knowledge/skade tillater → nei + bedre alternativ.\n"
         )
     else:
         focused_bullets = (
-            "- Hvis feltet focused_session finnes i snapshotet: utøveren er i økt-detaljvisning. "
-            "Svar konkret om DEN økten (beskrivelse/steg). Ikke bytt tema uten at de ber om det.\n"
+            "- Hvis focused_session finnes: hold fokus på den økten til utøveren bytter tema.\n"
         )
 
     return f"""Du er {coach}, personlig utholdenhetstrener for {name}.
 Språk: norsk. Tone: {hint}
 {HONEST_COACH_VOICE}
-Stil-notat fra utøveren: {athlete.get("coach_style_note") or "(ingen)"}
-Nåværende hovedprofil / utøvertype: {atype}
-Avtalt frekvens: {sess_line}
-Avtaler: {agr_line}
-(Typen og avtaler er muterbare — etter ærlig forhandling, foreslå oppdatering og la utøveren bekrefte.)
+Stil-notat: {athlete.get("coach_style_note") or "(ingen)"}
+Profiltype: {atype} | Frekvens: {sess_line} | Avtaler: {agr_line}
+Tråd-minne (denne chatten — husk og bygg videre, ikke spør om igjen):
+{thread_mem}
 
-Regler:
-- Én klar anbefaling; ikke generisk motivasjonsprat.
-- Svar med fakta → observasjon → anbefaling når du vurderer belastning/uke.
-- Vurder målrealisme (erfaring × form × økter/uke × tid til race × tidmål) før du lover race/PB — se knowledge maalrealisme; foreslå alternativ ved urealistisk mål.
-- Pushback når forespørsel er urealistisk (2019-volum, for hard kvalitet, manglende Plan B, skadesignaler): si nei og gi smartere alternativ.
-- Ros kontinuitet og smarte valg — ikke hero-TSS.
-- Ikke still medisinsk diagnose. Ved smerte/GI: tilpass råd og anbefal fagperson ved behov.
-- Ikke anta Williams historikk med mindre det står i profilen.
-- Ikke anta Lofoten Half Extreme / triatlon 2027 / 750t med mindre utøveren (eller seeded william-profil) har det som mål.
-- Ernæring/IBS: les GI-feltene i profilen; bruk knowledge/ernaring; aldri diagnostiser.
-- Intervals-aktiviteter er fasit for *gjennomført*; app ``planned_sessions`` er fasit for *planlagt*.
-  Synk nærvindu til Intervals etter bekreftelse — ikke anta at ICU er oppdatert før Sync.
-- Feltet ``app_plan`` i snapshotet er sannhetskilde for lagret plan (antall økter, frekvens, disipliner, sample).
-  Når ``app_plan.has_plan`` er true: du HAR laget/kjenner planen — ikke si «jeg har ikke spesifisert økttyper»
-  og ikke start ny intervjuerunde om hvilke økter som skal med.
-- Når utøveren ber om å legge inn / synke / pushe *planen* (eller «resten») til Intervals:
-  1) Bruk eksisterende planned_sessions — ikke bygg ny ukeplan og ikke spør om økttyper.
-  2) Forklar ærlig: app beholder full horisont; Intervals får kun nærvindu (icu_sync_weeks).
-  3) Hvis Intervals ikke er koblet: si det rett ut + Du → Intervals — fortsatt ingen ny plan.
-  4) Appen emitter Sync-forhåndsvisning (intervals_pending) — du synker ikke selv.
-  5) ALDRI emit workout_proposal / plan_update / JSON-økter for sync-forespørsler.
-     Prosa + fenced workouts er IKKE «det er i Intervals». Kun preview→confirm synker.
-  6) ALDRI påstå at noe er synket/pushet til Intervals før utøveren har trykket Ja, sync.
-- Chat og Plan-bygger deler samme modell: workout_proposal / plan_update → preview → confirm →
-  lagre planned_sessions (+ plan_blocks). Ikke lag en parallell prosa-plan som ikke kan bekreftes.
-- ALDRI si at økter er lagret/synket/«i Intervals» / «oppdatert» før utøveren har bekreftet kortet.
-  ALDRI be dem redigere Intervals manuelt når Sync-API finnes — fail closed med ærlig feil i stedet.
-- «kan du lage en økt…» / juster fre–lør/helg = WRITE: fence + kort er obligatorisk, ikke bare struktur i prosa.
-- Hvis overblikk mangler ICU-data: si ærlig at *gjennomført* belastning krever Intervals-kobling;
-  planlagte økter kan likevel finnes i sessions.planlagt / upcoming fra app-planen.
-- «Hva har jeg denne uka?» / kommende økter: bruk sessions.planlagt / today / upcoming. Ikke finn opp økter.
-- «Hva har jeg gjort?» / volum / compliance: bruk KUN sessions.gjennomfort (ICU-aktiviteter).
-  NOTE og planlagt WORKOUT uten aktivitet er IKKE gjennomført trening. Si det rett ut.
-- Respekter allowed_disciplines + sessions_per_week + skadenotat. Foreslå ikke svøm/sykkel/tri-uke
-  når avtalen er løp+styrke. Ved brudd: nekt eller spør om å endre avtalen (agreements_update) — ikke synce stille.
-- wellness_signals (søvn/HRV/RHR/load) er signaler, ikke fasit — bruk dem til *forslag*
-  om å lette/flytte økter, aldri til stille omskrivning av hele planen.
-{focused_bullets}- Når utøveren ber om å legge inn / endre / planlegge en konkret økt (app-plan eller Intervals):
-  1) Skriv kort råd på norsk — forankret i knowledge; avvis usikre endringer.
-  2) Avslutt ALLTID med ÉN fenced code block merket workout_proposal (ikke vanlig json), med:
-     {{"workouts":[{{"name":"...","date":"YYYY-MM-DD","sport":"bike|run|swim|strength|other","duration_minutes":60,"description":"...","start_time":"07:00"}}]}}
-  3) Uten denne fencen lagres INGENTING. Prosa alene (selv med dato/varighet) er ikke nok.
-  4) Du synker IKKE selv — utøveren bekrefter i appen (forhåndsvis → lagre i plan → Sync Intervals).
-  5) Bruk workout_proposal KUN når de eksplisitt ber om økt/kalenderendring; ikke for vanlig råd.
-  6) Ved endring av focused_session: behold dato med mindre de ber om å flytte; oppdater description med konkrete steg.
-  7) Kun sports innenfor allowed_disciplines; hold deg innenfor sessions_per_week.
-- Når utøveren ber om å FJERNE coach-planlagte økter fra Intervals:
-  1) Kort råd.
-  2) Fenced block merket workout_removal:
-     {{"external_ids":["ll-coach-w-…"],"dates":["YYYY-MM-DD"],"names":["…"]}}
-  3) Kun coach-ids (ll-coach- / ll-coach-w-). Ingen stille sletting.
-- Når mål/fokus tydelig skifter (f.eks. generell → halvmaraton-løper):
-  1) Forklar kort.
-  2) Fenced block merket athlete_type_update:
-     {{"athlete_type":"half_marathon_runner","reason":"…"}}
-  3) Utøveren må bekrefte før typen lagres og plan følger ny type.
-- Når ærlig forhandling endrer avtaler (økter/uke, måldato, måltekst, disipliner):
-  1) Oppsummer avtalen klart.
-  2) Fenced block merket agreements_update:
-     {{"sessions_per_week":4,"goal_race_date":"YYYY-MM-DD","goal_text":"…","allowed_disciplines":["run","strength"],"agreements":["4 økter/uke","…"],"reason":"…"}}
-  3) Kun felt som faktisk er avtalt; null/utelat resten. Utøveren bekrefter før lagring.
-- Når utøveren ber om å justere / bygge om grovplanen (eller etter agreements_update som krever ny periodisering):
-  1) Kort råd — ta hensyn til wellness_signals hvis tilgjengelig (forslag, ikke fasit).
-  2) Fenced block merket plan_update:
-     {{"reason":"…","rebuild":true,"ease_load":false,"scope":"full","note":"…"}}
-  3) rebuild=true + scope=full (default) → forhåndsvisning av meso + økter til måldato.
-  4) Når utøveren ber om å lette / bygge om *kun denne uka*:
-     {{"reason":"…","rebuild":true,"ease_load":true,"scope":"week","week_start":"this_week"}}
-     → appen erstatter kun én uke i planned_sessions (resten beholdes).
-  5) Utøveren bekrefter → lagre lokalt → Sync til Intervals (kun nærvindu). Ingen autonom omskrivning.
-- Du kan foreslå planblokker/makro i tekst; konkrete planendringer går via plan_update (ikke bare råd).
+Kjerne:
+- Én anbefaling. Målrealisme før PB-løfter. Pushback på 2019-volum / for hard kvalitet / skadesignaler.
+- Anta ikke Williams historikk / Lofoten 2027 / 750t med mindre profilen eller seeded data har det.
+- app_plan i snapshot = lagret plan. Når has_plan: ikke late som du «ikke har spesifisert økter».
+- «Hva har jeg denne uka?» → sessions.planlagt/today/upcoming. «Hva har jeg gjort?» → kun gjennomført (ICU).
+- Respekter allowed_disciplines + sessions_per_week + skadenotat.
+{focused_bullets}
+{_WRITE_PROTOCOL_NB}
 
 ## Profil
 {profile_md}
@@ -1212,6 +1202,71 @@ def write_intent_kind(message: str) -> str | None:
     return None
 
 
+_AGREEMENT_ACCEPT_RE = re.compile(
+    r"(?:"
+    r"ok[,]?\s*da\s+tar\s+vi|"
+    r"da\s+tar\s+vi|"
+    r"vi\s+avtaler|"
+    r"avtalt|"
+    r"enig|"
+    r"ja[,]?\s+(?:til\s+)?(?:\d+\s+økter|fire|tre|to|fem)|"
+    r"(?:endre|oppdater)\s+avtal|"
+    r"sessions_per_week|"
+    r"\d+\s+økter\s*/?\s*uke"
+    r")",
+    re.IGNORECASE,
+)
+
+_PLAN_ROLL_CONTEXT_RE = re.compile(
+    r"(?:"
+    r"rull|neste\s+måned|detaljplan|forleng|"
+    r"plan(?:en|a)?\s+(?:er\s+)?(?:slutt|tom|ferdig)|"
+    r"hva\s+nå\s+med\s+planen|bygg\s+videre"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def user_accepts_agreement_change(message: str) -> bool:
+    """True when athlete is confirming a negotiated agreement (keep agreements card)."""
+    text = (message or "").strip()
+    if not text:
+        return False
+    return bool(_AGREEMENT_ACCEPT_RE.search(text))
+
+
+def user_message_is_talk_mode(message: str) -> bool:
+    """True when this turn should stay prose-only (no unsolicited write cards)."""
+    text = (message or "").strip()
+    if not text:
+        return True
+    if write_intent_kind(text):
+        return False
+    if user_accepts_agreement_change(text):
+        return False
+    if user_requests_dont_touch_calendar(text):
+        return False
+    if user_requests_week_check(text) or user_requests_ukesopp(text):
+        return False
+    if user_requests_intervals_review(text):
+        return False
+    if _PLAN_ROLL_CONTEXT_RE.search(text):
+        return False
+    return True
+
+
+def should_offer_soft_plan_roll(message: str, *, explicit: bool = False) -> bool:
+    """Soft roll cards only on explicit ask or clear plan-roll context — not every chat turn."""
+    if explicit:
+        return True
+    text = (message or "").strip()
+    if not text:
+        return False
+    if user_message_is_talk_mode(text) and not _PLAN_ROLL_CONTEXT_RE.search(text):
+        return False
+    return bool(_PLAN_ROLL_CONTEXT_RE.search(text) or user_requests_plan_adjust(text))
+
+
 def reopen_pending_write_reply(
     recent_messages: list[dict[str, Any]] | None,
     *,
@@ -1959,6 +2014,20 @@ def extract_plan_update(reply: str) -> tuple[str, dict[str, Any] | None]:
         prop["week_start"] = str(week_start or "this_week")[:10]
     return display.strip() or prop["message"], prop
 
+def resolve_openai_model(model: str | None = None) -> str:
+    """Normalize OPENAI_MODEL; default gpt-4o for coach smoothness."""
+    raw = (model or "").strip() or "gpt-4o"
+    # Common aliases / typos
+    aliases = {
+        "gpt4o": "gpt-4o",
+        "gpt-4o-latest": "gpt-4o",
+        "4o": "gpt-4o",
+        "mini": "gpt-4o-mini",
+        "gpt4o-mini": "gpt-4o-mini",
+    }
+    return aliases.get(raw.lower(), raw)
+
+
 def call_llm(
     *,
     api_key: str,
@@ -1967,7 +2036,11 @@ def call_llm(
     history: list[dict[str, str]],
     user_message: str,
 ) -> str:
-    """One OpenAI chat completion. Fallback stub if no API key."""
+    """One OpenAI chat completion. Fallback stub if no API key.
+
+    Cursor Composer is not available via API from this app — use OPENAI_MODEL
+    (default gpt-4o) for quality closer to agent-modus coaching.
+    """
     if not api_key:
         return (
             f"(Utviklingsmodus — mangler OPENAI_API_KEY.) "
@@ -1980,6 +2053,7 @@ def call_llm(
     except ImportError:
         return "openai-pakken mangler. pip install openai"
 
+    use_model = resolve_openai_model(model)
     client = OpenAI(api_key=api_key)
     messages: list[dict[str, str]] = [{"role": "system", "content": system}]
     for m in history:
@@ -1987,10 +2061,11 @@ def call_llm(
             messages.append({"role": m["role"], "content": m["content"]})
     messages.append({"role": "user", "content": user_message})
 
+    # Slightly warmer + longer than mini defaults — OPV prescriptions need room.
     resp = client.chat.completions.create(
-        model=model,
+        model=use_model,
         messages=messages,
-        temperature=0.6,
-        max_tokens=900,
+        temperature=0.7,
+        max_tokens=1600,
     )
     return (resp.choices[0].message.content or "").strip()

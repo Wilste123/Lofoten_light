@@ -49,10 +49,14 @@ from chat_service import (
     plan_summary_for_chat,
     reconcile_workout_sports,
     reopen_pending_write_reply,
+    resolve_openai_model,
     sanitize_unconfirmed_write_claims,
+    should_offer_soft_plan_roll,
     strip_workout_json_from_prose,
+    user_accepts_agreement_change,
     user_confirms_intervals_plan_sync,
     user_confirms_pending_write,
+    user_message_is_talk_mode,
     user_requests_confirm_and_push,
     user_requests_dont_touch_calendar,
     user_requests_intervals_plan_sync,
@@ -870,7 +874,7 @@ def setup_plan_preview(body: SetupDraftIn) -> dict[str, Any]:
             draft,
             knowledge_dir=config.KNOWLEDGE_DIR,
             api_key=config.OPENAI_API_KEY or "",
-            model=config.OPENAI_MODEL or "gpt-4o-mini",
+            model=resolve_openai_model(config.OPENAI_MODEL),
             enrich=bool(body.enrich_with_llm),
         )
     except Exception as exc:
@@ -951,7 +955,7 @@ def setup_chat(body: SetupChatIn) -> dict[str, Any]:
     )
     raw = call_llm(
         api_key=config.OPENAI_API_KEY or "",
-        model=config.OPENAI_MODEL or "gpt-4o-mini",
+        model=resolve_openai_model(config.OPENAI_MODEL),
         system=system,
         history=history,
         user_message=body.message,
@@ -1941,7 +1945,8 @@ def chat(
         athlete = get_athlete(conn, aid)
         if not athlete:
             raise HTTPException(404, "Utøver ikke funnet")
-        history = recent_messages(conn, aid, limit=12)
+        # Longer in-session memory for OPV multi-turn (agreements / decisions).
+        history = recent_messages(conn, aid, limit=24)
         secrets = get_athlete_secrets(conn, aid)
         comps = completions_by_external_id(conn, aid)
         plan_blocks = list_plan_blocks(conn, aid)
@@ -2160,6 +2165,7 @@ def chat(
         query_text=body.message or "",
         focused_session=focused,
         user_message=body.message,
+        history=history,
     )
     knowledge_meta = knowledge_meta_for_chat(
         config.KNOWLEDGE_DIR,
@@ -2167,9 +2173,10 @@ def chat(
         focused_session=focused,
         user_message=body.message,
     )
+    use_model = resolve_openai_model(config.OPENAI_MODEL)
     raw_reply = call_llm(
         api_key=config.OPENAI_API_KEY,
-        model=config.OPENAI_MODEL,
+        model=use_model,
         system=system,
         history=[{"role": m["role"], "content": m["content"]} for m in history],
         user_message=body.message,
@@ -2179,8 +2186,17 @@ def chat(
     reply_ty, type_prop = extract_type_update_proposal(raw_reply)
     reply_ag, agr_prop = extract_agreements_update(raw_reply)
     reply_pl, plan_prop = extract_plan_update(raw_reply)
+    talk_mode = user_message_is_talk_mode(body.message)
+    # Talk/sparring: no write fences/cards (keep agreements when athlete accepts).
+    if talk_mode:
+        proposal = None
+        removal = None
+        plan_prop = None
+        if not user_accepts_agreement_change(body.message):
+            agr_prop = None
+            type_prop = None
     # LLM often forgets fences — recover when athlete clearly asked for action
-    if not proposal:
+    if not talk_mode and not proposal:
         proposal = infer_workout_proposal_fallback(
             body.message, raw_reply, today=date.today()
         )
@@ -2188,7 +2204,7 @@ def chat(
             reply_wp = (reply_wp or raw_reply or "").strip()
     if proposal:
         proposal = reconcile_workout_sports(proposal, body.message)
-    if not plan_prop:
+    if not talk_mode and not plan_prop:
         plan_prop = infer_plan_update_fallback(body.message)
         if plan_prop:
             reply_pl = (reply_pl or raw_reply or "").strip()
@@ -2212,7 +2228,10 @@ def chat(
         "sessions_source": sessions_snap.get("source"),
         "knowledge": knowledge_meta,
         "app_plan": overview.get("app_plan"),
+        "llm_model": use_model,
     }
+    if talk_mode:
+        out["talk_mode"] = True
     if focused:
         out["focused_session_id"] = focused.get("id")
         out["focused_session"] = {
@@ -2518,6 +2537,7 @@ def chat(
             out.get("reply") or "", has_confirm_card=has_card
         )
     # Soft roll-forward offer (≤14d left / block elapsed) — never silent apply.
+    # Skip during talk/sparring so casual chat isn't interrupted by plan-roll cards.
     has_card = bool(
         (out.get("workout_proposal") or {}).get("workouts")
         or out.get("plan_proposal")
@@ -2527,7 +2547,11 @@ def chat(
         or out.get("athlete_type_proposal")
         or out.get("intervals_pending")
     )
-    if not has_card and plan_blocks:
+    if (
+        not has_card
+        and plan_blocks
+        and should_offer_soft_plan_roll(body.message, explicit=False)
+    ):
         roll_out = _maybe_attach_plan_roll(
             aid=aid,
             athlete=athlete,
@@ -5436,7 +5460,7 @@ def plan_adjust_preview(
         draft,
         knowledge_dir=config.KNOWLEDGE_DIR,
         api_key=config.OPENAI_API_KEY or "" if body.enrich_with_llm else "",
-        model=config.OPENAI_MODEL or "gpt-4o-mini",
+        model=resolve_openai_model(config.OPENAI_MODEL),
         enrich=bool(body.enrich_with_llm),
     )
     # Persisted Du fields win over any LLM/rebuild noise in athlete_patch

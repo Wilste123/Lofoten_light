@@ -15,7 +15,7 @@ Health: `GET http://127.0.0.1:8000/health`
 
 | Hemmelighet | Hvor | Bruk |
 |-------------|------|------|
-| `OPENAI_API_KEY` / `OPENAI_MODEL` | `services/coach-api/.env` (kopier fra `.env.example`) | Chat / LLM — server-wide |
+| `OPENAI_API_KEY` / `OPENAI_MODEL` | `services/coach-api/.env` (kopier fra `.env.example`) | Chat / LLM — default **`gpt-4o`** (bedre coach-chat; dyrere enn mini). Sett `OPENAI_MODEL=gpt-4o-mini` for billigere, eller `gpt-4.1`. Cursor Composer finnes ikke som API her — bruk Fly-secret. |
 | Intervals athlete ID + API-nøkkel | App **Du**-fane → `PUT /v1/athlete/me/intervals` → SQLite `athlete_secrets` | Per utøver; aldri i git / `localStorage` |
 | `INTERVALS_API` (CLI) | Repo-root `.env` for `scripts/intervals_*.py` | Kun lokale scripts — ikke coach-web |
 

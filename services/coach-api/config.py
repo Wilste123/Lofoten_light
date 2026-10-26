@@ -64,7 +64,10 @@ KNOWLEDGE_DIR = Path(
     os.environ.get("KNOWLEDGE_DIR", str(REPO_ROOT / "knowledge"))
 )
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+# Default gpt-4o for natural OPV-style coaching (costlier than mini).
+# Override with OPENAI_MODEL=gpt-4o-mini / gpt-4.1 / etc. Cursor Composer
+# is not callable from this app — use OpenAI (or set model via Fly secret).
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o").strip() or "gpt-4o"
 CORS_ORIGINS = [
     o.strip()
     for o in os.environ.get(

@@ -34,6 +34,7 @@ from athlete_type import (
 )
 from athlete_constraints import ICU_SYNC_WEEKS, validate_workouts_against_constraints
 from chat_service import (
+    apply_workout_defaults,
     build_system_prompt,
     call_llm,
     confirm_write_success_reply_nb,
@@ -2233,7 +2234,7 @@ def chat(
     reply_ty, type_prop = extract_type_update_proposal(raw_reply)
     reply_ag, agr_prop = extract_agreements_update(raw_reply)
     reply_pl, plan_prop = extract_plan_update(raw_reply)
-    talk_mode = user_message_is_talk_mode(body.message)
+    talk_mode = user_message_is_talk_mode(body.message, history)
     # Talk/sparring: no write fences/cards (keep agreements when athlete accepts).
     if talk_mode:
         proposal = None
@@ -2245,11 +2246,20 @@ def chat(
     # LLM often forgets fences — recover when athlete clearly asked for action
     if not talk_mode and not proposal:
         proposal = infer_workout_proposal_fallback(
-            body.message, raw_reply, today=date.today()
+            body.message,
+            raw_reply,
+            today=date.today(),
+            history=history,
         )
         if proposal:
             reply_wp = (reply_wp or raw_reply or "").strip()
     if proposal:
+        proposal = apply_workout_defaults(
+            proposal,
+            user_message=body.message,
+            reply=raw_reply or "",
+            today=date.today(),
+        )
         proposal = reconcile_workout_sports(proposal, body.message)
     if not talk_mode and not plan_prop:
         plan_prop = infer_plan_update_fallback(body.message)
@@ -2305,6 +2315,18 @@ def chat(
             )
             if proposal.get("inferred"):
                 out["proposal_inferred"] = True
+            if proposal.get("defaults_applied"):
+                out["proposal_defaults_applied"] = True
+            # Drop blog closers when we have a confirmable card
+            reply_clean = re.sub(
+                r"(?i)\blykke\s+til[!.,]?",
+                "",
+                out.get("reply") or reply or "",
+            )
+            reply_clean = re.sub(r"\n{3,}", "\n\n", reply_clean).strip()
+            if reply_clean:
+                out["reply"] = reply_clean
+                reply = reply_clean
         elif gate["accepted"]:
             # Partial accept — only allowed sports/slots
             out["workout_proposal"] = {"workouts": gate["accepted"]}
@@ -2490,14 +2512,23 @@ def chat(
         or out.get("athlete_type_proposal")
         or out.get("intervals_pending")
     )
-    write_kind = write_intent_kind(body.message)
+    write_kind = write_intent_kind(body.message, history)
     if write_kind in ("session", "plan") and not has_card:
         # Intent was a write but LLM returned prose only — last-chance fallback
         if write_kind == "session" and not proposal:
             proposal = infer_workout_proposal_fallback(
-                body.message, raw_reply, today=date.today()
+                body.message,
+                raw_reply,
+                today=date.today(),
+                history=history,
             )
             if proposal:
+                proposal = apply_workout_defaults(
+                    proposal,
+                    user_message=body.message,
+                    reply=raw_reply or "",
+                    today=date.today(),
+                )
                 proposal = reconcile_workout_sports(proposal, body.message)
                 with db_session(config.get_db()) as conn:
                     planned_n = _count_planned_this_week_db(conn, aid)
@@ -2512,13 +2543,41 @@ def chat(
                         if gate["ok"]
                         else gate["accepted"]
                     )
-                    out["workout_proposal"] = {"workouts": accepted, "inferred": True}
+                    out["workout_proposal"] = {
+                        "workouts": accepted,
+                        "inferred": True,
+                        **(
+                            {"defaults_applied": True}
+                            if proposal.get("defaults_applied")
+                            else {}
+                        ),
+                    }
                     out["confirm_required"] = True
                     out["proposal_inferred"] = True
+                    defaults_note = ""
+                    if proposal.get("defaults_applied"):
+                        defaults_note = (
+                            " (dato/varighet satt til fornuftig default — "
+                            "endre i kortet om du vil)."
+                        )
                     out["proposal_hint"] = (
                         "Treneren foreslo økt(er). "
                         "Trykk Forhåndsvis → bekreft for å lagre i planen."
+                        + defaults_note
                     )
+                    # Prefer card over interview nudge in reply
+                    if proposal.get("defaults_applied"):
+                        w0 = (accepted or [{}])[0]
+                        out["reply"] = (
+                            (out.get("reply") or "").rstrip()
+                            + "\n\n"
+                            + (
+                                f"Default: {w0.get('date')} · "
+                                f"{w0.get('duration_minutes')} min · "
+                                f"{w0.get('sport')}. "
+                                "Forhåndsvis under — juster i kortet ved behov."
+                            )
+                        )
                     has_card = True
                 elif gate.get("cap_hit"):
                     _attach_cap_replace_offer(
@@ -2571,12 +2630,18 @@ def chat(
                 out.get("reply") or "", has_confirm_card=False
             )
             if write_kind == "session":
+                # Last resort: still propose tomorrow + 60 min instead of interview.
+                from datetime import timedelta as _td
+
+                tomorrow = (date.today() + _td(days=1)).isoformat()
                 out["reply"] = (
                     (out.get("reply") or "").rstrip()
                     + "\n\n"
-                    + "Jeg trenger en bekreftbar økt (dato + varighet). "
-                    "Si f.eks. «legg inn rolig løp i morgen 40 min» — "
-                    "da får du forhåndsvisningskort. Ingenting er lagret ennå."
+                    + (
+                        f"Foreslår default i morgen ({tomorrow}) · 60 min. "
+                        "Si sport (løp/sykkel/svøm) eller «legg inn VO2 i morgen 60 min» "
+                        "så får du forhåndsvisningskort. Ingenting er lagret ennå."
+                    )
                 )
             out["write_blocked_no_card"] = True
     else:
@@ -2597,7 +2662,9 @@ def chat(
     if (
         not has_card
         and plan_blocks
-        and should_offer_soft_plan_roll(body.message, explicit=False)
+        and should_offer_soft_plan_roll(
+            body.message, explicit=False, history=history
+        )
     ):
         roll_out = _maybe_attach_plan_roll(
             aid=aid,

@@ -66,6 +66,7 @@ from chat_service import (
     user_requests_coach_report,
     user_requests_tp_export,
     user_requests_compliance_gap,
+    user_requests_session_analysis,
     ukesopp_prompt_payload,
     ukesopp_reply_nb,
     week_check_summary_nb,
@@ -2046,6 +2047,16 @@ def chat(
             overview=overview,
             intervals_ok=intervals_ok,
         )
+    # Øktanalyse — single completed ICU activity (streams + OPV feedback).
+    if user_requests_session_analysis(body.message):
+        return _chat_session_analysis(
+            aid=aid,
+            athlete=athlete,
+            secrets=secrets,
+            sessions_bundle=sessions_bundle,
+            overview=overview,
+            intervals_ok=intervals_ok,
+        )
     # Sunday coach-rapport (TB markdown ritual) — before ukesopp.
     if user_requests_coach_report(body.message):
         return _chat_coach_report(
@@ -2965,6 +2976,52 @@ def _chat_week_check(
         "written_to_intervals": False,
         "app_plan": overview.get("app_plan"),
         "sessions_in_context": True,
+    }
+
+
+def _chat_session_analysis(
+    *,
+    aid: str,
+    athlete: dict[str, Any],
+    secrets: dict[str, Any] | None,
+    sessions_bundle: dict[str, Any],
+    overview: dict[str, Any],
+    intervals_ok: bool,
+    session_id: str | None = None,
+) -> dict[str, Any]:
+    """Analyse latest (or named) completed ICU activity — read-only."""
+    from session_analysis import analyze_session_for_athlete, session_analysis_reply_nb
+
+    name = athlete.get("display_name") or "deg"
+    ftp = None
+    lthr = None
+    try:
+        ftp = float(athlete.get("ftp") or athlete.get("ftp_estimated") or 0) or None
+    except (TypeError, ValueError):
+        ftp = None
+    try:
+        lthr = float(athlete.get("lthr") or athlete.get("threshold_hr") or 0) or None
+    except (TypeError, ValueError):
+        lthr = None
+    analysis = analyze_session_for_athlete(
+        secrets,
+        session_id=session_id,
+        bundle=sessions_bundle,
+        ftp=ftp,
+        lthr=lthr,
+    )
+    reply = session_analysis_reply_nb(name=name, analysis=analysis)
+    with db_session(config.get_db()) as conn:
+        add_message(conn, aid, "user", "analyser dagens økt")
+        asst = add_message(conn, aid, "assistant", reply)
+    return {
+        "reply": reply,
+        "message": asst,
+        "session_analysis": analysis,
+        "confirm_required": False,
+        "written_to_intervals": False,
+        "app_plan": overview.get("app_plan"),
+        "intervals_linked": intervals_ok,
     }
 
 
@@ -4401,6 +4458,30 @@ def dashboard(
     except Exception:  # noqa: BLE001
         readiness_strip = None
         week_compliance = None
+    # TB trend series for Dashboard SVG (regenerated server-side, no PNG in git)
+    readiness_charts: dict[str, Any] | None = None
+    try:
+        from readiness_charts import (
+            components_bar_payload,
+            fetch_readiness_charts,
+        )
+
+        activity_for_charts = []
+        if sess_bundle:
+            activity_for_charts = list(sess_bundle.get("completed") or []) + list(
+                sess_bundle.get("recent") or []
+            )
+        charts = fetch_readiness_charts(
+            secrets,
+            activity_sessions=activity_for_charts,
+            days=14,
+        )
+        readiness_charts = {
+            **charts,
+            "components_chart": components_bar_payload(charts.get("components")),
+        }
+    except Exception:  # noqa: BLE001
+        readiness_charts = None
     # Back-compat: hours/load mirror period training (no season targets mixed in)
     hours = {
         "disciplines": [
@@ -4450,6 +4531,7 @@ def dashboard(
         "session_compliance_4w": session_compliance_4w,
         "week_compliance": week_compliance,
         "readiness": readiness_strip,
+        "readiness_charts": readiness_charts,
         "periodization": overview_data.get("periodization"),
         "form": {
             "ftp_tested": overview_data.get("ftp_tested"),
@@ -4660,6 +4742,122 @@ def get_session_detail(
         }
     detail = session_detail_payload(payload, found)
     return detail
+
+
+@app.get("/v1/sessions/{session_id}/analysis")
+def get_session_analysis(
+    session_id: str,
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Øktanalyse for one completed ICU activity — streams, intervals, OPV feedback.
+
+    Read-only. Soft empty when Intervals missing or session is not an activity.
+    """
+    from session_analysis import analyze_session_for_athlete
+
+    aid = _require_athlete(x_athlete_id)
+    with db_session(config.get_db()) as conn:
+        athlete = get_athlete(conn, aid)
+        if not athlete:
+            raise HTTPException(404, "Utøver ikke funnet")
+        secrets = get_athlete_secrets(conn, aid)
+        comps = completions_by_external_id(conn, aid)
+        payload = _sessions_bundle_for_athlete(
+            conn, aid, secrets=secrets, comps=comps
+        )
+    ftp = None
+    lthr = None
+    try:
+        ftp = float(athlete.get("ftp") or athlete.get("ftp_estimated") or 0) or None
+    except (TypeError, ValueError):
+        ftp = None
+    try:
+        lthr = float(athlete.get("lthr") or athlete.get("threshold_hr") or 0) or None
+    except (TypeError, ValueError):
+        lthr = None
+    return analyze_session_for_athlete(
+        secrets,
+        session_id=session_id,
+        bundle=payload,
+        ftp=ftp,
+        lthr=lthr,
+    )
+
+
+@app.get("/v1/analysis/latest")
+def get_latest_session_analysis(
+    x_athlete_id: str | None = Header(default=None),
+    date_pref: str | None = Query(
+        default=None,
+        description="Prefer activities on this ISO date (default: today)",
+    ),
+) -> dict[str, Any]:
+    """Analyse latest completed ICU activity (today preferred). Read-only."""
+    from session_analysis import (
+        analyze_session_for_athlete,
+        pick_latest_activity_session,
+    )
+
+    aid = _require_athlete(x_athlete_id)
+    with db_session(config.get_db()) as conn:
+        athlete = get_athlete(conn, aid)
+        if not athlete:
+            raise HTTPException(404, "Utøver ikke funnet")
+        secrets = get_athlete_secrets(conn, aid)
+        comps = completions_by_external_id(conn, aid)
+        payload = _sessions_bundle_for_athlete(
+            conn, aid, secrets=secrets, comps=comps
+        )
+    prefer = date_pref or date.today().isoformat()
+    sess = pick_latest_activity_session(payload, prefer_date=prefer)
+    ftp = None
+    lthr = None
+    try:
+        ftp = float(athlete.get("ftp") or athlete.get("ftp_estimated") or 0) or None
+    except (TypeError, ValueError):
+        ftp = None
+    try:
+        lthr = float(athlete.get("lthr") or athlete.get("threshold_hr") or 0) or None
+    except (TypeError, ValueError):
+        lthr = None
+    return analyze_session_for_athlete(
+        secrets,
+        session=sess,
+        bundle=payload,
+        ftp=ftp,
+        lthr=lthr,
+    )
+
+
+@app.get("/v1/readiness/charts")
+def get_readiness_charts(
+    x_athlete_id: str | None = Header(default=None),
+    days: int = Query(default=14, ge=3, le=28),
+) -> dict[str, Any]:
+    """TB-Score trend + components for Dashboard SVG — regenerated each request."""
+    from readiness_charts import components_bar_payload, fetch_readiness_charts
+
+    aid = _require_athlete(x_athlete_id)
+    with db_session(config.get_db()) as conn:
+        if not get_athlete(conn, aid):
+            raise HTTPException(404, "Utøver ikke funnet")
+        secrets = get_athlete_secrets(conn, aid)
+        comps = completions_by_external_id(conn, aid)
+    activity_sessions: list[dict[str, Any]] = []
+    try:
+        bundle = list_sessions(secrets, comps, past_days=28, future_days=0)
+        activity_sessions = list(bundle.get("completed") or []) + list(
+            bundle.get("recent") or []
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    charts = fetch_readiness_charts(
+        secrets,
+        activity_sessions=activity_sessions,
+        days=days,
+    )
+    charts["components_chart"] = components_bar_payload(charts.get("components"))
+    return charts
 
 
 @app.post("/v1/sessions/{session_id}/edit/preview")

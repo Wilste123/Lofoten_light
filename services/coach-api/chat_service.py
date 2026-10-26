@@ -627,6 +627,19 @@ _COMPLIANCE_GAP_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Øktanalyse — one completed session (not whole week)
+_SESSION_ANALYSIS_RE = re.compile(
+    r"(?:"
+    r"analyser?\s+(?:dagens\s+)?(?:økt|okt|økta|okta|session)|"
+    r"øktanalyse|oktanalyse|"
+    r"analyser?\s+(?:siste|forrige|denne)\s+(?:økt|okt|økta|session)|"
+    r"gi\s+(?:meg\s+)?(?:økt|okt)[- ]?feedback|"
+    r"session\s+analysis|"
+    r"analyze\s+(?:today'?s?\s+|my\s+)?(?:session|workout|ride|run)"
+    r")",
+    re.IGNORECASE,
+)
+
 # Sync existing app plan → Intervals (not invent a new week).
 _INTERVALS_PLAN_SYNC_INTENT_RE = re.compile(
     r"(?:"
@@ -1050,7 +1063,24 @@ def user_requests_compliance_gap(message: str) -> bool:
         return False
     if user_requests_coach_report(text):
         return False
+    if user_requests_session_analysis(text):
+        return False
     return bool(_COMPLIANCE_GAP_RE.search(text))
+
+
+def user_requests_session_analysis(message: str) -> bool:
+    """True for «analyser dagens økt» / øktanalyse (single session, not week)."""
+    text = (message or "").strip()
+    if not text:
+        return False
+    if user_requests_intervals_plan_sync(text):
+        return False
+    if user_requests_confirm_and_push(text):
+        return False
+    # Prefer full week-check when both could match («analyser uken»)
+    if user_requests_week_check(text):
+        return False
+    return bool(_SESSION_ANALYSIS_RE.search(text))
 
 
 UKESOPP_QUESTIONS_NB = (
@@ -1127,13 +1157,15 @@ def coach_report_reply_nb(
     """Short chat wrapper around Sunday coach-rapport markdown."""
     bits = [
         f"Hei {name} — coach-rapport (samme motor som agent søndagsritual).",
-        "Ingen grafer i web; ingen Intervals-write.",
+        "TB-trend på Dashboard når wellness finnes. Ingen Intervals-write.",
         "",
     ]
     if not available:
         bits.append(note or "TB-Score ikke tilgjengelig — koble Intervals under Du.")
         bits.append("")
-        bits.append("Du kan fortsatt kjøre **ukesopp** eller **sjekk uka mi**.")
+        bits.append(
+            "Du kan fortsatt kjøre **ukesopp**, **sjekk uka mi** eller **analyser dagens økt**."
+        )
         return "\n".join(bits)
     # Keep reply readable in chat; full markdown also in card payload
     body = (markdown or "").strip()
@@ -1231,7 +1263,10 @@ def compliance_gap_reply_nb(
             f"({roll.get('compliance_pct')} %)."
         )
     bits.append("")
-    bits.append("Full analyse: **sjekk uka mi**. Søndag: **coach-rapport** / **ukesopp**.")
+    bits.append(
+        "Full analyse: **sjekk uka mi**. Enkeltøkt: **analyser dagens økt**. "
+        "Søndag: **coach-rapport** / **ukesopp**."
+    )
     return "\n".join(bits)
 
 

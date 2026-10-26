@@ -1752,6 +1752,81 @@ button.linkish:hover {
   font-style: italic;
 }
 
+.chart-line-tb-morgen {
+  stroke: #2563eb;
+  stroke-width: 1.6;
+}
+
+.chart-line-tb-kveld {
+  stroke: #c45c26;
+  stroke-width: 1.6;
+}
+
+.chart-legend-item .swatch.tb-morgen {
+  background: #2563eb;
+}
+
+.chart-legend-item .swatch.tb-kveld {
+  background: #c45c26;
+}
+
+.tb-band-green {
+  fill: #22c55e;
+  opacity: 0.12;
+}
+
+.tb-band-yellow {
+  fill: #eab308;
+  opacity: 0.14;
+}
+
+.chart-h-fill.tb-comp.is-green {
+  background: #16a34a;
+}
+
+.chart-h-fill.tb-comp.is-yellow {
+  background: #ca8a04;
+}
+
+.chart-h-fill.tb-comp.is-red {
+  background: #dc2626;
+}
+
+.chart-h-fill.zone-fill {
+  background: var(--accent, #1a6b4a);
+}
+
+.chart-line-watts {
+  stroke: #1a6b4a;
+  stroke-width: 1.5;
+}
+
+.chart-line-hr {
+  stroke: #c45c4a;
+  stroke-width: 1.4;
+}
+
+.chart-legend-item .swatch.watts {
+  background: #1a6b4a;
+}
+
+.chart-legend-item .swatch.hr {
+  background: #c45c4a;
+}
+
+.chart-hr-axis {
+  fill: #c45c4a;
+}
+
+.tight-head h3 {
+  font-size: 0.95rem;
+  margin: 0.75rem 0 0.35rem;
+}
+
+.session-analysis-card .chart {
+  margin: 0.5rem 0;
+}
+
 .acwr-block {
   margin-top: 0.35rem;
 }

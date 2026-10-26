@@ -3,6 +3,8 @@ data/trainingpeaks/exports/*
 !data/trainingpeaks/exports/.gitkeep
 data/intervals/exports/*
 !data/intervals/exports/.gitkeep
+data/context/*
+!data/context/.gitkeep
 *.env
 docs/trainingpeaks/api-credentials.md
 __pycache__/

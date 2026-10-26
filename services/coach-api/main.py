@@ -3023,7 +3023,13 @@ def _chat_intervals_calendar_review(
     secrets: dict[str, Any] | None,
     overview: dict[str, Any],
 ) -> dict[str, Any]:
-    """Coach-review of merged Intervals+app calendar — never push or pending sync."""
+    """Coach-review of merged Intervals+app calendar — never push or pending sync.
+
+    Pass 2: deep SoT compare (matched / kun app / kun ICU), drift, prescriptions, TB.
+    """
+    from tb_score import fetch_tb_for_athlete, tb_bits_nb
+    from week_analysis import compare_icu_vs_app_nb
+
     week_key = plan_week_target_from_message(body_message)
     start, end = week_bounds(week_key, today=date.today())
     # Wider window when athlete says «måned» / date range absent
@@ -3037,15 +3043,28 @@ def _chat_intervals_calendar_review(
     label = "Neste uke" if week_key == "next_week" else "Denne perioden"
     range_s = f"{start.isoformat()}–{end.isoformat()}"
 
+    planned_app = filter_planned_sessions_date_range(stored_planned, start, end)
+    compare = compare_icu_vs_app_nb(
+        in_range,
+        week_start=start.isoformat(),
+        week_end=end.isoformat(),
+        intervals_linked=intervals_linked,
+        app_only_planned=planned_app,
+    )
+    compare_body = "\n".join(compare.get("reply_lines") or [])
+
+    tb = fetch_tb_for_athlete(secrets, wellness_days=28)
+    tb_lines = tb_bits_nb(tb)
+
     if not intervals_linked:
         reply = (
             f"Intervals er ikke koblet, {name}. "
             "Jeg kan bare se app-planen. Koble under Du for coach-review av ICU-kalender "
-            "(uten at jeg pusher noe)."
+            "(uten at jeg pusher noe).\n\n"
+            f"{compare_body}"
         )
-        if in_range:
-            lines = [_format_session_line(s) for s in in_range[:20]]
-            reply += f"\n\nApp-plan {range_s}:\n" + "\n".join(lines)
+        if tb_lines:
+            reply += "\n\nTB-Score:\n" + "\n".join(f"- {b}" for b in tb_lines[:4])
         with db_session(config.get_db()) as conn:
             add_message(conn, aid, "user", body_message)
             asst = add_message(conn, aid, "assistant", reply)
@@ -3053,6 +3072,10 @@ def _chat_intervals_calendar_review(
             "reply": reply,
             "message": asst,
             "intervals_review": True,
+            "calendar_compare": {
+                "counts": compare.get("counts"),
+                "intervals_linked": False,
+            },
             "app_plan": overview.get("app_plan"),
             "sessions_in_context": True,
         }
@@ -3061,26 +3084,27 @@ def _chat_intervals_calendar_review(
     not_synced_n = sync_counts.get(SYNC_PLANNED_NOT_SYNCED, 0)
     icu_only_n = sync_counts.get(SYNC_INTERVALS_ONLY, 0)
 
-    lines = [_format_session_line(s) for s in in_range[:24]]
-    body_lines = "\n".join(lines) if lines else "Ingen økter i vinduet."
-    notes: list[str] = []
-    if icu_only_n:
-        notes.append(
-            f"{icu_only_n} finnes kun på Intervals (ofte ditt eget utkast) — "
-            "jeg endrer dem ikke uten at du ber om det."
-        )
-    if not_synced_n:
-        notes.append(
-            f"{not_synced_n} er i app-planen men ikke synket — Sync kun hvis du ber om det."
-        )
-    if synced_n:
-        notes.append(f"{synced_n} matcher app ↔ Intervals (ll-coach-w-).")
-    note_block = ("\n" + "\n".join(f"- {n}" for n in notes)) if notes else ""
+    extra_bits: list[str] = []
+    if compare.get("plan_b"):
+        extra_bits.append("Plan B:")
+        extra_bits.extend(f"  - {x}" for x in compare["plan_b"][:3])
+    if compare.get("risk"):
+        extra_bits.append("Ukerisiko:")
+        extra_bits.extend(f"  - {x}" for x in compare["risk"][:2])
+    if compare.get("prescriptions"):
+        extra_bits.append("Kvalitetsresepter (fra kalender):")
+        for block in compare["prescriptions"][:3]:
+            extra_bits.append(block)
+    if tb_lines:
+        extra_bits.append("TB-Score / readiness:")
+        extra_bits.extend(f"  - {b}" for b in tb_lines[:4])
+    extra_block = ("\n\n" + "\n".join(extra_bits)) if extra_bits else ""
+
     reply = (
         f"Coach-review {label.lower()} ({range_s}), {name} — "
-        "kun lesing, ingen push:\n"
-        f"{body_lines}"
-        f"{note_block}\n\n"
+        "kun lesing, ingen push.\n\n"
+        f"{compare_body}"
+        f"{extra_block}\n\n"
         "Si hva du vil beholde/endre; jeg foreslår kort (preview→confirm) "
         "og synker Intervals bare når du ber om det."
     )
@@ -3092,12 +3116,29 @@ def _chat_intervals_calendar_review(
         "message": asst,
         "intervals_review": True,
         "confirm_required": False,
+        "written_to_intervals": False,
         "app_plan": overview.get("app_plan"),
         "sessions_in_context": True,
         "sync_summary": {
             "synced": synced_n,
             "planned_not_synced": not_synced_n,
             "intervals_only": icu_only_n,
+        },
+        "calendar_compare": {
+            "week_start": start.isoformat(),
+            "week_end": end.isoformat(),
+            "counts": compare.get("counts"),
+            "drift": compare.get("drift_lines") or [],
+            "prescriptions": compare.get("prescriptions") or [],
+            "plan_b": compare.get("plan_b") or [],
+            "risk": compare.get("risk") or [],
+            "intervals_linked": True,
+        },
+        "tb": {
+            "available": bool(tb.get("available")),
+            "tb_score": tb.get("tb_score"),
+            "band": tb.get("band"),
+            "plan_b_nb": tb.get("plan_b_nb"),
         },
     }
 
@@ -4083,13 +4124,73 @@ def dashboard(
         }
     progress = overview_data.get("progress") or {}
     session_compliance_4w = None
+    sess_bundle: dict[str, Any] | None = None
     try:
         with db_session(config.get_db()) as conn:
             comps = completions_by_external_id(conn, aid)
-        sess_bundle = list_sessions(secrets, comps, past_days=28, future_days=1)
+        sess_bundle = list_sessions(secrets, comps, past_days=28, future_days=14)
         session_compliance_4w = sess_bundle.get("rolling_compliance_4w")
     except Exception:  # noqa: BLE001 — soft-fail; season compliance still works
         session_compliance_4w = None
+    # TB-Score + this-week strip (agent-modus readiness — no chat required)
+    readiness_strip: dict[str, Any] | None = None
+    try:
+        from coach_report import readiness_dashboard_strip
+        from week_analysis import filter_sessions_by_week
+
+        mon, sun = week_bounds("this_week", today=date.today())
+        week_planned_n = None
+        week_done_n = None
+        week_pct = None
+        activity_for_tb: list[dict[str, Any]] = []
+        if sess_bundle:
+            planned_w = filter_sessions_by_week(
+                list(sess_bundle.get("planned") or []), mon, sun
+            )
+            completed_w = filter_sessions_by_week(
+                list(sess_bundle.get("completed") or sess_bundle.get("recent") or []),
+                mon,
+                sun,
+            )
+            missed_w = filter_sessions_by_week(
+                list(sess_bundle.get("planned_not_done") or []), mon, sun
+            )
+            week_planned_n = len(planned_w)
+            if week_planned_n and (missed_w or completed_w):
+                week_done_n = (
+                    max(0, week_planned_n - len(missed_w))
+                    if missed_w
+                    else min(len(completed_w), week_planned_n)
+                )
+                week_pct = round(
+                    min(100.0, 100.0 * float(week_done_n) / float(week_planned_n)), 1
+                )
+            else:
+                week_done_n = len(completed_w)
+            activity_for_tb = list(sess_bundle.get("completed") or []) + list(
+                sess_bundle.get("recent") or []
+            )
+        # Prefer app planned_sessions count when ICU planned empty
+        if not week_planned_n and planned_rows:
+            app_w = [
+                s
+                for s in planned_rows
+                if mon.isoformat()
+                <= str(s.get("session_date") or "")[:10]
+                <= sun.isoformat()
+            ]
+            week_planned_n = len(app_w) or week_planned_n
+        readiness_strip = readiness_dashboard_strip(
+            secrets,
+            activity_sessions=activity_for_tb,
+            week_start=mon.isoformat(),
+            week_end=sun.isoformat(),
+            sessions_planned=week_planned_n,
+            sessions_done=week_done_n,
+            compliance_pct=week_pct,
+        )
+    except Exception:  # noqa: BLE001
+        readiness_strip = None
     # Back-compat: hours/load mirror period training (no season targets mixed in)
     hours = {
         "disciplines": [
@@ -4137,6 +4238,7 @@ def dashboard(
         "compliance_app_computed": True,
         "compliance_written_to_intervals": False,
         "session_compliance_4w": session_compliance_4w,
+        "readiness": readiness_strip,
         "periodization": overview_data.get("periodization"),
         "form": {
             "ftp_tested": overview_data.get("ftp_tested"),
@@ -4152,6 +4254,50 @@ def dashboard(
         "intervals_linked": overview_data.get("intervals_linked"),
         "intervals_hint": overview_data.get("intervals_hint"),
     }
+
+
+@app.get("/v1/readiness")
+def get_readiness(
+    x_athlete_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """TB-Score snapshot — same engine as ``scripts/generate_coach_report.py``.
+
+    Soft-fails without Intervals. Never writes. No PNG plots.
+    """
+    from coach_report import build_coach_report
+
+    aid = _require_athlete(x_athlete_id)
+    with db_session(config.get_db()) as conn:
+        if not get_athlete(conn, aid):
+            raise HTTPException(404, "Utøver ikke funnet")
+        secrets = get_athlete_secrets(conn, aid)
+        comps = completions_by_external_id(conn, aid)
+    activity_sessions: list[dict[str, Any]] = []
+    week_completed: list[dict[str, Any]] = []
+    week_planned: list[dict[str, Any]] = []
+    try:
+        from week_analysis import filter_sessions_by_week
+
+        bundle = list_sessions(secrets, comps, past_days=28, future_days=7)
+        activity_sessions = list(bundle.get("completed") or []) + list(
+            bundle.get("recent") or []
+        )
+        mon, sun = week_bounds("this_week", today=date.today())
+        week_completed = filter_sessions_by_week(
+            list(bundle.get("completed") or bundle.get("recent") or []), mon, sun
+        )
+        week_planned = filter_sessions_by_week(
+            list(bundle.get("planned") or []), mon, sun
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    report = build_coach_report(
+        secrets,
+        activity_sessions=activity_sessions,
+        week_completed=week_completed,
+        week_planned=week_planned,
+    )
+    return report
 
 
 @app.get("/v1/sessions/completions/recent")

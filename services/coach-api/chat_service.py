@@ -557,7 +557,13 @@ _INTERVALS_REVIEW_RE = re.compile(
     r"(?:på\s+)?(?:intervals|icu|kalender(?:en)?)|"
     r"(?:intervals|icu).{0,30}"
     r"(?:kalender|uke|events?|forslag|utkast)|"
-    r"coach[- ]?review.{0,20}(?:intervals|icu|kalender)"
+    r"coach[- ]?review.{0,20}(?:intervals|icu|kalender)|"
+    # App SoT vs ICU truth
+    r"sammenlign(?:e)?.{0,40}(?:app|plan|intervals|icu|kalender)|"
+    r"(?:app|planen?).{0,20}(?:vs|mot).{0,20}(?:intervals|icu|kalender)|"
+    r"(?:intervals|icu).{0,20}(?:vs|mot).{0,20}(?:app|plan)|"
+    r"kalender[- ]?sannhet|"
+    r"avvik.{0,30}(?:kalender|intervals|icu|plan)"
     r")",
     re.IGNORECASE,
 )

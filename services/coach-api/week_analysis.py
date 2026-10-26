@@ -450,3 +450,77 @@ def compare_icu_vs_app_nb(
         "plan_b": plan_b,
         "risk": risk,
     }
+
+
+def _session_line(s: dict[str, Any]) -> str:
+    day = str(s.get("session_date") or s.get("date") or "")[:10]
+    name = str(s.get("name") or "Økt")
+    sport = str(
+        s.get("discipline_label") or s.get("discipline") or s.get("sport") or s.get("type") or ""
+    )
+    status = str(s.get("training_status") or "")
+    bit = f"{day} · {name}"
+    if sport:
+        bit += f" ({sport})"
+    if status and status not in ("planned", "completed", "matched_activity"):
+        bit += f" [{status}]"
+    return bit
+
+
+def build_week_compliance(
+    sessions_bundle: dict[str, Any] | None,
+    *,
+    week_start: date,
+    week_end: date,
+    rolling_4w: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Calendar WORKOUT vs ICU-logged activities for one week — Dashboard home.
+
+    Uses the same matching rules as ``list_sessions`` / week-check (NOTE ≠ done).
+    """
+    bundle = sessions_bundle or {}
+    planned = filter_sessions_by_week(list(bundle.get("planned") or []), week_start, week_end)
+    completed = filter_sessions_by_week(
+        list(bundle.get("completed") or bundle.get("recent") or []),
+        week_start,
+        week_end,
+    )
+    missed = filter_sessions_by_week(
+        list(bundle.get("planned_not_done") or []), week_start, week_end
+    )
+    sessions_planned = len(planned)
+    missed_n = len(missed)
+    if sessions_planned > 0 and (missed_n or completed):
+        sessions_done = (
+            max(0, sessions_planned - missed_n)
+            if missed_n
+            else min(len(completed), sessions_planned)
+        )
+        compliance_pct: float | None = round(
+            min(100.0, 100.0 * float(sessions_done) / float(sessions_planned)), 1
+        )
+    else:
+        sessions_done = len(completed)
+        compliance_pct = None
+
+    planned_lines = [_session_line(s) for s in planned[:14]]
+    done_lines = [_session_line(s) for s in completed[:14]]
+    missed_lines = [_session_line(s) for s in missed[:14]]
+
+    return {
+        "week_start": week_start.isoformat(),
+        "week_end": week_end.isoformat(),
+        "sessions_planned": sessions_planned,
+        "sessions_done": sessions_done,
+        "sessions_missed": missed_n,
+        "compliance_pct": compliance_pct,
+        "planned_lines": planned_lines,
+        "done_lines": done_lines,
+        "missed_lines": missed_lines,
+        "rolling_compliance_4w": rolling_4w,
+        "note_nb": (
+            "Gjennomført = ICU-aktivitet matchet til planlagt WORKOUT. "
+            "NOTE og planlagt uten aktivitet = ikke gjennomført."
+        ),
+        "written_to_intervals": False,
+    }

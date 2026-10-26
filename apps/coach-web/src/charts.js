@@ -281,6 +281,224 @@ export function renderBetaLoadTrajectory(chart) {
 }
 
 /**
+ * TB-Score morgen/kveld trend (from /v1/readiness/charts or dashboard).
+ * @param {{ available?: boolean, points?: Array<{date:string,label?:string,morgen?:number|null,kveld?:number|null,tb_score?:number|null}>, note_nb?: string }} series
+ */
+export function renderTbTrend(series) {
+  const points = series?.points || []
+  if (!series?.available || points.length < 2) {
+    return `<p class="muted tight chart-empty">${esc(series?.note_nb || 'Ingen TB-trend ennå — koble Intervals wellness.')}</p>`
+  }
+  const w = 340
+  const h = 130
+  const padL = 28
+  const padR = 8
+  const padT = 12
+  const padB = 24
+  const innerW = w - padL - padR
+  const innerH = h - padT - padB
+  const vals = []
+  for (const p of points) {
+    if (p.morgen != null) vals.push(Number(p.morgen))
+    if (p.kveld != null) vals.push(Number(p.kveld))
+    if (p.tb_score != null) vals.push(Number(p.tb_score))
+  }
+  let minV = Math.min(0, ...vals)
+  let maxV = Math.max(100, ...vals)
+  if (minV === maxV) {
+    minV = 0
+    maxV = 100
+  }
+  const span = maxV - minV || 1
+  const xAt = (i) => padL + (points.length === 1 ? innerW / 2 : (i / (points.length - 1)) * innerW)
+  const yAt = (v) => padT + innerH - ((v - minV) / span) * innerH
+  const yGreen = yAt(78)
+  const yYellow = yAt(58)
+
+  const pathFor = (key) => {
+    const parts = []
+    points.forEach((p, i) => {
+      const v = p[key]
+      if (v == null) return
+      const cmd = parts.length ? 'L' : 'M'
+      parts.push(`${cmd}${xAt(i).toFixed(1)},${yAt(Number(v)).toFixed(1)}`)
+    })
+    return parts.join(' ')
+  }
+  const morgenPath = pathFor('morgen')
+  const kveldPath = pathFor('kveld')
+  const labelEvery = points.length > 10 ? Math.ceil(points.length / 5) : Math.max(1, Math.ceil(points.length / 4))
+  const xLabels = points
+    .map((p, i) => {
+      if (i % labelEvery !== 0 && i !== points.length - 1) return ''
+      const lab = p.label || (p.date ? `${p.date.slice(8, 10)}.${p.date.slice(5, 7)}` : '')
+      return `<text class="chart-svg-label" x="${xAt(i).toFixed(1)}" y="${h - 4}" text-anchor="middle">${esc(lab)}</text>`
+    })
+    .join('')
+
+  return `
+    <div class="chart chart-tb-trend" role="img" aria-label="TB-Score morgen og kveld">
+      <svg viewBox="0 0 ${w} ${h}" class="chart-svg" preserveAspectRatio="xMidYMid meet">
+        <rect class="tb-band-green" x="${padL}" y="${padT}" width="${innerW}" height="${Math.max(0, yGreen - padT).toFixed(1)}" />
+        <rect class="tb-band-yellow" x="${padL}" y="${yGreen.toFixed(1)}" width="${innerW}" height="${Math.max(0, yYellow - yGreen).toFixed(1)}" />
+        <line class="chart-grid" x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + innerH}" />
+        <line class="chart-grid" x1="${padL}" y1="${padT + innerH}" x2="${w - padR}" y2="${padT + innerH}" />
+        <text class="chart-svg-label" x="${padL - 4}" y="${padT + 4}" text-anchor="end">100</text>
+        <text class="chart-svg-label" x="${padL - 4}" y="${padT + innerH}" text-anchor="end">0</text>
+        ${morgenPath ? `<path class="chart-line chart-line-tb-morgen" d="${morgenPath}" fill="none" />` : ''}
+        ${kveldPath ? `<path class="chart-line chart-line-tb-kveld" d="${kveldPath}" fill="none" />` : ''}
+        ${xLabels}
+      </svg>
+      <div class="chart-legend">
+        <span class="chart-legend-item"><i class="swatch tb-morgen"></i>Morgen</span>
+        <span class="chart-legend-item"><i class="swatch tb-kveld"></i>Kveld</span>
+      </div>
+    </div>`
+}
+
+/**
+ * TB component horizontal bars.
+ * @param {{ available?: boolean, bars?: Array<{label:string,score:number,detail?:string}>, note_nb?: string }} chart
+ */
+export function renderTbComponents(chart) {
+  const bars = chart?.bars || []
+  if (!chart?.available || !bars.length) {
+    return `<p class="muted tight chart-empty">${esc(chart?.note_nb || 'Ingen TB-komponenter.')}</p>`
+  }
+  const items = bars
+    .map((b) => {
+      const score = Number(b.score) || 0
+      const pct = Math.max(0, Math.min(100, score))
+      const band =
+        score >= 78 ? 'is-green' : score >= 58 ? 'is-yellow' : 'is-red'
+      return `
+        <div class="chart-h-row" title="${esc(b.detail || '')}">
+          <span class="chart-h-label">${esc(b.label)}</span>
+          <div class="chart-h-track">
+            <div class="chart-h-fill tb-comp ${band}" style="width:${pct.toFixed(1)}%"></div>
+          </div>
+          <span class="chart-h-val">${score.toFixed(0)}</span>
+        </div>`
+    })
+    .join('')
+  return `<div class="chart chart-tb-components" role="img" aria-label="TB-komponenter">${items}</div>`
+}
+
+/**
+ * Session watt/HR dual-axis-ish SVG from øktanalyse graph.series.
+ * @param {{ available?: boolean, series?: Array<{t?:number,watts?:number|null,hr?:number|null}>, has_watts?: boolean, has_hr?: boolean, note_nb?: string }} graph
+ */
+export function renderSessionStreams(graph) {
+  const series = graph?.series || []
+  if (!graph?.available || series.length < 2) {
+    return `<p class="muted tight chart-empty">${esc(graph?.note_nb || 'Ingen watt/puls-stream for denne økten.')}</p>`
+  }
+  const w = 360
+  const h = 140
+  const padL = 30
+  const padR = 30
+  const padT = 10
+  const padB = 22
+  const innerW = w - padL - padR
+  const innerH = h - padT - padB
+  const watts = series.map((p) => (p.watts != null ? Number(p.watts) : null))
+  const hrs = series.map((p) => (p.hr != null ? Number(p.hr) : null))
+  const wVals = watts.filter((v) => v != null)
+  const hVals = hrs.filter((v) => v != null)
+  const hasW = graph.has_watts !== false && wVals.length > 1
+  const hasH = graph.has_hr !== false && hVals.length > 1
+  if (!hasW && !hasH) {
+    return `<p class="muted tight chart-empty">${esc(graph?.note_nb || 'Ingen gyldige stream-punkter.')}</p>`
+  }
+  let wMin = hasW ? Math.min(...wVals) : 0
+  let wMax = hasW ? Math.max(...wVals) : 1
+  if (wMin === wMax) {
+    wMin = Math.max(0, wMin - 20)
+    wMax += 20
+  }
+  let hMin = hasH ? Math.min(...hVals) : 0
+  let hMax = hasH ? Math.max(...hVals) : 1
+  if (hMin === hMax) {
+    hMin = Math.max(0, hMin - 10)
+    hMax += 10
+  }
+  const xAt = (i) => padL + (series.length === 1 ? innerW / 2 : (i / (series.length - 1)) * innerW)
+  const yW = (v) => padT + innerH - ((v - wMin) / (wMax - wMin || 1)) * innerH
+  const yH = (v) => padT + innerH - ((v - hMin) / (hMax - hMin || 1)) * innerH
+
+  const pathFor = (vals, yFn) => {
+    const parts = []
+    vals.forEach((v, i) => {
+      if (v == null) return
+      const cmd = parts.length ? 'L' : 'M'
+      parts.push(`${cmd}${xAt(i).toFixed(1)},${yFn(v).toFixed(1)}`)
+    })
+    return parts.join(' ')
+  }
+  const wPath = hasW ? pathFor(watts, yW) : ''
+  const hPath = hasH ? pathFor(hrs, yH) : ''
+  const t0 = series[0]?.t
+  const t1 = series[series.length - 1]?.t
+  const tLabel = (t) => {
+    if (t == null) return ''
+    const m = Math.floor(Number(t) / 60)
+    return `${m}m`
+  }
+
+  return `
+    <div class="chart chart-session-streams" role="img" aria-label="Watt og puls gjennom økten">
+      <svg viewBox="0 0 ${w} ${h}" class="chart-svg" preserveAspectRatio="xMidYMid meet">
+        <line class="chart-grid" x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + innerH}" />
+        <line class="chart-grid" x1="${padL}" y1="${padT + innerH}" x2="${w - padR}" y2="${padT + innerH}" />
+        ${hasW ? `<text class="chart-svg-label" x="${padL - 4}" y="${padT + 4}" text-anchor="end">${wMax.toFixed(0)}</text>
+        <text class="chart-svg-label" x="${padL - 4}" y="${padT + innerH}" text-anchor="end">${wMin.toFixed(0)}</text>` : ''}
+        ${hasH ? `<text class="chart-svg-label chart-hr-axis" x="${w - padR + 4}" y="${padT + 4}" text-anchor="start">${hMax.toFixed(0)}</text>
+        <text class="chart-svg-label chart-hr-axis" x="${w - padR + 4}" y="${padT + innerH}" text-anchor="start">${hMin.toFixed(0)}</text>` : ''}
+        ${wPath ? `<path class="chart-line chart-line-watts" d="${wPath}" fill="none" />` : ''}
+        ${hPath ? `<path class="chart-line chart-line-hr" d="${hPath}" fill="none" />` : ''}
+        <text class="chart-svg-label" x="${padL}" y="${h - 4}" text-anchor="start">${esc(tLabel(t0))}</text>
+        <text class="chart-svg-label" x="${w - padR}" y="${h - 4}" text-anchor="end">${esc(tLabel(t1))}</text>
+      </svg>
+      <div class="chart-legend">
+        ${hasW ? `<span class="chart-legend-item"><i class="swatch watts"></i>Watt</span>` : ''}
+        ${hasH ? `<span class="chart-legend-item"><i class="swatch hr"></i>Puls</span>` : ''}
+      </div>
+    </div>`
+}
+
+/**
+ * Intensity distribution as simple horizontal shares.
+ * @param {{ available?: boolean, zones?: Array<{zone:string,pct:number,seconds?:number}>, note_nb?: string, easy_pct?: number, hard_pct?: number }} dist
+ */
+export function renderIntensityZones(dist) {
+  const zones = dist?.zones || []
+  if (!dist?.available) {
+    return `<p class="muted tight chart-empty">${esc(dist?.note_nb || 'Ingen intensitetsfordeling.')}</p>`
+  }
+  if (!zones.length) {
+    return `<p class="muted tight chart-empty">${esc(dist?.note_nb || 'IF uten soner.')}</p>`
+  }
+  const rows = zones
+    .map((z) => {
+      const pct = Number(z.pct) || 0
+      return `
+        <div class="chart-h-row">
+          <span class="chart-h-label">${esc(z.zone)}</span>
+          <div class="chart-h-track">
+            <div class="chart-h-fill zone-fill" style="width:${Math.min(100, pct).toFixed(1)}%"></div>
+          </div>
+          <span class="chart-h-val">${pct.toFixed(0)} %</span>
+        </div>`
+    })
+    .join('')
+  const summary =
+    dist.easy_pct != null || dist.hard_pct != null
+      ? `<p class="muted tight">Rolig ~${esc(String(dist.easy_pct ?? '—'))} % · hardt ~${esc(String(dist.hard_pct ?? '—'))} %</p>`
+      : ''
+  return `${summary}<div class="chart chart-zones" role="img" aria-label="Intensitetsfordeling">${rows}</div>`
+}
+
+/**
  * Horizontal ACWR risk bar with soft/hard bands.
  * @param {{ soft?: number, hard?: number, current?: { acwr?: number|null, band?: string, label_nb?: string, note_nb?: string } }} bands
  */

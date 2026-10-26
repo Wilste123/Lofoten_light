@@ -2,7 +2,11 @@ import {
   renderAcwrRiskBar,
   renderBetaLoadTrajectory,
   renderDisciplineBars,
+  renderIntensityZones,
   renderLoadLines,
+  renderSessionStreams,
+  renderTbComponents,
+  renderTbTrend,
   renderVolumeBars,
   volumeBucketTitle,
 } from './charts.js'
@@ -130,6 +134,9 @@ const state = {
   dashCoachReportMd: '',
   dashCoachReportBusy: false,
   dashTpExportBusy: false,
+  /** Øktanalyse card (chat / Dashboard / session detail) */
+  sessionAnalysis: null,
+  sessionAnalysisBusy: false,
   /** Du → plan adjust preview (local blocks; Intervals only after Sync confirm) */
   planAdjust: null,
   /** Selected ids when weekly cap requires replace */
@@ -1275,6 +1282,9 @@ function applyChatResponse(data, { mirrorToMain = false, userText = '' } = {}) {
   if (data.coach_report?.markdown) {
     state.coachReport = data.coach_report
   }
+  if (data.session_analysis) {
+    state.sessionAnalysis = data.session_analysis
+  }
   if (data.tp_export) {
     state.tpExport = data.tp_export
   }
@@ -1362,6 +1372,33 @@ async function loadDashCoachReport() {
   }
 }
 
+async function loadSessionAnalysis({ sessionId = null, latest = false } = {}) {
+  if (state.sessionAnalysisBusy) return
+  state.sessionAnalysisBusy = true
+  state.error = ''
+  render()
+  try {
+    const path = sessionId
+      ? `/v1/sessions/${encodeURIComponent(sessionId)}/analysis`
+      : '/v1/analysis/latest'
+    const data = await api(path)
+    state.sessionAnalysis = data
+    if (!data?.available) {
+      toast(data?.note || 'Ingen økt å analysere')
+    }
+  } catch (err) {
+    state.error = err.message || 'Øktanalyse feilet'
+    state.sessionAnalysis = {
+      available: false,
+      note: err.message || 'Øktanalyse feilet',
+      written_to_intervals: false,
+    }
+  } finally {
+    state.sessionAnalysisBusy = false
+    render()
+  }
+}
+
 async function downloadTpExportZip(path) {
   if (state.dashTpExportBusy) return
   state.dashTpExportBusy = true
@@ -1413,6 +1450,7 @@ async function runCoachPromptFromUi(message) {
   state.ukesopp = null
   state.weekCheck = null
   state.coachReport = null
+  state.sessionAnalysis = null
   state.tpExport = null
   state.workoutSync.pending = null
   state.workoutSync.error = ''
@@ -1734,15 +1772,20 @@ function renderChat() {
           <button type="button" class="btn secondary" id="week-check-dismiss-btn">Skjul</button>
         </div>
       </div>`
+  } else if (state.sessionAnalysis) {
+    proposalCard = renderSessionAnalysisCard(state.sessionAnalysis, {
+      dismissId: 'session-analysis-dismiss-btn',
+    })
   } else if (state.coachReport?.markdown) {
     const cr = state.coachReport
     proposalCard = `
       <div class="confirm-card workout-proposal-card" aria-label="Coach-rapport" data-testid="coach-report-card">
         <p><strong>Coach-rapport (søndagsritual)</strong></p>
-        <p class="muted tight">Samme TB-motor som agent. Ingen grafer · ingen Intervals-write.</p>
+        <p class="muted tight">Samme TB-motor som agent. TB-trend på Dashboard · ingen Intervals-write.</p>
         <pre class="sync-sample week-check-presc">${escapeHtml(String(cr.markdown).slice(0, 4000))}</pre>
         <div class="sync-actions">
           <button type="button" class="btn btn-primary" id="coach-report-ukesopp-btn">Start ukesopp</button>
+          <button type="button" class="btn secondary" id="coach-report-analyse-btn">Analyser siste økt</button>
           <button type="button" class="btn secondary" id="coach-report-dismiss-btn">Skjul</button>
         </div>
       </div>`
@@ -2158,11 +2201,84 @@ function renderLoadCard(dash) {
     </section>`
 }
 
+function renderReadinessChartsBlock(dash) {
+  const charts = dash?.readiness_charts
+  if (!charts) {
+    return ''
+  }
+  const comps = charts.components_chart || {}
+  return `
+    <section class="section-block chart-block" data-testid="chart-tb-trend" aria-label="TB-Score trend">
+      <div class="section-head"><h2>TB-trend (14 dager)</h2></div>
+      <p class="muted tight">${escapeHtml(charts.note_nb || 'Regenerert server-side — ingen PNG i git.')}</p>
+      ${renderTbTrend(charts)}
+      ${
+        comps.available
+          ? `<div class="section-head tight-head"><h3>Komponenter (siste)</h3></div>${renderTbComponents(comps)}`
+          : ''
+      }
+    </section>`
+}
+
+function renderSessionAnalysisCard(analysis, { dismissId = 'session-analysis-dismiss-btn' } = {}) {
+  if (!analysis) return ''
+  const a = analysis
+  const summary = a.summary || {}
+  const iv = a.intervals || {}
+  const dist = a.distribution || {}
+  const graph = a.graph || {}
+  const title = summary.name
+    ? `${summary.name}${summary.date ? ` · ${summary.date}` : ''}`
+    : 'Øktanalyse'
+  if (!a.available) {
+    return `
+      <div class="confirm-card workout-proposal-card" aria-label="Øktanalyse" data-testid="session-analysis-card">
+        <p><strong>Øktanalyse</strong></p>
+        <p class="muted tight">${escapeHtml(a.note || a.feedback_nb || 'Ikke tilgjengelig')}</p>
+        <div class="sync-actions">
+          <button type="button" class="btn secondary" id="${escapeHtml(dismissId)}">Skjul</button>
+        </div>
+      </div>`
+  }
+  const laps = (iv.laps || [])
+    .slice(0, 8)
+    .map((lap) => {
+      const bits = [
+        lap.name || `Drag ${lap.n}`,
+        lap.duration_s != null ? `${Math.round(lap.duration_s / 60)} min` : null,
+        lap.avg_watts != null ? `${lap.avg_watts} W` : null,
+        lap.avg_hr != null ? `${lap.avg_hr} bpm` : null,
+        lap.vs_target_pct != null ? `${lap.vs_target_pct} % target` : null,
+      ].filter(Boolean)
+      return `<li>${escapeHtml(bits.join(' · '))}</li>`
+    })
+    .join('')
+  return `
+    <div class="confirm-card workout-proposal-card session-analysis-card" aria-label="Øktanalyse" data-testid="session-analysis-card">
+      <p><strong>Øktanalyse</strong> — ${escapeHtml(title)}</p>
+      <p class="muted tight">Les-only · Intervals streams/laps · ingen sync.</p>
+      ${renderSessionStreams(graph)}
+      ${iv.available && iv.verdict_nb ? `<p class="muted tight"><strong>Intervaller:</strong> ${escapeHtml(iv.verdict_nb)}</p>` : ''}
+      ${laps ? `<ul class="sync-sample">${laps}</ul>` : ''}
+      ${dist.available ? `<div class="section-head tight-head"><h3>Signing / intensitet</h3></div>${renderIntensityZones(dist)}` : ''}
+      <pre class="sync-sample week-check-presc">${escapeHtml(String(a.feedback_nb || '').slice(0, 2500))}</pre>
+      <div class="sync-actions">
+        <button type="button" class="btn secondary" id="${escapeHtml(dismissId)}">Skjul</button>
+      </div>
+    </div>`
+}
+
 function renderReadinessStrip(dash) {
   const r = dash?.readiness
   const reportBlock = state.dashCoachReportMd
     ? `<pre class="sync-sample week-check-presc" data-testid="dash-coach-report">${escapeHtml(String(state.dashCoachReportMd).slice(0, 5000))}</pre>`
     : ''
+  const analysisInline =
+    state.tab === 'dashboard' && state.sessionAnalysis
+      ? renderSessionAnalysisCard(state.sessionAnalysis, {
+          dismissId: 'dash-session-analysis-dismiss-btn',
+        })
+      : ''
   if (!r) {
     return `
       <div class="section-block readiness-strip" data-testid="readiness-strip">
@@ -2170,9 +2286,11 @@ function renderReadinessStrip(dash) {
         <p class="muted tight">Koble Intervals under Du for TB-Score. Eller spør Coach «sjekk uka mi».</p>
         <div class="sync-actions">
           <button type="button" class="btn secondary" id="dash-week-check-btn">Sjekk uka mi</button>
+          <button type="button" class="btn secondary" id="dash-session-analysis-btn" ${state.sessionAnalysisBusy ? 'disabled' : ''}>Analyser siste økt</button>
           <button type="button" class="btn secondary" id="dash-coach-report-btn" ${state.dashCoachReportBusy ? 'disabled' : ''}>Coach-rapport</button>
         </div>
         ${reportBlock}
+        ${analysisInline}
       </div>`
   }
   const tb = r.tb || {}
@@ -2208,11 +2326,13 @@ function renderReadinessStrip(dash) {
       <p class="muted tight">${escapeHtml(r.cta_nb || 'Spør Coach «sjekk uka mi» for full analyse.')}</p>
       <div class="sync-actions">
         <button type="button" class="btn btn-primary" id="dash-week-check-btn">Sjekk uka mi</button>
+        <button type="button" class="btn secondary" id="dash-session-analysis-btn" ${state.sessionAnalysisBusy ? 'disabled' : ''}>Analyser siste økt</button>
         <button type="button" class="btn secondary" id="dash-coach-report-btn" ${state.dashCoachReportBusy ? 'disabled' : ''}>Coach-rapport</button>
         <button type="button" class="btn secondary" id="dash-icu-compare-btn">App vs Intervals</button>
         <button type="button" class="btn secondary" id="dash-tp-export-btn" ${state.dashTpExportBusy ? 'disabled' : ''}>Last ned TP-zip</button>
       </div>
       ${reportBlock}
+      ${analysisInline}
     </div>`
 }
 
@@ -2270,6 +2390,7 @@ function renderDashboard() {
       <p class="muted">${escapeHtml(dash.uplift_line || 'Timer, søvn og sesongmål — app-beregnet.')}</p>
     </div>
     ${renderReadinessStrip(dash)}
+    ${renderReadinessChartsBlock(dash)}
     ${renderPeriodPicker(dash)}
     ${renderLoadCard(dash)}
     ${renderSleepCard(dash.sleep, dash.wellness_fetch_error, dash.wellness_fetch_error_detail, sleepLabel)}
@@ -2604,7 +2725,24 @@ function renderSessionDetail() {
           s.duration_hours != null ? ` · ${formatHours(s.duration_hours)} t` : ''
         }${s.editable ? ' · coach-økt' : ''}</p>
         <div class="date-chip-row detail-dates" aria-label="Planlagte datoer">${occChips}</div>
+        ${
+          s.kind === 'activity' || String(s.id || '').startsWith('act:')
+            ? `<div class="sync-actions">
+          <button type="button" class="btn btn-primary" id="session-analyse-btn" ${state.sessionAnalysisBusy ? 'disabled' : ''}>Analyser økt</button>
+        </div>`
+            : ''
+        }
       </header>
+      ${
+        state.sessionAnalysis &&
+        (state.sessionAnalysis.session_id === s.id ||
+          state.sessionAnalysis.activity_id === s.external_id ||
+          String(s.id || '').includes(String(state.sessionAnalysis.activity_id || '')))
+          ? renderSessionAnalysisCard(state.sessionAnalysis, {
+              dismissId: 'session-detail-analysis-dismiss-btn',
+            })
+          : ''
+      }
 
       <section class="section-block coach-block">
         <h3>Full resept</h3>
@@ -3635,6 +3773,13 @@ function bindApp() {
   document.getElementById('dash-week-check-btn')?.addEventListener('click', () => {
     void runCoachPromptFromUi('sjekk uka mi')
   })
+  document.getElementById('dash-session-analysis-btn')?.addEventListener('click', () => {
+    void loadSessionAnalysis({ latest: true })
+  })
+  document.getElementById('dash-session-analysis-dismiss-btn')?.addEventListener('click', () => {
+    state.sessionAnalysis = null
+    render()
+  })
   document.getElementById('dash-icu-compare-btn')?.addEventListener('click', () => {
     void runCoachPromptFromUi('sammenlign app vs Intervals-kalender denne uka')
   })
@@ -3651,9 +3796,25 @@ function bindApp() {
     state.coachReport = null
     void runCoachPromptFromUi('ukesopp')
   })
+  document.getElementById('coach-report-analyse-btn')?.addEventListener('click', () => {
+    state.coachReport = null
+    void loadSessionAnalysis({ latest: true })
+  })
   document.getElementById('coach-report-dismiss-btn')?.addEventListener('click', () => {
     state.coachReport = null
     render()
+  })
+  document.getElementById('session-analysis-dismiss-btn')?.addEventListener('click', () => {
+    state.sessionAnalysis = null
+    render()
+  })
+  document.getElementById('session-detail-analysis-dismiss-btn')?.addEventListener('click', () => {
+    state.sessionAnalysis = null
+    render()
+  })
+  document.getElementById('session-analyse-btn')?.addEventListener('click', () => {
+    const sid = state.sessionDetail?.session?.id
+    if (sid) void loadSessionAnalysis({ sessionId: sid })
   })
   document.getElementById('tp-export-download-btn')?.addEventListener('click', () => {
     const path = state.tpExport?.download_path
@@ -3708,6 +3869,7 @@ function bindApp() {
     state.ukesopp = null
     state.weekCheck = null
     state.coachReport = null
+    state.sessionAnalysis = null
     state.tpExport = null
     state.workoutSync.pending = null
     state.workoutSync.error = ''

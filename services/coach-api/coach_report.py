@@ -65,7 +65,8 @@ def format_tb_report_markdown(tb: dict[str, Any]) -> str:
             )
     lines.append(
         "\n---\n*Samme motor som `scripts/generate_coach_report.py` / "
-        "`readiness_total_load.py`. Grafer genereres ikke i web-API.*\n"
+        "`readiness_total_load.py`. TB-trend regenereres på Dashboard "
+        "(JSON→SVG, ingen PNG i git).*\n"
     )
     return "\n".join(lines)
 
@@ -197,9 +198,10 @@ def sunday_ritual_payload(
         md += f"\n_{(wc.get('note_nb') or '').strip()}_\n"
     md += (
         "\n## Neste steg (søndagsritual)\n\n"
-        "1. Les TB / Plan B over.\n"
+        "1. Les TB / Plan B over — se også TB-trend-grafen på Dashboard.\n"
         "2. Spør Coach **ukesopp** — fire korte spørsmål (lagres i appen, ikke Intervals).\n"
-        "3. Ev. **sjekk uka mi** for full resept + load.\n"
+        "3. Ev. **sjekk uka mi** for full resept + load, eller **analyser dagens økt** "
+        "for watt/puls + intervall-feedback.\n"
         "4. Intervals → TP: last ned zip under Dashboard (ingen auto-write til TP).\n"
     )
     return {
@@ -210,6 +212,7 @@ def sunday_ritual_payload(
         "cta": {
             "ukesopp_nb": "ukesopp",
             "week_check_nb": "sjekk uka mi",
+            "session_analysis_nb": "analyser dagens økt",
             "tp_export_nb": "eksporter intervals til TP",
         },
         "plots": False,

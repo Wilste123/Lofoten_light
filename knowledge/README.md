@@ -16,6 +16,7 @@ Referanse for **topp-coach**-agenten. Alt skal kunne brukes til **konkrete ukepl
 | Mappe | Innhold |
 |-------|---------|
 | **[coach/](coach/)** | Filosofi, treneridentitet (OPV-modell), `opv-nokkelokter.md`, ukemaler, typiske feil |
+| **`docs/coach/agent-modus-pilot-2026-10.md`** | Oppsummering Cursor Agent modus test-pilot (okt 2026): bruk, leveranser, GitHub vs chat |
 | [ernaring/](ernaring/) | Daglig, fueling, race |
 | [skader/](skader/) | ACWR, styrkeprogram, løp, oversikt |
 | [svom/](svom/) | Faser 0–3, øktbibliotek, OWS/kulde |

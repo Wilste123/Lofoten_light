@@ -62,6 +62,7 @@ python3 scripts/aggregate_bia_weekly.py --week-ending YYYY-MM-DD
 python3 scripts/intervals_push_calendar.py --start 2026-09-28  # plan → Intervals (secret INTERVALS_API)
 python3 scripts/intervals_delete_calendar.py --start 2026-09-28  # fjern agent-plan
 python3 scripts/fetch_tp_workouts.py --start YYYY-MM-DD --end YYYY-MM-DD  # TRAININGPEAKS_ACCESS_TOKEN
+python3 scripts/fetch_tp_fitness.py --day YYYY-MM-DD  # PMC Fitness/Fatigue/Form fra TP (tpapi)
 python3 scripts/fetch_tp_metrics.py --start YYYY-MM-DD --end YYYY-MM-DD  # Partners JWT; wellness → fetch_intervals_wellness.py
 python3 scripts/tp_push_calendar.py plans/csv/trainingdojo-*.csv --plan-start YYYY-MM-DD --dry-run
 python3 scripts/fetch_intervals_activities.py --days 7 -o data/intervals/exports/uke.csv

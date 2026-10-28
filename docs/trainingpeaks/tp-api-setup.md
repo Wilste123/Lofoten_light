@@ -88,7 +88,12 @@ python3 scripts/fetch_tp_workouts.py --start 2026-10-01 --end 2026-10-28
 python3 scripts/analyze_tp_export.py data/trainingpeaks/exports/tp-workouts.csv
 ```
 
-**Cookie (`Production_tpAuth`):** workouts hentes via **tpapi fitness/v6** (ingen ekstra oppsett).
+**Cookie (`Production_tpAuth`):** workouts hentes via **tpapi fitness/v6**; **PMC (Fitness/Fatigue/Form)** via **`fetch_tp_fitness.py`** → `POST …/fitness/v1/…/reporting/performancedata`.
+
+```bash
+python3 scripts/fetch_tp_fitness.py --day 2026-10-27
+python3 scripts/fetch_tp_fitness.py --start 2026-07-01 --end 2026-10-28
+```
 
 ### Les metrics (TP kropp/velvære — Partners JWT)
 

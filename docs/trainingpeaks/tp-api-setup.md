@@ -46,8 +46,8 @@ TRAININGPEAKS_ATHLETE_ID=
 
 | What you copy | Works for | Our `fetch_tp_workouts.py` (Partners `/v2/workouts`) |
 |---------------|-----------|------------------------------------------------------|
-| **`Production_tpAuth` cookie** (value starts `V001…`) | TrainingDojo; we can **exchange** it at `tpapi.trainingpeaks.com/users/v3/token` | **No** — exchanged token still gets **401** on `api.trainingpeaks.com` |
-| **`Authorization: Bearer …` from a request to `api.trainingpeaks.com`** | Partners-style read/plan (what repo scripts use) | **Yes** |
+| **`Production_tpAuth` cookie** (value starts `V001…`) | TrainingDojo; **exchange** at `tpapi…/users/v3/token` | **Yes** via **`tpapi…/fitness/v6/athletes/{id}/workouts/{start}/{end}`** (automatic in `fetch_tp_workouts.py`) |
+| **`Authorization: Bearer …` from a request to `api.trainingpeaks.com`** | Partners `/v2` read/plan/metrics | **Yes** (workouts + `/v2/metrics`) |
 
 **For repo scripts (read calendar):**
 
@@ -59,7 +59,7 @@ TRAININGPEAKS_ATHLETE_ID=
 **For TrainingDojo-style cookie (push via cookie exchange — limited):**
 
 1. Application → Cookies → **`Production_tpAuth`** → copy **value only** (`V001…`).  
-2. Paste as `TRAININGPEAKS_ACCESS_TOKEN` — scripts exchange it automatically; **read via Partners API may still fail** until we add tpapi calendar endpoints.
+2. Paste as `TRAININGPEAKS_ACCESS_TOKEN` — scripts exchange it automatically; **`fetch_tp_workouts.py` reads calendar via tpapi fitness/v6**. **`fetch_tp_metrics.py` and `tp_push_calendar.py` still need Partners JWT** (or use Intervals wellness + manual plan push).
 
 See [TrainingDojo cookie guide](https://trainingdojo.app/blog/trainingpeaks-production-cookie-guide).
 
@@ -86,6 +86,17 @@ Flow: [OAuth wiki](https://github.com/TrainingPeaks/PartnersAPI/wiki/OAuth) · e
 python3 scripts/fetch_tp_workouts.py --start 2026-10-01 --end 2026-10-28
 # → data/trainingpeaks/exports/tp-workouts.json + .csv
 python3 scripts/analyze_tp_export.py data/trainingpeaks/exports/tp-workouts.csv
+```
+
+**Cookie (`Production_tpAuth`):** workouts hentes via **tpapi fitness/v6** (ingen ekstra oppsett).
+
+### Les metrics (TP kropp/velvære — Partners JWT)
+
+```bash
+python3 scripts/fetch_tp_metrics.py --start 2026-10-21 --end 2026-10-28
+# Cookie-only: bruk i stedet
+python3 scripts/fetch_intervals_wellness.py --days 8 -o data/intervals/exports/wellness.csv
+python3 scripts/analyze_intervals_wellness.py data/intervals/exports/wellness.csv
 ```
 
 ### Skriv plan (TrainingDojo-CSV)

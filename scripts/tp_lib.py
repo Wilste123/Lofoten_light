@@ -188,6 +188,7 @@ def _request_tpapi(
     path: str,
     *,
     query: dict[str, str] | None = None,
+    body: dict | None = None,
     timeout: int = 120,
 ) -> bytes:
     url = f"{TPAPI_BASE}{path}"
@@ -198,7 +199,11 @@ def _request_tpapi(
         "Accept": "application/json",
         "User-Agent": USER_AGENT,
     }
-    req = urllib.request.Request(url, headers=headers, method=method)
+    data = None
+    if body is not None:
+        data = json.dumps(body).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+    req = urllib.request.Request(url, data=data, headers=headers, method=method)
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return resp.read()
@@ -240,6 +245,64 @@ def normalize_tpapi_workout(row: dict[str, Any]) -> dict[str, Any]:
         "Completed": row.get("completed"),
         "Source": "tpapi-fitness-v6",
     }
+
+
+def get_performance_data(
+    start: str,
+    end: str,
+    *,
+    athlete: int | None = None,
+    ctl_constant: int = 42,
+    atl_constant: int = 7,
+) -> list[dict[str, Any]]:
+    """POST tpapi …/fitness/v1/…/reporting/performancedata — PMC (Fitness/Fatigue/Form)."""
+    aid = athlete if athlete is not None else athlete_id()
+    path = f"/fitness/v1/athletes/{aid}/reporting/performancedata/{start}/{end}"
+    body = {
+        "atlConstant": atl_constant,
+        "atlStart": 0,
+        "ctlConstant": ctl_constant,
+        "ctlStart": 0,
+        "workoutTypes": [],
+    }
+    raw = _request_tpapi("POST", path, body=body)
+    data = json.loads(raw.decode())
+    if not isinstance(data, list):
+        raise RuntimeError(f"Unexpected performancedata payload: {type(data)}")
+    return data
+
+
+def get_pmc_for_day(
+    day: str,
+    *,
+    history_start: str | None = None,
+    athlete: int | None = None,
+) -> dict[str, Any]:
+    """Single-day PMC from TP performancedata (Fitness/Fatigue/Form = ctl/atl/tsb)."""
+    from datetime import date, timedelta
+
+    end_d = date.fromisoformat(day)
+    start_d = (
+        date.fromisoformat(history_start)
+        if history_start
+        else end_d - timedelta(days=120)
+    )
+    entries = get_performance_data(
+        start_d.isoformat(),
+        day,
+        athlete=athlete,
+    )
+    for entry in reversed(entries):
+        d = (entry.get("workoutDay") or "")[:10]
+        if d == day:
+            return {
+                "date": day,
+                "fitness_ctl": entry.get("ctl"),
+                "fatigue_atl": entry.get("atl"),
+                "form_tsb": entry.get("tsb"),
+                "tss_actual": entry.get("tssActual"),
+            }
+    raise RuntimeError(f"No PMC row for {day} in performancedata response")
 
 
 def get_workouts_tpapi(

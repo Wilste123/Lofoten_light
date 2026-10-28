@@ -42,10 +42,26 @@ TRAININGPEAKS_ATHLETE_ID=
 
 ### Bearer-token (vei B, midlertidig)
 
+**To different things — do not mix them up:**
+
+| What you copy | Works for | Our `fetch_tp_workouts.py` (Partners `/v2/workouts`) |
+|---------------|-----------|------------------------------------------------------|
+| **`Production_tpAuth` cookie** (value starts `V001…`) | TrainingDojo; we can **exchange** it at `tpapi.trainingpeaks.com/users/v3/token` | **No** — exchanged token still gets **401** on `api.trainingpeaks.com` |
+| **`Authorization: Bearer …` from a request to `api.trainingpeaks.com`** | Partners-style read/plan (what repo scripts use) | **Yes** |
+
+**For repo scripts (read calendar):**
+
 1. Logg inn på [app.trainingpeaks.com](https://app.trainingpeaks.com).  
-2. DevTools → Application → Cookies / eller Network → request headers `Authorization: Bearer …` (samme metode TrainingDojo dokumenterer).  
-3. Lim inn i `.env` som `TRAININGPEAKS_ACCESS_TOKEN`.  
-4. **Roter** hvis det lekker; forvent at det **stopper** uten varsel.
+2. DevTools → Network → filter **`api.trainingpeaks.com`** (not only `tpapi`).  
+3. Open calendar; click a request to **`/v2/workouts/...`** or similar on **`api.trainingpeaks.com`**.  
+4. Copy **Authorization** → value after `Bearer ` → `.env` as `TRAININGPEAKS_ACCESS_TOKEN` (no `Production_tpauth:` prefix).
+
+**For TrainingDojo-style cookie (push via cookie exchange — limited):**
+
+1. Application → Cookies → **`Production_tpAuth`** → copy **value only** (`V001…`).  
+2. Paste as `TRAININGPEAKS_ACCESS_TOKEN` — scripts exchange it automatically; **read via Partners API may still fail** until we add tpapi calendar endpoints.
+
+See [TrainingDojo cookie guide](https://trainingdojo.app/blog/trainingpeaks-production-cookie-guide).
 
 ---
 

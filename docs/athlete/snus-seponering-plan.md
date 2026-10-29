@@ -1,128 +1,109 @@
 # Snus-seponering — plan (William, okt 2026)
 
-**Mål:** Slutte helt med nikotinposen, bedre **søvn / HRV / restitusjon** — ikke «moralsk resett».
+**Mål:** Slutte helt med **poser**, bedre **søvn / HRV / restitusjon**.
 
-**Utgangspunkt (profil):** Skruf Super White **No55** (~17 mg/pose), **13–15 poser/dag**, mest **jobb + kveld**. **Kaloriunderskudd** aktivt — se mat under avvenning.
+**Utgangspunkt:** Skruf **No55** (~17 mg/pose), **13–15 poser/dag**, jobb + kveld. **Kaloriunderskudd** — se mat under avvenning.
 
-**Evidens (kort):** Nikotin ↑ sympatikus, ↓ REM/søvn; daglig bruk = abstinens om natt → høyere morgen-RHR. Se [`knowledge/restitusjon/snus-nikotin.md`](../../knowledge/restitusjon/snus-nikotin.md).
+**Valg (okt 2026):** **Rask linje** — du taper dårlig på «færre poser»; da er **fast sluttdato + NRT** bedre enn ukevis nedtrapping.
 
-**Medisinsk:** Brystsmerter, arytmier, svimmelhet → **fastlege**. Sluttstøtte: [slutta.no](https://www.slutta.no), fastlege (nikotinbehandling).
-
----
-
-## Prinsipper (coach)
-
-1. **Ikke kald turkey samme uke som ATL ~90 + 6×3** uten Plan B — abstinens kan ligne «HRV-kollaps» og ødelegge både økt og motivasjon.
-2. **Kveld først** (allerede i profil): kvelds-snus er verst for søvn → start der.
-3. **Nedtrapping beats hero:** færre poser → svakere sort **eller** NRT (nikotintyggis/plaster) på jobb-triggere — **ikke** dobbelt (pose + høy NRT).
-4. **Logg poser/dag** (Intervals `comments` søndag eller daglig 1 linje) — ellers vet du ikke om du taper.
-5. **Trening:** Ingen ekstra hard uke «fordi du sluttet»; **Plan B** første 10–14 dager ved dårlig søvn.
+**Evidens / medisin:** [`knowledge/restitusjon/snus-nikotin.md`](../../knowledge/restitusjon/snus-nikotin.md) · [slutta.no](https://www.slutta.no) · fastlege ved brystsmerter/arytmier.
 
 ---
 
-## Fase 0 — denne uken (tor 29. okt → søn 2. nov)
+## Rask linje (aktiv plan)
 
-**Formål:** Stabil kalender + **null snus etter 18:00** hver dag (inkl. helg).
+### Steg 1 — Innkjøp **før man 3. nov**
 
-| Regel | Detalj |
-|-------|--------|
-| **Cutoff 18:00** | Siste pose **senest 17:45**; etter golf/rolig i kveld: **ingen** «belønningspose». |
-| **Jobb** | Maks **samme antall som i dag** — ikke øk pga. stress; **ikke** snus under rolig økt. |
-| **6×3 lør 31.** | **Ingen** snus **2 t før** og **under** intervall (ekte puls). |
-| **Snapshot / HRV** | Forvent **uro 2–4 netter** når kveld forsvinner — sammenlign **morgen** uke-over-uke. |
+| Produkt | Formål |
+|---------|--------|
+| **Nikotintyggis 2 mg** (Nicorette e.l.) | **Erstatter all jobb-snus** fra sluttdato |
+| Valgfritt: **plaster 7 mg** (fastlege) | Jevn dose første 1–2 uker hvis jobb blir uutholdelig |
 
-**Suksess:** 7 dager med **0 poser etter 18:00** + gjennomført uke uten å bruke abstinens som unnskyldning for å droppe all trening.
+**Regel:** Etter sluttdato — **0 poser**. Tyggis **eller** plaster, **ikke** pose + full tyggis samme time.
 
 ---
 
-## Fase 1 — uke 1–2 etter uke 29 (ca. 3.–16. nov)
+### Steg 2 — **Tor 29. okt → søn 2. nov** (bro)
 
-**Formål:** Redusere **total daglig dose** ~30 %.
+| Regel | Hvorfor |
+|-------|---------|
+| **Ingen snus etter 18:00** | Søvngevinst **før** total slutt; mindre kveldsstimulans |
+| Jobb: **vanlig antall OK** | Ikke hero-taper — du slutter **poser** om få dager uansett |
+| **Lør 6×3:** ingen snus 2 t før / under intervall | Ekte puls |
 
-| Uke | Mål poser/dag | Taktikk |
-|-----|----------------|---------|
-| **1** | **10–11** | Fjern **2–3 jobb-poser** (f.eks. etter lunsj + siste på kontoret). Kveld fortsatt 0 etter 18. |
-| **2** | **8–9** | Én pose **byttes** til **2 mg tyggis** på verste jobb-trigger **eller** gå til **No22 / lavere styrke** uten å ta flere. |
-
-**Mat:** Underskudd + slutt = **sult om kvelden**. Plan: **protein + fiber** til middag (kylling, egg, grønnsaker); **ikke** erstatte snus med sukker hele kvelden.
-
----
-
-## Fase 2 — uke 3–4 (ca. 17.–30. nov)
-
-**Formål:** **≤ 4 poser/dag** kun **jobb** (f.eks. 09, 11, 14, 16) — **ingen** hjemme/kveld/helg.
-
-| Dagtype | Snus |
-|---------|------|
-| **Jobb** | Maks 4, fast tidspunkter ( ikke «automatisk hver time»). |
-| **Fridag / helg** | **0 poser** — bruk **tyggis 2 mg** PRN (maks 6/dag første helg). |
-| **Hard økt** | 0 snus 3 t før; tyggis OK etter hvis du taper poser. |
+**Søn 2. nov kveld:** **Siste pose i munnen senest 17:45** (samme cutoff). **Kast / gi bort resten av esken** samme kveld — ikke «én backup i bilen».
 
 ---
 
-## Fase 3 — sluttdato (forslag: **man 1. des 2026**)
+### Steg 3 — **Man 3. nov 2026 = siste snus-dag**
 
-**Siste pose:** søndag **30. nov** etter kl. 16 **eller** mandag morgen — velg **én** linje og hold den.
+Fra **oppvåkning man 3. nov:** **ingen poser**, bare NRT.
 
-**Etter sluttdato:**
+| Uke | NRT | Maks |
+|-----|-----|------|
+| **1 (3.–9. nov)** | **2 mg tyggis** ved sug — tygg 20–30 min, **ikke** skumme som snus | **8–10 tyggis/dag** |
+| **2** | Samme, bare når **sterk** trigger | **6–8/dag** |
+| **3–4** | Taper — færre tyggis, kortere bruk | mot **0** |
 
-| Verktøy | Bruk |
-|---------|------|
-| **Nikotintyggis 2 mg** | Jobb, bil, etter middag — maks **8–10/dag** uke 1, taper uke 2–4. |
-| **Plaster 7 mg** (valgfritt, lege) | Hvis jobb-abstinens er verst — **ikke** samtidig med mange poser. |
-| **Koffein** | Behold **1–2 morgen**, siste 11–12 — ikke erstatte snus med ekstra kaffe etter kl. 14. |
+**Plaster (valgfritt):** Én **7 mg** morgen uke 1–2 **i stedet for** halvparten av tyggisene — **ikke** plaster + 10 tyggis + kaffe.
 
-**Forventet 1–2 uker:** irritabilitet, konsentrasjonsdip, **lettere søvn** etter ~5–7 dager uten kveldsdose; **HRV-trend** kan løfte seg over **2–4 uker** (personlig variasjon).
-
----
-
-## Triggere og erstatning (William-spesifikt)
-
-| Trigger | Erstatning |
-|---------|------------|
-| **Jobb / regnskap** | Tyggis 2 mg, vann, **5 min gå** uten pose; færre faste «røyketider». |
-| **Etter måltid** | Tannpirk, tyggis, kort tur. |
-| **Golf / bil** | **0** — har fungert uten snus i aktivitet før. |
-| **Kveld / TV** | **Farligste** — allerede fjernet i fase 0; te, magnesium (valgfritt), leggetid **22:00–22:30**. |
-| **Stress + kaffe** | Ikke **kaffe + snus + deadline** samme time — velg kaffe **eller** pause uten nikotin. |
+**Koffein:** Fortsatt **1–2 morgen**, siste **11–12** — ikke 4 kaffe + abstinens.
 
 ---
 
-## Måling (N=1)
+### Steg 4 — Trening uke 3.–9. nov (abstinens-uke)
 
-Logg ukentlig i Intervals wellness **`comments`**:
+Forvent **2–5 netter** urolig søvn, **RHR litt opp**, konsentrasjonsdip — **ikke** det samme som overtrening, men **Plan B** gjelder:
+
+| Signal | Trening |
+|--------|---------|
+| Dårlig søvn + irritabel | **Z2 −20 %**, utsett quality 24–48 h |
+| Hodepine / kvalme | Gåtur eller hvil |
+| «Alt er rødt» | Sjekk **ATL** + logg **NRT** — ikke skyld på alt på snus |
+
+**Mål:** **Kontinuitet** (prioritet 1 i profil), ikke PR uke 1 uten snus.
+
+---
+
+### Mat (underskudd + slutt)
+
+- **Mer sult** uke 1–2 er normalt — fyll med **protein + fiber**, ikke bare godteri.  
+- Se [`ernaring-innkjop-handleliste.md`](ernaring-innkjop-handleliste.md) for praktisk lager.
+
+---
+
+## Triggere (William)
+
+| Trigger | Etter 3. nov |
+|---------|----------------|
+| Jobb / regnskap | Tyggis 2 mg, vann, **5 min gå** |
+| Etter middag | Tyggis **eller** tannpirk + te — **ikke** «bare én pose» |
+| Kveld / TV | **Ingen** nikotin etter **18:00** uke 1–2 (som bro-uken) — hjelper søvn |
+| Stress + kaffe | Én kaffe, **ingen** ekstra nikotin-stack |
+
+---
+
+## Måling
+
+Intervals **`comments`** (søndag):
 
 ```
-Snus: X poser/dag snitt | kveld 0 etter 18: ja/nei | NRT: ja/nei
+Snus poser: 0 | NRT tyggis/dag ~X | søvn ok/dårlig
 ```
 
-**Sammenlign (Garmin):** snitt **søvnscore**, **overnight HRV**, **RHR** — uke før fase 0 vs uke 4 etter sluttdato.
-
-**Ikke** forvent at HRV matcher ikke-snusere; se **trend** og **søvn**.
+Garmin: **overnight HRV + søvn** uke 29 vs uke 10. nov — se **trend**, ikke enkeltmåling.
 
 ---
 
-## Plan B trening ved avvenning
+## Alternativ: gradvis nedtrapping (parkert)
 
-| Symptom | Trening |
-|---------|---------|
-| Dårlig søvn 2 netter, RHR +5 | **Z2 −20 %**, utsett quality 24–48 h |
-| Hodepine, kvalme | Lett bevegelse eller hvil — **ikke** 6×3 |
-| «Føles som HRV-kollaps» | Sjekk **load først**; logg **poser + NRT** så du skiller abstinens fra overtrening |
-
----
-
-## Hva som **ikke** er planen
-
-- Bytte til «mildere» **No55** uten å telle poser.
-- **Dobbel** nikotin (pose + sterkt tyggis + kaffe-stack).
-- Slutte **midt i** ukens tyngste dag uten å ha kjørt **fase 0** en uke.
+Hvis rask linje sporer av: se git-historikk / tidligere versjon med fase 1–3 til 1. des. **Du valgte rask linje** fordi taper er vanskelig — ikke bland (færre poser **og** full NRT **og** kald turkey).
 
 ---
 
 ## Oppfølging
 
-- **Søndag ukesopp:** agent spør **poser/dag** + om **18:00-regelen** holdt.
-- Oppdater `docs/athlete/profile.md` livsstil når fase endres (f.eks. «seponering fase 2, 8 poser/dag»).
+- Agent **søndag ukesopp:** NRT-antall, søvn, Plan B?  
+- Oppdater [`profile.md`](profile.md) ved endring.
 
-**Relatert:** [`profile.md`](profile.md), [`readiness-totalbelastning.md`](readiness-totalbelastning.md)
+**Relatert:** [`readiness-totalbelastning.md`](readiness-totalbelastning.md)

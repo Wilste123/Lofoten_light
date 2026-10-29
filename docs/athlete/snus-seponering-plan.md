@@ -6,52 +6,62 @@
 
 **Valg (okt 2026):** **Rask linje** — du taper dårlig på «færre poser»; da er **fast sluttdato + NRT** bedre enn ukevis nedtrapping.
 
+**Faktisk slutt med poser:** **tor 29. okt 2026** (~12:20) — **0 poser fra nå**, kun NRT ved behov.
+
 **Evidens / medisin:** [`knowledge/restitusjon/snus-nikotin.md`](../../knowledge/restitusjon/snus-nikotin.md) · [slutta.no](https://www.slutta.no) · fastlege ved brystsmerter/arytmier.
 
 ---
 
-## Rask linje (aktiv plan)
+## Rask linje (aktiv plan) — **start 29. okt 2026**
 
-### Steg 1 — Innkjøp **før man 3. nov**
+**Status:** Poser **sluttet**. Abstinens-uke **1** = resten av uke 29. okt – 2. nov + uke 3.–9. nov.
+
+### Steg 1 — NRT **i dag**
 
 | Produkt | Formål |
 |---------|--------|
-| **Nikotintyggis 2 mg** (Nicorette e.l.) | **Erstatter all jobb-snus** fra sluttdato |
-| Valgfritt: **plaster 7 mg** (fastlege) | Jevn dose første 1–2 uker hvis jobb blir uutholdelig |
+| **Nikotintyggis 2 mg** | Kjøp **i dag** hvis du ikke har — første sug = tyggis, ikke pose |
+| Valgfritt: **plaster 7 mg** (fastlege) | Hvis ettermiddag/kveld blir uutholdelig uke 1 |
 
-**Regel:** Etter sluttdato — **0 poser**. Tyggis **eller** plaster, **ikke** pose + full tyggis samme time.
-
----
-
-### Steg 2 — **Tor 29. okt → søn 2. nov** (bro)
-
-| Regel | Hvorfor |
-|-------|---------|
-| **Ingen snus etter 18:00** | Søvngevinst **før** total slutt; mindre kveldsstimulans |
-| Jobb: **vanlig antall OK** | Ikke hero-taper — du slutter **poser** om få dager uansett |
-| **Lør 6×3:** ingen snus 2 t før / under intervall | Ekte puls |
-
-**Søn 2. nov kveld:** **Siste pose i munnen senest 17:45** (samme cutoff). **Kast / gi bort resten av esken** samme kveld — ikke «én backup i bilen».
+**Regel:** **0 poser.** Tyggis **eller** plaster — **ikke** begge + pose.
 
 ---
 
-### Steg 3 — **Man 3. nov 2026 = siste snus-dag**
+### Steg 2 — **Fra 29. okt 2026**
 
-Fra **oppvåkning man 3. nov:** **ingen poser**, bare NRT.
+| Regel | Detalj |
+|-------|--------|
+| **Kast poser** | Hjem, jobb, bil **i dag** — ingen backup |
+| **Tyggis ved sug** | 2 mg, tygg 20–30 min (**ikke** skumme som snus); maks **8–10/dag** uke 1 |
+| **Etter 18:00** | Unngå nikotin om mulig (søvn); nød: **1 tyggis**, aldri pose |
+| **Trening denne uka** | Se tabell under |
 
-| Uke | NRT | Maks |
-|-----|-----|------|
-| **1 (3.–9. nov)** | **2 mg tyggis** ved sug — tygg 20–30 min, **ikke** skumme som snus | **8–10 tyggis/dag** |
-| **2** | Samme, bare når **sterk** trigger | **6–8/dag** |
-| **3–4** | Taper — færre tyggis, kortere bruk | mot **0** |
+**6×3 lør 31. — Plan A / B**
+
+| | |
+|--|--|
+| **Plan A** | 6×3 som planlagt hvis søvn ok og beina svarer |
+| **Plan B** | **4×3** eller utsett 24 h hvis abstinens + dårlig søvn — **ikke** skam |
+
+---
+
+### Steg 3 — NRT-taper (uke 2–4 etter 29. okt)
+
+| Uke | Maks tyggis/dag |
+|-----|-----------------|
+| **1** (fra 29. okt) | 8–10 |
+| **2** | 6–8 |
+| **3–4** | ned mot 0 |
 
 **Plaster (valgfritt):** Én **7 mg** morgen uke 1–2 **i stedet for** halvparten av tyggisene — **ikke** plaster + 10 tyggis + kaffe.
 
-**Koffein:** Fortsatt **1–2 morgen**, siste **11–12** — ikke 4 kaffe + abstinens.
+**Koffein:** Fortsatt **1–2 morgen**, siste **11–12**.
 
 ---
 
-### Steg 4 — Trening uke 3.–9. nov (abstinens-uke)
+### Steg 4 — Trening abstinens-uke 1
+
+Forvent **2–5 netter** urolig søvn, **RHR litt opp**, konsentrasjonsdip — **ikke** det samme som overtrening, men **Plan B** gjelder:
 
 Forvent **2–5 netter** urolig søvn, **RHR litt opp**, konsentrasjonsdip — **ikke** det samme som overtrening, men **Plan B** gjelder:
 

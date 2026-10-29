@@ -44,6 +44,7 @@ Every plan must include:
 - No live TP sync without credentials.
 - Do not invent Xtri-pondus facts without `docs/xtri/`.
 - Do not program Norseman / full Extreme volume unless William explicitly changes goals.
+- **Snus craving / `Kode:jeg sliter`:** show [`docs/athlete/snus-kode-paaminnelse.md`](docs/athlete/snus-kode-paaminnelse.md) — **never** approve resuming pouches.
 
 ## Tools
 

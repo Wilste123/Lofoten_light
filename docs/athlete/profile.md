@@ -77,7 +77,7 @@ Agenten skal **planlegge faser** (f.eks. start der William er nå → stabil bas
 | Utstyr | Se **Utstyr (sep 2026)** under; **smartvekt (BIA)** — logg morgen snitt |
 | Kroppssammensetning | Race **&lt;80 kg**; BIA-mål: [`kroppssammensetning-smartvekt.md`](kroppssammensetning-smartvekt.md) |
 | Yrke | **Finansiell rådgiving / regnskap** (kontor) |
-| Livsstil | **Nikotinposer** **Skruf Super White No55 Fresh S5** (slim, supersterk; typ. **~17 mg nikotin/pose** — sjekk esken). ~**13–15 poser/dag** (ca. halv boks), mest **jobb + kveld**. **Kaffe:** 1–2 morgen, siste ~11–12. **Alkohol:** lite (glass vin helg). **Leggetid** ~22:00–22:30. **Kaloriunderskudd:** ja (okt 2026). HRV/søvn: [`knowledge/restitusjon/snus-nikotin.md`](../../knowledge/restitusjon/snus-nikotin.md). Nedtrapping: kveld først, ikke mer. |
+| Livsstil | **Nikotinposer** **Skruf Super White No55 Fresh S5** (slim, supersterk; typ. **~17 mg nikotin/pose** — sjekk esken). ~**13–15 poser/dag** (ca. halv boks), mest **jobb + kveld**. **Seponering:** [`snus-seponering-plan.md`](snus-seponering-plan.md) — **fase 0** fra okt 2026 (**0 poser etter 18:00**), full slutt **mål 1. des 2026**. **Kaffe:** 1–2 morgen, siste ~11–12. **Alkohol:** lite (glass vin helg). **Leggetid** ~22:00–22:30. **Kaloriunderskudd:** ja (okt 2026). HRV/søvn: [`knowledge/restitusjon/snus-nikotin.md`](../../knowledge/restitusjon/snus-nikotin.md). |
 
 ## Utstyr (sep 2026)
 
@@ -221,7 +221,7 @@ Svøm: **distanse eller varighet** + **% threshold pace** i Builder; pause = rec
 | **Søvn** | Wellness `sleepSecs` / score fra Garmin→Intervals | **Leggetid ~22:00–22:30** (vanlig); oppv. ikke fast logget — bruk klokke-søvn når synket |
 | **Jobb** | Profil | **Finansiell rådgiving / regnskap** (kontor — sannsynlig mye sitting). Reise/deadline-uker: noter i `comments` ved behov |
 | **Livsstress** | Wellness `stress` 1–5 når fylt | Lillehammer/hytte i kalender; ellers kort notat søndag |
-| **Nikotin** | Profil + taper | Skruf No55, 13–15/d, jobb+kveld — **ingen etter 18:00** (eksperiment) |
+| **Nikotin** | Profil + plan | Skruf No55, 13–15/d → **seponering** [`snus-seponering-plan.md`](snus-seponering-plan.md): **0 etter 18:00** (fase 0), slutt **1. des 2026** |
 | **Koffein** | Profil | **1–2 kaffe morgen**, siste **~11–12** (lav kveldsrisiko vs snus) |
 | **Alkohol** | Profil | **Lite** — typ. **ett glass vin** til mat i helg |
 | **Kropp / vekt** | BIA + wellness | **Aktivt kaloriunderskudd** nå → teller som **ekstra belastning** ved høy ATL; ikke krasj underskudd + hard uke |

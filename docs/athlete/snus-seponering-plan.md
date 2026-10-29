@@ -116,4 +116,4 @@ Hvis rask linje sporer av: se git-historikk / tidligere versjon med fase 1–3 t
 - Agent **søndag ukesopp:** NRT-antall, søvn, Plan B?  
 - Oppdater [`profile.md`](profile.md) ved endring.
 
-**Relatert:** [`readiness-totalbelastning.md`](readiness-totalbelastning.md)
+**Relatert:** [`readiness-totalbelastning.md`](readiness-totalbelastning.md), [`snus-kode-paaminnelse.md`](snus-kode-paaminnelse.md) (**`Kode:jeg sliter`**)

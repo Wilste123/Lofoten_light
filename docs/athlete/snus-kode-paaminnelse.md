@@ -54,6 +54,22 @@ Dette handler **ikke** om skam. Det handler om **Half Extreme / Lofoten 2027** o
 
 ---
 
+### Fremtiden (ikke bare denne uka)
+
+Du slutter **for resten av livet som snusbruker**, ikke bare til HRV er grønn igjen. Craving er **kort**; **gevinster** bygger seg over **år**:
+
+| Område | Hvorfor det teller |
+|--------|---------------------|
+| **Tannhelse / munn** | Snus gir **mer slitasje på tannkjøtt og slimhinner** (recessjon, irritasjon, dårligere pust). **Nikotinposer** er **ikke** «snille» for munnen — mindre lunge enn røyk, **ikke** ufarlig lokalt. |
+| **Kreft / svulster** | **Høyere risiko** for bl.a. **munn-, svelg- og bukspyttkjertelkreft** vs ikke-brukere (FHI / epidemiologi). Ikke samme som sigarettrøyk, men **ikke null** — du bytter **kronisk eksponering** mot **null** over tid. |
+| **Barn / fertilitet (fremtid)** | Nikotin påvirker **sædkvalitet og hormonell balanse** hos menn i studier; **røyking** er tydeligst dokumentert, **snus** mer usikkert, men **FHI anbefaler** å **slutte før du skal bli gravid/far** — da slipper partner og barn **passiv nikotin**, og du starter **fedre-rollen** uten avhengighet. |
+| **Hjerte-kar** | **Høyere risiko** enn ikke-brukere (lavere enn røyk) — relevant når du **trener mye** og belaster hjertet i **Lofoten**. |
+| **Identitet** | Du bygger **750–800 t** mot **2027** — **ikke** parallelle «halv boks/dag»-rutiner som følger deg i 10 år til. |
+
+**Coach:** Dette er **langsiktig investering**, ikke skremsel for én dårlig time. **I dag** handler det om **ikke ta pose**; **fremtiden** handler om **aldri «bare én eske til unna»** igjen.
+
+---
+
 ### Hvorfor akkurat nå
 
 - Du valgte **slutt 29. okt** fordi **nedtrapping** ikke fungerer for deg — **én pose** er ikke «tilbake til start», det er **tilbake til 13–15/d toleranse**.  

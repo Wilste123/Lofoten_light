@@ -172,4 +172,7 @@
 - **Etter FTP:** oppdater **FTP + soner** i profil.  
 - **Des:** sjekk at **uke 9–12** i [`mengdeperioder`](../mengdeperioder-2026-2027.md) får **svøm-Q** inn i **samme timer**.
 
-**Relatert:** [`2026-Q4-26okt-31des.md`](../2026-Q4-26okt-31des.md)
+**Agent:** Bruk **dette notatet** for svøm-Q vurdering fremover; **ikke** foreslå **S05/8×100 hard** før **CSS-test** eller **800 m+ stabil form**.
+
+**Rev. 2 (svøm + VM):** [`kvalitetsvurdering-rev2-svom-vm-2026-10-30.md`](kvalitetsvurdering-rev2-svom-vm-2026-10-30.md) — **overstyrer svøm-delen** i dette dokumentet.
+

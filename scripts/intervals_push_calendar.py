@@ -16,6 +16,7 @@ if str(Path(__file__).resolve().parent) not in sys.path:
 from intervals_lib import (  # noqa: E402
     SPORT_TO_INTERVALS_TYPE,
     api_key,
+    format_swim_coach_note_only,
     post_events_bulk,
     planned_intervals_target,
     resolve_bike_zwo_path,
@@ -102,8 +103,8 @@ def build_workout_event(
             ev["type"] = "Swim"
         elif sport_key == "bike":
             ev["type"] = "Ride"
-    elif sport_key in ("run", "swim", "bike") and duration_min > 0:
-        # Fallback: simple steady block in Intervals workout text
+    elif sport_key in ("run", "bike") and duration_min > 0:
+        # Fallback steady block (not swim — kun trenernotat + varighet/load)
         pct = "Z2 HR" if sport_key != "bike" else "68%"
         ev["description"] = f"- {duration_min}m {pct}\n\n{description}".strip()
 
@@ -111,6 +112,12 @@ def build_workout_event(
         body = resolve_strength_description(description, repo_root)
         if body:
             ev["description"] = body
+    elif sport_key == "swim":
+        planned_path = resolve_planned_session_path(description, sport_key, repo_root)
+        if planned_path:
+            ev["description"] = format_swim_coach_note_only(planned_path)
+        elif description:
+            ev["description"] = description
     else:
         planned_path = resolve_planned_session_path(description, sport_key, repo_root)
         session = (
@@ -124,8 +131,6 @@ def build_workout_event(
             itarget = planned_intervals_target(planned_path)
             if sport_key == "run" and itarget == "HR":
                 ev["target"] = "HR"
-            elif sport_key == "swim" and itarget == "Pace":
-                ev["target"] = "PACE"
 
     return ev
 
@@ -138,13 +143,14 @@ def build_note_event(
     day = int(row["day"])
     title = (row.get("title") or "Ukenotat").strip()
     description = (row.get("description") or "").strip()
+    note_suffix = (row.get("note_id") or row.get("id_suffix") or "note").strip()
     return {
         "category": "NOTE",
         "start_date_local": day_to_datetime(plan_start, day, start_time),
         "name": title,
         "description": description,
         "color": "blue",
-        "external_id": external_id(plan_start, day, "note"),
+        "external_id": external_id(plan_start, day, note_suffix),
     }
 
 
@@ -194,6 +200,11 @@ def main() -> int:
         action="store_true",
         help="Print summary only, no API calls",
     )
+    parser.add_argument(
+        "--notes-only",
+        action="store_true",
+        help="Push only NOTE rows from --notes CSV (no workouts from --plan)",
+    )
     args = parser.parse_args()
 
     if not args.dry_run and not api_key():
@@ -207,15 +218,16 @@ def main() -> int:
     bike_by_date = load_bike_by_date(args.bike_calendar)
     events: list[dict] = []
 
-    for row in load_csv(args.plan):
-        sport = (row.get("sport") or "").strip().lower()
-        if sport in ("other",) or (row.get("subtype") or "").lower() == "note":
-            continue
-        events.append(
-            build_workout_event(
-                row, plan_start, args.start_time, bike_by_date, _REPO
+    if not args.notes_only:
+        for row in load_csv(args.plan):
+            sport = (row.get("sport") or "").strip().lower()
+            if sport in ("other",) or (row.get("subtype") or "").lower() == "note":
+                continue
+            events.append(
+                build_workout_event(
+                    row, plan_start, args.start_time, bike_by_date, _REPO
+                )
             )
-        )
 
     if args.notes.is_file():
         for row in load_csv(args.notes):
@@ -225,7 +237,8 @@ def main() -> int:
                 events.append(build_note_event(row, plan_start, args.note_time))
 
     events.sort(key=lambda e: e["start_date_local"])
-    print(f"Prepared {len(events)} calendar events from {args.plan.name}")
+    src = args.notes.name if args.notes_only else args.plan.name
+    print(f"Prepared {len(events)} calendar events from {src}")
 
     zwo_count = sum(1 for e in events if e.get("file_contents"))
     print(f"  With structured ZWO: {zwo_count}")

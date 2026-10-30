@@ -41,6 +41,7 @@ Send én av:
 
 **Agent svarer med:**
 
+0. **TB-Score (standard):** `python3 scripts/generate_coach_report.py --days 30` → snapshot **nå** + grafer (`tb-dashboard.png`, `tb-score-trend.png`). Totalbelastning styrer Plan A/B før volum. Subjektiv wellness teller **ikke** i TB default.  
 1. **Kommentar** (helhetsvurdering, 1 paragraf)  
 2. **Økt-for-økt** på Q-økter (hva var bra / hva justeres)  
 3. **Neste uke:** ett fokus + evt. Plan B hvis uka var rød  

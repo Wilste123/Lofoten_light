@@ -16,3 +16,5 @@ Relevant scopes if you ever build an app:
 Planned workout create endpoint (partners): `POST /v2/workouts/plan` with `Structure` JSON for erg-style steps.
 
 Until then, use CSV **exports** for analysis and **ZWO / builder** for prescription.
+
+**Repo scripts (token in `.env`):** see **[tp-api-setup.md](tp-api-setup.md)** — `fetch_tp_workouts.py`, `tp_push_calendar.py`.

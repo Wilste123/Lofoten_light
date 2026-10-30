@@ -14,7 +14,7 @@ Detaljerte månedstall: [`2026-2027-12mnd-periodisering.md`](2026-2027-12mnd-per
 |-----|--------|
 | **År** | Bygge **aerob + MSK** på tre ben mot 750–800 t — ikke 2019-volum på 2026-kropp |
 | **Fase** | Først **kontakt og vane**, så **bred base**, så **kvalitet + brick**, til slutt **Lofoten-spesifikk + taper** |
-| **Blokk (4 uker)** | 3 uker progresjon → **1 recovery** (OPV «ressursuke») |
+| **Blokk (4 uker)** | 3 uker progresjon → **1 recovery** (OPV «ressursuke») — **mengde-tabell:** [`mengdeperioder-2026-2027.md`](mengdeperioder-2026-2027.md) |
 | **Uke** | Ett tydelig fokus + TP-kommentarer ([`trener-feedback-syklus.md`](../docs/trainingpeaks/trener-feedback-syklus.md)) |
 
 **Prioriteringsfilter** (fra profil): kontinuitet → skadefrihet → gradvis progresjon → aerob → Lofoten → prestasjon.
@@ -31,8 +31,8 @@ gantt
 
     section Re-etablering
     B0 Start 4u           :b0, 2026-09-28, 28d
-    B1 Kontakt 8t         :b1, after b0, 28d
-    B2 Opp mot 10t        :b2, after b1, 28d
+    B1 Kontakt 9-10t      :b1, after b0, 28d
+    B2 Des 10-11.5t      :b2, after b1, 28d
 
     section Base
     B3 Aerob bred         :b3, 2026-12-01, 56d
@@ -71,14 +71,14 @@ gantt
 
 | | |
 |---|---|
-| **Timer** | ~8–9 t/uke |
-| **Hvorfor** | Stabilisere **12 økter/14 dager** uten fall; bevise at ukestruktur tåler jobb + Trondheim-vinter innendørs |
+| **Timer** | **~9 → 10 t/uke** (uke 8 recovery **~7,5 t**); **ikke** årets topp — se [`2026-post-deload-ramp.md`](2026-post-deload-ramp.md) |
+| **Hvorfor** | Struktur etter deload; kvalitet (myr, elghufs, FTP) uten å topp-load november |
 | **Fokus** | Svøm 3×, løp **myr/elghufs lett** (OPV), sykkel Z2 + **rest-teknikk** (ettbens), styrke 2× |
 | **Tester** | **FTP ramp** (sykkel) uke 2–3 i blokken hvis 3 uker grønn etter B0 |
 | **Nøkkeløkter** | `OPV-myr-loping-staver`, kort `OPV-elghufs 4×3`, sykkel rest-teknikk ([`opv-nokkelokter.md`](../knowledge/coach/opv-nokkelokter.md)) |
 | **Suksess** | FTP 2026 i `profile.md`; fortsatt 0 røde uker på løp |
 
-| **Planfiler** | [`2026-10-26-uke-05.md`](2026-10-26-uke-05.md) … [`uke-08.md`](2026-10-26-uke-08.md) · CSV `csv/trainingdojo-4uker-2026-10-26.csv` |
+| **Planfiler** | Uke 5–9 + [`2026-12-uke-10.md`](2026-12-uke-10.md) … [`uke-14.md`](2026-12-uke-14.md) · CSV `csv/trainingdojo-2026-10-26-des31.csv` |
 
 ---
 
@@ -86,8 +86,8 @@ gantt
 
 | | |
 |---|---|
-| **Timer** | ~9–10 t/uke |
-| **Hvorfor** | Du skal **nærme deg** årsmålets snitt over måneder — ikke hoppe til 15 t |
+| **Timer** | **~10 → 11,5 t/uke** i des (**høyere enn nov**) |
+| **Hvorfor** | Ramp mot base jan–apr; **årets topp** kommer build mai–jul 2027 (14–16 t) |
 | **Fokus** | Første **CSS-test** (svøm), løp long 75–90 min, sykkel **2–2,5 t** rolig |
 | **Intensitet** | Fortsatt **80 %+** Z1–Z2; maks 1 «kontrolløkt» sykkel lett |
 | **Suksess** | 10 t/uke én gang uten å føles som 2019 |
@@ -126,6 +126,7 @@ gantt
 | **Hvorfor** | «Bro» — kroppen skal tåle **to kvalitetsstimuli** i uka uten å ryke |
 | **Fokus** | Roter sykkel-Q og løp-Q **ulike uker**; brick **intro** (BR01) |
 | **Suksess** | Brick 90 min sykkel + 20 min løp uten 5 dager ødelagt bein |
+| **Leir** | **Leksvik 16.–25. apr 2027** — camp **~18–20 t** på hytta (**15 t** + **17–20 t** kalenderuker), med samboer — [`2027-04-leksvik-treningsleir.md`](2027-04-leksvik-treningsleir.md) |
 
 ---
 
@@ -263,5 +264,8 @@ gantt
 |-----|------|
 | [`2026-2027-12mnd-periodisering.md`](2026-2027-12mnd-periodisering.md) | Måned-for-måned tabeller |
 | [`csv/12mnd-periodisering.csv`](csv/12mnd-periodisering.csv) | Excel/ark import |
+| [`mengdeperioder-2026-2027.md`](mengdeperioder-2026-2027.md) | **Mengde-mesosykluser** (timer/TSS per uke) |
+| [`csv/mengdeperioder-2026-2027.csv`](csv/mengdeperioder-2026-2027.csv) | Meso-import / agent |
+| [`csv/intervals-weekly-targets-2026-10-12-12-31.csv`](csv/intervals-weekly-targets-2026-10-12-12-31.csv) | Ukentlig TARGET Intervals |
 | [`coach/ukemaler.md`](../knowledge/coach/ukemaler.md) | Eksempeluker per fase A–D |
 | [`coach/opv-nokkelokter.md`](../knowledge/coach/opv-nokkelokter.md) | Signaturøkter |

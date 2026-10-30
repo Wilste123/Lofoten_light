@@ -5,7 +5,8 @@ Referanse for **topp-coach**-agenten. Alt skal kunne brukes til **konkrete ukepl
 ## Start her (agent)
 
 1. `coach/coach-filosofi.md` — tone, beslutningsregler, kvalitetskrav  
-2. `coach/treneridentitet.md` + `coach/ole-petter-vibekken-referanse.md` — hvem treneren er for William  
+2. `coach/kvalitetsnorm-toppidrett.md` — **hvor mange harde økter/uke** (toppidrett, ikke PT-nivå)  
+3. `coach/treneridentitet.md` + `coach/ole-petter-vibekken-referanse.md` — hvem treneren er for William  
 3. `docs/athlete/profile.md` + `goals.md`  
 4. `coach/ukemaler.md` — fasebaserte uker  
 5. `triathlon/periodisering-mot-2027.md` + `lofoten-half-extreme.md`
@@ -15,6 +16,7 @@ Referanse for **topp-coach**-agenten. Alt skal kunne brukes til **konkrete ukepl
 | Mappe | Innhold |
 |-------|---------|
 | **[coach/](coach/)** | Filosofi, treneridentitet (OPV-modell), `opv-nokkelokter.md`, ukemaler, typiske feil |
+| **`docs/coach/agent-modus-pilot-2026-10.md`** | Oppsummering Cursor Agent modus test-pilot (okt 2026): bruk, leveranser, GitHub vs chat |
 | [ernaring/](ernaring/) | Daglig, fueling, race |
 | [skader/](skader/) | ACWR, styrkeprogram, løp, oversikt |
 | [svom/](svom/) | Faser 0–3, øktbibliotek, OWS/kulde |
@@ -22,9 +24,9 @@ Referanse for **topp-coach**-agenten. Alt skal kunne brukes til **konkrete ukepl
 | [lop/](lop/) | Oppbygging, intervallbibliotek, terreng |
 | [utstyr/](utstyr/) | Race checklist, sykkel, vinter |
 | [triathlon/](triathlon/) | Brick, Lofoten, periodisering |
-| [restitusjon/](restitusjon/) | Søvn, sykdom, stress |
+| [restitusjon/](restitusjon/) | Søvn, sykdom, stress, snus/nikotin |
 | [mental/](mental/) | Kontinuitet, motivasjon |
-| [kilder/](kilder/) | Lenker + PDF |
+| [kilder/](kilder/) | Lenker + PDF; [`snus-nikotin-litteratur.md`](kilder/snus-nikotin-litteratur.md) |
 | [load-and-intensity.md](load-and-intensity.md) | TSS, soner, CTL |
 
 ## PDF-arkiv

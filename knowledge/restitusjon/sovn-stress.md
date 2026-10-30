@@ -10,6 +10,7 @@ Uten restitusjon er 750–800 t **skadeår**, ikke progresjonsår.
 | Regelmessighet | Samme oppvekking ±30 min |
 | Pre-søvn | Skjerm ned 60 min; ikke hard økt sent uten grunn |
 | Alkohol | Reduserer REM og glykogen — begrens i build |
+| Snus / nikotin | Stimulant — unngå sent på kvelden; se [`snus-nikotin.md`](snus-nikotin.md) |
 
 **Treningsjustering:**
 

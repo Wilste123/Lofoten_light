@@ -1,0 +1,22 @@
+name: Svøm nybegynner pull + teknikk 40
+sport: swim
+intervals_target: Pace
+---
+William, restitusjonsdag på land — **lett svøm**. Pull buoy: fokus på **rotasjon, utpust under vann, avslappet grep** (finger skånsom).
+
+Gårsdag: ~1000 m, mye pause ved vegg — helt normalt. I dag: **kortere repetisjoner**, roligere, mer drill.
+
+**Drill-cues:** catch-up (ett tak av gangen) · fingertip drag · «trykk brystet ned», hode i ro.
+
+Plan B: dropp 4×100 pull → 6×50 pull. Stopp ved øm skulder → rygg.
+
+---intervals---
+- Warmup 200mtr 90% Pace
+
+- 6x 50mtr 88% Pace 20s rest
+
+- 4x 100mtr 88% Pace 25s rest
+
+- 6x 50mtr 90% Pace 15s rest
+
+- Cooldown 100mtr 89% Pace

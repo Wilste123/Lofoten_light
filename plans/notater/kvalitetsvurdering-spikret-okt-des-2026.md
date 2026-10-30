@@ -13,7 +13,7 @@
 |--|--|
 | **Volum / periodisering** | **Fundamentalt riktig** for comeback → base: **2 load-uker + recovery + ramp**, PMC **CTL ↑ / TSB-bunn / oppretting** er **fornuftig**. |
 | **Kvalitetsfordeling (tri)** | **Delvis riktig** — **sykkel SS + FTP** og **løp intervall-progresjon** er **gode**; **svøm** er **for mye «Erik-drill/teknikk»** og **for lite CSS/threshold** vs repo-norm og **Half Extreme-limiters**. |
-| **Intensitetsstyring løp** | **Største svakhet:** **for mange harde løpeankere** i enkelte uker (**6×5 + 6×3/6×4**), og **6×5 mandag** **gjentatt** uten **rotasjon** (elghufs, 5×2, tempo). **Ikke** «du trener for lite» — **du stacker løp-Q**. |
+| **Intensitetsstyring løp** | **Rev. 2026-10-30:** **6×5 mandag er Z2/struktur — ikke hard løp.** Reell risiko = **6×3/6×4 + SS samme uke**, **lør 6×3 + 2 t sykkel**, **dobbel FTP** — **ikke** «6×5 + 6×3 = 3 harde løp». Valgfri **mandags-rotasjon** (myr/elghufs) = **variety**, ikke redning fra stacking. |
 | **Fundamentalt feil?** | **Nei** på retning (750–800 t, 3 ben, styrke, Q-uker). **Ja** på **detaljer:** **løp-Q telling**, **svøm-hardhet**, **FTP uke med for mange andre Q**, **lør-dobbel** (6×3 + lang sykkel) i push — **delvis rettet** i recovery. |
 
 **Du blir bedre av denne blokken hvis** du **gjennomfører Z2 ærlig**, **maks 2 harde løp/uke**, **fullfører svøm-Q når planlagt**, og **Plan B** ved rød HRV — **ikke** hvis du **racer hver Q**.
@@ -26,7 +26,7 @@
 
 | Stimulus | Vurdering |
 |----------|-----------|
-| Man **6×5** + tir **SS** + helg **3×4+3×3 / 6×3** | **Sterk** uke — **ok** som **avslutning kontakt**, men **TSB −40 forecast** krever **Plan B** (tor rød jogg droppet = **bra**). |
+| Man **6×5 (Z2)** + tir **SS** + helg **3×4+3×3 / 6×3** | **Planlagt base-uke:** mandag = **aerob struktur**, helg = **løp-Q**. **TSB −40 forecast** krever **Plan B** på **intervall**, ikke «dropp 6×5 som hard» (tor rød jogg droppet = **bra**). |
 | Svøm | **Teknikk** — **ok**; **mangler** hard svøm denne uken vs repo uke 5 **S12**. |
 
 ### 2.–8. nov (Base 1 uke 1 · ~598 TSS)
@@ -41,9 +41,9 @@
 
 | Økt | Faglig |
 |-----|--------|
-| **Man 6×5** | **Hard løp-Q #1** — **repo bruker S12 svøm man**; **6×5** hver **mandag** i push = **monoton** og **tungt**. **Alternativ (kvalitet):** annenhver uke **5×2 bakke** eller **tempo 4×5** i stedet for **6×5**. |
+| **Man 6×5** | **Aerob struktur (Z2/sub ~150)** — **ikke** løp-Q #1. **Valgfritt:** annenhver uke **myr / 5×2 / elghufs** for **terreng/gøy**, ikke fordi uka er «for hard». |
 | **Tir SS 3×15** | **Sterk sykkel-Q** — **matcher** limiter **bike**. |
-| **Fre 6×3** | **Hard løp-Q #2** — **ok** (**2 harde løp/uke**). |
+| **Fre 6×3** | **Hard løp-Q** (typisk **1 av ~2**/uke denne uken) — **ok**. |
 | **Ons løp 1:30** | **Z2 volum** — **bra**; **ikke** samme dag som **SS** stress kognitivt. |
 | **Søn løp 1:30** | **Lang rolig** — **bra** for **endurance limiter**. |
 
@@ -51,7 +51,7 @@
 
 | Økt | Faglig |
 |-----|--------|
-| **Man 6×5 igjen** | **Gjentakelse** — **lav variasjon**; **høy skade-/fatigue-risiko** uke 2. |
+| **Man 6×5** | **Samme kategori** som uke 9–15 — **volum**, ikke ekstra løp-Q. |
 | **Tir SS** | **Ok** — **ikke** + **tors** hard. |
 | **Lør 6×3 + kveldssykkel 2 t** | **Fundamentalt dårlig kombinasjon** (samme som «Alternativ 1» vi avviste). **Må:** **flytt sykkel** til **søn** eller **forkort**. |
 | **Søn 2 t sykkel** | **Bra** Z2 — **for tungt** hvis **lør** ikke **ryddes**. |
@@ -68,7 +68,7 @@
 
 | Økt | Faglig |
 |-----|--------|
-| **Man 6×5 + mikro-styrke** | **Hard start** etter recovery — **ok** hvis **TSB > −25**. |
+| **Man 6×5 + mikro-styrke** | **Aerob mandag** etter recovery — **ok**; **vurder Plan B** på **fre/lør 6×3** hvis **TSB < −25**. |
 | **Tir FTP «end base1»** | **Duplikat FTP** hvis **4. nov** allerede test — **velg én FTP** i perioden (**4. nov ELLER 1. des**, ikke begge **max**). |
 | **Lør 6×3** | **Ok** — **én** løp-Q. |
 | **Søn 2 t sykkel + svøm** | **God** spesifikk **Z2 sykkel** — **fueling-praksis** (60 g CHO/t fra t 1) **påkrevd** på **2 t**. |
@@ -89,19 +89,19 @@
 
 ## Det du gjør **fundamentalt feil** (eller nesten)
 
-### 1. For mange harde løp i samme uke (regelbrudd)
+### 1. For mange **harde** løp i samme uke (regelbrudd)
 
-**Norm:** [`kvalitetsnorm-toppidrett.md`](../../knowledge/coach/kvalitetsnorm-toppidrett.md) — **maks ~2 harde løp/uke**, roter **sykkel/svøm-Q**.
+**Norm:** [`kvalitetsnorm-toppidrett.md`](../../knowledge/coach/kvalitetsnorm-toppidrett.md) — **maks ~2 harde løp/uke** (**6×3, 6×4, 5×4 @ RPE 7+**, tempo terskel, elghufs, **5×2 bakke**). **6×5 mandag teller ikke.**
 
-**Brudd:** Uker med **6×5 man + 6×3/6×4 fre/lør** = **2 Q**, **ok** — men **ons 1:30** hvis **tempo** = **3.**. **Push-uke** med **6×5 + 6×3 + lang løp søn** = **grense** — **ikke** legg **tempo** eller **21 km** på toppen.
+**Reell grense:** **6×3/6×4** samme uke som **SS** + **lang løp søn** = **tung uke** — **Plan B** på **intervall**, ikke på mandag **med mindre** HRV/søvn tilsier **kortere aerob**.
 
-**Fix (uten å endre timer):** **Én** av **6×5 man** i push → **R01 easy 40** eller **5×2 bakke** (repo uke 6–7).
+**Push-uke:** **6×3 lør + 2 t sykkel samme dag/kveld** = **feil** (separator). **Ikke** «6×5 + 6×3 + lang løp» som «3 harde løp».
 
-### 2. Lav variasjon løp-Q (6×5-monotoni)
+### 2. Valgfri mandags-variasjon (ikke «redning»)
 
-**OPV-verktøy** ([`opv-nokkelokter.md`](../../knowledge/coach/opv-nokkelokter.md)): **elghufs, myr-løp, 5×2** — **ikke** bare **6×5/6×3**.
+**OPV-verktøy** ([`opv-nokkelokter.md`](../../knowledge/coach/opv-nokkelokter.md)): **elghufs, myr-løp, 5×2** — **bytt inn** for **6×5** når du vil ha **terreng/stimulus**, ikke fordi agenten misforsto intensitet.
 
-**Fix:** Fra **9. nov:** **bytt annenhver man** til **5×2** eller **elghufs 4×3** (samme TSS ~60–75).
+**Fix (valgfritt):** Fra **9. nov:** annenhver **man** → **myr** eller **5×2** (**samme TSS ~60–75**, **samme intensitetskategori**).
 
 ### 3. Svøm: for lite «hard aerob / CSS»
 

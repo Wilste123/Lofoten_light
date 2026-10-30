@@ -80,11 +80,11 @@
 
 | Feil | VM-kontrast |
 |------|-------------|
-| **6×5 man + 6×3/4 samme uke** uten rotasjon | Elite **varierer** stimulus; **2 harde løp/uke** |
 | **6×3 + 2 t sykkel samme lør** | Elite **separator** hard / long |
 | **Dobbel FTP** (nov + des) | Elite **tester** når **fresh**, ikke **2×/mnd** uten grunn |
 | **Jage compliance på røde økter** | Elite **dropper** økt — **kontinuitet uka etter** |
 | **Z2 «Very Strong»** på rolig | Elite **discipline** på easy |
+| **Agent: 6×5 = hard løp** | **Feil mindset** — mandag er **strukturert aerob** ([`intervaller-og-fart.md`](../../knowledge/lop/intervaller-og-fart.md)) |
 
 ### Det som **ikke** er feil (ikke brems unødig)
 

@@ -21,6 +21,8 @@ William trener mot **ekstrem triathlon** (750–800 t, 14–16 t/uke i build), i
 | Løp | OPV elghufs/myr, 5×3, 5×2 bakke, tempo 4×5 min, strides + 4×90 s |
 | Svøm | CSS-test, 10×100 @ CSS, 8×100 hard, 6×200 @ RPE 7, negativ split 1500 |
 
+**6×5 min mandag (Z2/sub ~150)** er **strukturert aerob volum** — teller **ikke** som «hard løp» i cap **maks 2/uke** (se `knowledge/lop/intervaller-og-fart.md`).
+
 Z2-langturer er **nødvendig volum**, ikke erstatning for tabellen over.
 
 ## Comeback-filter (ikke PT-filter)

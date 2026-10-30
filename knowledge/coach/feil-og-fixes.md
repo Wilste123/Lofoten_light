@@ -50,6 +50,11 @@
 **Symptom:** Én intervalløkt/uke, resten Z1, «vi skal ikke overtrene» mot Half Extreme / 750 t.  
 **Fix:** `knowledge/coach/kvalitetsnorm-toppidrett.md` — **3 kvalitetsøkter/uke** i base (svøm + sykkel + løp), recovery-uke **2** lett Q. Kommeback = dose, ikke fjerne svette.
 
+## 10. Agent teller **6×5 mandag** som hard løp
+
+**Symptom:** «Du stacker løp-Q», «maks 2 harde løp» inkl. **6×5 + 6×3** — behandler **navn** som **intensitet**.  
+**Fix:** **6×5 = strukturert Z2/sub ~150** — samme kategori som **rolig løp med struktur**. **Hard løp-cap:** **6×3, 6×4, 5×4 @ RPE 7+**, tempo terskel, elghufs, **5×2 bakke** — se `knowledge/lop/intervaller-og-fart.md`. **Ikke** foreslå å bytte mandag til easy «fordi du har 6×3 fre» uten annen grunn (HRV, skade).
+
 ## Coach-setninger som hjelper
 
 - «Lofoten krever at du tåler **flere** harde dager i uka — ikke én.»

@@ -3,7 +3,7 @@
 **Dato:** 2026-10-30  
 **Scope:** Volum og kalender **låst** til **6. des** (ATP Base 1 → Base 2 start). Denne filen vurderer **kvalitet, stimulus og faglige valg** — ikke om du bør **+2 timer** (det er avklart).
 
-**Referanser:** [`knowledge/coach/kvalitetsnorm-toppidrett.md`](../../knowledge/coach/kvalitetsnorm-toppidrett.md) · [`feil-og-fixes.md`](../../knowledge/coach/feil-og-fixes.md) · [`mengdeperioder-2026-2027.md`](../mengdeperioder-2026-2027.md) · [`2026-11-måned.md`](../2026-11-måned.md)
+**Referanser:** [`knowledge/elite/02-kvalitet-intensitet.md`](../../knowledge/elite/02-kvalitet-intensitet.md) · arkiv [`kvalitetsnorm-toppidrett.md`](../../knowledge/_archive/pre-elite-2026-10/coach/kvalitetsnorm-toppidrett.md) · [`feil-og-fixes.md`](../../knowledge/_archive/pre-elite-2026-10/coach/feil-og-fixes.md) · [`mengdeperioder-2026-2027.md`](../mengdeperioder-2026-2027.md) · [`2026-11-måned.md`](../2026-11-måned.md)
 
 ---
 
@@ -134,7 +134,7 @@
 | Limiter | Plan til 6. des | Score |
 |---------|------------------|-------|
 | **Run endurance** | Lang **søn/tor**, Z2 **1:30** | **7/10** — **ok**; **ikke** **21 km** ennå **ok** for fase. |
-| **Run speed skill** | **6×3/6×4/5×4**, **6×5** | **6/10** — **mangler** **bakke/elghufs/myr**-rotasjon. |
+| **Run speed skill** | **6×3/6×4/5×4** (+ valgfri **myr/elghufs/5×2**) | **7/10** — **intervall-progresjon ok**; **6×5** = **aerob**, ikke manglende «hardhet». |
 | **Bike endurance** | **2 t søn**, Z2 tir recovery | **8/10** — **bra** trend. |
 | **Bike speed** | **SS, FTP** | **8/10** — **sterk**. |
 | **Swim endurance** | **3×/uke**, korte | **5/10** — **frekvens ok**, **lang svøm** sjelden. |
@@ -144,7 +144,7 @@
 
 ## Execution-regler (kalender uendret, bedre **effekt**)
 
-1. **Harde løp:** Tell **6×3, 6×4, 6×5, 5×4 @ RPE 7+** — **maks 2/uke**.  
+1. **Harde løp:** Tell **6×3, 6×4, 5×4 @ RPE 7+** (tempo terskel, elghufs, **5×2 bakke**) — **maks 2/uke**. **Ikke** **6×5 mandag**.
 2. **Z2:** **Puls/RPE** — **ikke** «Very Strong» på **rolig** ([`profile.md`](../../docs/athlete/profile.md) easy pace).  
 3. **Svøm:** **1 av 3** økter/uke = **CSS eller 8×100 hard** (bytt drill, **ikke** +tid).  
 4. **Sykkel 2 t:** **CHO 60 g/t** + **flaske** — [`knowledge/ernaring/under-trening-og-lange-okter.md`](../../knowledge/ernaring/under-trening-og-lange-okter.md).  

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>LØP 2026-10-31 — Løp trail lett 70 (R03)</name>
+  <description>### Fra treneren — IMPORT: TP godtar kun sykkel-ZWO — filen er sportType=bike for import. Etter import: åpne økt → Bygg → sett sport til Løp → intensitet % terskel-pace (samme %-tall). Power ≈ % av løpsterskel (lett ~78 %, terskel 100 %). Ikke sykkel-FTP på kalender.</description>
+  <sportType>bike</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="480" Power="0.8500" pace="0">
+      <textevent message="Warmup (~85% LTHR)" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="2520" Power="0.8500" pace="0">
+      <textevent message="Step (~85% LTHR)" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="300" Power="0.7750" pace="0">
+      <textevent message="Cooldown (~78% LTHR)" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

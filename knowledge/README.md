@@ -1,37 +1,32 @@
-# Kunnskapsbase — treningscoach (utvidet)
+# Kunnskapsbase — elite-nivå (2026)
 
-Referanse for **topp-coach**-agenten. Alt skal kunne brukes til **konkrete ukeplaner** for William (Half Extreme 2027, 750–800 t/år, comeback-MSK).
+**Branch:** `cursor/elite-level-634c` · **Erstatter** pre-elite treestruktur (arkivert).
 
-## Start her (agent)
+## Leserekkefølge (agent — alltid)
 
-1. `coach/coach-filosofi.md` — tone, beslutningsregler, kvalitetskrav  
-2. `coach/treneridentitet.md` + `coach/ole-petter-vibekken-referanse.md` — hvem treneren er for William  
-3. `docs/athlete/profile.md` + `goals.md`  
-4. `coach/ukemaler.md` — fasebaserte uker  
-5. `triathlon/periodisering-mot-2027.md` + `lofoten-half-extreme.md`
+1. **`elite/00-FILOSOFI.md`** — ufravikelig. Alt annet underordnes dette.
+2. `docs/athlete/profile.md` + `goals.md`
+3. **`elite/02-kvalitet-intensitet.md`** — hva som er hard økt, 6×5, svøm, sykkel/løp-cap
+4. **`elite/04-ukemaler.md`** — faseuker
+5. **`elite/03-periodisering-load.md`** — ACWR, load–recovery, meso
+6. **`elite/01-trenerstemme.md`** — tone og TP-kommentarer
+7. Disiplin etter behov: `elite/disiplin/{lop,sykkel,svom,tri}.md`
+8. **`elite/05-feil-og-signaler.md`** — typiske feiltolkninger (inkl. agent-feil)
 
-## Indeks
+## Arkiv (ikke primær sannhet)
 
-| Mappe | Innhold |
-|-------|---------|
-| **[coach/](coach/)** | Filosofi, treneridentitet (OPV-modell), `opv-nokkelokter.md`, ukemaler, typiske feil |
-| [ernaring/](ernaring/) | Daglig, fueling, race |
-| [skader/](skader/) | ACWR, styrkeprogram, løp, oversikt |
-| [svom/](svom/) | Faser 0–3, øktbibliotek, OWS/kulde |
-| [sykkel/](sykkel/) | Langtur, motivasjon, intervall-presets |
-| [lop/](lop/) | Oppbygging, intervallbibliotek, terreng |
-| [utstyr/](utstyr/) | Race checklist, sykkel, vinter |
-| [triathlon/](triathlon/) | Brick, Lofoten, periodisering |
-| [restitusjon/](restitusjon/) | Søvn, sykdom, stress |
-| [mental/](mental/) | Kontinuitet, motivasjon |
-| [kilder/](kilder/) | Lenker + PDF |
-| [load-and-intensity.md](load-and-intensity.md) | TSS, soner, CTL |
+| Sti | Innhold |
+|-----|---------|
+| [`_archive/pre-elite-2026-10/`](_archive/pre-elite-2026-10/) | Hele gammel `knowledge/` (OPV-coach, ukemaler, skader, svøm-faser, …) |
+| [`_archive/pre-elite-2026-10/README.md`](_archive/pre-elite-2026-10/README.md) | Gammel indeks |
 
-## PDF-arkiv
+Bruk arkiv for **detaljer** (OPV nøkkeløkter, elghufs-prescription, snus-litteratur) — **ikke** for intensitetsregler; de er oppdatert i `elite/`.
 
-`external/` — IOC belastning/skade, OWS sikkerhet.  
-`./scripts/fetch_knowledge_archives.sh`
+## PDF og eksternt
+
+- `external/` — IOC load/skade, OWS sikkerhet (`./scripts/fetch_knowledge_archives.sh`)
+- **`kilder/referanser-elite.md`** — Olympiatoppen, Seiler, IOC, Blummenfelt m.m.
 
 ## Vedlikehold
 
-Når William får nye tester eller skader: oppdater `docs/athlete/profile.md` **og** ev. ett avsnitt i relevant `knowledge/`-fil hvis det endrer standard anbefalinger.
+Nye tester, skader, tilgjengelighet → `docs/athlete/profile.md` først. Endrer det **elite-regler**, oppdater `elite/02` eller `00-FILOSOFI.md` i samme commit.

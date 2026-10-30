@@ -1,0 +1,54 @@
+day,sport,subtype,title,duration_minutes,tss,description,phase,note_id
+21,Other,note,Volum-sjekk — midt oktober (lør 18.10),1,0,"VOLUM-CHECKPOINT (mot 750–800 t / 12 mnd fra 28.09).
+
+Akkumulert mål nå (ca.): 58–62 t
+Ukesmål denne uka (12.–18.10): ~9,5 t
+
+Sjekk i Intervals (sum timer, moving er ok):
+• Grønt: ≥55 t akkumulert og svøm 2–3×/uke
+• Gul: 48–54 t — hold plan, ikke hente med én hero-uke
+• Rødt: <48 t — øk frekvens (kortere økter), ikke +3 t på én uke
+
+Neste mål: 31.10 → 68–76 t totalt.",re-etablering,vol-check-mid-okt
+34,Other,note,Volum-sjekk — utgang oktober (fre 31.10),1,0,"VOLUM-CHECKPOINT — OKTOBER SLUTT
+
+Mål akkumulert 31.10: 68–76 t (12mnd-tabell)
+Planlagt oktober (uke 12–18 + 19–25 + rest uke 26): ~26–28 t i måneden hvis du treffer uke-mål
+
+Sjekk:
+• Faktisk akkumulert vs 68–76 t
+• Svøm-frekvens (minst 2×/uke snitt)
+• Én harde løp/uke max (fre 5×3) — ikke topp dette i tillegg
+
+November-mål (30.11): 108–120 t akkumulert
+Snitt uke nov: ~10 t (recovery uke 16.11: 7,5 t)
+
+Desember slutt: ~160 t (korridor 152–168 t).",re-etablering,vol-check-okt
+64,Other,note,Volum-sjekk — utgang november (man 30.11),1,0,"VOLUM-CHECKPOINT — NOVEMBER SLUTT
+
+Mål akkumulert 30.11: 108–120 t
+Planlagte uker (nov): 10 + 10,5 + 7,5 + 10 + 10,5 ≈ 48,5 t (hvis fullført)
+
+Sjekk:
+• Akkumulert vs 108–120 t
+• CSS notert? (uke 9 plan)
+• FTP sykkel oppdatert i profil etter test-uke
+
+Desember (mot nyttår):
+• Mål 31.12: ~160 t (152–168 t)
+• Gjenstår typisk ~40–55 t i des (uke 10–12 t, juleuke kortere)
+• Des-topp uke 21.12: 12 t plan — ikke panikk-volum
+
+Ligger du 10–15 t bak: kortere økter oftere. Ligger du foran: ikke jage mer — skadefrihet.",base,vol-check-nov
+95,Other,note,Volum-sjekk — utgang desember (tor 31.12),1,0,"VOLUM-CHECKPOINT — DES 2026 / NYTTÅR
+
+Mål akkumulert 31.12: ~160 t (korridor 152–168 t)
+Styringspunkt mot 750–800 t på 12 mnd — ca. ¼ av veien.
+
+Sjekk:
+• Sum timer i Intervals (ev. + manuell hvis gamle hull)
+• Januar-mål: ~196–220 t akkumulert ved slutten av jan
+
+Ukesopp til coach: timer des? svøm 3/3? skade? vekt 7d snitt?
+
+Godt nyttår — B3 januar fra plan.",base,vol-check-des

@@ -25,7 +25,8 @@ Denne agenten skal **etterligne det arbeidsmønsteret** — ikke bare levere pla
 
 1. Marker økta complete i TP.  
 2. Skriv **3–6 linjer** i kommentarfelt (eller til agenten):
-   - Følelse (bein/RPE)  
+   - Følelse (bein / **Strong–Very Strong** — *ikke* det samme som RPE; se [`tp-subjective-felt.md`](tp-subjective-felt.md))  
+   - RPE hvis du bruker feltet  
    - Traff du drag/pause?  
    - Søvn / stress  
    - Avvik fra plan (og hvorfor)  

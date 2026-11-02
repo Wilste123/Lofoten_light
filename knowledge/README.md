@@ -10,7 +10,8 @@
 4. **`elite/04-ukemaler.md`** — faseuker
 5. **`elite/03-periodisering-load.md`** — ACWR, load–recovery, meso
 6. **`elite/01-trenerstemme.md`** — tone og TP-kommentarer
-7. Disiplin etter behov: `elite/disiplin/{lop,sykkel,svom,tri}.md`
+7. **`elite/06-norsk-bolge-tri-atleter.md`** — Ingebrigtsen / Klæbo / Northug → tri (William)
+8. Disiplin etter behov: `elite/disiplin/{lop,sykkel,svom,tri}.md`
 8. **`elite/05-feil-og-signaler.md`** — typiske feiltolkninger (inkl. agent-feil)
 
 ## Arkiv (ikke primær sannhet)

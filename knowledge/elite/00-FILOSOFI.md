@@ -16,7 +16,7 @@
 |-------|-------------------|----------------------------|
 | **Olympiatoppen** | *Mye og **riktig** trening*; **treningskvalitet** > timevisning; dagbok og load–recovery; variasjon | Junior-LTAD som unnskyldning for lav dose mot **750–800 t** |
 | **Seiler / norsk utholdenhet** | ~**80 % rolig**, **1–3 harde** stimulusdager/uke; unngå grå sone hver dag | At «polarisert» betyr «ingen struktur på mandag» |
-| **Northug (moden)** | **Harde og lette uker**; lytt til kroppen; teknikk; én økt om dagen i mengdebolker | 850 t/år langrenn som **ditt** snitt nå |
+| **Northug (moden)** | **Harde og lette uker**; lytt til kroppen; teknikk; **sjokkblokker + dyp recovery** | 850 t/år langrenn som **ditt** snitt nå |
 | **Klæbo** | **Teknikk er konkurransefordel**; test små hypoteser; tåler mye **rolig** under hard uke | 40 t uke som normal |
 | **Blummenfelt / norsk tri** | **Spesifisitet** mot race; laktat/soner med mening; brick og svøm som **egne** kapasiteter | 30–40 t/uke som **din** base i 2026 |
 | **Sagan** | **Friskhet teller**; *«én økt mindre er bedre enn én for mye»*; lett dag er **lett** | 19 t sykkeluke som unnskyldning for å droppe svøm |

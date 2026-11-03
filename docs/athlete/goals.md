@@ -7,11 +7,11 @@
 | **Arrangement** | **Lofoten Half Extreme 2027** |
 | Rolle | Primært fokus — bygge mot dette, ikke mot full Extreme ennå |
 | **Måltype (William, sep 2026)** | **#1 fullføre** (innen cut-offs, bein i behold). **Styringsanker tid:** ca. **6:30–7:00** totalt — brukes til pacing og simulering, ikke før suksess er «over målstreken». |
-| **Race-vekt (William, sep 2026)** | **Under 80 kg** mot start Half Extreme 2027 — **ikke** før build/spiss; styrke + watt må henge med |
+| **Race-vekt (William, rev. nov 2026)** | **Under 75 kg** ved start Half Extreme 2027 (sweet spot **74–75**) — **ikke** jage taper-dehydrering; styrke + watt + FFM må henge med |
 
 Planlegging skal være **spesifikk mot Lofoten Half Extreme**, med gradvis opptrapping og kontinuitet (se prioriteringer i `profile.md`).
 
-**Vektkorridor (coach):** 90 kg → **&lt;80 kg race** (sweet spot **78–79**) — månedlige **tak** i [`plans/2026-2027-12mnd-periodisering.md`](../plans/2026-2027-12mnd-periodisering.md). **Fett % / vann / FFM:** [`kroppssammensetning-smartvekt.md`](kroppssammensetning-smartvekt.md). Avbryt vektnedgang hvis FTP eller styrke faller.
+**Vektkorridor (coach):** **Målt baseline ~83 kg** (25. sep 2026) → **&lt;75 kg race** (sweet spot **74–75**) — månedlige **tak** i [`plans/2026-2027-12mnd-periodisering.md`](../plans/2026-2027-12mnd-periodisering.md). Plan-estimat ~90 kg brukes **ikke** som startpunkt. **Fett % / vann / FFM:** [`kroppssammensetning-smartvekt.md`](kroppssammensetning-smartvekt.md). **Stopp/aggressivt brems nedjustering** hvis FTP, styrke eller **FFM 3 uker på rad** faller. **Plan B race-vekt:** **76–77 kg** hvis røde flagg i jun–jul 2027 — fullføre &gt; optimere tall.
 
 ## Volum over 12 måneder
 

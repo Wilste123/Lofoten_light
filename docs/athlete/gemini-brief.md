@@ -13,7 +13,7 @@
 | **Navn** | William, 24 år, ~187 cm, Trondheim |
 | **Mål** | **Half Extreme Lofoten**, august **2027** |
 | **Årsmål volum** | **750–800 t** trening på **12 rullerende måneder** (fra planstart **28.09.2026**) |
-| **Race vekt** | **&lt;80 kg** (sweet spot 78–79); start ~**90 kg** (sep 2026) |
+| **Race vekt** | **&lt;75 kg** (sweet spot **74–75**); **målt baseline ~83 kg** (25. sep 2026) |
 | **Bakgrunn** | NTG / landevei høyt nivå; **FTP 410 W @ ~74 kg (2019)** — **ikke** dagens intensitet |
 | **Nå (okt 2026)** | Comeback etter 4–5 år lavt volum; **FTP plan ~210 W**; **svøm = limiter**; løp = motivasjon; sykkel = kan bli kjedelig uten variasjon |
 | **Prioritering (rekkefølge)** | 1 Kontinuitet → 2 Skadefrihet → 3 Gradvis progresjon → 4 Aerob → 5 Lofoten-spesifikk → 6 Prestasjon |

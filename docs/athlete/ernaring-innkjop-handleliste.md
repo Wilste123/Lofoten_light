@@ -1,7 +1,7 @@
 # Ernæring — total handleliste & nettbutikker (William, okt 2026)
 
 **Formål:** Innkjøp til **8–12 t/uke** → build mot Lofoten 2027. **Mat først**, deretter gels/elektrolytt/pulver.  
-**Profil:** ~90 kg, aktivt kaloriunderskudd — **øk mat på treningsdager**, ikke bare tilskudd.
+**Profil:** **~83 kg** målt (sep 2026), race **&lt;75 kg** — **øk mat på treningsdager**, ikke bare tilskudd; lett underskudd på rolige dager når over månedstak.
 
 ---
 

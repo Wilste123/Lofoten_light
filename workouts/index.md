@@ -19,7 +19,7 @@ S01–S10 (inkl. **S03b** Plan B, **S10** pust)
 R01–R14 (inkl. **R14** recovery 30 min)
 
 **NTG/OPV (tekst):** `planned/run/OPV-elghufs-5x4.txt`, `planned/run/OPV-myr-loping-staver.txt` — se `knowledge/coach/opv-nokkelokter.md`  
-**Nøkkel-Q (2026):** `planned/run/R-KEY-FIRDA-6x4.txt` — erstatter gammel 6×4-mal (7 drag / grå pause)  
+**Nøkkel-Q FIRDA (2026):** `planned/run/R-KEY-FIRDA-README.md` — **6×4 aerob power** · **4×8 terskel** · **5×3 VO2**  
 **OPV ZWO løp:** `zwo/run/R-OPV-elghufs-4x3.zwo` (comeback 4×3)
 
 ## Brick — `zwo/brick/`

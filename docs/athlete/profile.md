@@ -9,7 +9,7 @@ Kilde for sannhet for agenten. Oppdater ved nye tester, skader eller endret tilg
 | | |
 |---|---|
 | Kjønn / alder | Mann, 24 år |
-| Høyde / vekt | Ca. 187 cm, **~90 kg** (sep 2026) |
+| Høyde / vekt | Ca. **187 cm**, **målt ~83 kg** (baseline 25. sep 2026); plan-estimat ~90 kg er **ikke** startpunkt |
 | Bosted | Trondheim / Trøndelag, Norge |
 
 ### Idrettsbakgrunn
@@ -48,7 +48,8 @@ Kilde for sannhet for agenten. Oppdater ved nye tester, skader eller endret tilg
 | 2019 (peak år) | **~1050 t** trening | Høyt strukturert volum |
 | 2019 (test) | **FTP 410 W** (rulle innendørs) | Peak FTP-referanse — **ikke** dagens FTP |
 | Ved opphør sykkel (ca.) | **~74 kg**, FTP **410 W** (~**5,5 W/kg**) | Landevei-vekt; **ikke** tri/Lofoten-mål å kopiere blindt |
-| Sep 2026 | **~90 kg**, FTP **210 W** (~**2,3 W/kg**) | Absolutt kraft + masse begge ned — vekt **og** re-trening |
+| Sep 2026 (målt baseline) | **~83 kg**, **~20 % fett BIA**, FFM **~66 kg** | 25. sep 2026 | Intervals/smartvekt; ikke ~90 kg-estimat |
+| Sep 2026 (plan / FTP) | FTP **210 W** (guess) | 2026-09-24 | ~2,5 W/kg @ **~83 kg** — re-trening |
 | 2019 | **5 sek peak ~1300 W** | Neuromuskulær kapasitet historisk |
 | 2026 hittil | **>50 t** trening | Re-etablering etter lang lav periode |
 | Neste 12 mnd (mål) | **750–800 t** totalt | Se volumplan under — ikke lineær jump fra lav uke til snitt |
@@ -75,7 +76,9 @@ Agenten skal **planlegge faser** (f.eks. start der William er nå → stabil bas
 | Planstart | **28.09.2026** — `plans/2026-09-28-uke-01.md` … `uke-04.md`; **Intervals:** `scripts/intervals_push_calendar.py --start 2026-09-28` (valgfri TP/Dojo) |
 | Innendørs / utendørs | Trondheim — **rulle nov 2025**; **PM ute våren**; **basseng 3T** vinter; **utesvøm til vår** |
 | Utstyr | Se **Utstyr (sep 2026)** under; **smartvekt (BIA)** — logg morgen snitt |
-| Kroppssammensetning | Race **&lt;80 kg**; BIA-mål: [`kroppssammensetning-smartvekt.md`](kroppssammensetning-smartvekt.md) |
+| Kroppssammensetning | Race **&lt;75 kg** (74–75); BIA-mål: [`kroppssammensetning-smartvekt.md`](kroppssammensetning-smartvekt.md) |
+| Yrke | **Finansiell rådgiving / regnskap** (kontor) |
+| Livsstil | **Nikotin:** **Poser sluttet 29. okt 2026** (Skruf No55; ~13–15/d historisk). **NRT:** tyggis 2 mg ved behov — [`snus-seponering-plan.md`](snus-seponering-plan.md). **Kaffe:** 1–2 morgen, siste ~11–12. **Alkohol:** lite (glass vin helg). **Leggetid** ~22:00–22:30. **Kaloriunderskudd:** ja (okt 2026). HRV/søvn: [`knowledge/restitusjon/snus-nikotin.md`](../../knowledge/restitusjon/snus-nikotin.md). |
 
 ## Utstyr (sep 2026)
 
@@ -105,13 +108,13 @@ Agenten skal **planlegge faser** (f.eks. start der William er nå → stabil bas
 
 | Metrikk | Planlegging TP | Dato | Notater |
 |---------|----------------|------|---------|
-| **FTP sykkel** | **210 W** | 2026-09-24 | ~2,33 W/kg ved **~90 kg** — konservativ; ramp uke 6–8 |
+| **FTP sykkel** | **210 W** | 2026-09-24 | ~2,53 W/kg ved **~83 kg** målt — konservativ; ramp test løpende |
 | **Max HR** | **191 bpm** | est. | Tanaka (klokke kan overstyre) |
 | **Hvilepuls** | **58 bpm** | antatt | Oppdater fra klokke |
 | **LTHR / terskel HR** | **165 bpm** | 2026-09-24 | Brukes sykkel + løp inntil separate tester |
 | **Threshold pace løp** | **6:20 min/km** | 2026-09-24 | = 100 % terskel i TP Run zones |
 | **CSS / T-pace svøm** | **2:20 / 100 m** | est. | 1000 m test når klar |
-| Vekt (kg) | ~90 | | |
+| Vekt (kg) | **~83** (målt sep 2026) | 2026-09-25 | 7-d snitt Intervals |
 
 ### Sykkel — watt og puls (ved FTP 210 W, LTHR 165)
 
@@ -155,7 +158,7 @@ Agenten skal **planlegge faser** (f.eks. start der William er nå → stabil bas
 | Threshold HR sykkel (bpm) | **165** (guess) | 2026-09-24 | |
 | LTHR løp (bpm) | **165** (guess) | 2026-09-24 | |
 | CSS svøm (per 100 m) | *2:20 plan* | | |
-| Vekt (kg) | ~90 | | |
+| Vekt (kg) | **~83** (målt sep 2026) | 2026-09-25 | 7-d snitt Intervals |
 
 ## Intensitetssoner løp (TrainingPeaks)
 
@@ -209,8 +212,36 @@ Svøm: **distanse eller varighet** + **% threshold pace** i Builder; pause = rec
 - **Regler:** Gradvis opptrapping; unngå tenåringsvolum på dekadent MSK-grunnlag (se utgangspunkt over)
 - **Motivasjon:** Varier sykkel med løp der det gir mening; ikke «bare sykkel»-blokker uten mening for William
 
+## Totalbelastning (trening + liv)
+
+**Prinsipp:** Intervals **CTL/ATL/TSS** er bare **treningsdelen**. Riktig analyse krever **allostatic load** — jobb, søvn, stress, reise, sykdom, nikotin, koffein/alkohol, vektnedgang og **MSK-flaskehalser**. Agenten skal **ikke** tolke rød HRV kun som «for lite hvile mellom økter» uten å sjekke tabellen under.
+
+| Faktor | Status i repo | Detalj (okt 2026) |
+|--------|----------------|-------------------|
+| **Trening** | Intervals (TSS, timer, plan vs faktisk) | Si fra ved **systematisk** avvik (f.eks. hard løp når easy står) |
+| **Søvn** | Wellness `sleepSecs` / score fra Garmin→Intervals | **Leggetid ~22:00–22:30** (vanlig); oppv. ikke fast logget — bruk klokke-søvn når synket |
+| **Jobb** | Profil | **Finansiell rådgiving / regnskap** (kontor — sannsynlig mye sitting). Reise/deadline-uker: noter i `comments` ved behov |
+| **Livsstress** | Wellness `stress` 1–5 når fylt | Lillehammer/hytte i kalender; ellers kort notat søndag |
+| **Nikotin** | Profil + plan | **Poser slutt 29. okt 2026** — NRT tyggis 2 mg — [`snus-seponering-plan.md`](snus-seponering-plan.md) |
+| **Koffein** | Profil | **1–2 kaffe morgen**, siste **~11–12** (lav kveldsrisiko vs snus) |
+| **Alkohol** | Profil | **Lite** — typ. **ett glass vin** til mat i helg |
+| **Kropp / vekt** | BIA + wellness | **Aktivt kaloriunderskudd** nå → teller som **ekstra belastning** ved høy ATL; ikke krasj underskudd + hard uke |
+| **MSK / plager** | `plager-rygg-isjas.md` | Rygg/isjas — **trigger uklar**; bruk `injury` / soreness i wellness ved flare |
+| **Styrke / prehab** | 2×/uke plan | **Holder styrkedagene** (okt 2026) |
+| **Medisin** | Profil | **Ingen** |
+| **Sykdom** | Ad hoc | Forkjølelse, feber — alltid nevne |
+
+**Minimum logging (anbefalt):** I Intervals wellness **søndag**: snitt søvn uke, **stress 1–5**, **soreness** (finnes), ev. én linje «jobb/reise/tung uke». Ved rød/gul uke: **siste snus** + om du **overkjørte** plan. (Koffein/alkohol ligger i profil — oppdater ved endring.)
+
+**Operativt mål (totalbelastning):** **TB-Score** 0–100 **på tidspunkt** — wellness + `activities.csv`, `--at now`. Ved **rapport/analyse/ukesopp:** agent kjører `generate_coach_report.py` og viser **grafer** + snapshot. [`readiness-totalbelastning.md`](readiness-totalbelastning.md). Subjektiv wellness teller **ikke** med default. Grønn/gul/rød styrer Plan A/B.
+
+**Automatisk vs manuelt:** Se [`docs/trainingpeaks/integrasjon-intervals-icu.md`](../trainingpeaks/integrasjon-intervals-icu.md) — agenten henter wellness/aktiviteter med `INTERVALS_API`; **snus, underskudd, jobbstress** kommer **ikke** fra Garmin (underskudd er −6 i TB-config).
+
+Se også [`knowledge/restitusjon/sovn-stress.md`](../../knowledge/restitusjon/sovn-stress.md).
+
 ## Coaching notes (for agenten)
 
+- **Totalbelastning før volum:** Ved ATL ≫ CTL, flat HRV eller hard økt «fra magen» — sjekk **livstabellen** over før du foreslår mer timer for å nå checkpoint.
 - **Tidligere trener:** Ole Petter Vibekken — agenten skal lene seg på `knowledge/coach/ole-petter-vibekken-referanse.md` (offentlig + Williams notater der). Fyll inn periode og hva som fungerte i tabellen der.
 - Erfaren syklist — forstår TSS, CTL, intervaller og periodisering; trenger ikke grunnleggende forklaring på sykkel.
 - **Løp:** høy motivasjon — bruk det for kontinuitet og skadefri progresjon (viktigste prioritet 1–3).

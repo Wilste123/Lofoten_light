@@ -25,7 +25,8 @@ Denne agenten skal **etterligne det arbeidsmønsteret** — ikke bare levere pla
 
 1. Marker økta complete i TP.  
 2. Skriv **3–6 linjer** i kommentarfelt (eller til agenten):
-   - Følelse (bein/RPE)  
+   - Følelse (bein / **Strong–Very Strong** — *ikke* det samme som RPE; se [`tp-subjective-felt.md`](tp-subjective-felt.md))  
+   - RPE hvis du bruker feltet  
    - Traff du drag/pause?  
    - Søvn / stress  
    - Avvik fra plan (og hvorfor)  
@@ -41,6 +42,7 @@ Send én av:
 
 **Agent svarer med:**
 
+0. **TB-Score (standard):** `python3 scripts/generate_coach_report.py --days 30` → snapshot **nå** + grafer (`tb-dashboard.png`, `tb-score-trend.png`). Totalbelastning styrer Plan A/B før volum. Subjektiv wellness teller **ikke** i TB default.  
 1. **Kommentar** (helhetsvurdering, 1 paragraf)  
 2. **Økt-for-økt** på Q-økter (hva var bra / hva justeres)  
 3. **Neste uke:** ett fokus + evt. Plan B hvis uka var rød  

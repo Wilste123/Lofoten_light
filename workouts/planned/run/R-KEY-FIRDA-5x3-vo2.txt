@@ -1,0 +1,59 @@
+name: FIRDA 5×3 — nøkkel VO2
+sport: run
+intervals_target: HR
+estimated_duration: 65-75 min
+estimated_tss: 80-95
+phase: base2-build
+role: vo2
+---
+# FIRDA 5×3 — **VO2** (hard, kort)
+
+**Formål:** **VO2max / aerob kapasitet** — **korte** drag, **høy** intensitet, **lang** pause.  
+**Ikke terskel:** drag **over** terskel (RPE **8–9**), ikke 8-min cruise.  
+**Ikke aerob power:** kortere og hardere enn **6×4**.
+
+**Når:** Base 2 / build, **1×/uke** — **ikke** samme uke som **4×8 terskel** + **ikke** dagen etter **4×8**.
+
+---
+
+## Oppvarming — 20 min
+
+12 min lett · 4×20 s strides · **3×45 s** @ **105–110 % LTHR** (VO2-smak), **90 s** lett jogg.
+
+---
+
+## Hoveddel
+
+**5×3 min** @ **105–112 % LTHR** (RPE **8**, rep 4–5 ev. **9** hvis kontrollert).  
+**Pause 2–3 min** @ **75–85 % LTHR** (full jogg ned — **aldri** 90 %+ pause).
+
+### Gøy / kvalitet
+
+- **Rep 3** = «mål-rep» — skal føles **hardeste som fortsatt er jevn teknikk**.  
+- **Rep 5** optional: dropp hvis rep 4 var RPE 9+ med kollaps form.  
+- **Plan B:** **4×3** · **6×2** @ samme band.
+
+---
+
+## Nedkjøring — 12 min
+
+---
+
+## TP (kopier)
+
+«FIRDA 5×3 — **VO2**. 5×3 min @ 105–112 % LTHR, RPE 8–9 kontrollert. Pause 2–3 min 75–85 % LTHR. Plan B 4×3. Ikke terskel.»
+
+---intervals---
+- Warmup 12m 75-89% LTHR
+- 4x
+  - 20s 100-110% LTHR
+  - 60s 75-89% LTHR
+- 3x
+  - 45s 105-112% LTHR
+  - 90s 75-89% LTHR
+
+Main Set 5x
+- 3m 105-112% LTHR
+- 3m 75-85% LTHR
+
+- Cooldown 12m 75-85% LTHR

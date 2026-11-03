@@ -1,0 +1,8 @@
+day,sport,subtype,title,duration_minutes,tss,description,phase,external_suffix,start_time
+1,Swim,recovery,Svøm recovery (S09) 35,35,20,workouts/planned/swim/S09-recovery.txt,deload,,
+2,Run,recovery,Løp easy 35 (R01),35,30,workouts/planned/run/R01-recovery-35.txt,deload,,
+3,Bike,recovery,Sykkel recovery 45 (B01),45,28,workouts/planned/bike/recovery-spin-45.txt,deload,,
+4,Strength,recovery,Styrke recovery (ST03) 25,25,15,workouts/planned/strength/ST03-recovery-hjemme.txt,deload,,18:00
+5,Swim,technique,Svøm teknikk lett (S02) 40,40,28,workouts/planned/swim/S02-teknikk-skulder.txt,deload,,
+6,Bike,recovery,Valgfri: sykkel Z1 30 (B01),30,15,workouts/planned/bike/recovery-spin-45.txt,deload,valgfri,10:00
+7,Run,recovery,Løp easy 30 + ukesopp (R01),30,25,workouts/planned/run/R01-recovery-30.txt,deload,,

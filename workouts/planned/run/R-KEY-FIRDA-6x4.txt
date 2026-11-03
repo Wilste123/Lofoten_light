@@ -1,0 +1,58 @@
+name: FIRDA 6×4 — nøkkel aerob power
+sport: run
+intervals_target: HR
+estimated_duration: 70-75 min
+estimated_tss: 85-100
+phase: base1-build
+role: aerob_power
+---
+# FIRDA 6×4 — **aerob power** (ikke terskel)
+
+**Formål:** **Aerob power** — korte nok drag til **kontroll** (4 min), harde nok til **RPE 7**, **under** klassisk terskel-økt (8+ min ved MLSS).  
+**Progresjon:** 6×3 → **6×4** → (senere) 5×5 aerob power.  
+**Ikke forveksles med:** **4×8 terskel** (`R-KEY-FIRDA-4x8-terskel.txt`) eller **VO2** (`R-KEY-FIRDA-5x3-vo2.txt`).
+
+**Når:** Base 1–2, **1×/uke** (typisk **fre**). Recovery: **Plan B 5×4**.
+
+---
+
+## Oppvarming — 20–25 min
+
+12 min lett · 4×20 s strides · 2×30 s @ **mål-fart aerob power** · 2×1 min @ **~92–96 % LTHR**, 1 min lett.
+
+---
+
+## Hoveddel — Kontrakt 6×4
+
+**6×4 min** @ **~90–96 % LTHR** (RPE **7**, **ikke 8+**).  
+**Pause 2 min** @ **75–85 % LTHR** (ekte jogg/gang).
+
+Spillregler: rep 1 = kontrakt (±3 sek/km); 2-min sjekk stabil puls; **ingen** rep 7.
+
+---
+
+## Nedkjøring — 12 min lett
+
+---
+
+## TP (kopier)
+
+«FIRDA 6×4 — **aerob power**, ikke terskel. 6×4 min @ 90–96 % LTHR, RPE 7. 2 min pause 75–85 % LTHR. Kontrakt-rep. Plan B 5×4.»
+
+---intervals---
+- Warmup 12m 75-89% LTHR
+- 4x
+  - 20s 95-105% LTHR
+  - 60s 75-89% LTHR
+- 2x
+  - 30s 92-96% LTHR
+  - 90s 75-89% LTHR
+- 2x
+  - 1m 92-96% LTHR
+  - 1m 75-89% LTHR
+
+Main Set 6x
+- 4m 90-96% LTHR
+- 2m 75-85% LTHR
+
+- Cooldown 12m 75-85% LTHR

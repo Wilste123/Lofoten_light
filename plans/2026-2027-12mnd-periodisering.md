@@ -21,8 +21,8 @@ Snittvekt **morgen** (7-dagers snitt). Hvis du er **over tak** 2 uker: lett kalo
 |-----------|------------|-------------------|------|-------------------|-------------|
 | 1 | Sep 2026 | **83** (baseline målt) | Re-etablering | **~20 %** (logg) | **~66 kg** |
 | 2 | Okt 2026 | **83** | Re-etablering / base | 19–20 % | stabil (≥65,5) |
-| 3 | Nov 2026 | **82,5** | Base 1 | 18–20 % | stabil |
-| 4 | Des 2026 | **82** | Base | 17–19 % | stabil |
+| 3 | Nov 2026 | **81,5** | Base 1 | 18–20 % | stabil (≥65,5) |
+| 4 | Des 2026 | **80** (mål **7-d snitt &lt;80** innen 31.12) | Base | 17–19 % | stabil |
 | 5 | Jan 2027 | **81,5** | Base | 16–19 % | stabil / + |
 | 6 | Feb 2027 | **81** | Base | 16–18 % | stabil |
 | 7 | Mar 2027 | **80,5** | Base → build | 15–18 % | ikke fall &gt;1 kg |
@@ -31,6 +31,8 @@ Snittvekt **morgen** (7-dagers snitt). Hvis du er **over tak** 2 uker: lett kalo
 | 10 | Jun 2027 | **78** | Build 3 | 13–15 % | hold |
 | 11 | Jul 2027 | **76,5** | Spesifikk | 12–14 % | hold |
 | 12 | Aug 2027 (race) | **&lt;75** (**74–75** race week) | Taper + race | **11–14 %** BIA | hold (≥64) |
+
+**Des 2026 milepæl (William):** **7-dagers snittvekt &lt;80 kg** innen **31.12** — ca. **−3 kg** fra baseline **~83** på **~8 uker** (~**0,35 kg/uke**). **Ikke** raskere uten grønn form + stabil FFM.
 
 **Vann % (BIA):** ikke eget «mål» — følg **7-dagers snitt 55–60 %** morgen fastende. Sving 1–2 % dag til dag er normalt; dehydrering = falsk «lett vekt».
 

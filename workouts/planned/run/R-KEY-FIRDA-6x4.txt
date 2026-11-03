@@ -1,0 +1,112 @@
+name: FIRDA 6×4 — nøkkel løp-Q (kontroll)
+sport: run
+intervals_target: HR
+estimated_duration: 70-75 min
+estimated_tss: 88-105
+phase: base1-build
+---
+# FIRDA 6×4 — nøkkeløkt
+
+**Formål (utviklingsoppgave):** Aerob power / kontrollert terskel — **Ingebrigtsen-modell**: mye tid **ved** terskel, **ekte** pause, ikke VO2-smell.  
+**Erstatter:** gammel «6×4» med **7 drag** og **aktiv «recovery» 86–94 % LTHR** (junk — gir høy TSS, lav kvalitet).
+
+**Når:** Base 1–2, **max 1×/uke** (ofte **fre**). Recovery-uke: **Plan B 5×4** samme intensitetsband.  
+**Ikke:** dagen etter hard svøm-Q + dårlig søvn; **ikke** samme dag som lang sykkel.
+
+---
+
+## Før (OLT)
+
+- **Mål i dag:** 6 (eller 5) **like** drag — **jevn puls/pace**, ikke rep 1 hero / rep 6 kollaps.  
+- **Plan B:** 5×4 · 6×3 · 4×4 + ekstra CD.  
+- **Trigger:** HRV rød + steinbein → **6×3 @ samme band** eller **40 min Z2**.
+
+---
+
+## Oppvarming — 22–28 min (lang, med vilje)
+
+1. **12 min** lett jogg @ RPE 3–4 (HR under VT1 / snakketest).  
+2. **4×20 s** strides @ 5k-følelse, **60 s** lett jogg mellom.  
+3. **2×30 s** @ **mål-fart for 4-min drag** (ca. 95–99 % LTHR-følelse), **90 s** lett jogg.  
+4. **3×1 min** @ **94–97 % LTHR** (kontroll!), **1 min** lett jogg — **siste minutt = «smaker» hoveddel**.
+
+*Press lap / auto-lap på hvert steg hvis du vil ha struktur i TP.*
+
+---
+
+## Hoveddel — «Kontrakt 6×4»
+
+**6×4 min** @ **94–99 % LTHR** (RPE **7**, max **8** på rep 5–6 — **ikke 9**).  
+**Pause 2 min** @ **lett jogg/gang** — **75–85 % LTHR** (RPE **2–3**). Mål: **puls ned** før neste drag.
+
+### Gøy / fokus (kvalitet per rep)
+
+| Regel | Hva du gjør |
+|--------|-------------|
+| **Rep 1 = kontrakt** | Noter pace eller snitt-HR. Rep 2–6 skal ligge **innen ±3 sek/km** eller **±3 bpm** — ellers **kutt til 5×4**. |
+| **2-min sjekk** | Ved 2:00 i drag: puls **stabil**, ikke stigende — ellers ro ned **5 sek/km** resten av draget. |
+| **Pause = ekte** | Hvis puls ikke faller → **30 s gange** midt i pausen. **Ikke** løp pause @ 90 % LTHR. |
+| **Lofoten-lås** | Rep **5–6**: samme kontroll — **bonus** er **4×15 s strides** etter rep 6, **ikke** ekstra drag. |
+
+**Terreng:** Flat grus/asfalt **eller** **mild stigning** 3–4 % (Firda-kontroll) — **ikke** bratt elghufs (det er egen nøkkeløkt).
+
+---
+
+## Nedkjøring — 12–15 min
+
+Lett jogg @ RPE 3. **Ikke** stopp rett etter siste drag.
+
+---
+
+## Etter
+
+- Kommentar TP: **6/6 kontrakt holdt?** · snitt HR drag · **pause faktisk lett?** · RPE siste drag.  
+- **Strong/Very Strong** = følelse — **ikke** intensitetsmål.
+
+---
+
+## Progresjon (meso)
+
+| Uke | Variant |
+|-----|---------|
+| 1 | **5×4** (full WU) |
+| 2–3 | **6×4** |
+| 4 recovery | **5×4** eller **4×4** @ samme band |
+| Build | Ev. **5×5** @ 94–97 % (ny kontrakt-uke) |
+
+---
+
+## TP-beskrivelse (kopier)
+
+«FIRDA 6×4 — nøkkel-Q. WU 22–28 min inkl. strides + 3×1 min @ 94–97 % LTHR. **6×4 min @ 94–99 % LTHR**, RPE 7 (8 max rep 5–6). **2 min pause lett jogg 75–85 % LTHR** — gå om puls ikke faller. Kontrakt: rep 1 setter pace/HR, rep 2–6 ±3 sek/km. Plan B: 5×4 / 6×3. CD 12–15 min.»
+
+---
+
+## Hvorfor dette slår gammel mal
+
+| Gammel 6×4 (TP) | FIRDA 6×4 |
+|-----------------|-----------|
+| 7×4 (feil telling) | **6×4** |
+| Drag 102–109 % LTHR | **94–99 %** — mer tid i terskel, raskere recovery |
+| «Pause» 86–94 % | **75–85 %** — polarisert, lavere junk-TSS |
+| IF ~0,89 uten spillregler | **Høy læring per rep** (kontrakt + pause-disiplin) |
+
+**Forskning / praksis:** Lang intervall ved terskel (Midgley); norsk kontrollert threshold (Ingebrigtsen/Blummenfelt-miljø); OLT — én tydelig oppgave per økt (`02-Oktoppbygging`).
+
+---intervals---
+- Warmup 12m 75-89% LTHR
+- 4x
+  - 20s 95-105% LTHR
+  - 60s 75-89% LTHR
+- 2x
+  - 30s 94-99% LTHR
+  - 90s 75-89% LTHR
+- 3x
+  - 1m 94-97% LTHR
+  - 1m 75-89% LTHR
+
+Main Set 6x
+- 4m 94-99% LTHR
+- 2m 75-85% LTHR
+
+- Cooldown 12m 75-85% LTHR

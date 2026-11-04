@@ -1,0 +1,12 @@
+meso_id,block,week_start,hours,tss_approx,recovery_week,micro_plan,notes,atp_period
+ATP,prep,2026-10-26,12.0,624,false,2026-10-26-uke-05.md,Preparation,Preparation
+ATP,b1,2026-11-02,11.75,611,false,2026-10-26-uke-06.md,Base 1 W1 FTP,Base 1 - Week 1
+ATP,b1,2026-11-09,14.25,741,false,2026-10-26-uke-07.md,Base 1 W2,Base 1 - Week 2
+ATP,b1,2026-11-16,16.0,832,false,2026-10-26-uke-08.md,Base 1 W3 volum,Base 1 - Week 3
+ATP,b1,2026-11-23,8.5,442,true,2026-11-23-uke-09.md,Base 1 W4 FTP,Base 1 - Week 4
+ATP,b2,2026-11-30,12.5,650,false,2026-12-uke-10.md,Vo2,Base/build 2 - Week 1
+ATP,b2,2026-12-07,15.0,780,false,2026-12-uke-11.md,Vo2,Base/build 2 - Week 2
+ATP,b2,2026-12-14,16.75,871,false,2026-12-uke-12.md,Base 2 W3,Base 2 - Week 3
+ATP,b2,2026-12-21,8.5,442,true,2026-12-uke-13.md,FTP 275,Base 2 - Week 4
+ATP,b2,2026-12-28,12.5,650,false,2026-12-uke-14.md,Base 2 W1 jule,Base 2 - Week 1
+,,,,,,,,"Se csv/atp-lofoten-weekly.csv for jan2027–race"

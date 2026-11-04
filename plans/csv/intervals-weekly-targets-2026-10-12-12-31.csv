@@ -1,0 +1,44 @@
+week_start,phase,total_tss,hours,notes,atp_period,recovery_week,ftp_test
+2026-10-26,prep,624,12.0,ATP Preparation — M1 avslutning,Preparation,false,false
+2026-11-02,b1,611,11.75,ATP Base 1 W1 — FTP test i TP (gjennomført 3.11),Base 1 - Week 1,false,true
+2026-11-09,b1,741,14.25,ATP Base 1 W2,Base 1 - Week 2,false,false
+2026-11-16,b1,832,16.0,ATP Base 1 W3 volumtopp (ikke recovery),Base 1 - Week 3,false,false
+2026-11-23,b1-recovery,442,8.5,ATP Base 1 W4 + FTP retest,Base 1 - Week 4,true,true
+2026-11-30,b2-vo2,650,12.5,ATP Base/build 2 W1 Vo2,Base/build 2 - Week 1,false,false
+2026-12-07,b2-vo2,780,15.0,ATP Base/build 2 W2 Vo2,Base/build 2 - Week 2,false,false
+2026-12-14,b2,871,16.75,ATP Base 2 W3,Base 2 - Week 3,false,false
+2026-12-21,b2-recovery,442,8.5,ATP Base 2 W4 + FTP (275 W mål),Base 2 - Week 4,true,true
+2026-12-28,b2,650,12.5,ATP Base 2 W1 (ny meso),Base 2 - Week 1,false,false
+2027-01-04,b2,780,15.0,ATP Base 2 W2,Base 2 - Week 2,false,false
+2027-01-11,b2,871,16.75,ATP Base 2 W3,Base 2 - Week 3,false,false
+2027-01-18,b2-recovery,442,8.5,ATP Base 2 W4 + FTP,Base 2 - Week 4,true,true
+2027-01-25,b3,702,13.5,ATP Base 3 W1,Base 3 - Week 1,false,false
+2027-02-01,b3,832,16.0,ATP Base 3 W2,Base 3 - Week 2,false,false
+2027-02-08,b3,910,17.5,ATP Base 3 W3,Base 3 - Week 3,false,false
+2027-02-15,b3-recovery,442,8.5,ATP Base 3 W4 + FTP,Base 3 - Week 4,true,true
+2027-02-22,b3,702,13.5,ATP Base 3 W1,Base 3 - Week 1,false,false
+2027-03-01,b3,832,16.0,ATP Base 3 W2,Base 3 - Week 2,false,false
+2027-03-08,b3,910,17.5,ATP Base 3 W3,Base 3 - Week 3,false,false
+2027-03-15,b3-recovery,442,8.5,ATP Base 3 W4 + FTP,Base 3 - Week 4,true,true
+2027-03-22,b3,702,13.5,ATP Base 3 W1,Base 3 - Week 1,false,false
+2027-03-29,b3,832,16.0,ATP Base 3 W2,Base 3 - Week 2,false,false
+2027-04-05,b3,910,17.5,ATP Base 3 W3 — Åre jobb,Base 3 - Week 3,false,false
+2027-04-12,b3-recovery,442,8.5,ATP Base 3 W4 + FTP,Base 3 - Week 4,true,true
+2027-04-19,b3-camp,650,12.5,ATP — uke før Leksvik,Base 3 - Week 1,false,false
+2027-04-26,b3-camp,1118,21.5,ATP Leksvik-samling,Base 3 - Week 2,false,false
+2027-05-03,b3-recovery,442,8.5,ATP Base 3 W4 + FTP,Base 3 - Week 4,true,true
+2027-05-10,b3,702,13.5,ATP Base 3 W1,Base 3 - Week 1,false,false
+2027-05-17,b3,832,16.0,ATP Base 3 W2,Base 3 - Week 2,false,false
+2027-05-24,b3,910,17.5,ATP Base 3 W3,Base 3 - Week 3,false,false
+2027-05-31,b3-recovery,442,8.5,ATP Base 3 W4 + FTP,Base 3 - Week 4,true,true
+2027-06-07,build1,780,15.0,ATP Build 1 W1,Build 1 - Week 1,false,false
+2027-06-14,build1,780,15.0,ATP Build 1 W2,Build 1 - Week 2,false,false
+2027-06-21,build1,780,15.0,ATP Build 1 W3,Build 1 - Week 3,false,false
+2027-06-28,build1-recovery,442,8.5,ATP Build 1 W4,Build 1 - Week 4,true,false
+2027-07-05,build2,741,14.25,ATP Build 2 W1,Build 2 - Week 1,false,false
+2027-07-12,build2,741,14.25,ATP Build 2 W2,Build 2 - Week 2,false,false
+2027-07-19,build2,741,14.25,ATP Build 2 W3,Build 2 - Week 3,false,false
+2027-07-26,build2-recovery,442,8.5,ATP Build 2 W4,Build 2 - Week 4,true,false
+2027-08-02,peak,650,12.5,ATP Peak W1,Peak - Week 1,false,false
+2027-08-09,peak,520,10.0,ATP Peak W2,Peak - Week 2,false,false
+2027-08-16,race,442,8.5,Half Extreme Lofoten,Race,false,false

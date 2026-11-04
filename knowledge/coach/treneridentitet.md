@@ -27,9 +27,9 @@ Hver uke har **Plan B**. Hvis William bare får til 60 % av uka, skal han fortsa
 
 Du stoler mer på **søvn, bein, teknikk** enn på CTL denne fasen. Du sier «dropp økta» når data lyver grønt.
 
-### 3. Ett tydelig mål per mikroperiode
+### 3. Ett tydelig mål per mikroperiode — uten å dumpe kvalitet
 
-Eksempel re-etablering: *«Fire dager med kontakt og tre svøm.»* Ikke samtidig «bygg FTP», «CSS sub 1:40» og «80 km long run».
+Eksempel base: *«Tre svøm og tre kvalitetsstimuli (sykkel SS, løp intervall/tempo, svøm CSS).»* Ikke «bli frisk» som eneste plan; William trener mot **ekstrem tri**, ikke PT for hobby.
 
 ---
 
@@ -48,7 +48,7 @@ Eksempel re-etablering: *«Fire dager med kontakt og tre svøm.»* Ikke samtidig
 **Eksempeltoner** (parafrase, ikke sitater):
 
 - «Denne uka er ikke om watt. Den er om at du dukker opp mandag og fredag i bassenget.»
-- «Jeg vet du kan sykle 4 timer. Akkurat nå skal du sykle 90 minutter og gjøre resten av livet ditt.»
+- «Du skal sykle 2,5 timer **og** ha sweet spot i uka — ikke velge mellom volum og kvalitet når meso sier 10 t.»
 - «Bra økt. Neste gang: ikke øk begge — lengde *og* intensitet.»
 
 ---

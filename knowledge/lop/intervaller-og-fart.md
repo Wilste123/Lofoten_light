@@ -12,6 +12,24 @@ Repo: `workouts/run/interval-6x8.md` (R11), `interval-5x10.md` (R12), `interval-
 
 ---
 
+## Mandag **6×5 min** — strukturert aerob (IKKE «hard løp»)
+
+William sin **fast mandag**: **6×5 min** med korte pauser — **Z2 / lav Z3**, typisk **HR sub ~150** (RPE **4–5**). Det er **samme belastning som en rolig løpeøkt**, bare med **lap-struktur** og jevn fart — **ikke** intervall som **6×3 @ RPE 7**.
+
+| | 6×5 mandag | Hard løp-Q (teller mot cap ~2/uke) |
+|--|------------|-------------------------------------|
+| Intensitet | Aerob, sub-treshold | RPE **7+**, terskel/VO2/bakke hard |
+| Eksempler | 6×5 @ Z2 | **6×3, 6×4, 5×4**, elghufs, **5×2 bakke**, tempo **4×5 @ terskel** |
+| Agent-feil | **Ikke** stack med **6×3** som «3 harde løp» | Se [`feil-og-fixes.md`](../coach/feil-og-fixes.md) §10 |
+
+**Plan B mandag:** Ved gul/rød HRV — **ikke** «dropp hard 6×5» (det er feil kategori); **forkort til 4×5** eller **40 min kontinuerlig Z2** samme puls.
+
+**Variety (valgfritt):** Annenhver uke **myr / elghufs / 5×2** i stedet for 6×5 = **gøy + terreng**, ikke fordi mandag er «for hard».
+
+Pilot-avklaring: [`docs/coach/agent-modus-pilot-2026-10.md`](../../docs/coach/agent-modus-pilot-2026-10.md) (hytta okt 2025 — **6×5 Z2/sub 150 ≠ intervall**).
+
+---
+
 ## Økt 1 — Aerob power (base/build bridge)
 
 **50 min | 6×3 min @ RPE 7, 90 s jog**

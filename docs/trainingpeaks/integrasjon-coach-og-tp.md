@@ -39,7 +39,7 @@ Mulig å lage `scripts/tp_push_calendar.py` i dette repoet som:
 **Fordeler:** Ingen tredjepartsnettsted; agenten kan generere CSV, du kjører ett kommando.  
 **Ulemper:** Token utløper; TP kan endre API; ikke dokumentert for personlig bruk; **ikke** lesing/kommentarer uten partner.
 
-*Status i repo: ikke implementert — si fra om du vil at vi bygger nivå 2.*
+*Status i repo:* **`scripts/tp_lib.py`**, **`fetch_tp_workouts.py`**, **`tp_push_calendar.py`** — se **[`tp-api-setup.md`](tp-api-setup.md)**.
 
 ### Nivå 3 — Ekte integrasjon (Partner API)
 

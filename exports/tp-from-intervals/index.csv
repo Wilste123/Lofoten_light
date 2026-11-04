@@ -1,0 +1,15 @@
+date,type,name,load,duration_sec,format,file
+2026-10-22,Ride,Sykkel Z2 120 (B02),89,7200,zwo,bike/2026-10-22_sykkel-z2-120-b02_144208071.zwo
+2026-10-22,WeightTraining,ST04 rygg/isjas hjemme,15,2100,trainingdojo,trainingdojo-import.csv
+2026-10-23,Run,6x3min,135,3780,zwo,run/2026-10-23_6x3min_144208073.zwo
+2026-10-25,Swim,Svøm teknikk (S02) 60 — kveld,38,3600,zwo,swim/2026-10-25_svøm-teknikk-s02-60-kveld_144209980.zwo
+2026-10-26,Run,6X5 min,80,4620,zwo,run/2026-10-26_6x5-min_145543886.zwo
+2026-10-26,WeightTraining,"Styrke hjemme — rygg, isjas, ankel",18,2100,trainingdojo,trainingdojo-import.csv
+2026-10-27,Ride,Sykkel sweet spot 3x15,85,4800,zwo,bike/2026-10-27_sykkel-sweet-spot-3x15_143788644.zwo
+2026-10-28,Swim,Svøm teknikk A (S01),50,3600,zwo,swim/2026-10-28_svøm-teknikk-a-s01_143788641.zwo
+2026-10-29,Run,Rolig langtur,108,5400,zwo,run/2026-10-29_rolig-langtur_143788648.zwo
+2026-10-29,WeightTraining,Styrke på 3T — maskiner,25,2700,trainingdojo,trainingdojo-import.csv
+2026-10-30,Run,6x3min,135,3780,zwo,run/2026-10-30_6x3min_146534788.zwo
+2026-10-30,Swim,Svøm,56,3300,zwo,swim/2026-10-30_svøm_143788646.zwo
+2026-10-31,Ride,Sykkel rest-teknikk 105 (OPV),63,5400,zwo,bike/2026-10-31_sykkel-rest-teknikk-105-opv_143788647.zwo
+2026-10-31,Run,Løp trail lett 70 (R03),48,3300,zwo,run/2026-10-31_løp-trail-lett-70-r03_147100296.zwo

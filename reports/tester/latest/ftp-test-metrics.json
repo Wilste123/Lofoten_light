@@ -1,0 +1,18 @@
+{
+  "file": "data/tester/FTP_sykkel_03_11_2026.fit",
+  "start": "2026-11-03 16:17:59",
+  "duration_min": 81.63333333333334,
+  "distance_km": 30.921860000000002,
+  "best_60s_w": 231,
+  "best_5min_w": 223,
+  "best_20min_w": 181,
+  "ftp_accepted_w": 200.0,
+  "w_per_kg": 2.42,
+  "tss_fit": 163.8,
+  "lap_minutes": [
+    0.0,
+    36.96666666666667,
+    69.26666666666667,
+    81.63333333333333
+  ]
+}

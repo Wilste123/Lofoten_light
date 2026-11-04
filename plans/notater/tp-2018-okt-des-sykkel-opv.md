@@ -119,3 +119,5 @@ Roter **18×3** og **8×6 terskel** inn fra **uke 3–4 des** når du ligger **�
 | FTP ramp | `workouts/zwo/bike/ftp-ramp-test.zwo` |
 
 **Neste steg:** William «roterer etterpå» — agent kan mappe tabellen over til `workouts/planned/bike/` + ZWO @ **% FTP 200→275** når du ber om konkret des-kalender.
+
+**Excel (sykkel-only + build 3+1):** [`docs/athlete/sykkel-opv-2018-build-rotasjon.xlsx`](../athlete/sykkel-opv-2018-build-rotasjon.xlsx) — regenerer med `python3 scripts/generate_sykkel_opv_workbook.py`.

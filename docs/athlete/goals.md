@@ -21,7 +21,7 @@ Planlegging skal være **spesifikk mot Lofoten Half Extreme**, med gradvis opptr
 
 | Checkpoint (ca.) | **FTP (testet)** | **Rolle** |
 |------------------|------------------|-----------|
-| **31.12.2026** | **275 W** (gulv **250**) | **Team-mål** — tilsvarer **+75 W** fra 200 W (samme absolutte hopp som 2018 250→325). **Sykkel-tung des**, SS når TSB grønn; retest des (ikke dobbel max-test nov+des). |
+| **31.12.2026** | **275 W** (gulv **250**) | **Team-mål** — ATP markerer **2026-12-21** uke som FTP; **31.12** = kalender-mål hvis test flyttes til juleuke |
 | **30.04.2027** (base peak / før B6) | **≥275 W** (stretch **285**) | Hold/minimum etter nyttår — under **275** → senk build 1, mer Z2/SS før VO2 |
 | **30.06.2027** (build 2) | **290–305 W** | Kontroll midt build — juster juli |
 | **Pre-race (juli 2027, før taper)** | **&gt;300 W** | Offisiell retest; oppdater TP/Intervals **før** spesifikk blokk |
@@ -66,6 +66,7 @@ Agenten skal aktivt **dempe** Norseman/full-Extreme-logikk (ultra-spesifisitet, 
 - **Blokker og formål (start her):** [`plans/blokker-periodisering-2026-2027.md`](../plans/blokker-periodisering-2026-2027.md)  
 - **Mengdeperioder (4-ukers volum):** [`plans/mengdeperioder-2026-2027.md`](../plans/mengdeperioder-2026-2027.md)  
 - Månedstabell: [`plans/2026-2027-12mnd-periodisering.md`](../plans/2026-2027-12mnd-periodisering.md) (sep 2026 → Half Extreme aug 2027 + 750–800 t).
+- **ATP (timer/faser):** [`plans/ATP-Lofoten-synk.md`](../plans/ATP-Lofoten-synk.md) · `ATP_Lofoten.xlsx`
 
 ## Denne blokken (okt–nov 2026)
 

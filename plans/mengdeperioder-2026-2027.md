@@ -30,34 +30,29 @@
 Hver meso: **uke 1–3 progresjon**, **uke 4 −25–35 % timer** (lav intensitet).  
 `week_start` = mandag (ISO). TSS er veiledende (~50–55 load/time i base).
 
-### M1 — B1 kontakt II (etter deload)
+### M1 — B1 kontakt II (ATP Base 1)
 
-| Uke start | Timer | TSS ca. | Merknad |
-|-----------|-------|---------|---------|
-| 2026-10-26 | 9,5 | **520** | Re-inn — plan-TSS i tråd med faktisk okt — [`uke-05`](2026-10-26-uke-05.md) |
-| 2026-11-02 | 10,0 | **545** | FTP — [`uke-06`](2026-10-26-uke-06.md) |
-| 2026-11-09 | 10,5 | **565** | Nov-topp — [`uke-07`](2026-10-26-uke-07.md) |
-| 2026-11-16 | 7,5 | **380** | **Recovery** — [`uke-08`](2026-10-26-uke-08.md) |
+| Uke start | Timer **ATP** | TSS ca. | Merknad |
+|-----------|---------------|---------|---------|
+| 2026-10-26 | 12,0 *(Prep)* | 624 | [`uke-05`](2026-10-26-uke-05.md) |
+| 2026-11-02 | **11,75** | 611 | Base 1 W1 FTP — [`uke-06`](2026-10-26-uke-06.md) |
+| 2026-11-09 | **14,25** | 741 | Base 1 W2 — [`uke-07`](2026-10-26-uke-07.md) |
+| 2026-11-16 | **16,0** | 832 | Base 1 W3 volum — [`uke-08`](2026-10-26-uke-08.md) |
+| 2026-11-23 | **8,5** | 442 | Base 1 W4 recovery + FTP — [`uke-09`](2026-11-23-uke-09.md) |
 
-### M2 — B2 base (des ramp 1)
+### M2 — Base/build 2 (des, ATP)
 
-| Uke start | Timer | TSS ca. | Merknad |
-|-----------|-------|---------|---------|
-| 2026-11-23 | 10,0 | **545** | CSS — [`uke-09`](2026-11-23-uke-09.md) |
-| 2026-11-30 | 10,5 | **565** | [`2026-12-uke-10.md`](2026-12-uke-10.md) |
-| 2026-12-07 | 11,0 | **590** | [`2026-12-uke-11.md`](2026-12-uke-11.md) |
-| 2026-12-14 | 11,5 | **610** | [`2026-12-uke-12.md`](2026-12-uke-12.md) |
+| Uke start | Timer **ATP** | TSS ca. | Merknad |
+|-----------|---------------|---------|---------|
+| 2026-11-30 | **12,5** | 650 | Vo2 — [`2026-12-uke-10.md`](2026-12-uke-10.md) |
+| 2026-12-07 | **15,0** | 780 | Vo2 — [`2026-12-uke-11.md`](2026-12-uke-11.md) |
+| 2026-12-14 | **16,75** | 871 | Base 2 W3 — [`2026-12-uke-12.md`](2026-12-uke-12.md) |
+| 2026-12-21 | **8,5** | 442 | Recovery + **FTP 275** — [`2026-12-uke-13.md`](2026-12-uke-13.md) |
+| 2026-12-28 | **12,5** | 650 | Base 2 W1 — [`2026-12-uke-14.md`](2026-12-uke-14.md) |
 
-### M3 — B2/B3 (des peak + juleavlasting)
+> Full kalender → race: [`ATP-Lofoten-synk.md`](ATP-Lofoten-synk.md) + [`csv/atp-lofoten-weekly.csv`](csv/atp-lofoten-weekly.csv)
 
-| Uke start | Timer | TSS ca. | Merknad |
-|-----------|-------|---------|---------|
-| 2026-12-21 | 12,0 | **655** | [`2026-12-uke-13.md`](2026-12-uke-13.md) **Planlagt > okt-topp** |
-| 2026-12-28 | 10,0 | **480** | [`2026-12-uke-14.md`](2026-12-uke-14.md) 28.–31. des |
-| 2027-01-04 | 11,0 | 520 | B3 aerob bred |
-| 2027-01-11 | 8,5 | 400 | **Recovery** |
-
-### M4 — B3 (jan–feb)
+### M4 — B3 (jan–feb) — timer fra ATP CSV
 
 | Uke start | Timer | TSS ca. |
 |-----------|-------|---------|

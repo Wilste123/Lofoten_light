@@ -15,23 +15,24 @@ Planlegging skal være **spesifikk mot Lofoten Half Extreme**, med gradvis opptr
 
 ## FTP-mål (William, nov 2026 — Half Extreme aug 2027)
 
-**Utgangspunkt:** **200 W** (ramp 2026-11-03). **Ambisjon:** minimum **250 W** før full build-kvalitet · **&gt;300 W** innen race (aug 2027). Dette er **prestasjonsanker** ved siden av fullføring og styringsanker **6:30–7:00** — ikke erstatning.
+**Utgangspunkt:** **200 W** (ramp 2026-11-03). **Avtalt mål (William, nov 2026):** **275 W innen 31.12.2026** · **&gt;300 W** pre-race (aug 2027). Prestasjonsanker ved siden av **#1 fullføre** og styringsanker **6:30–7:00**.
 
-**W/kg er like viktig som rå watt:** ved **79 kg** gir **300 W ≈ 3,8 W/kg** (sterk sykkelben for Half Extreme). Historisk **410 W @ ~74 kg** viser tak-potensial, men **tri-volum og MSK-comeback** tilsier **trappe mål**, ikke ett sprang.
+**W/kg er like viktig som rå watt:** ved **79 kg** gir **300 W ≈ 3,8 W/kg**. **275 W @ ~82 kg** (des) ≈ **3,35 W/kg** — krever at **vektnedgang ikke spiser watt** (se regler).
 
 | Checkpoint (ca.) | **FTP (testet)** | **Rolle** |
 |------------------|------------------|-----------|
-| **31.12.2026** | **235–250 W** (gulv **220**) | Des: Z2 + SS når TSB grønn. **250 innen nyttår** = **ambisjon** (2018: 250→325 på ~6 uker under NTG) — krever **sykkel-tung des** uten å ofre skadefri løp/svøm |
-| **30.04.2027** (base peak / før B6) | **≥250 W** (stretch **265**) | **Minimum** før build 1 — under **250** her → senk build-intensitet |
-| **30.06.2027** (build 2) | **280–295 W** | Kontroll — juster juli-volum |
-| **Pre-race (juli 2027, før taper)** | **&gt;300 W** | Offisiell retest (20 min eller ramp); oppdater TP/Intervals **før** spesifikk blokk |
+| **31.12.2026** | **275 W** (gulv **250**) | **Team-mål** — tilsvarer **+75 W** fra 200 W (samme absolutte hopp som 2018 250→325). **Sykkel-tung des**, SS når TSB grønn; retest des (ikke dobbel max-test nov+des). |
+| **30.04.2027** (base peak / før B6) | **≥275 W** (stretch **285**) | Hold/minimum etter nyttår — under **275** → senk build 1, mer Z2/SS før VO2 |
+| **30.06.2027** (build 2) | **290–305 W** | Kontroll midt build — juster juli |
+| **Pre-race (juli 2027, før taper)** | **&gt;300 W** | Offisiell retest; oppdater TP/Intervals **før** spesifikk blokk |
 
 **Regler (hardere enn tall):**
 
 1. **Retest hver 8–12 uke** i build (`knowledge/load-and-intensity.md`) — samme protokoll (ramp eller 20 min).
 2. **To retester i rad under forrige checkpoint** → **pause vektnedgang**, mer mat, vurder lege/fysio — ikke øk VO2 for å «ta igjen».
-3. **2018-precedent (NTG):** **250→325 W** på ~6 uker er **din** historikk — bruk som **motivasjon og mulig tak**, ikke som **automatisk des-plan 2026** (tri, ~83 kg, comeback-MSK, snus-slutt, kontor, kaloriunderskudd). **325 W des** replikeres **ikke** uten NTG-lignende sykkel-% og volum.
-4. Agenten skal **flagge** planlagt sykkel-Q hvis profil-FTP ligger **&gt;15 W under** tabellens checkpoint (soner for harde).
+3. **2018-precedent:** **250→325 W** (~6 uker NTG) — **275 W des 2026** fra **200 W** er **samme +75 W** i absolutte tall; planlegg **sykkel-% og volum** deretter, ikke «tri som vanlig + håp».
+4. **Miss 275 W 31.12** men **≥250 W** → fortsett mot **300+** juli med justert build; **&lt;250 W** to retester → **pause vektnedgang**, sykkel-fokus, ikke hardere intervaller.
+5. Agenten skal **flagge** planlagt sykkel-Q hvis profil-FTP ligger **&gt;15 W under** tabellens checkpoint (soner for harde).
 
 ## Volum over 12 måneder
 

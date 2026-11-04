@@ -53,8 +53,9 @@ Kilde for sannhet for agenten. Oppdater ved nye tester, skader eller endret tilg
 | 2019 | **5 sek peak ~1300 W** | Neuromuskulær kapasitet historisk |
 | 2026 hittil | **>50 t** trening | Re-etablering etter lang lav periode |
 | Neste 12 mnd (mål) | **750–800 t** totalt | Se volumplan under — ikke lineær jump fra lav uke til snitt |
+| **31.12.2026 (mål)** | **FTP 275 W** (testet) | Fra **200 W** (2026-11-03); se [`goals.md`](goals.md) — **+75 W** des ≈ 2018-precedent |
 
-**Planleggingsimplikasjon:** Bruk **konservativ nå-FTP** til soner er re-testet (2026). Historisk 410 W er motivasjon og tak på potensial, ikke intensitetsgrunnlag før ny test.
+**Planleggingsimplikasjon:** Bruk **testet FTP** til soner (`profile.md`). Historisk **410 W** og **2018 250→325** er motivasjon/tak — ikke intensitet før retest.
 
 ### Volummål 12 måneder (750–800 t)
 

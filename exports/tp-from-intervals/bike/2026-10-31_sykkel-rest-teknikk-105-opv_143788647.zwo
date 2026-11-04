@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Xtri training coach</author>
+  <name>2026-10-31 — Sykkel rest-teknikk 105 (OPV)</name>
+  <description>Aerobic foundation — Power = andel av sykkel-FTP. Sett FTP under TrainingPeaks Innstillinger → Soner. — Eksport Intervals → TP bibliotek (sett sykkel-FTP i TP).</description>
+  <sportType>bike</sportType>
+  <tags/>
+  <workout>
+    <SteadyState Duration="600" Power="0.5000" pace="0">
+      <textevent message="Warm-up" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="4200" Power="0.6800" pace="0">
+      <textevent message="Z2 steady — fuel if &amp;gt;75 min total habit" timeoffset="0"/>
+    </SteadyState>
+    <SteadyState Duration="600" Power="0.4500" pace="0">
+      <textevent message="Cool-down" timeoffset="0"/>
+    </SteadyState>
+  </workout>
+</workout_file>

@@ -1,0 +1,11 @@
+activity_id,activity_start,activity_name,activity_type,interval_index,id,type,label,group_id,start_index,end_index,start_time,end_time,moving_time,elapsed_time,distance,average_watts,weighted_average_watts,max_watts,average_watts_kg,intensity,training_load,joules,zone,zone_min_watts,zone_max_watts,average_heartrate,min_heartrate,max_heartrate,average_cadence,min_cadence,max_cadence,average_speed,min_speed,max_speed,average_torque,total_elevation_gain,average_gradient,min_altitude,max_altitude,decoupling,w5s_variability,wbal_start,wbal_end,gap,strain_score,joules_above_ftp
+i195152979,2026-10-08T17:56:12,Basseng,Swim,0,5252231,WORK,,13s@98bpm,0,13,0,13,13,13,,,,,,53,,,1,,,98,94,102,,,,,,,,,,,,,,,,,,
+i195152979,2026-10-08T17:56:12,Basseng,Swim,1,4502817,WORK,,122s@124bpm,13,135,13,135,121,122,,,,,,67,,,1,,,124,98,137,,,,,,,,,,,,,,,,,,
+i195152979,2026-10-08T17:56:12,Basseng,Swim,2,9058684,WORK,,44s@119bpm,27,71,27,71,44,44,,,,,,64,,,1,,,119,102,131,,,,,,,,,,,,,,,,,,
+i195152979,2026-10-08T17:56:12,Basseng,Swim,3,1846313,WORK,,24s@123bpm,36,61,36,61,25,25,,,,,,65,,,1,,,121,110,129,,,,,,,,,,,,,,,,,,
+i195152979,2026-10-08T17:56:12,Basseng,Swim,4,4537882,WORK,,24s@123bpm,38,61,38,61,23,23,,,,,,66,,,1,,,122,112,129,,,,,,,,,,,,,,,,,,
+i195152979,2026-10-08T17:56:12,Basseng,Swim,5,8258825,WORK,,24s@123bpm,42,65,42,65,23,23,,,,,,67,,,1,,,124,115,129,,,,,,,,,,,,,,,,,,
+i195152979,2026-10-08T17:56:12,Basseng,Swim,6,9635922,WORK,,11s@124bpm,45,55,45,55,10,10,,,,,,66,,,1,,,123,118,129,,,,,,,,,,,,,,,,,,
+i195152979,2026-10-08T17:56:12,Basseng,Swim,7,3358980,WORK,,24s@123bpm,45,70,45,70,25,25,,,,,,68,,,1,,,126,118,131,,,,,,,,,,,,,,,,,,
+i195152979,2026-10-08T17:56:12,Basseng,Swim,8,9134939,WORK,,11s@124bpm,46,58,46,58,12,12,,,,,,67,,,1,,,125,119,129,,,,,,,,,,,,,,,,,,
+i195152979,2026-10-08T17:56:12,Basseng,Swim,9,7890453,RECOVERY,,,135,1079,135,1079,944,944,,,,,,77,,,1,,,142,123,165,,,,,,,,,,,,,,,,,,

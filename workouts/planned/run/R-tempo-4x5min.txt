@@ -1,0 +1,18 @@
+name: Løp tempo 4x5 min
+sport: run
+intervals_target: HR
+---
+William, **tempo-kvalitet**. 4×5 min @ **RPE 7** (ca. halvmaraton-følelse / 88–92 % LTHR), **2 min** lett jogg mellom.
+
+Oppvarming 15 min. Nedkjøring 10 min.
+
+Plan B: 3×5 min. Ikke samme uke som 5×3 **og** elghufs — da 3×5.
+
+---intervals---
+- Warmup 15m 81-89% LTHR
+
+Main Set 4x
+- 5m 88-92% LTHR
+- 2m 81-89% LTHR
+
+- Cooldown 10m 75-85% LTHR

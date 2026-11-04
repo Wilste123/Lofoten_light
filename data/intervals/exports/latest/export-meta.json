@@ -1,0 +1,57 @@
+{
+  "exported_at": "2026-10-26T14:11:18.199816+00:00",
+  "athlete_id": "i303008",
+  "wellness_range": [
+    "2025-10-27",
+    "2026-10-26"
+  ],
+  "activities_range": [
+    "2026-04-30",
+    "2026-10-26"
+  ],
+  "laps_range": [
+    "2026-07-29",
+    "2026-10-26"
+  ],
+  "streams_summary_range": [
+    "2026-07-29",
+    "2026-10-26"
+  ],
+  "events_range": [
+    "2026-09-27",
+    "2026-12-25"
+  ],
+  "gaps": [],
+  "files": {
+    "wellness.csv": "daily wellness (sleep, HRV, weight, CTL/ATL, …)",
+    "activities.csv": "FULL athlete activities.csv from Intervals (date filter ignored by API; 840 rows since 2009)",
+    "activities.json": "JSON list filtered to ~180d window (ids used for laps)",
+    "events.csv": "calendar events (WORKOUT/NOTE/TARGET/…)",
+    "events-workouts.json": "WORKOUT events only (118)",
+    "laps.csv": "flattened icu_intervals for activities ≥ 2026-07-29 (478 rows)",
+    "laps/": "one CSV per activity (37 files)",
+    "streams-summary.csv": "streams.csv column/row presence ≥ 2026-07-29 (37 rows)",
+    "activities-365d.csv": "same endpoint as activities.csv (full history; redundant)",
+    "activities-365d.json": "JSON list filtered to 365d"
+  },
+  "stats": {
+    "activities_total": 44,
+    "laps_activities_fetched": 37,
+    "laps_rows": 478,
+    "streams_summaries": 37,
+    "skipped_older_than_laps_window": 7,
+    "detail_failures": 0,
+    "events_total": 195,
+    "events_workouts": 118,
+    "activities_365d": 61
+  },
+  "activities_365d_range": [
+    "2025-10-27",
+    "2026-10-26"
+  ],
+  "notes": [
+    "GET .../activities.csv ignores oldest/newest and returns full history.",
+    "GET .../activities (JSON) respects oldest/newest.",
+    "Laps/streams detail only for last 90 days."
+  ]
+}

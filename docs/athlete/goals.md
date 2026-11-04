@@ -21,8 +21,8 @@ Planlegging skal være **spesifikk mot Lofoten Half Extreme**, med gradvis opptr
 
 | Checkpoint (ca.) | **FTP (testet)** | **Rolle** |
 |------------------|------------------|-----------|
-| **31.12.2026** | **220–235 W** (gulv **210**) | Base des: Z2 + SS når TSB grønn; **ikke** forvent 250 her uten å ofre resten av året |
-| **30.04.2027** (base peak / før B6) | **≥250 W** | **Minimum** før build 1 (SS, crisscross, 5×10) — ellers senk build-intensitet, ikke jage VO2 |
+| **31.12.2026** | **235–250 W** (gulv **220**) | Des: Z2 + SS når TSB grønn. **250 innen nyttår** = **ambisjon** (2018: 250→325 på ~6 uker under NTG) — krever **sykkel-tung des** uten å ofre skadefri løp/svøm |
+| **30.04.2027** (base peak / før B6) | **≥250 W** (stretch **265**) | **Minimum** før build 1 — under **250** her → senk build-intensitet |
 | **30.06.2027** (build 2) | **280–295 W** | Kontroll — juster juli-volum |
 | **Pre-race (juli 2027, før taper)** | **&gt;300 W** | Offisiell retest (20 min eller ramp); oppdater TP/Intervals **før** spesifikk blokk |
 
@@ -30,7 +30,7 @@ Planlegging skal være **spesifikk mot Lofoten Half Extreme**, med gradvis opptr
 
 1. **Retest hver 8–12 uke** i build (`knowledge/load-and-intensity.md`) — samme protokoll (ramp eller 20 min).
 2. **To retester i rad under forrige checkpoint** → **pause vektnedgang**, mer mat, vurder lege/fysio — ikke øk VO2 for å «ta igjen».
-3. **250 W des 2026** er **ikke** plan — det kolliderer med **11–12 t/uke**, tri-Q og vekt. **250 innen april** er linjen som matcher **300 i august** (ca. +50 W på ~4 mnd build).
+3. **2018-precedent (NTG):** **250→325 W** på ~6 uker er **din** historikk — bruk som **motivasjon og mulig tak**, ikke som **automatisk des-plan 2026** (tri, ~83 kg, comeback-MSK, snus-slutt, kontor, kaloriunderskudd). **325 W des** replikeres **ikke** uten NTG-lignende sykkel-% og volum.
 4. Agenten skal **flagge** planlagt sykkel-Q hvis profil-FTP ligger **&gt;15 W under** tabellens checkpoint (soner for harde).
 
 ## Volum over 12 måneder

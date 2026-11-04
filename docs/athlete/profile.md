@@ -45,6 +45,7 @@ Kilde for sannhet for agenten. Oppdater ved nye tester, skader eller endret tilg
 
 | Periode | Nøkkeltall | Notater |
 |---------|------------|---------|
+| **Nov–des 2018** (16 år, **NTG** / OPV) | **250 W → 325 W** (ca. **5. nov – 18. des**) | ~**6 uker**, **+75 W** — ren **sykkel/toppidrett**-kontekst; viser at **rask vinter-FTP** er mulig **for deg** under riktige rammer — **ikke** identisk med tri-comeback 2026 |
 | 2019 (peak år) | **~1050 t** trening | Høyt strukturert volum |
 | 2019 (test) | **FTP 410 W** (rulle innendørs) | Peak FTP-referanse — **ikke** dagens FTP |
 | Ved opphør sykkel (ca.) | **~74 kg**, FTP **410 W** (~**5,5 W/kg**) | Landevei-vekt; **ikke** tri/Lofoten-mål å kopiere blindt |

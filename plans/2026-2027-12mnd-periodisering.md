@@ -38,7 +38,7 @@ Snittvekt **morgen** (7-dagers snitt). Hvis du er **over tak** 2 uker: lett kalo
 
 ### FTP-checkpoints (William, fra 200 W nov 2026)
 
-Se [`docs/athlete/goals.md`](../docs/athlete/goals.md). Kort: **des 220–235** → **apr ≥250** → **jun ~285–295** → **pre-race &gt;300 W** (aug 2027). Vekt og FTP faller ikke samtidig uten brems.
+Se [`docs/athlete/goals.md`](../docs/athlete/goals.md). Kort: **des 235–250** (2018 viste 250→325 på 6 uker NTG) → **apr ≥250** → **jun ~285–295** → **pre-race &gt;300 W** (aug 2027).
 
 ---
 

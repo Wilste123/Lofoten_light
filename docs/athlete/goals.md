@@ -13,6 +13,26 @@ Planlegging skal være **spesifikk mot Lofoten Half Extreme**, med gradvis opptr
 
 **Vektkorridor (coach):** 90 kg → **&lt;80 kg race** (sweet spot **78–79**) — månedlige **tak** i [`plans/2026-2027-12mnd-periodisering.md`](../plans/2026-2027-12mnd-periodisering.md). **Fett % / vann / FFM:** [`kroppssammensetning-smartvekt.md`](kroppssammensetning-smartvekt.md). Avbryt vektnedgang hvis FTP eller styrke faller.
 
+## FTP-mål (William, nov 2026 — Half Extreme aug 2027)
+
+**Utgangspunkt:** **200 W** (ramp 2026-11-03). **Ambisjon:** minimum **250 W** før full build-kvalitet · **&gt;300 W** innen race (aug 2027). Dette er **prestasjonsanker** ved siden av fullføring og styringsanker **6:30–7:00** — ikke erstatning.
+
+**W/kg er like viktig som rå watt:** ved **79 kg** gir **300 W ≈ 3,8 W/kg** (sterk sykkelben for Half Extreme). Historisk **410 W @ ~74 kg** viser tak-potensial, men **tri-volum og MSK-comeback** tilsier **trappe mål**, ikke ett sprang.
+
+| Checkpoint (ca.) | **FTP (testet)** | **Rolle** |
+|------------------|------------------|-----------|
+| **31.12.2026** | **220–235 W** (gulv **210**) | Base des: Z2 + SS når TSB grønn; **ikke** forvent 250 her uten å ofre resten av året |
+| **30.04.2027** (base peak / før B6) | **≥250 W** | **Minimum** før build 1 (SS, crisscross, 5×10) — ellers senk build-intensitet, ikke jage VO2 |
+| **30.06.2027** (build 2) | **280–295 W** | Kontroll — juster juli-volum |
+| **Pre-race (juli 2027, før taper)** | **&gt;300 W** | Offisiell retest (20 min eller ramp); oppdater TP/Intervals **før** spesifikk blokk |
+
+**Regler (hardere enn tall):**
+
+1. **Retest hver 8–12 uke** i build (`knowledge/load-and-intensity.md`) — samme protokoll (ramp eller 20 min).
+2. **To retester i rad under forrige checkpoint** → **pause vektnedgang**, mer mat, vurder lege/fysio — ikke øk VO2 for å «ta igjen».
+3. **250 W des 2026** er **ikke** plan — det kolliderer med **11–12 t/uke**, tri-Q og vekt. **250 innen april** er linjen som matcher **300 i august** (ca. +50 W på ~4 mnd build).
+4. Agenten skal **flagge** planlagt sykkel-Q hvis profil-FTP ligger **&gt;15 W under** tabellens checkpoint (soner for harde).
+
 ## Volum over 12 måneder
 
 | Mål | 750–800 timer totalt (rullerende 12 mnd) |
@@ -63,4 +83,3 @@ Agenten skal aktivt **dempe** Norseman/full-Extreme-logikk (ultra-spesifisitet, 
 - Peak/taper for 2027-race (for tidlig)
 - Race nutrition-experimenter i stor skala
 - Norseman / full Extreme-spesifisitet
-- Prestasjonsoptimalisering på sykkel FTP før nåværende FTP er testet

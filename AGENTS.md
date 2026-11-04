@@ -53,6 +53,7 @@ Every plan must include:
 python3 scripts/build_zwo_library.py   # regenerates swim/run/strength/brick; keeps bike/
 ./scripts/zip_zwo_library.sh
 python3 scripts/analyze_tp_export.py data/trainingpeaks/exports/<file>.csv
+python3 scripts/read_fit_activity.py data/tester/<fil>.fit   # FTP/ramp fra .fit (fitparse)
 python3 scripts/fetch_intervals_wellness.py --days 7 -o data/intervals/exports/wellness.csv
 python3 scripts/analyze_intervals_wellness.py data/intervals/exports/wellness.csv
 python3 scripts/compute_readiness.py data/intervals/exports/wellness.csv --activities data/intervals/exports/uke.csv --at now
@@ -70,6 +71,8 @@ python3 scripts/fetch_intervals_activities.py --days 7 -o data/intervals/exports
 python3 scripts/analyze_intervals_export.py data/intervals/exports/uke.csv
 ./scripts/fetch_knowledge_archives.sh
 ```
+
+**FTP/løp-tester (.fit):** på git-branchen **`rethink`**, mappe `Tester/`. Hent til `data/tester/` og kjør `read_fit_activity.py`. Oppdater `docs/athlete/profile.md`.
 
 Update `docs/athlete/` when he states new FTP, availability, or injuries.
 

@@ -107,7 +107,7 @@ Agenten skal **planlegge faser** (f.eks. start der William er nå → stabil bas
 
 | Metrikk | Planlegging TP | Dato | Notater |
 |---------|----------------|------|---------|
-| **FTP sykkel** | **210 W** | 2026-09-24 | ~2,33 W/kg ved **~90 kg** — konservativ; ramp uke 6–8 |
+| **FTP sykkel** | **200 W** | **2026-11-03** | Ramp test (`Tester/FTP_sykkel_03_11_2026.fit`, TP **195/200 W**). Tidligere guess **210 W** (2026-09-24) erstattes. `.fit`: best ~60 s **231 W**, ~20 min **181 W** — TP FTP **200 W** styrer soner. |
 | **Max HR** | **191 bpm** | est. | Tanaka (klokke kan overstyre) |
 | **Hvilepuls** | **58 bpm** | antatt | Oppdater fra klokke |
 | **LTHR / terskel HR** | **165 bpm** | 2026-09-24 | Brukes sykkel + løp inntil separate tester |
@@ -115,17 +115,17 @@ Agenten skal **planlegge faser** (f.eks. start der William er nå → stabil bas
 | **CSS / T-pace svøm** | **2:20 / 100 m** | est. | 1000 m test når klar |
 | Vekt (kg) | ~90 | | |
 
-### Sykkel — watt og puls (ved FTP 210 W, LTHR 165)
+### Sykkel — watt og puls (ved FTP **200 W**, LTHR 165)
 
 | Sone | % FTP | Watt ca. | HR ca. (% av 165) |
 |------|-------|----------|-------------------|
-| Z1 | &lt; 55 % | &lt; 116 | &lt; 81 % (&lt; 134) |
-| Z2 | 56–75 % | 118–158 | 81–89 % (134–147) |
-| Z3 | 76–90 % | 160–189 | 90–93 % (149–153) |
-| Z4 | 91–105 % | 191–221 | 94–99 % (155–163) |
-| Z5 | 106–120 % | 223–252 | 100–106 % (165–175) |
+| Z1 | &lt; 55 % | &lt; 110 | &lt; 81 % (&lt; 134) |
+| Z2 | 56–75 % | **112–150** | 81–89 % (134–147) |
+| Z3 | 76–90 % | **152–180** | 90–93 % (149–153) |
+| Z4 | 91–105 % | **182–210** | 94–99 % (155–163) |
+| Z5 | 106–120 % | **212–240** | 100–106 % (165–175) |
 
-**Z2 re-etablering (uke 1–4):** ~65–72 % FTP ≈ **137–151 W** eller RPE 4–5.
+**Z2 re-etablering (uke 1–4):** ~65–72 % FTP ≈ **130–144 W** eller RPE 4–5.
 
 ### Løp — pace og puls (terskel 6:20/km, LTHR 165)
 
@@ -153,7 +153,7 @@ Agenten skal **planlegge faser** (f.eks. start der William er nå → stabil bas
 
 | Metrikk | Verdi | Dato | Notater |
 |---------|--------|------|---------|
-| FTP (W) | **210** (guess) → ramp-test | 2026-09-24 | |
+| FTP (W) | **200** | 2026-11-03 | Ramp 3. nov; se `data/tester/` |
 | Threshold HR sykkel (bpm) | **165** (guess) | 2026-09-24 | |
 | LTHR løp (bpm) | **165** (guess) | 2026-09-24 | |
 | CSS svøm (per 100 m) | *2:20 plan* | | |

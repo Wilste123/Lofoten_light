@@ -1,0 +1,27 @@
+# S11 — CSS-test (ca. 55 min)
+
+William, første **offisielle CSS** i comeback. Ikke race-start — jevn hardhet du kan holde på begge deler.
+
+## Oppvarming (15 min)
+- 200 lett fri
+- 4×50 drill (catch / fingertip) @ 20 s pause
+- 4×50 bygg fart 1–4 @ 15 s pause
+- 200 lett
+
+## Hoveddel
+1. **400 m** kontinuerlig — «hard men kontrollert», RPE 8–9. Noter tid (sek).
+2. **5–8 min** lett svøm / hvile i kanten.
+3. **200 m** — samme følelse som 400, RPE 8–9. Noter tid.
+
+## CSS (etter økta)
+- `CSS per 100 m = (T400_sek − T200_sek) / 2`
+- Legg inn i `docs/athlete/profile.md` og Intervals svøm-T-pace.
+
+## Nedkjøling (8 min)
+- 200 lett + 4×25 rolig
+
+## Plan B
+- Dårlig skulder / lite bassengtid → dropp test; kjør S03 3×500 i stedet og test neste uke.
+
+## Coach
+Rapporter begge tider + om 400 føltes «ærlig». Uten CSS: ikke S05/S06 ennå.

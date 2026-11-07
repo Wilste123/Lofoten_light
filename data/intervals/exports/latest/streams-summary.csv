@@ -1,0 +1,38 @@
+activity_id,activity_start,activity_name,activity_type,stream_rows,stream_columns,has_watts,has_heartrate,has_cadence,has_velocity,has_altitude,duration_secs
+i201591179,2026-10-25T18:17:12,Styrke,WeightTraining,1610,time|heartrate,0,1,0,0,0,1609
+i200635844,2026-10-23T08:58:57,6x3min,VirtualRun,2315,time|watts|cadence|heartrate|distance|velocity_smooth|torque|stance_time|vertical_oscillation|vertical_ratio|step_length,1,1,1,1,0,2314
+i200622120,2026-10-23T08:50:56,6X3min,VirtualRun,424,time|watts|cadence|heartrate|distance|velocity_smooth|torque|stance_time|vertical_oscillation|vertical_ratio|step_length,1,1,1,1,0,423
+i200438532,2026-10-22T17:18:16,Innendørssykling,VirtualRide,981,time|heartrate,0,1,0,0,0,980
+i199606112,2026-10-20T17:51:26,ST04 rygg/isjas hjemme,WeightTraining,1175,time|heartrate,0,1,0,0,0,1174
+i199585542,2026-10-20T16:46:22,6X5 min,VirtualRun,3738,time|watts|cadence|heartrate|distance|velocity_smooth|torque|stance_time|vertical_oscillation|vertical_ratio|step_length,1,1,1,1,0,3737
+i198579792,2026-10-18T10:44:41,Svøm recovery (S09) 45,Swim,2533,time|cadence|heartrate|distance|velocity_smooth,0,1,1,1,0,2532
+i198606711,2026-10-18T00:00:00,Mobilitet/styrke,WeightTraining,1,,0,0,0,0,0,0
+i198606277,2026-10-18T00:00:00,Extratid,Swim,1,,0,0,0,0,0,0
+i198307560,2026-10-17T13:41:43,Sykkel recovery 45 (B01),Ride,1193,time|heartrate|distance|altitude|lat|lng|velocity_smooth,0,1,0,1,1,1192
+i198272637,2026-10-17T11:33:39,Levanger Løping,Run,4927,time|watts|cadence|heartrate|distance|altitude|lat|lng|velocity_smooth|torque|fixed_altitude|stance_time|vertical_oscillation|vertical_ratio|step_length,1,1,1,1,1,4926
+i198110335,2026-10-16T17:13:08,Trondheim - 6x3min + 2X2,Run,3594,time|watts|cadence|heartrate|distance|altitude|lat|lng|velocity_smooth|torque|fixed_altitude|stance_time|vertical_oscillation|vertical_ratio|step_length,1,1,1,1,1,3593
+i197688377,2026-10-15T18:13:31,Styrke,WeightTraining,2492,time|heartrate,0,1,0,0,0,2491
+i197630448,2026-10-15T15:26:28,Erik-svøm-drills,Swim,2103,time|cadence|heartrate|distance|velocity_smooth,0,1,1,1,0,2102
+i197298301,2026-10-14T17:52:45,Trondheim Løping,Run,3473,time|watts|cadence|heartrate|distance|altitude|lat|lng|velocity_smooth|torque|fixed_altitude|stance_time|vertical_oscillation|vertical_ratio|step_length,1,1,1,1,1,3472
+i197258001,2026-10-14T16:26:29,Sykkel Z2 165 (B03),Ride,1240,time|heartrate|distance|altitude|lat|lng|velocity_smooth,0,1,0,1,1,1239
+i196875510,2026-10-13T17:06:46,Styrke,WeightTraining,1742,time|heartrate,0,1,0,0,0,1741
+i196827121,2026-10-13T15:00:37,Svøm teknikk skulder (S02) 70,Swim,2766,time|cadence|heartrate|distance|velocity_smooth,0,1,1,1,0,2765
+i196842962,2026-10-13T00:00:00,Elapsed,Swim,1,,0,0,0,0,0,0
+i196090623,2026-10-11T12:07:22,Leksvik Løping,Run,4622,time|watts|cadence|heartrate|distance|altitude|lat|lng|velocity_smooth|torque|fixed_altitude|stance_time|vertical_oscillation|vertical_ratio|step_length,1,1,1,1,1,4621
+i195851862,2026-10-10T17:52:59,Løping på tredemølle,VirtualRun,3108,time|watts|cadence|heartrate|distance|velocity_smooth|torque|stance_time|vertical_oscillation|vertical_ratio|step_length,1,1,1,1,0,3107
+i195474002,2026-10-09T16:23:11,5X3,Run,3277,time|watts|cadence|heartrate|distance|altitude|lat|lng|velocity_smooth|torque|fixed_altitude|stance_time|vertical_oscillation|vertical_ratio|step_length,1,1,1,1,1,3276
+i195139996,2026-10-08T17:56:12,Basseng,Swim,1080,time|cadence|heartrate|distance|velocity_smooth,0,1,1,1,0,1079
+i195152979,2026-10-08T17:56:12,Basseng,Swim,1080,time|heartrate,0,1,0,0,0,1079
+i195333821,2026-10-08T00:00:00,Feil på klokke,Swim,1,,0,0,0,0,0,0
+i194755009,2026-10-07T18:23:41,Styrke overkropp/kjerne/ben,WeightTraining,828,time|heartrate,0,1,0,0,0,827
+i194741003,2026-10-07T17:21:09,Svøm teknikk skulder (S02),Swim,3153,time|cadence|heartrate|distance|velocity_smooth,0,1,1,1,0,3152
+i193865485,2026-10-05T16:01:13,Basseng,Swim,3317,time|cadence|heartrate|distance|velocity_smooth,0,1,1,1,0,3316
+i193542209,2026-10-04T18:32:36,Basseng,Swim,2908,time|cadence|heartrate|distance|velocity_smooth,0,1,1,1,0,2907
+i193360339,2026-10-04T11:20:52,Trondheim Løping,Run,3981,time|watts|cadence|heartrate|distance|altitude|lat|lng|velocity_smooth|torque|fixed_altitude|stance_time|vertical_oscillation|vertical_ratio|step_length,1,1,1,1,1,3980
+i193161239,2026-10-03T20:41:55,Overkropp + kjerne + mobilitet,WeightTraining,2080,time|heartrate,0,1,0,0,0,2079
+i193044047,2026-10-03T16:13:19,Sykkel recovery 45 (B01),Ride,946,time|heartrate|distance|altitude|lat|lng|velocity_smooth,0,1,0,1,1,945
+i192688906,2026-10-02T16:53:51,5x3,Run,4288,time|watts|cadence|heartrate|distance|altitude|lat|lng|velocity_smooth|torque|fixed_altitude|stance_time|vertical_oscillation|vertical_ratio|step_length,1,1,1,1,1,4287
+i192333230,2026-10-01T17:51:10,Trondheim - 7X2,Run,3626,time|watts|cadence|heartrate|distance|altitude|lat|lng|velocity_smooth|torque|fixed_altitude|stance_time|vertical_oscillation|vertical_ratio|step_length,1,1,1,1,1,3625
+i191666038,2026-09-29T16:50:33,Løp easy 40 (R01),Workout,2378,time|cadence|heartrate|distance|velocity_smooth,0,1,1,1,0,2377
+i190565919,2026-09-26T15:04:41,Løping på tredemølle,VirtualRun,3610,time|cadence|heartrate|distance|velocity_smooth,0,1,1,1,0,3609
+i190349972,2026-09-25T19:38:40,Løp easy + strides (R02),VirtualRun,1813,time|cadence|heartrate|distance|velocity_smooth,0,1,1,1,0,1812

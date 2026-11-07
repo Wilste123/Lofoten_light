@@ -15,4 +15,6 @@ For workouts: bike ZWO in `workouts/zwo/bike/` (TP library import only). Swim/ru
 
 For progress questions, prefer analyzing CSV exports in `data/trainingpeaks/exports/` with `scripts/analyze_tp_export.py`.
 
+For **rapport / analyse / ukesopp / belastning / readiness**: run `scripts/generate_coach_report.py` (TB-Score v2 + grafer). Present `reports/coach/latest/tb-dashboard.png` and snapshot interpretation — see `AGENTS.md` § Rapporter.
+
 Do not fabricate Xtri-pondus details; use `docs/xtri/` or ask for the repo URL / `XTRI_REPO_URL`.

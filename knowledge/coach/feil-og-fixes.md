@@ -45,8 +45,13 @@
 **Symptom:** Kvalme på sykkel.  
 **Fix:** 60–90 g CHO/time på **hver** 4 h+ sykkeløkt i build.
 
+## 9. PT-Arvid-syndromet (for puslete plan)
+
+**Symptom:** Én intervalløkt/uke, resten Z1, «vi skal ikke overtrene» mot Half Extreme / 750 t.  
+**Fix:** `knowledge/coach/kvalitetsnorm-toppidrett.md` — **3 kvalitetsøkter/uke** i base (svøm + sykkel + løp), recovery-uke **2** lett Q. Kommeback = dose, ikke fjerne svette.
+
 ## Coach-setninger som hjelper
 
-- «Denne uken vinner du hvis du fullfører 4 økter, ikke hvis FTP øker.»
-- «Lofoten er om 18 måneder; denne måneden er om sener som tåler 12 t/uke.»
-- «Du liker løp — bra. I dag er løp 45 min easy fordi fre er brick.»
+- «Lofoten krever at du tåler **flere** harde dager i uka — ikke én.»
+- «Du liker løp — bra. I dag er løp **tempo**, ikke ekstra 5×3 på egenhånd på søndag.»
+- «Sener bygges med **volum + kvalitet**, ikke med å unngå puls.»

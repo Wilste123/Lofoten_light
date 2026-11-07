@@ -1,0 +1,16 @@
+name: Sykkel sweet spot 2x20
+sport: bike
+zwo: workouts/zwo/bike/sweet-spot-2x20.zwo
+---
+William, **2×20 min sweet spot** @ **88–91 % FTP**, **8 min** Z2 mellom. Recovery-uke eller base: hold formen, ikke race.
+
+**Plan B:** 2×15 min samme intensitet.
+
+---intervals---
+- Warmup 15m 55-65% FTP
+
+- 2x
+- 20m 88-91% FTP
+- 8m 60-68% FTP
+
+- Cooldown 10m 55% FTP

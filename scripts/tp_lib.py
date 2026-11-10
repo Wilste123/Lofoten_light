@@ -305,6 +305,37 @@ def get_pmc_for_day(
     raise RuntimeError(f"No PMC row for {day} in performancedata response")
 
 
+def get_workouts_tpapi_raw(
+    start: str,
+    end: str,
+    *,
+    athlete: int | None = None,
+) -> list[dict[str, Any]]:
+    """Full tpapi fitness/v6 workout rows (power, HR, structure, feeling)."""
+    aid = athlete if athlete is not None else athlete_id()
+    path = f"/fitness/v6/athletes/{aid}/workouts/{start}/{end}"
+    raw = _request_tpapi("GET", path)
+    data = json.loads(raw.decode())
+    if not isinstance(data, list):
+        raise RuntimeError(f"Unexpected tpapi workouts payload: {type(data)}")
+    return data
+
+
+def get_workout_details(
+    workout_id: int,
+    *,
+    athlete: int | None = None,
+) -> dict[str, Any]:
+    """Zone times + mean-max curves for one workout."""
+    aid = athlete if athlete is not None else athlete_id()
+    path = f"/fitness/v6/athletes/{aid}/workouts/{workout_id}/details"
+    raw = _request_tpapi("GET", path)
+    data = json.loads(raw.decode())
+    if not isinstance(data, dict):
+        raise RuntimeError(f"Unexpected workout details payload: {type(data)}")
+    return data
+
+
 def get_workouts_tpapi(
     start: str,
     end: str,
@@ -312,13 +343,7 @@ def get_workouts_tpapi(
     athlete: int | None = None,
 ) -> list[dict[str, Any]]:
     """GET tpapi …/fitness/v6/athletes/{id}/workouts/{start}/{end} (cookie session)."""
-    aid = athlete if athlete is not None else athlete_id()
-    path = f"/fitness/v6/athletes/{aid}/workouts/{start}/{end}"
-    raw = _request_tpapi("GET", path)
-    data = json.loads(raw.decode())
-    if not isinstance(data, list):
-        raise RuntimeError(f"Unexpected tpapi workouts payload: {type(data)}")
-    return [normalize_tpapi_workout(w) for w in data]
+    return [normalize_tpapi_workout(w) for w in get_workouts_tpapi_raw(start, end, athlete=athlete)]
 
 
 def get_workouts(

@@ -99,9 +99,9 @@ python3 scripts/fetch_tp_fitness.py --start 2026-07-01 --end 2026-10-28
 
 ```bash
 python3 scripts/fetch_tp_metrics.py --start 2026-10-21 --end 2026-10-28
-# Cookie-only: bruk i stedet
-python3 scripts/fetch_intervals_wellness.py --days 8 -o data/intervals/exports/wellness.csv
-python3 scripts/analyze_intervals_wellness.py data/intervals/exports/wellness.csv
+# Cookie-only: `/v2/metrics` (søvn, HRV, vekt) er ikke tilgjengelig — bruk Partners JWT
+# eller logg manuelt i TP. Rapport kun fra TP (PMC/økter/soner):
+python3 scripts/generate_tp_coach_report.py --days 56 -o reports/coach
 ```
 
 ### Skriv plan (TrainingDojo-CSV)

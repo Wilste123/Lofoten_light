@@ -22,3 +22,7 @@ Fullt intervallbibliotek: arkiv `lop/intervaller-og-fart.md`, `workouts/sessions
 ## Terreng / Lofoten
 
 Arkiv `lop/terreng-og-fjell.md` — roter inn når base sitter.
+
+## Double threshold (Bakken)
+
+Oppsummert i `../metoder/double-threshold-bakken.md` — **ikke** i ukeplan nå; maks 2 harde løp/uke + comeback (`02-kvalitet-intensitet.md`).

@@ -12,7 +12,8 @@
 6. **`elite/01-trenerstemme.md`** — tone og TP-kommentarer
 7. **`elite/06-norsk-bolge-tri-atleter.md`** — Ingebrigtsen / Klæbo / Northug → tri (William)
 8. Disiplin etter behov: `elite/disiplin/{lop,sykkel,svom,tri}.md`
-8. **`elite/05-feil-og-signaler.md`** — typiske feiltolkninger (inkl. agent-feil)
+9. Valgfri metode: **`elite/metoder/double-threshold-bakken.md`** (Bakken / norsk terskel — **ikke** default for William nå)
+10. **`elite/05-feil-og-signaler.md`** — typiske feiltolkninger (inkl. agent-feil)
 
 ## Arkiv (ikke primær sannhet)
 

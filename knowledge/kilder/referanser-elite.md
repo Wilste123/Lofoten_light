@@ -38,6 +38,14 @@ https://link.springer.com/article/10.1186/s40798-025-00848-3
 
 ---
 
+## Metode / terskel (NEW WEB)
+
+| Tema | URL | Repo-notat |
+|------|-----|------------|
+| Double threshold (Bakken) | https://www.mariusbakken.com/double-threshold-training.html | `elite/metoder/double-threshold-bakken.md` |
+
+---
+
 ## Utøver / media (NEW WEB — sitat med kilde)
 
 | Utøver | Eksempelkilde |

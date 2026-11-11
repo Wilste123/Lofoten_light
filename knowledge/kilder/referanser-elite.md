@@ -33,6 +33,7 @@ https://link.springer.com/article/10.1186/s40798-025-00848-3
 | Tema | URL |
 |------|-----|
 | Annual volume case (JAP 2024) | https://journals.physiology.org/doi/full/10.1152/japplphysiol.00706.2024 |
+| Tveiten gold-medal workouts (Triathlete) | https://www.triathlete.com/training/workouts/kristian-blummenfelts-coach-reveals-his-gold-medal-workouts/ → `elite/kilder/blummenfelt-triathlete-tveiten-workouts.md` |
 | Scientific Triathlon Tveiten EP#154 | https://scientifictriathlon.com/tts154/ |
 | Scientific Triathlon Bu EP#369 | https://scientifictriathlon.com/tts369/ |
 

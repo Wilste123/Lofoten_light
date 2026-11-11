@@ -1,0 +1,39 @@
+name: 8×1 km terskel/10k (build)
+sport: run
+intervals_target: pace
+estimated_duration: 80-95 min
+estimated_tss: 90-110
+phase: build-2027
+role: threshold
+tp_intensity: threshold pace + LTHR
+---
+# 8×1 km — 10k-fart / terskel-kant (build 2027)
+
+**Når:** **Q2–Q3 2027** · Form **ikke** dypt rød · **ikke** i comeback-base nov–des 2026.
+
+**Start:** **8×1 km** (ikke 10) · pause **90 s** (ikke 60 s).
+
+**Sonemal:** Threshold **5:30/km** · drag **5:32–5:42/km** (RPE **7,5–8**).
+
+## Oppvarming — 18–20 min
+
+Strides som 5×2.
+
+## Hoveddel
+
+**8×1 km** @ **100–106 % threshold pace** eller **96–102 % LTHR**.  
+**Pause 90 s** @ lett jogg (øk til **2 min** om puls ikke faller).
+
+**Plan B:** **6×1 km** · **5×1 km**.
+
+## Nedkjøring — 10 min
+
+---intervals---
+- Warmup 18m 81-89% LTHR
+- Repeat 4x
+  - 20s 106-112% threshold pace
+  - 60s 81-89% LTHR
+- Main Set 8x
+  - 1km 100-106% threshold pace
+  - 90s 75-89% LTHR
+- Cooldown 10m 75-89% LTHR

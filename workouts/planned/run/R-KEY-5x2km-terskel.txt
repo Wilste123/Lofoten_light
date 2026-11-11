@@ -1,0 +1,43 @@
+name: 5×2 km terskel (nøkkel)
+sport: run
+intervals_target: pace
+estimated_duration: 85-95 min
+estimated_tss: 90-105
+phase: base2-build
+role: threshold
+tp_intensity: LTHR + threshold pace
+---
+# 5×2 km — terskel (10k / HM-grunnmur)
+
+**Når:** Fra **desember** etter deload · **1×/uke** som **harde løp** (rotér med 4×8 / 3×3 / 2×5).
+
+**Sonemal:** Threshold **5:30/km** · LTHR **168**.
+
+## Oppvarming — 15–18 min
+
+- 10 min Z2 lett (HR &lt; 147)
+- **4×20 s** strides, **60 s** gang/jogg
+- 3 min rolig
+
+## Hoveddel
+
+**5×2 km** @ **96–100 % LTHR** · ca. **5:28–5:35/km** (RPE **7–8**, jevn).  
+**Pause 2 min** @ **75–85 % LTHR** (lett jogg; tabell 90 s → du **2 min**).
+
+**Rep 1:** kontrakt — rep 2–5 innen **±5 s/km**.
+
+**Plan B:** **4×2 km** · **3×2 km** @ samme band · **20 min** kontinuerlig @ RPE 7.
+
+## Nedkjøring — 10 min
+
+lett.
+
+---intervals---
+- Warmup 15m 81-89% LTHR
+- Repeat 4x
+  - 20s 100-106% threshold pace
+  - 60s 81-89% LTHR
+- Main Set 5x
+  - 2km 96-100% LTHR
+  - 2m 75-85% LTHR
+- Cooldown 10m 75-89% LTHR

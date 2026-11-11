@@ -1,0 +1,37 @@
+name: 2×5 km kontrollert terskel
+sport: run
+intervals_target: pace
+estimated_duration: 75-90 min
+estimated_tss: 85-100
+phase: base2-build
+role: threshold
+tp_intensity: LTHR + threshold pace
+---
+# 2×5 km — seig terskel (HM-utholdenhet)
+
+**Når:** Rotasjon · helst uke **etter** hard sykkel-Q · **lett uke** kan følge.
+
+**Sonemal:** Threshold **5:30/km** · LTHR **168**.
+
+## Oppvarming — 15–20 min
+
+Som 5×2 (strides + rolig).
+
+## Hoveddel
+
+**2×5 km** @ **94–99 % LTHR** · ca. **5:32–5:42/km** (RPE **7**, kontrollert — **ikke** 5k-test).  
+**Pause 3–4 min** @ **75–85 % LTHR**.
+
+**Plan B:** **2×3 km** · **1×5 km + 25 min Z2**.
+
+## Nedkjøring — 10 min
+
+---intervals---
+- Warmup 18m 81-89% LTHR
+- Repeat 4x
+  - 20s 100-106% threshold pace
+  - 60s 81-89% LTHR
+- Main Set 2x
+  - 5km 94-99% LTHR
+  - 3m 75-85% LTHR
+- Cooldown 10m 75-89% LTHR

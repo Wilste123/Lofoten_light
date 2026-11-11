@@ -1,0 +1,36 @@
+name: 3×4 km HM-tempo
+sport: run
+intervals_target: pace
+estimated_duration: 90-105 min
+estimated_tss: 95-115
+phase: build
+role: threshold
+tp_intensity: LTHR + threshold pace
+---
+# 3×4 km — halvmaraton-utholdenhet
+
+**Når:** Når du tåler **70–90 min** løp-Q · **ikke** samme uke som Crisscross + stor svøm.
+
+**Sonemal:** Threshold **5:30/km** · LTHR **168**.
+
+## Oppvarming — 20 min
+
+Som FIRDA 4×8 (inkl. 3 min @ 96–99 % LTHR).
+
+## Hoveddel
+
+**3×4 km** @ **94–99 % LTHR** · **5:30–5:40/km** (RPE **7–7,5**, jevn flyt).  
+**Pause 3 min** @ **75–85 % LTHR**.
+
+**Plan B:** **2×4 km** · **3×3 km** @ samme band.
+
+## Nedkjøring — 12 min
+
+---intervals---
+- Warmup 20m 75-89% LTHR
+- 1x 3m 96-99% LTHR
+- 2m 75-85% LTHR
+- Main Set 3x
+  - 4km 94-99% LTHR
+  - 3m 75-85% LTHR
+- Cooldown 12m 75-89% LTHR

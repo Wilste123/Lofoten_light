@@ -1,0 +1,36 @@
+name: 3×3 km terskel
+sport: run
+intervals_target: pace
+estimated_duration: 75-85 min
+estimated_tss: 85-100
+phase: base2-build
+role: threshold
+tp_intensity: LTHR + threshold pace
+---
+# 3×3 km — lang terskel (erstatter 4×8-uke)
+
+**Når:** Build · **annenhver 3.–4. uke** · start **3×3**, senere **4×3**.
+
+**Sonemal:** Threshold **5:30/km** · LTHR **168**.
+
+## Oppvarming — 18 min
+
+Inkl. **1×3 min** @ **96–99 % LTHR**, 2 min lett.
+
+## Hoveddel
+
+**3×3 km** @ **96–100 % LTHR** · **5:30–5:38/km** (RPE **7–8**).  
+**Pause 2–3 min** @ **75–85 % LTHR**.
+
+**Plan B (4×3 uke):** **3×3** første gang · **4×3** når uke er grønn.
+
+## Nedkjøring — 10 min
+
+---intervals---
+- Warmup 18m 75-89% LTHR
+- 1x 3m 96-99% LTHR
+- 2m 75-85% LTHR
+- Main Set 3x
+  - 3km 96-100% LTHR
+  - 2m30s 75-85% LTHR
+- Cooldown 10m 75-89% LTHR

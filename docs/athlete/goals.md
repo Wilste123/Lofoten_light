@@ -7,11 +7,11 @@
 | **Arrangement** | **Lofoten Half Extreme 2027** |
 | Rolle | Primært fokus — bygge mot dette, ikke mot full Extreme ennå |
 | **Måltype (William, sep 2026)** | **#1 fullføre** (innen cut-offs, bein i behold). **Styringsanker tid:** ca. **6:30–7:00** totalt — brukes til pacing og simulering, ikke før suksess er «over målstreken». |
-| **Race-vekt (William, sep 2026)** | **Under 80 kg** mot start Half Extreme 2027 — **ikke** før build/spiss; styrke + watt må henge med |
+| **Race-vekt (William, rev. nov 2026)** | **Under 75 kg** ved start Half Extreme 2027 (sweet spot **74–75**) — **ikke** jage taper-dehydrering; styrke + watt + FFM må henge med |
 
 Planlegging skal være **spesifikk mot Lofoten Half Extreme**, med gradvis opptrapping og kontinuitet (se prioriteringer i `profile.md`).
 
-**Vektkorridor (coach):** 90 kg → **&lt;80 kg race** (sweet spot **78–79**) — månedlige **tak** i [`plans/2026-2027-12mnd-periodisering.md`](../plans/2026-2027-12mnd-periodisering.md). **Fett % / vann / FFM:** [`kroppssammensetning-smartvekt.md`](kroppssammensetning-smartvekt.md). Avbryt vektnedgang hvis FTP eller styrke faller.
+**Vektkorridor (coach):** **Målt baseline ~83 kg** (25. sep 2026) → **&lt;75 kg race** (sweet spot **74–75**) — månedlige **tak** i [`plans/2026-2027-12mnd-periodisering.md`](../plans/2026-2027-12mnd-periodisering.md). Plan-estimat ~90 kg brukes **ikke** som startpunkt. **Fett % / vann / FFM:** [`kroppssammensetning-smartvekt.md`](kroppssammensetning-smartvekt.md). **Stopp/aggressivt brems nedjustering** hvis FTP, styrke eller **FFM 3 uker på rad** faller. **Plan B race-vekt:** **76–77 kg** hvis røde flagg i jun–jul 2027 — fullføre &gt; optimere tall.
 
 ## Volum over 12 måneder
 
@@ -43,13 +43,15 @@ Agenten skal aktivt **dempe** Norseman/full-Extreme-logikk (ultra-spesifisitet, 
 ## 12-måneders plan
 
 - **Blokker og formål (start her):** [`plans/blokker-periodisering-2026-2027.md`](../plans/blokker-periodisering-2026-2027.md)  
+- **Mengdeperioder (4-ukers volum):** [`plans/mengdeperioder-2026-2027.md`](../plans/mengdeperioder-2026-2027.md)  
 - Månedstabell: [`plans/2026-2027-12mnd-periodisering.md`](../plans/2026-2027-12mnd-periodisering.md) (sep 2026 → Half Extreme aug 2027 + 750–800 t).
 
-## Denne blokken (4–8 uker) — utfyll med agent
+## Denne blokken (okt–nov 2026)
 
-- **Primærfokus:** TBD (f.eks. løpefrekvens + sykkel Z2 + 2× svøm/uke)
-- **Ukemål timer:** TBD nå → bygg mot **~14,5–15,5 t/uke snitt** over 12 mnd (750–800 t totalt); 2026 &gt;50 t hittil er lav base — ikke 2019-volum (~20 t/uke) før kroppen tåler det
-- **Non-negotiables:** Skadefrihet, gradvis progresjon (prioritet 2–3)
+- **Primærfokus:** **Sykkel Z2 tilbake** + **3× svøm/uke** + **maks én** hard løpeanker/uke (etter deload 19.–25. okt)
+- **Ukemål timer:** Etter deload: **9 → 10 t** i nov (recovery uke 8 ~7,5 t), **11–11,5 t** des 2026, mot **14–16 t** build 2027 — se [`plans/2026-post-deload-ramp.md`](../plans/2026-post-deload-ramp.md)
+- **Non-negotiables:** Skadefrihet, gradvis progresjon; fullføre Half Extreme 2027 først (styringsanker 6:30–7:00)
+- **Analyse:** [`plans/2026-10-analyse-siste-uker.md`](../plans/2026-10-analyse-siste-uker.md) · **Måned nov:** [`plans/2026-11-måned.md`](../plans/2026-11-måned.md)
 
 ## Suksesskriterier
 

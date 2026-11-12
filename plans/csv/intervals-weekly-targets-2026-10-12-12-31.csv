@@ -1,0 +1,29 @@
+week_start,phase,total_tss,hours,notes
+2026-10-12,build,480,9.5,FROZEN — build 12-18
+2026-10-19,build,400,8.5,Build Lillehammer/hytte — erstatter deload
+2026-10-26,b1,520,9.5,M1-W1 — plan-TSS ~faktisk okt
+2026-11-02,b1,545,10.0,M1-W2 FTP
+2026-11-09,b1,565,10.5,M1-W3
+2026-11-16,b1-recovery,380,7.5,M1-W4 recovery
+2026-11-23,b2,545,10.0,M2-W1 CSS
+2026-11-30,b2,565,10.5,M2-W2
+2026-12-07,b2,590,11.0,M2-W3
+2026-12-14,b2,610,11.5,M2-W4
+2026-12-21,b2-b3,655,12.0,M3-W1 des-topp 2026
+2026-12-28,b2-b3,480,10.0,M3-W2 juleuke 28-31
+2027-01-04,b3,520,11.0,M3-W3
+2027-01-11,b3-recovery,400,8.5,M3-W4 recovery
+2027-01-18,b3,540,11.5,M4-W1
+2027-01-25,b3,560,12.0,M4-W2
+2027-02-01,b3,560,12.0,M4-W3
+2027-02-08,b3-recovery,420,9.0,M4-W4 recovery
+2027-02-15,b4,560,12.0,M5-W1
+2027-02-22,b4,590,12.5,M5-W2
+2027-03-01,b4,620,13.0,M5-W3
+2027-03-08,b4-recovery,450,9.5,M5-W4 recovery
+2027-03-15,b5,620,13.0,M6-W1
+2027-03-22,b5,650,13.5,M6-W2
+2027-03-29,b5,680,14.0,M6-W3
+2027-04-05,b5-recovery,480,10.0,M6-W4 recovery
+2027-04-12,b5-camp,700,15.0,Leksvik camp uke 1 — WORKOUT sum = TARGET
+2027-04-19,b5-camp,800,18.5,Leksvik camp uke 2 17-20t

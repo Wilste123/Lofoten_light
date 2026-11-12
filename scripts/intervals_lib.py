@@ -92,6 +92,15 @@ def format_planned_session_for_intervals(path: Path) -> str:
     return intervals
 
 
+def format_swim_coach_note_only(path: Path) -> str:
+    """Coach text for Intervals swim WORKOUT — no ---intervals--- block (avoids 12m/50m parser)."""
+    raw = path.read_text(encoding="utf-8")
+    head = raw.split("---intervals---", 1)[0]
+    if "\n---\n" in head:
+        return head.split("\n---\n", 1)[1].strip()
+    return format_strength_txt_for_intervals(path)
+
+
 def resolve_planned_session_path(
     description: str, sport: str, repo_root: Path
 ) -> Path | None:
@@ -326,14 +335,22 @@ def put_wellness_bulk(rows: list[dict]) -> dict | list:
         raise RuntimeError(f"Intervals API {e.code}: {detail}") from e
 
 
-def delete_events_bulk(external_ids: list[str]) -> dict:
-    """Delete calendar events by external_id (agent plan ids ll-agent-…)."""
-    if not external_ids:
+def delete_events_bulk(
+    external_ids: list[str] | None = None,
+    *,
+    event_ids: list[int] | None = None,
+) -> dict:
+    """Delete calendar events by external_id and/or Intervals event id."""
+    items: list[dict] = []
+    for eid in sorted(set(external_ids or [])):
+        items.append({"external_id": eid})
+    for i in sorted(set(event_ids or [])):
+        items.append({"id": i})
+    if not items:
         return {"eventsDeleted": 0}
     aid = athlete_id()
     url = f"{API_BASE}/athlete/{aid}/events/bulk-delete"
-    unique = sorted(set(external_ids))
-    body = json.dumps([{"external_id": eid} for eid in unique]).encode("utf-8")
+    body = json.dumps(items).encode("utf-8")
     req = urllib.request.Request(
         url,
         data=body,

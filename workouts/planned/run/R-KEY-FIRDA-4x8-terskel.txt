@@ -1,0 +1,64 @@
+name: FIRDA 4×8 — nøkkel terskel (cruise)
+sport: run
+intervals_target: HR
+estimated_duration: 80-90 min
+estimated_tss: 95-115
+phase: base2-build
+role: threshold
+---
+# FIRDA 4×8 — **terskel** (8-min drag)
+
+**Formål:** **Laktat/terskel** — lang nok bout (**8 min**) til MLSS-relevant stimulus (**Ingebrigtsen / cruise**).  
+**Inngang:** 4+ uker **6×4 aerob power** uten skade; **ikke** samme uke som **VO2 5×3**.
+
+**Når:** Base 2 → build, **1×/uke** (rotér med aerob power og VO2 — **maks 1 av 3** i samme uke som hard løp-Q nr 2).
+
+---
+
+## Oppvarming — 22–28 min
+
+Som 6×4 + **1×3 min** @ **96–99 % LTHR** (terskel-smak), 2 min lett.
+
+---
+
+## Hoveddel — Kontrollert cruise
+
+**4×8 min** @ **96–100 % LTHR** (RPE **7–8**, **kontrollert** — **ikke** start rep 1 på 109 %).  
+**Pause 2–3 min** @ **75–85 % LTHR** (jogg; gå 30 s om nødvendig).
+
+### Fokus
+
+| | |
+|---|---|
+| **Rep 1** | Setter **snitt-HR/pace** — rep 2–4 **innen ±5 sek/km** |
+| **Min 4–8** | Skal føles **jevnt** — stigende puls = du startet for hardt |
+| **Plan B** | **3×8** · **4×6** @ samme band · **2×15 min** kontinuerlig @ RPE 7 |
+
+**Terreng:** Flat/grus eller **mild** stigning — 8 min stabil.
+
+---
+
+## Nedkjøring — 12–15 min
+
+---
+
+## TP (kopier)
+
+«FIRDA 4×8 — **terskel cruise**. 4×8 min @ 96–100 % LTHR, RPE 7–8 kontrollert. Pause 2–3 min 75–85 % LTHR. Plan B 3×8. Ikke VO2.»
+
+**Forskning:** Lang intervall ved terskel (Midgley); norsk kontrollert threshold-arbeid.
+
+---intervals---
+- Warmup 14m 75-89% LTHR
+- 4x
+  - 20s 95-105% LTHR
+  - 60s 75-89% LTHR
+- 1x
+  - 3m 96-99% LTHR
+- 2m 75-89% LTHR
+
+Main Set 4x
+- 8m 96-100% LTHR
+- 3m 75-85% LTHR
+
+- Cooldown 12m 75-85% LTHR

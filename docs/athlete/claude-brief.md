@@ -22,6 +22,80 @@
 
 ---
 
+## 1b. Hva vi skal oppnå — overordnet
+
+### A) Raceutfall (suksess #1)
+
+| | |
+|---|---|
+| **Arrangement** | [The Arctic Triple — Lofoten Half Extreme](https://thearctictriple.no/lofoten-triathlon-half-extreme) (~aug 2027) |
+| **Distanser** | **1,9 km svøm** · **100 km sykkel** · **21 km løp** (~**2000 m** høyde totalt) |
+| **Cut-offs (orientering)** | Svøm **1 t 15 min** · sykkel **5 t fra start** · totalt **9 t** |
+| **#1 mål** | **Fullføre med bein i behold** innen tidsfrister — ikke «DNF på tempo-jakt» |
+| **Tidsanker (styring)** | Ca. **6:30–7:00** totalt — brukes til **pacing/simulering**, ikke som vilkår for å kalle prosjektet vellykket |
+| **Plan B race** | Fortsatt fullføre ved **76–77 kg** eller dårligere testår — **fullføre &gt; optimere tall** |
+
+**Race-bibel:** `knowledge/_archive/pre-elite-2026-10/triathlon/lofoten-half-extreme.md`
+
+### B) Kropp mot start (parallelt mål)
+
+- **Racevekt:** **&lt;75 kg** (sweet spot **74–75**), **ikke** taper-dehydrering.
+- **FFM:** hold **≥ ~64–66 kg** (fra baseline ~66); brems vektnedgang hvis **FFM faller 3 uker** eller FTP/styrke faller.
+- **Månedlige vekttak** (7-dagers snitt): se `plans/2026-2027-12mnd-periodisering.md` (f.eks. nov **81,5**, des **&lt;80**, aug 2027 **&lt;75**).
+- **Metode:** ~**0,35 kg/uke** maks nedgang i base; protein + styrke 2×/uke; ikke krasj-diett.
+
+### C) Treningskapasitet vi bygger (prosesmål)
+
+**North star** (`docs/athlete/goals.md`):
+
+1. **Stabile uker** — færre «fall» og færre uker tapt til overbelastning.  
+2. **Aerob + MSK på tre ben** — ikke «sterk syklist som overlever løp/svøm».  
+3. **Spesifisitet mot Lofoten** når grunnmur finnes (terreng, vind, kulde, OWS, brick, bakke).
+
+| Ben | Hva «good enough» mot 2027 betyr (retning, ikke dagens krav) |
+|-----|----------------------------------------------------------------|
+| **Svøm** | **3×/uke vane**; **1,9 km kontinuerlig**; CSS/terskel arbeid; trygg OWS i wetsuit; ~**2:00/100 m** eller bedre i racecomfort |
+| **Sykkel** | **FTP reell og stabil** (etter ramp); **4–5 t+ Z2 ute** med fueling; **tåle sidevind/bakke**; ikke bare ERG-monotoni |
+| **Løp** | **Halvmaraton-utholdenhet** på kuperte underlag; **bakke (Tjeldbergtind-logikk)**; brick-løp; terskel ~**5:30/km** (oppdatert nov 2026) |
+| **Styrke** | **2×/uke** prehab + grunn (rygg, isjas, ankel) — investering i 750–800 t, ikke ekstra |
+| **Hode** | Ærlig TP/Intervals; recovery-uker uten skam; Plan B uten «ta igjen-TSS» |
+
+### D) Volum og belastning (årsmål)
+
+| | |
+|---|---|
+| **750–800 timer** på 12 rullerende måneder | ≈ **14,5–15,5 t/uke** når «in shape» |
+| **Nå (base)** | **~10–12 t** med **recovery hver 3.–4. uke** |
+| **Prinsipp** | Pyramidal load — **harde uker + planlagt rolig**, ikke konstant jakt på CTL |
+| **Comeback-filter** | **+10 % timer/uke** regel; Form rød → Plan B, ikke compliance-hero |
+
+**Blokklogikk:** `plans/blokker-periodisering-2026-2027.md` — B0 re-etablering → B1–B5 base → B6–B8 build (kvalitet, brick, volum) → B9 spesifikk → B10 taper/race.
+
+### E) Hva vi **ikke** skal oppnå nå (med vilje)
+
+- Peak/taper 2027 (for tidlig)  
+- Norseman / full Extreme / norwegian ultra-narrativ  
+- **410 W FTP** eller **2019 1050 t** som styringstall  
+- Maks race nutrition «lab» i stor skala før build  
+- Jage én disiplin på bekostning av **svøm-frekvens** (svøm er limiter)
+
+### F) Suksesskriterier denne perioden (nov 2026 → des 2026)
+
+Fra `goals.md` + månedlige planer:
+
+- **Svøm:** 3 kontakter/uke som norm; gradvis meter og én aerob/kvalitetsøkt når skuldre tåler.  
+- **Sykkel:** FTP testet og brukt konservativt; lang Z2 tilbake (ute/rulle).  
+- **Løp:** Én anker-Q/uke + rolig volum; **ingen** skadeopptrapping.  
+- **Vekt:** des-milepæl **7-d snitt &lt;80 kg** uten FFM-fall.  
+- **Prosess:** TP-kommentarer på Q-økter; ukesopp; agent flagger **aggressiv volum-/TSS-økning**.
+
+### G) Beslutningsregel for enhver økt
+
+*«Hjelper dette **1,9 km svøm**, **100 km sykkel**, eller **21 km løp med Tjeldbergtinden etterpå** — uten å bryte prioritering 1–3 (kontinuitet, skadefrihet, gradvis progresjon)?»*  
+Hvis nei → dropp eller erstatt (`knowledge/elite/00-FILOSOFI.md` / coach-filosofi).
+
+---
+
 ## 2. Utøver — nåværende status (nov 2026)
 
 | Metrikk | Verdi | Notat |
